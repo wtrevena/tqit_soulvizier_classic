@@ -1,5 +1,58 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## SHIP RECORD - R-211 ATLANTIS SEA-VOYAGE CAP: the Atlantis SHIP is gone too, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/atlantis-voyage-cap` merge `0019861`, tag `build82-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
+'trevenaw7' [U:1:106507138] to Steam Public...OK`), `Preparing update... Preparing content...
+Uploading content... Committing update...Success.` + `Updated Workshop item: 3759792705`. Confirmed
+independently from `C:\steamcmd\logs\workshop_log.txt`, not from the console text alone:
+**`Upload finished for workshop item 3759792705 : OK`, ManifestID `7197248715535460168`**
+(2026-08-11 04:08:40 -> 04:08:59). Pushed `-Update -Visibility 0` and the generated VDF was read back to
+confirm `"visibility" "0"` - the item stays PUBLIC. Packaged payload: **56 files, 1188.3 MB**, single
+`SoulvizierClassic` wrapper.
+
+**This is an arz-only delta on top of `build81-ship`.** Only the database moved.
+
+| artifact | md5 | bytes | vs the item as of `build81-ship` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`09a0f51dcc5c64b3d84c123a421aeef1`** | 55,562,756 | **CHANGED** from `f1671207` |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | unchanged |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | unchanged |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | unchanged |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | unchanged |
+
+**PUSH-GATE, all against the exact dist payload.**
+
+| gate | result |
+|---|---|
+| F9 dist == work coupling, all 5 shipped artifacts | **PASS** (each hashed on both sides; table above) |
+| packager TESTHUB guard + an independent re-check | **PASS** - packaged `6784cf0f` != TESTHUB `7a7ca9ac`; the hub did not ship, and the packaged map is positively asserted to BE the canonical `6784cf0f` |
+| single-wrapper assertion (packager + an independent check) + stale-layout check | **PASS** - content root holds exactly one `SoulvizierClassic` folder, no wrapperless leftovers |
+| **R-211 voyage-cap gate on the DIST arz** (not just the work copy) | **PASS** - `V5 resolvable Atlantis-transit routes = []` |
+| **R-210 DLC-cap gate on the DIST arz** | **PASS** - `portal pages = ['Greece', 'Egypt', 'Orient', 'Hades']`, quest-log tabs 1-4 |
+| `run_contracts` on the **dist payload** | **GATE PASS - 0 P0 / 0 P1 / 4492 P2** |
+| `run_contracts` A/B: the **baseline arz `f1671207`** under the **identical config** | **4492** - the same number, so this ship adds **ZERO new contract violations**, measured in both directions rather than assumed |
+| changenote VDF-safety | 2,375 chars, **0 double-quotes, 0 backslashes, 0 em dashes, pure ASCII** |
+
+**DEPLOY ORDER HONOURED END TO END.** DEV first (`build82-dev`, arz `09a0f51d`, 1 of 62 files changed,
+the 61 untouched siblings re-hashed after the copy), then Steam. **TQ.exe was never running, was never
+killed, and Steam was never restarted** at any point in this lane. Steam and DEV now differ only in the
+map: DEV carries the TESTHUB `Levels.arc` `7a7ca9ac` (local-only, by design), Steam the canonical
+`6784cf0f`.
+
+**Rollback (Steam, one push):** stage `local/build81_ship_f1671207.arz` as
+`work/SoulvizierClassic/Database/SoulvizierClassic.arz`, re-package, re-upload; every other shipped
+artifact is already byte-identical to `build81-ship`.
+
+**RESIDUALS - stated plainly.**
+- **`BL-VOYAGECAP-DEBT-1` NOT PROVEN IN-GAME.** Nobody has walked Rhodes as a DLC owner. **Will's
+  one-line test: after beating Typhon, walk Rhodes - no Marinos, no captain offering Gadir, no Atlantis
+  adventure in the quest log; and the portal page still shows four act tabs.**
+- `BL-VOYAGECAP-DEBT-2` (P3) the two Tartarus suppressions are defence in depth, challengeable.
+  `BL-VOYAGECAP-DEBT-3` (P3) no in-fiction refusal line from the captain (his dialog is base-arc owned).
+- The Workshop cover image is still absent (`WARNING: no preview image`), unchanged by this push and
+  still Will's separate action.
+
 ## BUILD82-DEV GATE RECORD - R-211 ATLANTIS SEA-VOYAGE CAP: the SHIP is gone too, `BL-PORTALCAP-DEBT-1` CLOSED - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-11, `main` @ the `fix/atlantis-voyage-cap` merge `0019861`, tag `build82-dev`)
 
 **Will's standing order (2026-08-10):** Atlantis is disabled in this mod. R-210 (`build78`) removed the

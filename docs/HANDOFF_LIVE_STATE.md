@@ -1,4 +1,46 @@
 # HANDOFF LIVE STATE
+> ## BUILD82 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-211 Atlantis sea-voyage cap; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `09a0f51dcc5c64b3d84c123a421aeef1`** (55,562,756 B, 51,253 records).
+> DEV copied with md5 source==dest verification **while TQ.exe was NOT running** (nothing killed, Steam
+> not restarted); **1 of 62 DEV files changed**, the 61 siblings re-hashed after the copy and byte-identical.
+> Steam: **Workshop item 3759792705, `Upload finished ... : OK`, ManifestID `7197248715535460168`**
+> (steamcmd workshop log 2026-08-11 04:08:40 -> 04:08:59), `-Update -Visibility 0` with the VDF read back
+> to confirm `"visibility" "0"` (stays PUBLIC). 56 files, 1188.3 MB, single wrapper.
+> - **What it is:** R-211, the travel half of the standing Immortal-Throne cap. R-210 (`build78`) removed
+>   the Atlantis PAGE and explicitly left the SHIP as `BL-PORTALCAP-DEBT-1`. **Atlantis is not a post-Hades
+>   act: it branches off RHODES, mid-Immortal-Throne**, which is why neither A5 cap ever touched it.
+>   `x3mq_Marinos_Rhodes` has ZERO static placements and enters the world only through a `DLCActorSpawner`;
+>   talking to him fires `Action_BoatDialog(rhodes_boatmantogadir)`, the only doorway into the XPack3 act.
+>   Six base records are now overridden per record path (the A5 pattern): `actorToSpawn` DELETED on both
+>   `DLCActorSpawner` records, `startVisible=0` + `IncludeInMap=0` on the two boundary boat captains, and an
+>   AND-unsatisfiable `RequireDLC=TQA2` + `RequireNoDLC=TQA2` on both Tartarus act portals. The quest layer
+>   was deliberately NOT used: all 20 XPack3 quests are registered under the `XPack3/Quests/...` namespace,
+>   so the md5-full-registry-path trap that made the build33 cap ship inert applies verbatim.
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Levels.arc 6784cf0f` (canonical) / `Text.arc a9fed7ba` /
+>   `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged. 0 new tags authored, so
+>   `validate_tags` PASSES against the EXISTING `Text.arc` and no Text rebuild was needed.
+> - **Record-diff vs the shipped `f1671207`: ADDED 6 / REMOVED 0 / MODIFIED 0, ZERO unexplained** - the six
+>   capped records and nothing else. **det-2x byte-identical.** Gate records: `docs/BACKLOG.md` -> R-211 SHIP
+>   RECORD + BUILD82-DEV GATE RECORD. Ruling: `docs/WILL_RULINGS.md` -> R-211. RCA + 10-route audit:
+>   `docs/ATLANTIS_VOYAGE_CAP.md`.
+> - **NEW permanent gate:** `tools/gate_atlantis_voyage_cap.py` (fail-loud, golden allow-list, negative-tested
+>   4 ways incl. a COLLATERAL over-reach plant) runs in-memory at cap time, on the WRITTEN `.arz`, on the
+>   DEPLOYED DEV artifact and again on the DIST payload at push-gate. Its V5 check proves the DERIVED list of
+>   resolvable Atlantis-transit routes is EMPTY; V4 fails if the cap reaches beyond its golden allow-list.
+> - **The leak was reproduced as an artifact fact first:** the gate FAILED on the live `build78` arz with
+>   `V5 4 resolvable Atlantis-transit route(s) remain`, so the fix is measured in both directions.
+> - **Contracts: 0 P0 / 0 P1 / 4492 P2 on the dist payload, and the baseline arz under the identical config
+>   also gives 4492** - zero new violations. Every coexisting gate (b79 orb breadth, b80 loot distribution,
+>   b81 craft/thrown, chest breadth, relic tiers, unlock alignment, R-210 DLC cap) PASSES on this artifact.
+> - **Rollback (one step, either surface):** `local/build81_ship_f1671207.arz` (also
+>   `local/DEV_arz_deployed_prev.arz`) = the build81 arz this replaced.
+> - **`BL-PORTALCAP-DEBT-1` is CLOSED.** The last Atlantis access path is shut.
+> - ⚠️ **STILL OPEN (`BL-VOYAGECAP-DEBT-1`, P1, launch-gated):** NOT PROVEN IN-GAME. **Will's check (needs an
+>   Atlantis-DLC owner): after beating Typhon, walk Rhodes - no Marinos, no captain offering Gadir, no
+>   Atlantis adventure in the quest log; portal page still 4 tabs.** Full note at the top of
+>   `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and restart Steam first.
+
 
 > ## BUILD81 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-184/185/186 the craft chain; arz-ONLY
 > **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
