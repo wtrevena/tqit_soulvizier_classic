@@ -465,15 +465,21 @@ def load_base_rows(required, who):
         return _BASE_ROWS
     from arz_patcher import ArzDatabase
     bdb = ArzDatabase.from_arz(path)
+    # `_all` (the FULL field map, needed to import a record) is kept ONLY for the
+    # handful of records this module actually imports. Keeping it for all ~5.5k
+    # base Monster records would hold a second full field graph in memory for the
+    # rest of a build that already carries several 50k-record databases.
+    want_all = {_norm(p) for p in IMPORT_FROM_BASE}
     rows = {}
     for n in bdb.record_names():
         tpl = _v1(bdb, n, 'templateName')
         if not (isinstance(tpl, str) and _norm(tpl).endswith(_MONSTER_TPL)):
             continue
+        key = _norm(n)
         row = {f: _v1(bdb, n, f) for f in _BASE_FIELDS_WANTED}
         row['_name'] = n
-        row['_all'] = _fields(bdb, n)
-        rows[_norm(n)] = row
+        row['_all'] = _fields(bdb, n) if key in want_all else None
+        rows[key] = row
     _BASE_ROWS, _BASE_STATE = rows, 'ok'
     print("  [red_uber_orbs] base-game universe loaded: %d Monster.tpl record(s) "
           "from %s" % (len(rows), path))
@@ -571,6 +577,11 @@ def _import_base_record(db, base_rows, path):
             "R-200 names the Boar Snatcher explicitly; it cannot be wired if the "
             "record is not there." % path)
     allf = row['_all']
+    if not allf:
+        raise SystemExit(
+            "[red_uber_orbs] %s has no cached field map. Only records listed in "
+            "IMPORT_FROM_BASE keep one (a memory choice); adding an import target "
+            "means adding it there too." % path)
     tpl = allf.get('templateName', ([''], None))[0]
     tpl = tpl[0] if tpl else ''
     _ensure_record(db, path, str(tpl))
