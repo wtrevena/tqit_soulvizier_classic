@@ -28,10 +28,17 @@ so it is valid without a 1.3GB map build. Pass a built .arc to also scan its liv
   T5 CROSS-FILE: map / quests / arz reference the SAME 24 hub records (arz minus the retired-but-
      kept donor svc_area_return_sparta) AND the SAME 5 per-area return records; every boat-menu
      label tag the quests use is minted or reused in the arz.
-  T5c ENTER-OFFERS (b62 + PR-5 SPARTA POLISH): 2 enter-offers. Uber reuses the TESTHUB hub record
-     svc_area_return_uber (0 new placement). Sparta is keyed on the dedicated, differently-named
-     Warden clone svc_warden_sparta_crypt, placed EXACTLY once canonically (inherited by TESTHUB)
-     at the catacomb; the shared donor svc_area_return_sparta is placed 0x (retired).
+  T5c ENTER-OFFERS + THE WARDEN (b62, PR-5 SPARTA POLISH, b63 SILENT-WARDEN):
+     - exactly 1 enter-offer (Uber), and it reuses the TESTHUB hub record svc_area_return_uber
+       (0 new placement). b63 LAW: an enter-offer may NEVER be an NPC's only route - it must be a
+       SECOND menu entry on an NPC that already owns a HELOS_HUB_TRAVEL route. Sole-sourcing one
+       is exactly how the Warden shipped mute to Steam on 2026-08-06.
+     - the Warden svc_warden_sparta_crypt is placed EXACTLY once canonically (inherited by
+       TESTHUB) at the catacomb; the shared donor svc_area_return_sparta is placed 0x (retired).
+     - R-170 AMENDMENT (Will): the Warden owns EXACTLY ONE boat route, tagSVCEnterSpartaCrypt
+       ("Descend into the Sparta Crypt"), and NEVER the shared "Helos (Return)" port. b63 moved
+       which TABLE emits that route; the one-option menu Will ruled on is unchanged and is
+       asserted here directly.
   T6 (built map, optional): a passed .arc's 0x05 sections contain ZERO walk-through portal
      instances; the canonical .arc places 0 hub records; the TESTHUB .arc places each once.
   RESPONDS (b48 round 3): the gate_traveler_responds invariants (no mute/orphan/warden/beyond-
@@ -158,8 +165,13 @@ def check_specs(fails):
           '(Garden/Secret/Uber/Sparta canon + Boss Arena TESTHUB)')
 
     # T5: cross-file agreement.
+    # b63 SILENT-WARDEN (Will 2026-08-10): the Warden's single descend route now rides
+    # HELOS_HUB_TRAVEL (it was mute as the sole owner of an enter-offer). The Warden is a
+    # CANONICAL placement, not one of the 24 TESTHUB-only hub records, so it is excluded from this
+    # roster comparison and gets its own dedicated battery in T5c below.
+    warden_q = _norm(asp.WARDEN_SPARTA_CRYPT_DBR)
     map_recs = {_norm(r) for r in hub_records}
-    q_recs = {_norm(npc) for npc, _xyz, _tag in bqf.HELOS_HUB_TRAVEL}
+    q_recs = {_norm(npc) for npc, _xyz, _tag in bqf.HELOS_HUB_TRAVEL} - {warden_q}
     if map_recs != q_recs:
         fails.append(f'T5: map vs quests record mismatch: only-map={map_recs - q_recs}, '
                      f'only-quests={q_recs - map_recs}')
@@ -174,7 +186,10 @@ def check_specs(fails):
         fails.append(f'T5: map vs arz record mismatch: only-map={map_recs - arz_recs}, '
                      f'only-arz={arz_recs - map_recs}')
     minted = {lt for _r, _nt, _tx, lt, ltx in asp.HELOS_HUB_OUTBOUND if ltx is not None}
-    arz_labels = minted | _REUSED_LABELS | {'tagSVCAreaReturnToHelos'}
+    # b63: the Warden's descend label now arrives via HELOS_HUB_TRAVEL. It is minted in the arz by
+    # the enter-offer tag creator (asp.TAG_ENTER_SPARTA_CRYPT), so it resolves either way.
+    arz_labels = (minted | _REUSED_LABELS
+                  | {'tagSVCAreaReturnToHelos', asp.TAG_ENTER_SPARTA_CRYPT})
     q_labels = {t for _n, _x, t in bqf.HELOS_HUB_TRAVEL}
     missing = q_labels - arz_labels
     if missing:
@@ -204,8 +219,9 @@ def check_specs(fails):
     #     a NEW canonical record placed EXACTLY once at the catacomb (inherited by TESTHUB); the
     #     shared donor svc_area_return_sparta it was cloned from is placed 0x (retired).
     enter_npcs = {_norm(npc) for npc, _xyz, _tag in bqf.TRAVELER_ENTER_OFFERS}
-    if len(enter_npcs) != 2:
-        fails.append(f'T5c: expected exactly 2 enter-offer NPCs, got {len(enter_npcs)}: {enter_npcs}')
+    if len(enter_npcs) != 1:
+        fails.append(f'T5c: expected exactly 1 enter-offer NPC (Uber; b63 moved Sparta out), '
+                     f'got {len(enter_npcs)}: {enter_npcs}')
     warden = _norm(asp.WARDEN_SPARTA_CRYPT_DBR)
     uber_ret = _norm(bss.AREA_RETURN_UBER_DBR)
     retired_sparta = _norm(asp.AREA_RETURN_SPARTA_DONOR)
@@ -213,11 +229,17 @@ def check_specs(fails):
     if uber_ret not in map_recs:
         fails.append(f'T5c: Uber enter-offer NPC {uber_ret} is not in the 24-record hub set '
                      f'(would be a NEW placement)')
-    # Sparta enter-offer NPC must be the dedicated Warden clone (NOT the shared donor, NOT a hub
-    # record) and it must be placed EXACTLY once canonically + once in TESTHUB (canonical inherited).
-    if warden not in enter_npcs:
-        fails.append(f'T5c: Sparta enter-offer must be keyed on the Warden clone {warden}; '
-                     f'enter NPCs = {enter_npcs}')
+    # b63 SILENT-WARDEN LAW: no enter-offer may be an NPC's ONLY route. This is the invariant whose
+    # absence let the Warden ship mute; build_quest_files asserts it at import too.
+    for npc in enter_npcs:
+        if npc not in {_norm(n) for n, _x, _t in bqf.HELOS_HUB_TRAVEL}:
+            fails.append(f'T5c: enter-offer NPC {npc} owns NO HELOS_HUB_TRAVEL route - an '
+                         f'enter-offer must be a SECOND menu entry, never an NPC\'s sole route '
+                         f'(this is the b63 silent-Warden bug class)')
+    if warden in enter_npcs:
+        fails.append(f'T5c: the Warden {warden} must NOT be an enter-offer - b63 moved its single '
+                     f'descend route to HELOS_HUB_TRAVEL because being an enter-offer\'s sole '
+                     f'owner is what made it mute in-game')
     if warden in map_recs:
         fails.append(f'T5c: the Warden clone {warden} must NOT be in the TESTHUB-only hub roster '
                      f'(it is a canonical placement)')
@@ -230,11 +252,22 @@ def check_specs(fails):
     if sc != 0 or st != 0:
         fails.append(f'T5c: retired shared record {retired_sparta} must be placed 0x '
                      f'(the Warden clone replaces it); got canonical={sc}, TESTHUB={st}')
-    # the Warden must NOT carry the shared "Helos (Return)" route -> its ONLY route is the descend
-    # enter-offer (proven here by the quest table: the Warden appears in NO HELOS_HUB_TRAVEL row).
-    if any(_norm(npc) == warden for npc, _xyz, _tag in bqf.HELOS_HUB_TRAVEL):
-        fails.append(f'T5c: Warden {warden} carries a HELOS_HUB_TRAVEL route (e.g. the '
-                     f'"Helos (Return)" port) - it must offer ONLY "Descend into the Sparta Crypt"')
+    # R-170 AMENDMENT (Will 2026-08-06), re-expressed for the b63 wiring. Will's ruling is about
+    # the MENU, not about which generator emits it: the Warden offers EXACTLY ONE option, the
+    # descend, and NEVER the shared "Helos (Return)" port. Its route now lives in HELOS_HUB_TRAVEL,
+    # so assert the menu shape there: exactly one row, labelled tagSVCEnterSpartaCrypt.
+    warden_rows = [(npc, xyz, tag) for npc, xyz, tag in bqf.HELOS_HUB_TRAVEL
+                   if _norm(npc) == warden]
+    warden_tags = {t for _n, _x, t in warden_rows}
+    if len(warden_rows) != 1:
+        fails.append(f'T5c: the Warden {warden} must own EXACTLY ONE boat route (R-170 amendment: '
+                     f'DESCEND ONLY, per Will); it owns {len(warden_rows)}: {sorted(warden_tags)}')
+    if warden_tags != {asp.TAG_ENTER_SPARTA_CRYPT}:
+        fails.append(f'T5c: the Warden\'s single route must be {asp.TAG_ENTER_SPARTA_CRYPT} '
+                     f'("Descend into the Sparta Crypt"); got {sorted(warden_tags)}')
+    if 'tagSVCAreaReturnToHelos' in warden_tags:
+        fails.append(f'T5c: the Warden {warden} carries the shared "Helos (Return)" port - '
+                     f'R-170 AMENDMENT forbids it; his menu is DESCEND ONLY')
     # the Warden's name tag is minted in the arz (distinct from the shared tagSVCNpcAreaReturn).
     if not hasattr(asp, 'TAG_WARDEN_SPARTA_NAME'):
         fails.append('T5c: apply_svc_patches must expose TAG_WARDEN_SPARTA_NAME (the Warden name tag)')
@@ -245,7 +278,7 @@ def check_specs(fails):
     missing_enter = (enter_tags | origin_tags) - minted_enter - {'tagSVCTestHubToHelos'}
     if missing_enter:
         fails.append(f'T5c: enter-offer/return-to-origin tags not minted in arz: {missing_enter}')
-    print(f'  T5c enter-offers: Uber reuses hub record (0 new placement); Sparta = dedicated Warden '
+    print(f'  T5c enter-offers: 1 enter-offer (Uber, a SECOND entry on a hub record); Sparta = dedicated Warden '
           f'clone (canonical x1, retired donor x0, descend-only); {len(minted_enter)} label tags resolve')
 
 
