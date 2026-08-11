@@ -336,6 +336,18 @@ worst margin 20%** (round 2's worst was 0.04425, so the evenness bound IMPROVED 
 > normals (Common 5.82 -> 3.54 per open) while the total RISES; that is the same trade the shipped
 > R-181 treatment already makes everywhere else.
 
+| gate | result on the live `09a0f51d` |
+|---|---|
+| `gate_loot_distribution.py --apply` | **PASS - 57 surfaces, 0 findings.** D7 asserted on 42 of 57, D7X confirms `svc_uberorb_apex_e01c.dbr` among them. One D5 pin printed with its reason |
+| `--calibrate` (worst observed per check) | D1 **0.2079** / D2 **0.2079** / D4 **5.0417** / D5 **0.0308** (was 0.0451) / D6 **1.5950** / D6b **0.2812** / D7 **0.2909** (was 0.2850) / D7b **0.0452** (was 0.0443) / D8 **0.2363** / D9 **0.2918**. Only the three the evenness bound touches moved, and all three moved the RIGHT way; every other threshold reading is byte-identical to round 2 |
+| `debug/negtest_armor_breadth.py` | **PASS - 16 negatives RED, 3 positive controls GREEN**, exit 0. N14 (the evenness bound defeated) reds on D5 |
+| `gate_orb_loot_breadth.py` (R-220) | **PASS - 18 tables**, normal branch free of legendary gear |
+| `gate_chest_loot_breadth.py --apply` (R-180) | **PASS - 51 tables** |
+| `gate_craft_thrown_breadth.py` (R-186) | **PASS - 19 of 19 legendary chest surfaces, 51 thrown-audited tables** |
+| `debug/negtest_orb_breadth.py` (R-220) | **PASS - 11/11 as designed** |
+| `patches/_check_registry.py` | **OK - 59 modules**, order `ba6fde285aad4fc60158fa368ae23cdab2a6087ac0860ca7c6e24e5c651aa4bb` |
+| `py_compile` | clean on every changed Python file |
+
 | whole-build check | result on the live `09a0f51d` |
 |---|---|
 | BLAST RADIUS | **exactly 15 of 360 FixedItemLoot records**, **12 fields each** (180 total: 165 changed + 15 FIELD-ADDED, the armour master into a `loot6Name3` slot that did not exist). **0 LOWERED, 0 MEMBER-REPLACED, 0 removed.** |
