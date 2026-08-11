@@ -9537,6 +9537,12 @@ def _retire_dead_soul_test_duplicates(db):
             targets[rl] = fam
             if rl.endswith('.dbr'):
                 targets[rl[:-4]] = fam
+    # SUBSTRING CONTAINMENT, deliberately - NOT a split on ';' or ','. A split
+    # assumes a separator convention, and if a field ever used a different one
+    # the scan would UNDER-detect and retire a referenced record. Containment
+    # cannot under-detect. It is also free: the outer `'soul\test\' in value`
+    # filter means the inner loop runs only on values that mention the folder
+    # at all (zero of them, in every build measured so far).
     referenced = {}
     for holder in db.record_names():
         if holder.replace('/', '\\').lower().startswith(_SOUL_TEST_FOLDER):
@@ -9549,11 +9555,8 @@ def _retire_dead_soul_test_duplicates(db):
                 vl = v.replace('/', '\\').lower()
                 if 'soul\\test\\' not in vl:
                     continue
-                for part in vl.split(';'):
-                    p = part.strip()
-                    fam = targets.get(p) or (
-                        targets.get(p[:-4]) if p.endswith('.dbr') else None)
-                    if fam is not None:
+                for target_path, fam in targets.items():
+                    if target_path in vl:
                         referenced.setdefault(fam, []).append(
                             (holder, key.split('###')[0]))
 
@@ -9626,13 +9629,23 @@ def _sv_text_strings():
     return _SV_TEXT_STRINGS
 
 
-def _rendered_soul_name(tag, strings):
+def _rendered_soul_name(tag, strings, lower_strings=None):
     """The comparison key for one soul family's display name.
 
-    ('STR', <colour-stripped text>) when the tag resolves, else ('TAG', <tag>) -
-    a typed key, so an UNRESOLVED tag can only ever collide with the same tag and
-    never produces a false positive against a resolved string."""
+    ('STR', <colour-stripped, case-folded text>) when the tag resolves, else
+    ('TAG', <tag>) - a typed key, so an UNRESOLVED tag can only ever collide with
+    the same tag and never produces a false positive against a resolved string.
+
+    `lower_strings` is the LOWERCASE-KEYED table the build injects as
+    `_SV098I_NAME_TAGS` (SV Text_EN + the create_uber_souls-GENERATED soul names
+    + legacy/thrown/graft). It is not an optimisation - it is the only place the
+    `tagSoulSVC*` generated names live, because those are emitted into
+    `text_tags`, never into the `extended_tags` dict this gate is handed. Without
+    it C3 was measurably blind on 5 families, one of them Charon (row 7), i.e. on
+    one of the exact rows it exists to protect."""
     val = strings.get(tag)
+    if not (isinstance(val, str) and val.strip()) and lower_strings:
+        val = lower_strings.get(str(tag).lower())
     if not isinstance(val, str) or not val.strip():
         return ('TAG', tag)
     return ('STR', _re.sub(r'\{\^[A-Za-z]\}', '', val).strip().casefold())
@@ -9670,10 +9683,23 @@ def _verify_soul_cross_family_naming(db, tags, base_tags=None):
                     f"R-202 C3 gate FAILED: {fam} is a retired soul\\test\\ dead "
                     f"twin and may never be waivered back into the build")
 
+    # Precedence is a NON-QUESTION here, and that was measured rather than
+    # assumed: the SV Text_EN key set (14,657 tags) and the mod's authored key
+    # set (uber_soul_tags.txt, 442 tags) have an intersection of ZERO, so no tag
+    # is defined by both and the merge order cannot change a single rendered
+    # name. (It matters because the engine keeps the FIRST definition of a
+    # duplicated tag - the B-MASTERY-LABEL-1 lesson - and build_text_arc emits
+    # the SV sections before appending the mod's. If that ever stops being true,
+    # this merge is the line that has to change.)
     strings = dict(_sv_text_strings())
     if base_tags:
         strings.update(base_tags)
     strings.update(tags or {})                # the mod's own authored strings
+
+    # The build-injected lowercase table: the ONLY source for the generated
+    # `tagSoulSVC*` soul names (see _rendered_soul_name).
+    lower_strings = {str(k).lower(): v
+                     for k, v in (_SV098I_NAME_TAGS or {}).items()}
 
     fam_tag = {}
     for _rec, fam, tier, tag in _iter_soul_tier_records(db):
@@ -9684,11 +9710,11 @@ def _verify_soul_cross_family_naming(db, tags, base_tags=None):
             fam_tag[fam] = tag
 
     by_name = {}
-    n_unresolved = 0
+    unresolved = []
     for fam, tag in fam_tag.items():
-        key = _rendered_soul_name(tag, strings)
+        key = _rendered_soul_name(tag, strings, lower_strings)
         if key[0] == 'TAG':
-            n_unresolved += 1
+            unresolved.append(tag)
         by_name.setdefault(key, set()).add(fam)
 
     offenders = []
@@ -9713,10 +9739,21 @@ def _verify_soul_cross_family_naming(db, tags, base_tags=None):
             f"MOD soul (SV originals never move - law #2 / R-49a); the waiver "
             f"list is shrink-only and is not the fix")
 
+    # A family whose name will not resolve is compared by TAG, which cannot
+    # detect a same-string/different-tag collision. That is a real reduction in
+    # coverage, so it is NAMED rather than counted-and-forgotten (the OWN2
+    # "announce your own downgrade" shape). In a full build this must be 0.
+    if unresolved:
+        print(f"  R-202 C3 DOWNGRADE: {len(unresolved)} soul name tag(s) do not "
+              f"resolve in the SV text, the mod tag dict, or the build-injected "
+              f"name table, so those families are compared by TAG IDENTITY and a "
+              f"same-string/different-tag collision on them would NOT be caught: "
+              f"{sorted(set(unresolved))[:12]}")
     print(f"  R-202 C3 cross-family gate OK: {len(fam_tag)} soul families / "
           f"{len(by_name)} distinct display names; {waived} ratified SV-vs-SV "
-          f"waiver(s) of {_C3_WAIVER_CEILING} allowed; {n_unresolved} name tag(s) "
-          f"unresolved (compared by tag identity)")
+          f"waiver(s) of {_C3_WAIVER_CEILING} allowed; "
+          f"{len(fam_tag) - len(unresolved)}/{len(fam_tag)} names resolved to "
+          f"real display text")
     return len(by_name)
 
 

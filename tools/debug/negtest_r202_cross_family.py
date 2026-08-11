@@ -91,6 +91,44 @@ def main():
     tags = load_tags(tagfile)
     print(f"\nbaseline: {len(db.record_names())} records, {len(tags)} mod tags")
 
+    # This harness REPLAYS the wave, so it needs a PRE-R-202 artifact. Run
+    # against a post-wave arz and the retirement finds nothing and the
+    # separations trip their own precondition - confusing failures that look
+    # like defects. Detect it and say so instead.
+    pre_test = any(r.replace('/', '\\').lower().startswith(A._SOUL_TEST_FOLDER)
+                   and r.lower().endswith(('_soul_e.dbr', '_soul_l.dbr'))
+                   for r in db.record_names())
+    if not pre_test:
+        print("\nSTOP: this arz has NO soul\\test\\ tier records, so R-202 has "
+              "already landed in it. This harness REPLAYS the wave and needs a "
+              "PRE-R-202 artifact (e.g. the last shipped build83 arz).\n"
+              "      Post-wave artifacts are checked by the in-BUILD C3 gate and "
+              "by an independent scan of the built arz + built Text.arc.")
+        raise SystemExit(2)
+
+    # ── REPRODUCE THE BUILD'S TAG SOURCES, NOT A MORE GENEROUS ONE ───────────
+    # This matters, and the first cut of this harness got it wrong. The gate is
+    # handed `extended_tags`, which does NOT contain the create_uber_souls
+    # `tagSoulSVC*` names - those go into `text_tags` and reach the gate only via
+    # the build-injected, lower-keyed `_SV098I_NAME_TAGS`. `uber_soul_tags.txt`
+    # is the UNION of both, so feeding it wholesale as `tags` resolves everything
+    # and hides exactly the blind spot N1b exists to catch. Split it the way the
+    # build does.
+    gen_tags = {k: v for k, v in tags.items() if k.startswith('tagSoulSVC')}
+    tags = {k: v for k, v in tags.items() if not k.startswith('tagSoulSVC')}
+    A._SV098I_NAME_TAGS = {str(k).lower(): v for k, v in gen_tags.items()}
+    try:
+        import check_build_inputs as _cbi
+        from build_text_arc import load_base_en_tags as _load_en
+        A._SV098I_NAME_TAGS.update(
+            {str(k).lower(): v
+             for k, v in (_load_en(_cbi.resolve('sv098i_text_arc',
+                                                verbose=False)) or {}).items()})
+    except Exception as exc:                                   # noqa: BLE001
+        print(f"  NOTE: SV Text_EN not loadable for the name table ({exc})")
+    print(f"  tag sources: {len(tags)} extended-like + {len(gen_tags)} generated "
+          f"(tagSoulSVC*) + {len(A._SV098I_NAME_TAGS)} in the injected name table")
+
     # ---- the five ratified renames, exactly as the build will author them ----
     ratified = {
         'tagSoulSVC9005':
@@ -103,22 +141,49 @@ def main():
         'tagSVCSoulNomnom': '{^F}Soul of Nomnom',                # row 38
     }
     print("\n=== the 5 ratified renames (old -> new) ===")
+    shipped = load_tags(tagfile)
     for t, new in ratified.items():
-        print(f"  {t}: {tags.get(t)!r} -> {new!r}")
-        tags[t] = new
+        # Row 7 is a GENERATED name: it must move in the injected name table,
+        # not in `tags`, or the harness silently tests an easier gate.
+        where = A._SV098I_NAME_TAGS if t.startswith('tagSoulSVC') else tags
+        key = t.lower() if t.startswith('tagSoulSVC') else t
+        print(f"  {t}: {shipped.get(t)!r} -> {new!r}"
+              f"{'   [via the injected name table]' if key != t else ''}")
+        where[key] = new
 
     print("\n=== C3 BEFORE the wave (the debt as it stands) ===")
     before = dict(tags)
+    saved_gen = dict(A._SV098I_NAME_TAGS)
     for t in ratified:                       # restore the shipped strings
-        before[t] = load_tags(tagfile).get(t)
+        if t.startswith('tagSoulSVC'):
+            A._SV098I_NAME_TAGS[t.lower()] = shipped.get(t)
+        else:
+            before[t] = shipped.get(t)
+    # The per-offender lines are PRINTED, not carried in the exception, so
+    # capture stdout - asserting against str(exc) would silently check nothing.
+    import io
+    import contextlib
+    buf = io.StringIO()
     try:
-        A._verify_soul_cross_family_naming(db, before)
+        with contextlib.redirect_stdout(buf):
+            A._verify_soul_cross_family_naming(db, before)
+        print(buf.getvalue(), end='')
         check('C3 is RED on the pre-wave roster', False,
               'gate passed the 40-duplicate baseline - it is vacuous')
     except SystemExit as exc:
+        printed = buf.getvalue()
+        print(printed, end='')
         n = str(exc).split('FAILED: ')[-1].split(' ')[0]
         check('C3 is RED on the pre-wave roster', True,
               f'{n} duplicate display name(s) reported')
+        # Charon (row 7) is the GENERATED-name row. If the generated resolver is
+        # dead, its two families are compared by tag identity, never collide, and
+        # this row vanishes from the offender list while the count still looks
+        # plausible. That is exactly how the blind spot hid the first time.
+        check('C3 sees the CHARON row pre-wave (proves the generated-name '
+              'resolver is live, not just the mod-dict one)',
+              'charon soul' in printed.lower())
+    A._SV098I_NAME_TAGS = saved_gen           # restore the post-wave names
 
     print("\n=== retirement (derived, zero-referent only) ===")
     n_rec_before = len(db.record_names())
@@ -165,6 +230,21 @@ def main():
     planted['tagSVCSoulDagon'] = '{^F}Ino Soul'      # SV maenad\ino's string
     expect_red('N1 planted mod-vs-SV display-name collision',
                lambda: A._verify_soul_cross_family_naming(db, planted))
+
+    # N1b: the SAME collision, but on a GENERATED `tagSoulSVC*` name.
+    # THE BLIND SPOT THIS EXISTS FOR: those names are emitted into the build's
+    # `text_tags`, never into the `extended_tags` dict the gate is handed, so a
+    # first cut of C3 could not resolve them and silently compared 5 families -
+    # Charon (row 7) among them - by tag identity instead of by display text.
+    # They now resolve through the build-injected `_SV098I_NAME_TAGS`. Without
+    # that, this plant comes back GREEN and the gate is blind on a ratified row.
+    _saved = dict(A._SV098I_NAME_TAGS or {})
+    A._SV098I_NAME_TAGS = dict(_saved)
+    A._SV098I_NAME_TAGS['tagsoulsvc9002'] = '{^F}Ino Soul'   # SV maenad\ino
+    expect_red('N1b planted collision on a GENERATED tagSoulSVC* name '
+               '(the resolver blind spot)',
+               lambda: A._verify_soul_cross_family_naming(db, tags))
+    A._SV098I_NAME_TAGS = _saved
 
     # N2: plant a mod-vs-mod collision (rule 3: zero rows may hit this).
     planted2 = dict(tags)
