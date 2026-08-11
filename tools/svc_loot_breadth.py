@@ -87,6 +87,14 @@ _MASTER_DONOR = r'records\item\loottables\weapons\mastertables\unique\all_l01.db
 # over-represented. That is the arithmetic behind Will's "you overcorrected".
 _ONE_HAND_CLASSES = 3
 _CLASS_WEIGHT = 1000            # mass per weapon CLASS in the aggregate master
+# The three base act masters (`all_{tier}0{1,2,3}`) and how many classes they pay. NAMED
+# rather than left inline because R-186's thrown member has to derive its own parity
+# weight from them: they pay the six ORIGINAL classes and structurally cannot pay thrown
+# (the base database has no unique one-hand-ranged table at all), so a class that is not
+# in them draws its mass once where every other class draws it twice. See
+# svc_craft_thrown._THROWN_CLASS_WEIGHT.
+_BASE_MASTER_WEIGHT = 700
+_ORIGINAL_WEAPON_CLASSES = 6
 
 
 # Members of the aggregate master: (path template applied per tier, weight).
@@ -98,7 +106,22 @@ def _master_members(tier):
     for fam in ('spear', 'bow', 'staff'):
         out.append((_XP_UNIQUE % (fam, tier), _CLASS_WEIGHT))
     for i in (1, 2, 3):
-        out.append((_BASE_ALL % (tier, i), 700))
+        out.append((_BASE_ALL % (tier, i), _BASE_MASTER_WEIGHT))
+    # THE SEVENTH CLASS (Will 2026-08-10, "yes we should make the legendary thrown
+    # weapons droppable"): this TQIT-era database ships NO unique one-hand-ranged loot
+    # table, so the mod authors one. Its weight is PER TIER (250 on e/l for the 5-record
+    # legendary band, 100 on n for the 2-record filler band) - see
+    # svc_craft_thrown.THROWN_MASTER_WEIGHT. NOTE FOR THE MERGE: fix/armor-loot-breadth
+    # (b80) rewrites every weight in this function, so these three master records are a
+    # genuine write/write overlap; the binding resolution is a quarter of a class weight
+    # on e/l and a tenth on n, re-derived from b80's own _CLASS_WEIGHT.
+    # Lazy import - svc_craft_thrown imports THIS module,
+    # so the reference must not be resolved at import time. A tier whose thrown table
+    # does not exist yet is simply skipped by ensure_masters' `if lk.real(p)` filter, and
+    # the next ensure_masters call (chest_loot_breadth's, which runs after
+    # craft_thrown_breadth) rewrites the master with it.
+    import svc_craft_thrown as SCT
+    out.append((SCT.THROWN_TABLE[tier], SCT.THROWN_MASTER_WEIGHT[tier]))
     return out
 
 
@@ -622,7 +645,14 @@ def audit_table(db, table, tier, ex, floor=None, noun='a chest'):
       B1 every REQUIRED weapon class is reachable at the tier's own classification
          (SPEAR named explicitly - the reported defect);
       B2 the distinct target-classification pool is at least POOL_FLOOR[tier];
-      B3 (Normal only) no legendary GEAR leaked in (tier law, formulae exempt).
+      B3 (Normal only) no legendary GEAR leaked in (tier law, formulae exempt);
+      C1/C2 the THROWN (one-hand-ranged) class is payable at the tier - the seventh
+         class, added 2026-08-10. It carries its own rule rather than joining
+         REQUIRED_WEAPON_CLASSES because the tier expectations differ: measured, this
+         TQIT-era db has no droppable Epic-classification thrown record at all, so
+         Normal's presence is carried by the itemLevel-30 wand band while Epic and
+         Legendary must reach a true Legendary thrown. Implementation lives in
+         tools/svc_craft_thrown.thrown_problems (ONE implementation, as with B1-B3).
     """
     problems = []
     base = _n(table).rsplit('\\', 1)[-1]
@@ -648,6 +678,9 @@ def audit_table(db, table, tier, ex, floor=None, noun='a chest'):
             problems.append("B3 %s [normal tier] reaches %d LEGENDARY gear item(s) "
                             "(tier law: Normal pays Essence/normal-tier only); e.g. %s"
                             % (base, len(leaked), sorted(leaked)[0]))
+    # C1/C2 - the thrown class. Lazy import: svc_craft_thrown imports this module.
+    import svc_craft_thrown as SCT
+    problems.extend(SCT.thrown_problems(db, table, tier, ex))
     return problems
 
 

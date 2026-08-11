@@ -537,9 +537,20 @@ def apply_wave(db, lk=None, quiet=True):
         from patches import orb_loot_breadth as OLB
     except ImportError:
         OLB = None
+    try:
+        # R-184/185/186 (b81) runs BEFORE chest_loot_breadth in the registry and AUTHORS
+        # the thrown tables that `_master_members` names as the seventh class. Omitting it
+        # here would measure a master whose thrown member silently fell out of
+        # `ensure_masters` (the `if lk.real(p)` filter), i.e. NOT what the build produces.
+        # Same ImportError guard as b79, for the same reason.
+        from patches import craft_thrown_breadth as CTB
+    except ImportError:
+        CTB = None
     lk = lk or SLB.Lookup(db)
     buf = io.StringIO()
     with contextlib.redirect_stdout(buf) if quiet else contextlib.nullcontext():
+        if CTB is not None:
+            CTB.apply(db, None)      # registry order: it runs before chest_loot_breadth
         SLB.ensure_masters(db, lk)
         ensure_armor_masters(db, lk)
         lk.refresh()
@@ -569,6 +580,10 @@ def audit_db(db, lk=None, verbose=False):
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
     problems, reports = [], []
+    # D3X: the per-tier D3 era exemptions are re-proved from the bytes ONCE per audit,
+    # before any surface is measured, so a carve-out can never outlive the era fact that
+    # earned it (b81 / R-186; see SLD.D3_ERA_EXEMPT).
+    problems.extend(SLD.era_exemption_problems(d))
     for label, tables, weights, tier in all_surfaces(db, lk):
         probs, rep = SLD.audit_surface(d, dist, label, tables, weights, tier)
         problems.extend(probs)
