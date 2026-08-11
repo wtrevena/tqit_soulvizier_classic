@@ -1003,12 +1003,24 @@ def verify(db, tags):
                 "343_dark_smoke / Vort-green trap (R-125 player-surface law - a "
                 "colour may only be claimed from an in-game-CONFIRMED asset)."
                 % (rec, tex, donor, dtex))
-        # R-126: actorHeight is a per-rig constant, inherited, never invented
-        want_h = _RIG_ACTOR_HEIGHT[rec]
+        # R-126: actorHeight is a per-rig constant, INHERITED, never invented.
+        # Read the expected value off this body's OWN DONOR rather than a
+        # hard-coded map, so a donor swap (this lane did two) cannot leave a
+        # stale constant silently passing. `_RIG_ACTOR_HEIGHT` stays as the
+        # documented cross-check that the donors are still the rigs we think.
+        want_h = gv(donor, 'actorHeight')
+        want_h = float(want_h) if want_h is not None else _RIG_ACTOR_HEIGHT[rec]
+        if abs(want_h - _RIG_ACTOR_HEIGHT[rec]) > 1e-4:
+            problems.append(
+                "R-126: donor %s now declares actorHeight=%s but this module "
+                "documents %s for %s. The rig moved under us - re-measure before "
+                "shipping, do NOT just update the constant."
+                % (donor, want_h, _RIG_ACTOR_HEIGHT[rec], rec))
         got_h = gv(rec, 'actorHeight')
         if got_h is not None and abs(float(got_h) - want_h) > 1e-4:
-            problems.append("R-126: %s actorHeight=%r, expected its rig constant "
-                            "%s (inherit, never write)" % (rec, got_h, want_h))
+            problems.append("R-126: %s actorHeight=%r, expected its donor's rig "
+                            "constant %s (inherit, never write)"
+                            % (rec, got_h, want_h))
 
     # ---- 4. CRASH LAWS -----------------------------------------------------
     for rec in (_ORM, _BLOOM, _BRIAR):

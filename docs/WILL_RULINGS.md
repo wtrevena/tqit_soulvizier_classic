@@ -5459,7 +5459,13 @@ Two further defects the same encounter carried, both now fixed and both gated:
 
 ### R-231-B - THE IDENTITY RULING. Charon leaves the Golden Bough forecourt.
 
-**ORMENOS, THE GILDED ROOT** (phase 1) to **ORMENOS, THE BOUGH IN BLOOM** (phase 2, terminal),
+> ⚠️ **THE NAMES AND THE PHASE-2 BODY IN THIS SECTION ARE SUPERSEDED BY R-231-E.**
+> "Ormenos" turned out to be a live boss already in this database (the China Telkine, 59 records,
+> its own soul) and the phase-2 donor turned out to be immobile. Read R-231-E for what ships.
+> Everything else in R-231-B stands.
+
+~~**ORMENOS, THE GILDED ROOT** (phase 1) to **ORMENOS, THE BOUGH IN BLOOM** (phase 2, terminal)~~,
+now **AKREMON, THE GRASPING ROOT** to **AKREMON, THE HEARTWOOD ABLAZE**,
 escorted by two **HANDBRIARS**. **This wave owns the final boss + soul naming under Will's order.**
 
 * **PLANT.** Race census of all 53 Boss-class mod ubers: Undead 18, Demon 14, Beastman 8,
@@ -5545,11 +5551,166 @@ record, which is the correct alarm.
 
 ### THE GATE THAT SHIPS WITH THE NEW SURFACE (process law #4)
 
-`charon_rework.verify()`, fail-loud, negative-tested (10 planted defects, every one RED, restoration
-proved GREEN after each): the proxy chain resolves to the new boss on BOTH the forecourt and the
-TESTHUB yard; all three guaranteed rewards stay wired; A9 (own-rig clones only, the donor's own
-skin, no invented `actorHeight` per R-126); the crash laws (no `charFxPak`, no dangling skill ref,
-permanent pets TTL-free); **a NEW strictly-ascending-`characterLife` invariant over EVERY `svc_*`
-Champion escort in the DB, not just ours** - that is the R-231-A escort defect made structurally
-impossible; and an identity gate that reds if any `charon_*` signature skill or any shared cast
-rotation ever comes back.
+`charon_rework.verify()`, fail-loud, negative-tested (**20** planted defects as of round 2, every one
+RED, restoration proved GREEN after each): the proxy chain resolves to the new boss on BOTH the
+forecourt and the TESTHUB yard; all three guaranteed rewards stay wired; A9 (own-rig clones only,
+the donor's own skin, no invented `actorHeight` per R-126); the crash laws (no `charFxPak`, no
+dangling skill ref, permanent pets TTL-free); **a NEW strictly-ascending-`characterLife` invariant
+over EVERY `svc_*` Champion escort in the DB, not just ours** - that is the R-231-A escort defect
+made structurally impossible; and an identity gate that reds if any `charon_*` signature skill or
+any shared cast rotation ever comes back.
+
+Round 2 added five more, each one the anti-regression for a finding below (R-231-E):
+**exactly-one summon-pet registration** naming the terminal's own donor; **D19 mobility** on all six
+placed and summoned bodies (nonzero `characterRunSpeed` AND an anim table that actually binds
+`unarmedRunAnim` - the second half is the one that matters); **no end-to-end vitality wall**;
+**no display-name collision** with a live record family; and **Epic durability inside a band
+anchored on the LIVE Gaoler records** rather than a constant, so the band tracks the roster.
+
+---
+
+### R-231-E - ROUND-2 AMENDMENT [2026-08-11]. The vet found eight; the fix found a ninth.
+
+An independent vet of the round-1 module proved a P0 that reds the whole DB build, two P1s, three
+P2s and two P3s. Every one is fixed. Fixing them surfaced one more defect nobody had looked for,
+and it is the most serious of the set because it would have shipped a duplicate identity.
+
+#### 1. THE NAME WAS ALREADY TAKEN. "Ormenos" is the China Telkine. (found this round)
+
+The ratified spec named this boss **Ormenos**. Measured on the live artifact: `Ormenos` is already a
+boss in this database - `boss_chinatelkine_ormenos_{38,41,44}.dbr` - and **59 records** carry the
+name, including `controller_ormenos`, six `ormenos_*` boss skills, three `ormenos_magmasprite_*`
+summoned minions, `Ormenos_FireSpawn_FX`, and **its own soul** at
+`records\item\equipmentring\soul\telkine\ormenos_soul_{n,e,l}.dbr`. `apply_svc_patches.py:1371`
+literally maps `('boss_chinatelkine_ormenos', 'Ormenos', 25.0)`.
+
+Shipping a second, unrelated Ormenos - with a second soul - is the duplicate-identity class Will
+keeps filing (R-100 #2, the Meritamen/Phagia class, the soul-rename wave). **RULING: the boss is
+AKREMON** (the Greek word for a *bough*): zero record hits and zero text-resource hits across the
+whole mod, and a tighter lore fit than Ormenos ever had, because the shrine's entire subject is a
+bough. `verify()` now carries a collision gate that checks every minted name token against the live
+record namespace, so the mistake cannot recur on any future rename.
+
+| surface | ships |
+|---|---|
+| phase 1 | `{^r}Akremon, the Grasping Root` |
+| phase 2, terminal | `{^r}Akremon, the Heartwood Ablaze` |
+| Champion escort x2 | `{^G}Handbriar` |
+| soul | `{^F}Soul of the Grasping Root` |
+| summon skill | `Graft the Burning Heartwood` |
+| pet | `Burning Heartwood` |
+| hoard chest | `The Orchard of Hands` |
+
+**Still flagged for Will's veto**, same as R-231-B.
+
+#### 2. P0 - the branch did not build. Stale summon-pet registration.
+
+`_build_boss_summon` appended to `_SUMMON_PET_BUILDS`, which is cleared once per run. The monolith's
+`_create_goldenbough_boss` builds the three `charon_oarsman_*` pets from `charon_minion_30`; this
+module then rebuilds **the same pet records** from its own donor. Both pairs stayed registered, and
+`run_registry_gates` runs afterwards and judges the whole list - so PET-STAT-MIRROR compared the
+newly-built pets against a source that no longer wrote them and failed the build, and the F2
+soul-summon-identity gate failed next for the same reason (which is precisely what the deleted
+`_SUMMON_IDENTITY_ALLOW['ferryman']` entry used to paper over).
+
+**Fixed upstream**, because replace-by-pet-path-set is the only semantically correct answer: pet
+records on disk can only have been built by their **last** writer. With no duplicate pet set the
+behaviour is byte-identical, so this is a pure improvement to the monolith. The module keeps an
+idempotent prune, and `verify()` asserts the END STATE - exactly one registration names these pets
+and its source is the terminal's own donor - rather than trusting either half. The standalone
+negtest now **seeds the monolith's stale pair before `apply()`**, so the trap is exercised for real.
+
+#### 3. P1 - the terminal, both escorts and the soul's permanent pet were all IMMOBILE.
+
+Round 1 built phase 2 from `us_hellflower_37` and the escort from `am_quillvine_35`. Both ship
+`characterRunSpeed = 0.0`, and it is **not tunable**: their anim table
+`records\creature\monster\quilvine\anm\anm_quilvine.dbr` declares the `*RunAnimSpeed` scalars but
+binds **no `unarmedRunAnim` and no `unarmedWalkAnim` clip at all**. Raising the speed would ask the
+rig for an animation it does not have - the B-SOUL-PROC-2 / D19 class the crash laws forbid.
+
+So the **terminal form - the body carrying all three guaranteed rewards** - could not chase a player
+who simply stood off; the two "escorts" could not escort; and the soul's marquee permanent summon
+could never follow its owner. The encounter as built was very likely *easier* than the Charon it
+replaces, which is the opposite of Will's order.
+
+**RULING: a placed or summoned body must sit on a rig that BINDS locomotion. A nonzero runSpeed is
+not evidence.** Donors swapped to bodies that own a mobile rig while keeping Plant:
+
+| body | round 1 | ships | rig / table |
+|---|---|---|---|
+| phase 2, terminal | `us_hellflower_37` | **`um_emberoak_42`** | `emberoakmesh.msh` / `anm_bogdweller` |
+| Champion escort | `am_quillvine_35` | **`am_junglecreep_41`** | `JungleCreep01.msh` / `anm_junglecreep` |
+| phase 1 | `xhero_strongbark_44` | unchanged | `Ascacophus02.msh` / `anm_ascacophus02` |
+
+The ember oak is strictly better on every axis the design cared about: it is mobile; its fire kit is
+richer and native (`ringofflame` is a **toggled burning ring it simply wears**, so the fire reads on
+screen with zero FX authoring, plus `volcanicorb` with two modifiers, `drxheatshield` and
+`emberoak_stoneform`); it keeps Plant so the Plant-is-zero headline stands; its live scale 1.90
+makes the 2.0 ask a 1.05x stretch instead of the hellflower's 1.33x; and its rotation puts only ONE
+chance-100 cast ahead of our additions instead of three, which is also the structural fix for the
+round-1 P2 that the added casts would rarely fire. **Honest cost: the terminal is no longer amgoz1's
+own SV hellflower.** The immobile quilvine rig still appears in the fight, in the one role where
+being rooted is correct - the `quillwards` wall pets.
+
+Speeds are now written explicitly, two of the three exactly rig-proven, all inside the measured
+Boss-uber band (min 0.35 / median 1.00 / max 4.00): **1.35** phase 1 (`credits_ringlesstree` ships
+1.35 on that mesh), **1.45** terminal (above this rig's only live carrier at 1.0 - disclosed,
+`BL-BOUGH-DEBT-6`), **1.30** escort (`um_speckledjim_45` ships 1.30 on that mesh). The shipped
+Charon forms ran 2.8 and 4.0, the two fastest bodies in the entire 53-boss roster; this encounter
+deliberately does not chase that outlier.
+
+#### 4. P1 - the D19 assert had its guard inverted on the one case it exists for.
+
+The `apply_svc_patches.py` D19 pet-mobility block read
+`if _run_fields and f'{_row}RunAnim' not in _run_fields:`. An anim table with **zero** locomotion
+clips yields an empty `_run_fields`, so the condition short-circuited to `False` and **the assert
+passed** - it only ever fired on a table that had *some* rows with locomotion but not the pet's row.
+That is why three permanently immobile permanent pets were built with no warning. **RULING: the
+truthiness test is dropped; a locomotion-less anim table now fails LOUD**, which is what the assert
+was written to do.
+
+#### 5. P2 - the vitality wall. `defensiveLife 100` on both forms.
+
+`defensiveLife` is VITALITY resistance. Round 1 shipped 100 on **both** phases, i.e. total vitality
+immunity for the entire fight, while the design's headline claim was that the bleed/vitality build
+benched by phase 1 gets its kill in phase 2. The claim was false against the artifact.
+**RULING: 60 on phase 1, 40 on the terminal**, and `verify()` reds if the terminal is ever walled
+again. Bleed immunity stays on phase 1 only: it is the deliberate half-fight lever and Will's
+decision 6 - a lever the fight hands back is not a wall.
+
+#### 6. P2 - tempo. The anti-kite lever was one 18% roll on a 20-second cooldown.
+
+Snare `drx_earthbind` 18 -> **40**, wall `quillwards` 15 -> **30**, fan `razorquill_megaburst`
+22 -> **35**, on top of the explicit 1.35 runSpeed. The skills' own cooldowns still do the real
+spacing; the chances only govern how reliably the boss reaches for them. On the terminal,
+`razorquill_nova` 25 -> **50** and `typhon_thornyaura` 15 -> **40**, so the two casts that actually
+differentiate phase 2 stop being the least likely things in the fight.
+
+#### 7. DURABILITY, calibrated to the reference frame instead of to nothing.
+
+Round 1 justified its life values as "exact parity with the shipped Charon forms" - 58,000 on Epic -
+which was never itself calibrated against anything. `docs/reports/gaoler_variance_rca.md` is the
+named frame: the Soul-Gaoler is two forms totalling **35,000 on Epic** *plus a six-strong guard
+horde*, and that RCA's verdict is hard-but-fair and killable, "no action warranted".
+
+| | Normal | Epic | Legendary |
+|---|---|---|---|
+| Akremon (2 forms + 2 Champions) | 27,000 | **35,000** | 46,000 |
+| the Gaoler (2 forms + 6 guards) | 26,000 | **35,000** | 47,000 |
+
+Epic matched exactly. The escort goes to `[5000, 7000, 9500]` (ascending, sized off the live
+Champion-escort roster). **RULING: uber durability is justified against a named, measured peer, not
+against whatever the record happened to say before.** The gate anchors on the LIVE Gaoler records
+so the band tracks the roster instead of going stale.
+
+#### 8. P3 - the tallies are re-measured, and one citation was wrong.
+
+Race census re-run on the live artifact: 53 Boss-class `um_*`/`svc_um_*`, Undead 18, Demon 14,
+Beastman 8, Insectoid 4, Magical 3, Animal 3, Beast 2, Device 1, **Plant 0** - reproducing the
+ratified spec exactly. (A vet pass reported 50 / Demon 12 / Beastman 7 off a different artifact; the
+number the design rests on, Plant = 0, holds in both readings.) And the beat-2 precedent was wrong:
+`um_vashkarr_99` carries `lowhealth_berserkerrage01` at **`skillLevel 0`**, i.e. inactive by the
+mod's own B-SOUL-PROC-1 lesson, so it proved nothing. The live precedent is
+`elder_um_boarmonstrous_16` (Champion, level 5) and `elder_am_boar_09` (level 3). The mechanic is
+sound; only the citation was bad. **RULING: a number does not enter the design law of record until
+it has been measured on the artifact in the wave that writes it down.**

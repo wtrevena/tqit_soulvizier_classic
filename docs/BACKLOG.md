@@ -1,6 +1,6 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## LANE RECORD - R-231 THE GOLDEN BOUGH UBER REWORK: Charon is out, ORMENOS THE GILDED ROOT is in (2026-08-11, branch `feat/charon-rework`, module `tools/patches/charon_rework.py`, static gates only - the Ship phase owns the build)
+## LANE RECORD - R-231 THE GOLDEN BOUGH UBER REWORK: Charon is out, AKREMON THE GRASPING ROOT is in (2026-08-11, ROUND 2, branch `feat/charon-rework`, module `tools/patches/charon_rework.py`, static gates only - the Ship phase owns the build)
 
 **Will, verbatim (2026-08-11):** *"the charon uber boss we created needs to be re-worked, he is
 pretty much identical to the base game charon boss we cloned him off. maybe we can replace him with
@@ -8,16 +8,20 @@ a different uber monster that is more unique"*
 
 He is right and the arz proved it: both our forms carried `boss_charon_43` / `boss_charonform2_43`'s
 kit BYTE-FOR-BYTE. Full artifact proof, the identity ruling, the b86 row-7 coordination note, the
-retirement-protocol record and the five measured spec corrections are in **`docs/WILL_RULINGS.md`
-R-231-A..D**. This entry is the DEBT REGISTER half.
+retirement-protocol record and the measured spec corrections are in **`docs/WILL_RULINGS.md`
+R-231-A..D**, and **R-231-E carries the ROUND-2 amendment**: an independent vet proved a P0 that
+red-lined the whole DB build plus two P1s / three P2s / two P3s, all now fixed, and the fix pass
+found a ninth defect the vet had not looked for - **the ratified name "Ormenos" is already a live
+boss in this database** (the China Telkine, 59 records, its own soul). Read R-231-E before this.
+This entry is the DEBT REGISTER half.
 
 **WHAT SHIPPED (arz-only; the forecourt placement and proxy chain are REUSED, no map rebuild):**
 
 | | record (PATH FROZEN) | donor | what it is now |
 |---|---|---|---|
-| phase 1 | `um_charon_ferryman_99.dbr` | `xhero_strongbark_44` | **Ormenos, the Gilded Root** - Plant, Ascacophus02 @2.8, bleed-immune, root-snare + the mod's ONLY `Skill_DefensiveWall` + quill fan, splits at 33% |
-| phase 2 | `um_charonform2_ferryman_99.dbr` | `us_hellflower_37` | **Ormenos, the Bough in Bloom** - Plant, amgoz1's own SV hellflower @2.0, fire burst + petal ring, NOT bleed-immune |
-| escort x2 | `svc_charon_wraith_99.dbr` | `am_quillvine_35` | **Handbriar** - Plant, QuilVine01 @1.55, life `[4200, 5800, 7600]` (ASCENDING; the shipped one was `[878, 300, 400]`) |
+| phase 1 | `um_charon_ferryman_99.dbr` | `xhero_strongbark_44` | **Akremon, the Grasping Root** - Plant, Ascacophus02 @2.8, rs 1.35, bleed-immune, vitality res 60, root-snare + the mod's ONLY `Skill_DefensiveWall` + quill fan, splits at 33%. Life `[13000, 17000, 22000]` |
+| phase 2 | `um_charonform2_ferryman_99.dbr` | **`um_emberoak_42`** (was `us_hellflower_37` - IMMOBILE RIG, R-231-E #3) | **Akremon, the Heartwood Ablaze** - Plant, DRX emberoak @2.0, rs 1.45, native ring-of-flame + volcanic orb x3 + heatshield + stoneform, petal ring, NOT bleed-immune, vitality res 40. Life `[14000, 18000, 24000]` |
+| escort x2 | `svc_charon_wraith_99.dbr` | **`am_junglecreep_41`** (was `am_quillvine_35` - IMMOBILE RIG) | **Handbriar** - Plant, JungleCreep01 @1.55, rs 1.30, life `[5000, 7000, 9500]` (ASCENDING; the shipped one was `[878, 300, 400]`) |
 | new skill | `svc_bough_splitting.dbr` | `lowhealth_berserkerrage01` | the self-firing 33%-life phase beat, with the thorn retaliation folded in |
 
 **STATIC PROOF RUN THIS LANE (no DB build - the Ship phase owns that):**
@@ -25,22 +29,32 @@ R-231-A..D**. This entry is the DEBT REGISTER half.
 `96d61e6f2b0ce3072fa00ad7c480591af216ff3f1bdabe99458d6fe27df92454`; and a harness that runs
 `charon_rework.apply()` + `verify()` over the LIVE build83 arz (`work/SoulvizierClassic/Database/
 SoulvizierClassic.arz`, 51,253 records) -> **apply GREEN, verify GREEN, 15 records written**, then
-**10 planted negatives, every one RED, with restoration proved GREEN after each**: pool repointed to
-the old boss / Golden Bough chance 50 / escort life made descending / `charFxPakSelfNames` on the
-boss / invented `actorHeight` / terminal orb retargeted / a `charon_*` signature skill returning /
-the `'ferryman'` exemption returning / the chain HEAD starting to pay the soul / both forms sharing
-one display string.
+**20 planted negatives (round 2), every one RED, with restoration proved GREEN after each**: pool
+repointed to the old boss / Golden Bough chance 50 / escort life made descending /
+`charFxPakSelfNames` on the boss / invented `actorHeight` / terminal orb retargeted / a `charon_*`
+signature skill returning / the `'ferryman'` exemption returning / the chain HEAD starting to pay
+the soul / both forms sharing one display string / **a stale summon-pet pair re-added** / **the pet
+pair pointed at the wrong source** / **the terminal made immobile** / **the escort put back on the
+locomotion-less rig** / **the soul pet made immobile** / **the vitality wall restored** / **bleed
+immunity leaking onto the terminal** / **the boss renamed back to Ormenos** / **life inflated past
+the Gaoler band** / **life made descending across difficulties**.
+
+The harness now **SEEDS the monolith's stale `_SUMMON_PET_BUILDS` pair before `apply()`** and
+asserts it is gone afterwards, so the round-1 P0 - which red-lined a full DB build twice - is
+reproduced and proved fixed rather than argued about.
 
 ### PLAYER-SURFACE CHECKLIST (process law #3 - enumerated, none silently deferred)
 
 | surface | state |
 |---|---|
-| phase-1 boss name | `tagSVCMonsterCharonFerryman` -> `{^r}Ormenos, the Gilded Root` (key kept, string rewritten) |
-| phase-2 boss name | `tagSVCMonsterOrmenosBloom` -> `{^r}Ormenos, the Bough in Bloom` (**MINTED** - the two forms shared ONE tag before, so the phase turn had no name change) |
+| phase-1 boss name | `tagSVCMonsterCharonFerryman` -> `{^r}Akremon, the Grasping Root` (key kept, string rewritten) |
+| phase-2 boss name | `tagSVCMonsterAkremonBlaze` -> `{^r}Akremon, the Heartwood Ablaze` (**MINTED** - the two forms shared ONE tag before, so the phase turn had no name change) |
 | escort name | `tagSVCMonsterCharonWraith` -> `{^G}Handbriar` |
-| soul name + DESC | `tagSVCSoulFerryman` -> `{^F}Soul of the Gilded Root` (+ DESC). Already in `_HAND_DESIGNED_SOUL_TAGS`, so the F6 naming standard cannot flatten it |
-| summon skill name + DESC | `tagSVCSummonCharonOarsman` -> `Graft the Gilded Bloom` (+ DESC) |
-| pet name | `tagSVCPetOarsman` -> `Gilded Bloom` |
+| soul name + DESC | `tagSVCSoulFerryman` -> `{^F}Soul of the Grasping Root` (+ DESC). Already in `_HAND_DESIGNED_SOUL_TAGS`, so the F6 naming standard cannot flatten it |
+| summon skill name + DESC | `tagSVCSummonCharonOarsman` -> `Graft the Burning Heartwood` (+ DESC) |
+| pet name | `tagSVCPetOarsman` -> `Burning Heartwood` |
+| **MOBILITY** (new, R-231-E #3) | every placed and summoned body sits on a rig that BINDS `unarmedRunAnim`, and its `characterRunSpeed` is written explicitly: 1.35 / 1.45 / 1.30, pet 1.0. Round 1 shipped the TERMINAL, both escorts and the permanent pet at **0.0 on a table with no locomotion clip at all** |
+| **DURABILITY** (new, R-231-E #7) | Epic total **35,000**, matching the Gaoler's 35,000 exactly (`docs/reports/gaoler_variance_rca.md`, the ratified hard-but-fair reference). Round 1 was an uncalibrated 58,000 |
 | hoard chest name | `tagSVCCharonHoard` -> `The Orchard of Hands` |
 | amulet name / DESC | name UNCHANGED (`The Golden Bough`); DESC rewritten - the shipped one read *"Torn from Charon at his own deserted dock"* |
 | in-game colour prefixes | `{^r}` both boss forms, `{^G}` champion, `{^F}` soul - all present, gated |
@@ -98,6 +112,20 @@ one display string.
   needs its own wave: retarget to `_APEX_ORB` **and** re-measure both floors **and** re-audit the
   three `boss_charon_*01b` tables' ownership together.
 
+* **`BL-BOUGH-DEBT-6` (P3, OPEN) - the terminal's runSpeed 1.45 is above its rig's only live
+  carrier.** `emberoakmesh.msh` has exactly one live carrier (`um_emberoak_42`) and it ships 1.0.
+  1.45 is far inside the roster's own Boss-uber band (min 0.35, median 1.00, max 4.00, and the
+  Charon forms this replaces ran 2.8 and 4.0) and the rig BINDS `unarmedRunAnim`, so the risk is
+  cosmetic - the run cycle may read fast - not structural. Confirm in the TESTHUB yard alongside
+  the scale sweep (BL-BOUGH-DEBT-2) and record the reading either way.
+
+* **`BL-BOUGH-DEBT-7` (P3, OPEN) - `_build_boss_summon`'s replace-by-pet-paths change is
+  monolith-wide.** It now supersedes any earlier registration of the same pet-path set instead of
+  appending. Across the other 23 summon families no duplicate pet set exists, so behaviour is
+  unchanged for them and the full-build gate output should be byte-identical outside this lane -
+  but that is an argument, not a measurement, until the Ship phase runs the full DB build. Watch
+  for a `summon-pet registry: SUPERSEDED` line naming any family other than `charon_oarsman_*`.
+
 * **`BL-BOUGH-DEBT-5` (P3, OPEN) - the monolith still authors the Charon encounter first.**
   `apply_svc_patches._create_goldenbough_boss` runs, builds Charon, and `charon_rework` then
   overwrites all three monster records. That is DELIBERATE this wave (`uber_quest_drops` runs before
@@ -106,16 +134,25 @@ one display string.
   hoard chain, world chest, limit and pool/proxy skeleton that the rework REUSES). It is wasted work
   and a trap for the next reader. Collapse it only together with `BL-BOUGH-DEBT-1`.
 
-### SIX WILL-DECISIONS - all implemented at the recommended value behind a named constant, none blocking
+### EIGHT WILL-DECISIONS - all implemented at the recommended value behind a named constant, none blocking
 
-1. **Names** - Ormenos, the Gilded Root / Ormenos, the Bough in Bloom / Handbriar / Soul of the
-   Gilded Root. *This lane's invention; ships as the default, flagged for veto (R-125 precedent).*
+1. **Names** - Akremon, the Grasping Root / Akremon, the Heartwood Ablaze / Handbriar / Soul of the
+   Grasping Root. *This lane's invention; ships as the default, flagged for veto (R-125 precedent).*
+   The ratified spec said "Ormenos", which is **already the China Telkine** (59 records, own soul) -
+   see R-231-E #1. `akremon` is Greek for *bough*: 0 record hits, 0 text hits, and a tighter fit.
 2. **Scale** - `_ORM_SCALE = 2.8`, `_BLOOM_SCALE = 2.0`. Sweep 3.1 and 3.4 (BL-BOUGH-DEBT-2).
-   Note the bloom is deliberately SMALLER than the trunk: "it doubles in size" is the base Charon's
+   The terminal is deliberately SMALLER than the trunk: "it doubles in size" is the base Charon's
    own beat, and a huge slow tree bursting into something compact, fast and burning reads better.
+   The 2.0 ask is now a 1.05x stretch on a rig that lives at 1.90, not the 1.33x the round-1
+   hellflower would have needed.
 3. **Skin** - donor's own `Ascacophus01B` (safe). Alt behind `_ORM_SKIN_ALT` / `_ORM_USE_SKIN_ALT`.
 4. **Soul grant** - the root proc (`offensiveSlowPhysical*`) plus the amgoz1-tradition downside
    (negative `characterRunSpeed`, -8/-6/-5%). *Recommend keep.*
+
+7. **Speeds** (NEW, R-231-E #3) - 1.35 / 1.45 / 1.30, pet 1.0. Two of the three are exactly
+   rig-proven. *Recommend keep; the alternative is the round-1 encounter, which could not move.*
+8. **Durability** (NEW, R-231-E #7) - Epic total 35,000, matched to the Gaoler exactly, down from
+   an uncalibrated 58,000. *Recommend keep; raise only if Will finds it soft in play.*
 5. **"The Orchard of Hands"** as the hoard chest name (was "Ferryman's Toll-Hoard"). *Recommend yes.*
 6. **Bleed immunity on phase 1** - it hard-counters the mod's own marquee bleed spears for half the
    fight. *Recommend keep: it is the fight's whole shape, and beat 3 gives the build back. One skill
