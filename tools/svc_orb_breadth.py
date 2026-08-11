@@ -458,12 +458,17 @@ def audit_db(db, lk=None, base_rows=None, verbose=False, floors=None):
                 "can neither audit nor widen it. Decide deliberately: import the "
                 "chain, or pin it in svc_orb_breadth.OUT_OF_REACH with the reason."
                 % (proxy_l, len(carriers), _who(carriers)))
-    for pin in sorted(pinned):
-        if pin not in {_n(k) for k in unreachable} and lk.real(pin) is None:
-            problems.append(
-                "O5 STALE OUT_OF_REACH PIN: %s is no longer an out-of-reach uber "
-                "chain (no uber names it, or it is gone). Remove the pin or fix the "
-                "record - a pin that names nothing is dead config." % pin)
+    # The stale-pin half needs the union: a pin naming a BASE-only chain is
+    # invisible in mod-only mode, so asserting it there would red every build that
+    # cannot read the base arz - a gate that punishes its own downgrade. The
+    # downgrade is announced loudly by the caller instead (never a silent pass).
+    if base_rows:
+        for pin in sorted(pinned):
+            if pin not in {_n(k) for k in unreachable} and lk.real(pin) is None:
+                problems.append(
+                    "O5 STALE OUT_OF_REACH PIN: %s is no longer an out-of-reach uber "
+                    "chain (no uber names it, or it is gone). Remove the pin or fix "
+                    "the record - a pin that names nothing is dead config." % pin)
 
     # O6 - tables shared outside the uber chains are excluded, and said so
     shared = shared_tables(db, lk, base_rows, chains)
