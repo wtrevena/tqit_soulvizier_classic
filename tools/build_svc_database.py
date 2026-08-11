@@ -307,6 +307,198 @@ def apply_dlc_act_ui_cap(db: ArzDatabase, base_db):
     return n
 
 
+# ── ATLANTIS SEA-VOYAGE CAP (R-211) ──────────────────────────────────────────
+# R-210 removed the Atlantis PAGE from the act-selection UI and explicitly left the
+# VOYAGE open, as BL-PORTALCAP-DEBT-1: "an Atlantis-DLC owner can still SAIL Rhodes
+# -> Gadir -> Atlantis. The page is gone, the voyage is not." This closes it.
+#
+# THE ROUTE (full RCA + evidence in docs/ATLANTIS_VOYAGE_CAP.md). Atlantis is NOT a
+# post-Hades act - it branches from RHODES, mid-Immortal-Throne, which is why
+# neither existing IT cap (Ragnarok / Eternal Embers, both post-Hades) ever covered
+# it. Measured against the deployed build78 artifacts:
+#   - x3mq_Marinos_Rhodes has ZERO static placements in our world01.map; he enters
+#     the world ONLY through the DLCActorSpawner x3mq_marinos_rhodes_spawner.dbr,
+#     which IS placed once, in XPack/Levels/Area01_Rhodes/Rhodes_CityFinal_01.lvl.
+#   - talking to him fires x3mq_AtlantisAdventure.qst (map QUESTS idx 211, inside
+#     the 255-entry load window) step "START QUEST: Second Talk Marinos" ->
+#     Action_BoatDialog(rhodes_boatmantogadir) - THE only transition from the
+#     reachable Immortal-Throne world into the XPack3 act.
+#   - in Gadir the chain continues to step "GO TO ATLANTIS: Sixth Talk Marinos" ->
+#     Action_BoatDialog(gadir_boatmantoatlantis) - the Atlantis landing itself.
+#   - XPack3TartarusPortal.qst (idx 205) unlocks the Tartarus act portal from Gadir
+#     or from Corinth; the Corinth Senechal is the only other DLCActorSpawner in
+#     the whole base DB.
+#
+# THE LAYER, and why a quest-side fix is NOT available. The map registers all 20
+# XPack3 quests under the `XPack3/Quests/...` namespace, so the A5 md5-full-
+# registry-path trap applies verbatim: identity and file resolution both go through
+# that DLC namespace, which the engine reads from the base game's UNCAPPED
+# Resources\XPack3\Quests.arc; a mod copy at the plain Quests.arc root is never
+# consulted. So this is a DB-record cap - the A5 pattern, where a .dbr's identity IS
+# its record path and the mod .arz overrides the base .arz per path (runtime-
+# confirmed by the A5 Act-5 fix on records\xpack2\quests\objects\portal_hadesscandia
+# .dbr). No map rebuild, no Quests.arc change, so neither deploy coupling is engaged.
+#
+# THE THREE SUPPRESSIONS, each on a shape the base game itself ships:
+#  1. DELETE `actorToSpawn` on the two DLCActorSpawner records. DLCActorSpawner.tpl
+#     declares actorToSpawn as type file_dbr with defaultValue "", so field absence
+#     IS the template's own declared default and the spawner has nothing to spawn.
+#     Same "absence is the declared default" argument R-210 shipped on. `dlcRequire
+#     ment` is deliberately LEFT ALONE: it is a picklist (DLC1;DLC2), an invented
+#     out-of-picklist token would be unproven behaviour, and DELETING it could read
+#     as "no DLC required" - i.e. the one edit that could make things worse.
+#  2. HIDE the two boat NPCs that carry the boundary transitions (Rhodes -> Gadir,
+#     Gadir -> Atlantis): startVisible = 0 plus IncludeInMap = 0. startVisible=0 is
+#     a retail-shipped configuration on 604 base-game records, and NO quest in ANY
+#     of the five base quest archives fires Action_ShowNpc at either NPC (byte-
+#     verified across Quests.arc, xpack, XPack2, XPack3, XPack4 - the only actions
+#     naming them anywhere are Action_BoatDialog), so nothing can undo it.
+#     IncludeInMap=0 is the A5 minimap-ghost lesson: never leave a live map icon on
+#     a suppressed object. Both NPCs are xpack3-namespaced Atlantis-DLC additions to
+#     an IT level, so hiding them cannot regress any Immortal-Throne-era travel
+#     (IT's own travel NPCs live under records\xpack\...). DELIBERATELY UNTOUCHED:
+#     gadir_boatmantomalta / gadir_boatmantoafrica and every RETURN boatman
+#     (atlantis/malta/africa -> gadir). They are interior to an act that is now
+#     unreachable, and the return boats are the anti-strand path for anyone who
+#     sailed on an earlier build.
+#  3. AND-UNSATISFIABLE DLC gate on the two Tartarus act portals, the A5 idiom
+#     verbatim: RequireDLC=TQA2 AND RequireNoDLC=TQA2 = "owns TQA2 and does not own
+#     TQA2", which no player satisfies, so the FixedItemTeleport never spawns.
+#     (Shipped precedent for the AND semantics: endportal_hades_normal_epic.dbr,
+#     RequireDLC=TQX4 + RequireNoDLC=TQA2. Both Tartarus portals are the SAME class,
+#     FixedItemTeleport, as the A5-suppressed portal_hadesscandia.dbr.)
+#
+# AUDITED AND FOUND CLEAN (so this is the complete set): all 17 DLC-gated FixedItem
+# records in the base DB are Ragnarok / Eternal-Embers act portals - not one names
+# Atlantis, Gadir or Tartarus, so no fixed-item act portal into Atlantis exists; and
+# base Quests.arc, xpack/Quests.arc and XPack4/Quests.arc contain ZERO references to
+# any xpack3 record, so no non-DLC quest can open an Atlantis route.
+_ATLANTIS_VOYAGE_CAP_TOKEN = 'TQA2'
+
+
+def apply_atlantis_voyage_cap(db: ArzDatabase, base_db):
+    """Close every remaining Rhodes -> Gadir -> Atlantis / Tartarus transit, arz-only.
+
+    Closes BL-PORTALCAP-DEBT-1. Needs base_db (the six records are base-only; the
+    mod overrides none of them today).
+    """
+    from gate_atlantis_voyage_cap import (
+        SPAWNERS_CAPPED, HIDDEN_CARRIERS, TARTARUS_PORTALS)
+
+    print("\n=== ATLANTIS SEA-VOYAGE CAP (R-211): Rhodes -> Gadir -> Atlantis ===")
+    if base_db is None:
+        # Same blind-spot class as A5 / the act-UI cap: without the base DB the six
+        # records cannot be imported and the arz silently ships a sailable Atlantis.
+        _gate_unavailable(
+            'Atlantis sea-voyage cap',
+            'base_db unavailable, so the Marinos/Senechal spawners, the two boat '
+            'NPCs and the two Tartarus portals cannot be imported - an Atlantis-DLC '
+            'owner would still be able to sail Rhodes -> Gadir -> Atlantis',
+            'pass the base-game database.arz as argv[5]')
+        return 0
+
+    base_names = {n.replace('/', '\\').lower(): n for n in base_db.record_names()}
+    n = 0
+
+    def _import(path):
+        rec = _import_base_record_override(db, base_db, base_names, path, 'VOYAGE-CAP')
+        if rec is None:
+            raise SystemExit(
+                f"  FAIL: Atlantis voyage cap cannot import the base record {path}; "
+                f"without it the mod ships a sailable Atlantis. Check the base-game "
+                f"database.arz passed as argv[5].")
+        # Record-type parity with vanilla (same reasoning as the act-UI cap).
+        db._record_types[rec] = base_db._record_types.get(
+            base_names.get(path.replace('/', '\\').lower()), '')
+        return rec
+
+    # 1. The two DLCActorSpawner records: delete actorToSpawn (template default "").
+    for path in SPAWNERS_CAPPED:
+        rec = _import(path)
+        ff = db.get_fields(rec) or {}
+        dropped = None
+        for k in list(ff):
+            if k.split('###')[0] == 'actorToSpawn':
+                dropped = (ff[k].values or [None])[0]
+                del ff[k]
+        db._modified.add(rec)
+        if dropped is None:
+            # The base game changed shape under us: never ship a cap we cannot prove.
+            raise SystemExit(
+                f"  FAIL: {path} carries no actorToSpawn field in the base DB, so the "
+                f"cap has nothing to delete and cannot prove the spawner is dead. "
+                f"The base game's record changed; review before shipping.")
+        n += 1
+        print(f"  CAP spawner: {path.split(chr(92))[-1]} -= actorToSpawn ({dropped})")
+
+    # 2. The two boundary boat NPCs: hidden, and no minimap ghost. dtype is inherited
+    #    from the base field (never pass an explicit dtype onto an imported record).
+    for path in HIDDEN_CARRIERS:
+        rec = _import(path)
+        for field in ('startVisible', 'IncludeInMap'):
+            if db.get_field_value(rec, field) is None:
+                raise SystemExit(
+                    f"  FAIL: {path} has no {field} field in the base DB; the boat-NPC "
+                    f"suppression cannot be proven. Review before shipping.")
+            db.set_field(rec, field, 0)
+        db._modified.add(rec)
+        n += 1
+        print(f"  CAP boat NPC: {path.split(chr(92))[-1]} startVisible=0 IncludeInMap=0")
+
+    # 3. The two Tartarus act portals: AND-unsatisfiable DLC gate (A5 idiom).
+    for path in TARTARUS_PORTALS:
+        rec = _import(path)
+        for field in ('RequireDLC', 'RequireNoDLC'):
+            db.set_field(rec, field, _ATLANTIS_VOYAGE_CAP_TOKEN, DATA_TYPE_STRING)
+        db._modified.add(rec)
+        n += 1
+        print(f"  CAP tartarus portal: {path.split(chr(92))[-1]} += RequireDLC="
+              f"{_ATLANTIS_VOYAGE_CAP_TOKEN} AND RequireNoDLC="
+              f"{_ATLANTIS_VOYAGE_CAP_TOKEN} (never spawns)")
+
+    # FIDELITY: every field we did NOT set must be byte-faithful to the base record,
+    # so the cap can never be a silent content edit. Checked here because base_db is
+    # only alive in this scope.
+    _EDITED = {
+        SPAWNERS_CAPPED[0]: {'actorToSpawn'}, SPAWNERS_CAPPED[1]: {'actorToSpawn'},
+        HIDDEN_CARRIERS[0]: {'startVisible', 'IncludeInMap'},
+        HIDDEN_CARRIERS[1]: {'startVisible', 'IncludeInMap'},
+        TARTARUS_PORTALS[0]: {'RequireDLC', 'RequireNoDLC'},
+        TARTARUS_PORTALS[1]: {'RequireDLC', 'RequireNoDLC'},
+    }
+    drift = []
+    for path, edited in _EDITED.items():
+        src = base_names.get(path.replace('/', '\\').lower())
+        bf = {k.split('###')[0]: (tf.values, tf.dtype)
+              for k, tf in (base_db.get_fields(src) or {}).items()}
+        mf = {k.split('###')[0]: (tf.values, tf.dtype)
+              for k, tf in (db.get_fields(path) or {}).items()}
+        for fn in set(bf) | set(mf):
+            if fn in edited:
+                continue
+            if bf.get(fn) != mf.get(fn):
+                drift.append(f'{path.split(chr(92))[-1]}::{fn} base={bf.get(fn)} '
+                             f'mod={mf.get(fn)}')
+    if drift:
+        raise SystemExit(
+            "  FAIL: Atlantis voyage cap drifted from the base records on "
+            f"{len(drift)} unedited field(s): {'; '.join(drift[:6])}")
+    print(f"  FIDELITY OK: {len(_EDITED)} capped records == base minus/plus exactly "
+          f"the capped fields")
+
+    # In-memory fail-loud proof, immediately (the artifact gate re-proves it on the
+    # written .arz after every later pass).
+    from gate_atlantis_voyage_cap import validate_db as _validate_voyage
+    if _validate_voyage(db, label='in-memory db (post-cap)') != 0:
+        raise SystemExit(
+            "Atlantis sea-voyage cap gate FAILED right after applying the cap; this "
+            "build does not ship (see tools/gate_atlantis_voyage_cap.py)")
+
+    print(f"  Atlantis voyage cap: {n} record override(s) written; ZERO resolvable "
+          f"Atlantis-transit paths remain")
+    return n
+
+
 def apply_act5_leak_fix(db: ArzDatabase, base_db):
     """Override the post-Hades portal records so DLC owners are routed to Epic (the
     classic IT ending), not vanilla Act 5. arz-only, re-evaluated at spawn on every
@@ -3948,6 +4140,13 @@ def _run_prefix(sv098_path, sv09_path, sv041_path, base_path):
     # ordering and gates itself; needs base_db (still alive here).
     apply_dlc_act_ui_cap(db, base_db)
 
+    # ATLANTIS SEA-VOYAGE CAP (R-211, closes BL-PORTALCAP-DEBT-1). The act-UI cap
+    # above removed the Atlantis PAGE; this removes the SHIP. Ordering is free (none
+    # of its six records\xpack3\ records is in strip_ui_overrides' scope, which is
+    # records\ingameui\ + records\xpack\ui\ only), but it is placed here so the whole
+    # act-cap family reads as one block and base_db is provably alive.
+    apply_atlantis_voyage_cap(db, base_db)
+
     remove_dead_orphan_records(db)   # P3 hygiene: drop the corrupted potionexp_test orphan
     fix_chimera_chest_double_ext(db)  # Q4-3: .dbr.dbr rename (quest retargeted same wave)
     restore_potion_drops(db, db09)
@@ -4545,6 +4744,17 @@ def main():
         raise SystemExit(
             "Portal-page DLC-cap gate FAILED on the written .arz; the portal page or "
             "the quest log still lists a DLC act (see tools/gate_dlc_act_ui_cap.py)")
+
+    # ── ATLANTIS SEA-VOYAGE CAP gate (R-211, fail-loud): the shipped .arz must carry
+    # all six voyage-cap overrides, so an Atlantis-DLC owner cannot sail Rhodes ->
+    # Gadir -> Atlantis and cannot open a Tartarus act portal. The act-UI gate above
+    # proves the PAGE is gone; this proves the SHIP is gone. ARTIFACT proof, because
+    # an in-memory-only proof is exactly how a cap ships inert.
+    from gate_atlantis_voyage_cap import validate as _validate_voyage_cap
+    if _validate_voyage_cap(str(output_path)) != 0:
+        raise SystemExit(
+            "Atlantis sea-voyage cap gate FAILED on the written .arz; an Atlantis "
+            "transit route is still resolvable (see tools/gate_atlantis_voyage_cap.py)")
 
     # ── F2 contract gate (build30, post-vet): the summons contract lane
     # (SUMMON-PET-NAKED et al) must PASS on the written .arz, so a green build

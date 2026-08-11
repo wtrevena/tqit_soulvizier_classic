@@ -4365,6 +4365,57 @@ list entry: `XPack3/Quests/x3mq_AtlantisAdventure.qst` is registered at index 21
 are placed in `Rhodes_CityFinal_01` on the mandatory spine. An Atlantis-DLC owner can still SAIL to
 Atlantis. That leak stays OPEN as `BL-PORTALCAP-DEBT-1`; it needs its own lane and Will's sign-off on
 the layer. See `docs/PORTAL_PAGE_DLC_CAP.md`.
+
+**AMENDMENT 2026-08-10:** the sail leak is now CLOSED by **R-211** (branch `fix/atlantis-voyage-cap`).
+`BL-PORTALCAP-DEBT-1` is RESOLVED.
+
+---
+
+## R-211 [2026-08-10] IMPLEMENTED (branch `fix/atlantis-voyage-cap`) - no DLC act may be REACHABLE, not merely un-listed
+
+**VERBATIM (Will, 2026-08-10, on the R-210 report):** Atlantis is disabled in this mod. R-210 removed
+the Atlantis PAGE and left the SHIP; this lane closes the last access path.
+
+R-211 is the travel half of the same standing IMMORTAL-THRONE CAP ruling (Will, 2026-07-10: "lets not
+make atlantis or anything past immortal throne reachable for now and we will fine tune immortal
+throne then if we want to add in the other areas later then we can"). Read as the general rule:
+**a DLC act must be UNREACHABLE, and an act-selection surface being clean is not the same thing as
+the act being unreachable.** Every future cap lane enumerates transit routes, not list entries.
+
+**WHY IT SURVIVED THE OTHER THREE CAPS.** Both A5 caps are POST-HADES transitions and R-210 was UI
+only. **Atlantis branches from RHODES, mid-Immortal-Throne**, on the mandatory Olympus -> Rhodes ->
+Hades spine, so no prior cap ever touched it.
+
+**THE ROUTE.** `x3mq_Marinos_Rhodes` has ZERO static placements in our `world01.map` and enters the
+world ONLY through the `DLCActorSpawner` `x3mq_marinos_rhodes_spawner.dbr` (placed once, in
+`Rhodes_CityFinal_01`). Talking to him fires `x3mq_AtlantisAdventure.qst` (map QUESTS idx 211, inside
+the 255-entry load window) -> `Action_BoatDialog(rhodes_boatmantogadir)`, the only transition from the
+reachable Immortal-Throne world into the XPack3 act; the chain ends at
+`Action_BoatDialog(gadir_boatmantoatlantis)`. `XPack3TartarusPortal.qst` (idx 205) unlocks the
+Tartarus act portal from Gadir or Corinth.
+
+**LAYER (and why the quest layer is unavailable).** All 20 XPack3 quests are registered under the
+`XPack3/Quests/...` namespace, so the A5 md5-full-registry-path trap applies verbatim and a mod quest
+at the plain `Quests.arc` root would ship inert. So: DB-record cap, the A5 pattern (a `.dbr`'s
+identity IS its record path; the mod `.arz` overrides the base `.arz` per path, runtime-confirmed).
+**arz-only: no map rebuild, no `Quests.arc` change, so neither deploy coupling is engaged.**
+
+**SIX OVERRIDES, each on a shape the base game itself ships.** Delete `actorToSpawn` on both
+`DLCActorSpawner` records (the template declares it `file_dbr` / `defaultValue ""`, so absence IS the
+declared default); hide the two boundary boat captains with `startVisible=0` + `IncludeInMap=0`
+(`startVisible=0` ships on 604 retail records; `IncludeInMap=0` is the A5 minimap-ghost lesson; and
+NO quest in ANY of the five base quest archives fires `Action_ShowNpc` at either captain, so nothing
+can undo it); and give both Tartarus act portals the A5 AND-unsatisfiable DLC gate. `dlcRequirement`
+is deliberately left alone (a picklist; deleting it could read as "no DLC required"). The Malta /
+Hesperides captains and every RETURN boatman are deliberately untouched - interior to an act that is
+now unreachable, and the return boats are the anti-strand path.
+
+**GATE.** `tools/gate_atlantis_voyage_cap.py`, fail-loud, negative-tested (4 planted defects, one of
+them a COLLATERAL xpack3 override, so the gate fails on over-reach as well as under-reach), wired
+in-memory and on the WRITTEN `.arz`. Its V5 check proves the DERIVED list of resolvable
+Atlantis-transit routes is EMPTY. **NOT PROVEN IN-GAME** (`BL-VOYAGECAP-DEBT-1`): the one-line check
+needs an Atlantis-DLC owner - after Typhon, walk Rhodes and find no Marinos and no captain offering
+Gadir. See `docs/ATLANTIS_VOYAGE_CAP.md`.
 ---
 
 ## R-181 [2026-08-10] IMPLEMENTED (branch `fix/armor-loot-breadth`, module `tools/patches/armor_loot_breadth.py`) - armour must drop like armour, and no class may run away with the run

@@ -21,6 +21,14 @@
 > covered it, and the Rhodes -> Gadir -> Atlantis boat chain is measurably live in our map
 > (`x3mq_AtlantisAdventure.qst` at registry idx 211 of 255; Marinos spawner + boatman both placed in
 > `Rhodes_CityFinal_01`). Tracked as `BL-PORTALCAP-DEBT-1`.
+>
+> ⚠️ **AMENDMENT 2026-08-10 (R-211, branch `fix/atlantis-voyage-cap`) - correction (2) is now FIXED,
+> and this audit's FIX OPTIONS list gains a third answer.** The Rhodes -> Gadir -> Atlantis voyage is
+> capped arz-only: the Rhodes Marinos `DLCActorSpawner` loses its `actorToSpawn`, the two boundary
+> boat captains are hidden, and both Tartarus act portals get the A5 AND-unsatisfiable DLC gate. So
+> **all three DLC acts are now hard-capped for DLC owners too**, and the VERDICT's "the mod cannot
+> hard-block a DLC owner" caveat is superseded: it CAN, at the DB-record layer, without a map rebuild.
+> `BL-PORTALCAP-DEBT-1` is CLOSED. See `docs/ATLANTIS_VOYAGE_CAP.md`.
 
 ---
 

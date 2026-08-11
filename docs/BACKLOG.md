@@ -749,6 +749,79 @@ Disclosed in `docs/WILL_TEST_GUIDE.md` as a veto point, not buried.
   Recorded in R-220 so nobody later reads it as an accident.
 
 ---
+## LANE RECORD - R-211 ATLANTIS SEA-VOYAGE CAP: the SHIP is gone too. `BL-PORTALCAP-DEBT-1` CLOSED (2026-08-10, branch `fix/atlantis-voyage-cap`, static gates only - Ship phase owns the build)
+
+R-210 removed the Atlantis PAGE and explicitly left the VOYAGE, as `BL-PORTALCAP-DEBT-1`: *"an
+Atlantis-DLC owner can still SAIL Rhodes -> Gadir -> Atlantis. The page is gone, the voyage is not."*
+This lane closes the last Atlantis access path. Ledgered **R-211**. Full RCA + route audit + layer
+argument: `docs/ATLANTIS_VOYAGE_CAP.md`.
+
+**WHY IT SURVIVED THREE PRIOR CAPS.** Both A5 caps are POST-HADES; R-210 was UI only. **Atlantis
+branches from RHODES, mid-Immortal-Throne**, on the mandatory spine, so nothing had ever covered it.
+
+**THE ROUTE (measured on the deployed build78 artifacts).** `x3mq_Marinos_Rhodes` has **ZERO** static
+placements in `world01.map` and enters the world ONLY through the `DLCActorSpawner`
+`x3mq_marinos_rhodes_spawner.dbr` (placed once, `Rhodes_CityFinal_01`). Talking to him fires
+`x3mq_AtlantisAdventure.qst` (QUESTS idx 211 of the 255-entry load window) ->
+`Action_BoatDialog(rhodes_boatmantogadir)`, the only transition from the reachable IT world into the
+XPack3 act; the chain ends at `Action_BoatDialog(gadir_boatmantoatlantis)`.
+`XPack3TartarusPortal.qst` (idx 205) unlocks the Tartarus act portal from Gadir or Corinth.
+
+**ALL ACCESS ROUTES ENUMERATED - 10, of which 4 were live and are now closed at EVERY link:**
+1 Rhodes -> Gadir, 2 Gadir -> Atlantis, 3 Gadir -> Tartarus, 4 Corinth -> Tartarus (live, now capped);
+5 portal page + 6 quest-log act tab (already closed by R-210); **7 no fixed-item act portal into
+Atlantis EXISTS** (all 17 DLC-gated `FixedItem*` records in the base DB are Ragnarok/EE portals, not
+one names Atlantis/Gadir/Tartarus); **8 no non-DLC quest can open one** (base `Quests.arc`,
+`xpack/Quests.arc` and `XPack4/Quests.arc` hold ZERO `records\xpack3\` references); **9 no level
+stitch/walk-in exists** (DLC level set byte-identical to vanilla, 0 DLC-namespaced levels among our
+46 additions); 10 difficulty unlock is not a transit and Atlantis never gated it.
+
+**LAYER (arz-only, the A5 pattern).** All 20 XPack3 quests are registered under the
+`XPack3/Quests/...` namespace, so the A5 md5-full-registry-path trap applies and a mod quest at the
+plain `Quests.arc` root would ship inert. So a DB-record cap: a `.dbr`'s identity IS its record path
+and the mod `.arz` overrides the base `.arz` per path (runtime-confirmed by A5). **No map rebuild, no
+`Quests.arc` change: neither deploy coupling is engaged, and this rides any arz push.**
+
+**SIX RECORD OVERRIDES.** Delete `actorToSpawn` on both `DLCActorSpawner` records (template declares
+it `file_dbr` / `defaultValue ""`); `startVisible=0` + `IncludeInMap=0` on the two boundary boat
+captains (`rhodes_boatmantogadir`, `gadir_boatmantoatlantis`); A5 AND-unsatisfiable DLC gate
+(`RequireDLC=TQA2` + `RequireNoDLC=TQA2`) on both Tartarus portals. `dlcRequirement` deliberately
+untouched (picklist `DLC1;DLC2`; deleting it could read as "no DLC required"). Malta/Hesperides
+captains and every RETURN boatman deliberately untouched (anti-strand path).
+
+**NO REGRESSION TO IT-ERA TRAVEL:** both hidden captains are `records\xpack3\` Atlantis-DLC additions;
+IT's own travel NPCs are `records\xpack\` and untouched. A non-DLC player's Rhodes is unchanged; a DLC
+owner's Rhodes now matches it.
+
+**GATES (static, this lane).**
+
+| gate | result |
+|---|---|
+| `gate_atlantis_voyage_cap` on the **shipped build78 arz** `f6638462` (BEFORE) | **FAIL, 7 checks** - all six records absent, `V5 4 resolvable Atlantis-transit route(s) remain`. The leak reproduced as an artifact fact |
+| the real `apply_atlantis_voyage_cap()` | **6 record overrides written**; in-build FIDELITY assert PASS (every unedited field byte-faithful to base, values + dtypes) |
+| `gate_atlantis_voyage_cap` on the **written capped .arz** (AFTER) | **PASS V1-V5** - `resolvable Atlantis-transit routes = []` |
+| negative tests (`--negtest`, 4 planted defects) | **all 4 RED** - spawner re-armed, captain un-hidden, portal un-gated, and a COLLATERAL xpack3 override (so the gate fails on over-reach too, not only under-reach) |
+| record delta vs the shipped `f6638462` | **ADDED 6 / REMOVED 0 / MODIFIED 0**, all six the capped records |
+| `py_compile` on both edited/new tools | **PASS** |
+
+**DEBT REGISTER**
+- `BL-VOYAGECAP-DEBT-1` (**P1, LAUNCH-GATED**) - NOT PROVEN IN-GAME. **Will's one-line test (needs an
+  Atlantis-DLC owner): after Typhon, walk Rhodes - no Marinos, no captain offering Gadir, no Atlantis
+  adventure in the quest log.** Runtime risks carried: (a) the engine tolerating a `DLCActorSpawner`
+  with `actorToSpawn` absent (evidence: the template declares `defaultValue = ""`, the same argument
+  R-210 shipped on); (b) a hidden `Npc` being non-conversable (evidence: `startVisible=0` ships on
+  **604** retail records and is TQ's own `Action_ShowNpc` gating idiom).
+- `BL-VOYAGECAP-DEBT-2` (P3, scope) - the two Tartarus portal suppressions were not strictly required
+  (Tartarus is only reachable from Gadir or Corinth, both closed). Included because Tartarus is an
+  XPack3 area under the same ruling and the idiom is A5-proven. Flagged so a vet can challenge them
+  independently.
+- `BL-VOYAGECAP-DEBT-3` (P3, cosmetic) - an in-fiction refusal line from the Rhodes captain was
+  rejected for now: his dialog is a `.dbr` inside the base `Resources\XPack3\Dialog.arc`, so authoring
+  one would depend on the unproven mod-arc-vs-base-arc shadowing this lane refused to bet on.
+
+**NOT RUN HERE (Ship phase owns them):** full DB build + determinism, record-diff vs baseline,
+`run_contracts`, deploy. **Deploy coupling: arz only** (no Text tag authored, nothing map-side moved).
+
 ## SHIP RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis is GONE from the portal page, **LIVE ON STEAM** (2026-08-10, `main` @ the `fix/portal-atlantis-cap` merge `599e5f0`, tag `build78-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
@@ -793,8 +866,10 @@ artifact is already byte-identical to `build77-ship`.
 - **`BL-PORTALCAP-DEBT-2` NOT PROVEN IN-GAME.** Nobody has opened a portal and counted the tabs.
   **Will's one-line test: open a portal - four act tabs (Greece / Egypt / Orient / Immortal Throne), no
   Atlantis, and the Immortal Throne page still lists Olympus and all of Hades.**
-- **`BL-PORTALCAP-DEBT-1` (P1, OPEN):** an Atlantis-DLC owner can still SAIL Rhodes -> Gadir -> Atlantis.
-  The page is gone, the voyage is not. Own lane, needs Will's sign-off on the layer.
+- **`BL-PORTALCAP-DEBT-1` (P1, ~~OPEN~~ RESOLVED 2026-08-10 by R-211):** an Atlantis-DLC owner can still
+  SAIL Rhodes -> Gadir -> Atlantis. The page is gone, the voyage is not. Own lane, needs Will's sign-off
+  on the layer. **-> that lane is `fix/atlantis-voyage-cap`; the voyage is now capped arz-only, see the
+  R-211 lane record at the top of this file.**
 - The Workshop cover image is still absent (`WARNING: no preview image`), unchanged by this push and
   still Will's separate action.
 
@@ -1064,7 +1139,13 @@ is registered at **index 211** of the map's **255**-entry QUESTS window, and BOT
 `gadir_boatmantoatlantis` placed in `Gadir01B`. **An Atlantis-DLC owner can still SAIL to Atlantis.**
 
 **DEBT REGISTER**
-- `BL-PORTALCAP-DEBT-1` (**P1, OPEN, real act leak**) - the Rhodes to Gadir to Atlantis boat chain is
+- `BL-PORTALCAP-DEBT-1` (**P1, RESOLVED 2026-08-10 by R-211**, branch `fix/atlantis-voyage-cap`) - the
+  Rhodes to Gadir to Atlantis boat chain is now capped arz-only; see the R-211 lane record below and
+  `docs/ATLANTIS_VOYAGE_CAP.md`. The "one-field DB suppression is NOT available" reading below was
+  right about `RequireDLC` and wrong about the conclusion: `DLCActorSpawner.tpl` declares
+  `actorToSpawn` with `defaultValue = ""`, so DELETING that one field kills the spawn with the same
+  "absence is the declared default" argument R-210 itself shipped on. Original text kept verbatim:
+  the Rhodes to Gadir to Atlantis boat chain is
   live. The A5 one-field DB suppression is NOT available: a whole-base-DB census found DLC gate fields
   (`RequireDLC`/`RequireNoDLC`) on **17 records only, all `FixedItemTeleport.tpl` /
   `FixedItemTyphonPortal.tpl`**, with no Atlantis token at all (only `TQA2`, `TQX4`); Marinos is a
