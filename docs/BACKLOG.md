@@ -72,16 +72,36 @@ refuses to run unless that matches). **TQ.exe was NOT running; nothing was kille
 DEV2 no longer exists. A ship-safe copy of the exact artifact is preserved at
 `local/SoulvizierClassic.build75-dev.R180.arz`.
 
-**STEAM - NOT PUSHED BY THIS LANE (deliberate, and it is not a miss).** While this build was running, `main`
-advanced twice underneath it: `824ed0c` (b63 SILENT WARDEN, a P0 on the live Steam build) and `5742775`
-(R-200 red-uber orbs). That lane then rebuilt `Levels.arc` -> `6784cf0f` and `Quests.arc` -> `607ec99c`, deployed
-them to DEV, rewrote `docs/WORKSHOP_CHANGENOTE.bbcode` into a COMBINED note (its Warden bullet + this lane's two
-loot bullets), and staged `dist/workshop/content/SoulvizierClassic`. **That staged dist payload already carries
-this lane's arz `3fb1f3ce`** alongside its Warden map, so the chest fix ships to Steam inside that single
-combined push. Running a second `package_workshop.ps1` / `upload_workshop.ps1` here would have raced a concurrent
-packaging of the same Workshop item (3759792705) mid-write, and uploading BEFORE their map landed would have
-published a change note whose lead bullet (the Warden answering again) was false for the uploaded bytes. Both are
-disqualifying, so this lane stopped at the staged artifact. **Steam ship record is owed by the b63 lane.**
+**STEAM - ✅ LIVE, shipped inside the concurrent b63 push (this lane did not run the upload, deliberately).**
+While this build was running, `main` advanced twice underneath it: `824ed0c` (b63 SILENT WARDEN, a P0 on the live
+Steam build) and `5742775` (R-200 red-uber orbs). That lane rebuilt `Levels.arc` -> `6784cf0f` and `Quests.arc` ->
+`607ec99c`, deployed them to DEV, rewrote `docs/WORKSHOP_CHANGENOTE.bbcode` into a COMBINED note (its Warden
+bullet + this lane's two loot bullets), staged `dist/`, and uploaded. This lane did NOT run a second
+`package_workshop.ps1` / `upload_workshop.ps1`: that would have raced a concurrent write to the same Workshop
+item mid-package, and uploading BEFORE their map landed would have published a change note whose lead bullet (the
+Warden answering again) was false for the uploaded bytes. Both are disqualifying. Instead the verified arz was
+left staged in `work/` - and the combined package picked it up.
+
+**SHIPPED PAYLOAD (verified against `dist/workshop/content/SoulvizierClassic` after the upload):**
+| artifact | md5 | bytes | source |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`3fb1f3ce8889e27de2491ab12814547d`** | 55,539,324 | **THIS lane (R-180 breadth + relic tiering)** |
+| `Resources/Levels.arc` | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | b63 Warden lane |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | b63 Warden lane |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | unchanged from build74 |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | unchanged from build74 |
+
+**Upload: steamcmd item 3759792705, `Upload finished ... : OK`, ManifestID `5994342952492618257`**
+(`C:\steamcmd\logs\workshop_log.txt`, 2026-08-10 19:22:53 -> 19:23:09). Steam therefore moves off build74
+(`d447f095`) and now carries the chest-loot breadth Will asked for "in the steam version", the 08-08/08-09 relic
+difficulty tiering, and the b63 Warden P0 in one update.
+
+⚠️ **Ship residuals owed by the b63 lane, not by this one:** (1) **no `buildNN-ship` tag was taken** for that
+upload - this lane deliberately did not take `build75-ship`, because the shipped tree is a mix (this lane's arz
+from `58c67f8` + that lane's Levels/Quests tooling from `5742775`) and tagging it on either lane's commit would
+misattribute it; (2) **R-200 (`5742775`, red-uber orbs) is NOT in the shipped arz `3fb1f3ce`** - the package
+reused this lane's already-built arz instead of rebuilding from the newer `main`, so R-200 still awaits a ship;
+(3) `docs/WORKSHOP_CHANGENOTE.bbcode` was still uncommitted in the working tree at the time of this record.
 
 **BUILD-GATE REPAIR shipped with this wave (`58c67f8`, own commit, own negtest).** The first ship build failed
 `champion_mesh.verify` with **65 "UNRESOLVED ANIMATION"** offenders against base-game clips - nothing to do with

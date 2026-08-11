@@ -17,13 +17,15 @@
 >   As of this note the DEV entry carries `Levels.arc 7a7ca9ac` and `Quests.arc 607ec99c` (the b63 Warden
 >   relocation + travel rewire), NOT the `3a6f9d74`/`6b25f8dd` pair that was live when this arz was built. The DEV
 >   surface therefore carries BOTH fixes; that is intended, and the two changes are disjoint (arz vs Levels+Quests).
-> - **Steam: NOT pushed by this lane.** `main` advanced to `824ed0c` (b63 Warden P0) then `5742775` (R-200 red-uber
->   orbs) mid-build, and that lane staged `dist/workshop/content/SoulvizierClassic` with a COMBINED payload that
->   **already contains this arz `3fb1f3ce`** plus its Warden `Levels.arc 6784cf0f` / `Quests.arc 607ec99c`, under a
->   combined `docs/WORKSHOP_CHANGENOTE.bbcode`. A second package/upload here would have raced a concurrent write to
->   the same Workshop item 3759792705. **Steam is still build74 (`d447f095`) until that combined push completes -
->   whoever runs it owns the ship record.** Note `5742775` (R-200) is NOT in `3fb1f3ce`; a rebuild from current
->   `main` before the push would fold it in.
+> - **Steam: ✅ LIVE.** `main` advanced to `824ed0c` (b63 Warden P0) then `5742775` (R-200) mid-build, and that lane
+>   packaged + uploaded a COMBINED payload that **contains this arz `3fb1f3ce`** plus its Warden
+>   `Levels.arc 6784cf0f` / `Quests.arc 607ec99c` (`Text.arc a9fed7ba` + `Creatures.arc 8c0d8d53` unchanged), under a
+>   combined `docs/WORKSHOP_CHANGENOTE.bbcode`. **Workshop item 3759792705, `Upload finished : OK`, ManifestID
+>   `5994342952492618257`** (steamcmd log 2026-08-10 19:22:53 -> 19:23:09). Steam is no longer build74 (`d447f095`).
+>   This lane did NOT run the upload - a second package/upload would have raced a concurrent write to the same item.
+>   ⚠️ Owed by that lane: **no `buildNN-ship` tag was taken** (the shipped tree is a mix of both lanes, so neither
+>   lane's commit is an honest anchor), and **R-200 (`5742775`) is NOT in the shipped arz** - the package reused this
+>   lane's already-built arz rather than rebuilding from the newer `main`, so R-200 still awaits a ship.
 > - **Will's in-game check (build75-dev):** Prison of Souls / Hades Palace floor 4 - kill **Alkyoneus the
 >   Soul-Gaoler**, open **all 6 cage chests across 3 runs**; expect **legendary spears** and visible class variety
 >   between chests. Full note in `docs/WILL_TEST_GUIDE.md` (R-180 section). Fully quit TQ and restart Steam first.
