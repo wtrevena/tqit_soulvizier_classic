@@ -252,7 +252,7 @@ def ensure_masters(db, lk=None, verbose=True):
         db.set_field(path, 'FileDescription',
                      'SVC breadth master: every unique weapon class, %s tier' % tier)
         for i, (p, w) in enumerate(members, start=1):
-            db.set_field(path, 'lootName%d' % i, lk.real(p), S)
+            _set_str(db, path, 'lootName%d' % i, lk.real(p))
             db.set_field(path, 'lootWeight%d' % i, int(w))
         # Zero any donor member slots we did not claim (no stale inherited class).
         for i in range(len(members) + 1, 31):
@@ -267,6 +267,17 @@ def ensure_masters(db, lk=None, verbose=True):
                   % (path.rsplit('\\', 1)[-1], len(members)))
     lk.refresh()
     return built
+
+
+def _set_str(db, real, field, value):
+    """Write a STRING field, passing the dtype ONLY when the field is new. House law
+    (CLAUDE.md): never hand set_field an explicit dtype for a field a cloned record
+    already carries; let the donor's own dtype stand."""
+    exists = any(k.split('###')[0] == field for k in (db.get_fields(real) or {}))
+    if exists:
+        db.set_field(real, field, value)
+    else:
+        db.set_field(real, field, value, S)
 
 
 def _slot_members(db, real, group):
@@ -315,7 +326,7 @@ def widen_weapon_row(db, table, tier, lk=None):
             raise SystemExit(
                 "svc_loot_breadth: %s has no free loot1 member slot for the breadth "
                 "master (FixedItemLoot caps at 6); resolve by hand" % table)
-        db.set_field(real, 'loot1Name%d' % idx, master, S)
+        _set_str(db, real, 'loot1Name%d' % idx, master)
         db.set_field(real, 'loot1Weight%d' % idx, int(BREADTH_WEIGHT))
         changes.append('loot1Name%d=breadth master' % idx)
     if _raise_chance(db, real, 1, WEAPON_ROW_CHANCE):
@@ -352,7 +363,7 @@ def retarget_guaranteed_weapon(db, table, tier, lk=None):
     changes = []
     for i, nm, _w in members:
         if _UNIQUE_1H_RE.search(_n(nm)):
-            db.set_field(real, 'loot3Name%d' % i, master, S)
+            _set_str(db, real, 'loot3Name%d' % i, master)
             changes.append('loot3Name%d: unique_1h -> breadth master' % i)
     if changes:
         db._modified.add(real)
@@ -382,7 +393,7 @@ def set_guaranteed_theme(db, table, tier, theme, lk=None):
                          "allows 6" % (theme, len(members)))
     for i in range(1, 7):
         if i <= len(members):
-            db.set_field(real, 'loot3Name%d' % i, members[i - 1][0], S)
+            _set_str(db, real, 'loot3Name%d' % i, members[i - 1][0])
             db.set_field(real, 'loot3Weight%d' % i, members[i - 1][1])
         else:
             if _sc(db.get_field_value(real, 'loot3Name%d' % i)):
