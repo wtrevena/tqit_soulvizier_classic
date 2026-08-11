@@ -228,14 +228,61 @@ def main(argv):
           lambda d, k: [p for p in audit_surface_of(d, k, HOARD_L)
                         if p.startswith(('D3', 'D7'))])
 
+    # ── N7-N9: the D3 SIZE EXEMPTION (b81 / R-186). An exemption is the one construct
+    #    that can silently switch a gate off, so it gets more negatives than the rules it
+    #    carves out of. These do not plant loot edits; they attack the exemption itself.
+    def _d3x(mutate):
+        saved_min, saved_set = SLD.D3_MIN_CLASS_UNIVERSE, SLD.D3_ERA_EXEMPT
+        try:
+            mutate()
+            return SLD.era_exemption_problems(SLD.Db(base))
+        finally:
+            SLD.D3_MIN_CLASS_UNIVERSE, SLD.D3_ERA_EXEMPT = saved_min, saved_set
+
+    def _grow():
+        # thrown holds 5 Legendary records; drop the threshold under that and the
+        # exemption must declare itself void rather than keep protecting the class.
+        SLD.D3_MIN_CLASS_UNIVERSE = 4
+
+    def _typo():
+        SLD.D3_ERA_EXEMPT = ('thrwon',)
+
+    for label, mut in (("D3X the exempt class grew past D3_MIN_CLASS_UNIVERSE", _grow),
+                       ("D3X the exemption names a slot that does not exist", _typo)):
+        got = _d3x(mut)
+        ok = bool(got)
+        print("%s  %-72s -> %s" % ('OK ' if ok else 'FAIL', label,
+                                   'RED (correct)' if ok else 'GREEN (WRONG)'))
+        if not ok:
+            fails.append(label)
+
+    # N9 - and the exemption must be LOAD-BEARING, not decoration: with it removed, the
+    #      shipped build's thrown class must actually red D3. If this comes back green the
+    #      carve-out is protecting nothing and should be deleted.
+    saved_set = SLD.D3_ERA_EXEMPT
+    try:
+        SLD.D3_ERA_EXEMPT = ()
+        d3 = [p for p in SAB.audit_db(base, base_lk)[0]
+              if p.startswith('D3') and 'thrown' in p]
+    finally:
+        SLD.D3_ERA_EXEMPT = saved_set
+    ok = bool(d3)
+    print("%s  %-72s -> %s" % ('OK ' if ok else 'FAIL',
+                               "D3X exemption removed (it must be load-bearing)",
+                               ('RED (correct), %d D3 thrown finding(s)' % len(d3)) if ok
+                               else 'GREEN (WRONG - the exemption is decoration)'))
+    if not ok:
+        fails.append("D3X exemption is decoration")
+
     print()
     if fails:
         print("NEGTEST FAILED: %d" % len(fails))
         for f in fails:
             print("   - %s" % f)
         return 1
-    print("NEGTEST PASS: every planted skew reds the distribution gate, and both the "
-          "fixed build and its deliberate themes stay green.")
+    print("NEGTEST PASS: every planted skew reds the distribution gate, the D3 size "
+          "exemption reds when it stops being earned and is load-bearing when it is, and "
+          "both the fixed build and its deliberate themes stay green.")
     return 0
 
 

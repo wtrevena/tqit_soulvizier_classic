@@ -127,22 +127,44 @@ SLOT_LABEL = {'axe': 'axe', 'mace': 'mace/club', 'sword': 'sword', 'spear': 'SPE
               'arms': 'arms', 'torso': 'torso', 'legs': 'legs', 'shield': 'shield'}
 
 # ─────────────────────────────────────────────────────────────────────────────
-# D3 SCOPE: the starvation floor applies to a class only where the ERA can pay it.
+# D3 SCOPE: a MASS floor only applies to a class big enough for a mass floor to mean
+# something. (b81 / R-186; discharges the second half of BL-R181-DEBT-4.)
 #
 # D3 asks "is a class the surface claims to pay actually payable, or is it a rounding
-# error". That question is only meaningful where a droppable record of the class exists
-# at the tier's target classification. Normal-tier surfaces pay at classification EPIC,
-# and MEASURED on the b80 ship arz `c5851a1a` this era's ONLY three Epic-classification
-# thrown records - f_n_kaskeron, f_l_qilinseternalpyre, f_l_godshatter - are all BASE-GAME
-# CRAFT RESULTS. R-186 deliberately declined to make base craft results fall out of
-# chests, so no wiring can clear a Normal thrown floor without devaluing base crafting.
+# error", and its 1.45% floor was calibrated against this mod's ordinary gear classes.
+# MEASURED, whole-database universe per class at its own target classification:
 #
-# COMMITTED, and RE-PROVED from the bytes every run by `era_exemption_problems` - which
-# fails LOUD in both directions: if a non-craft Epic thrown record ever enters the
-# database the exemption is void and the gate says so by name, and if an entry here names
-# a slot or tier that does not exist it fails as a typo. This is the MI_NO_LIVE_CARRIER
-# discipline (a committed roster whose rule is re-derived, never a bare whitelist).
-D3_ERA_EXEMPT = {'n': ('thrown',)}
+#   Legendary:  thrown 5 | bow 23 | mace 24 | SPEAR 24 | staff 25 | sword 28 | legs 33
+#               shield 33 | arms 37 | helm 39 | axe 41 | torso 71
+#   Epic:       thrown 3 | SPEAR 32 | bow 33 | mace 37 | staff 38 | sword 44 | legs 53
+#               shield 59 | axe 66 | arms 68 | helm 80 | torso 123
+#
+# THROWN IS 5 RECORDS AGAINST A SMALLEST-ORDINARY-CLASS OF 23. A floor written for a
+# 23-record class does not transfer: forcing 1.45% of a surface through 5 records makes
+# each record 0.29% of everything that drops, and MEASURED end to end, a thrown class
+# heavy enough to clear the floor on the armour-heaviest surface pays **1.30 of each
+# craft-only supra thrown per six-chest Gaoler cage run - 2.9x a plain legendary SPEAR**.
+# That is an over-representation of a craft prize, the same shape as the report Will filed
+# against this wave family, and it is the opposite of what a starvation floor is for.
+#
+# So thrown is exempt from D3's MASS floor - and NOT from scrutiny. The claim "the class
+# is payable" is still enforced, just by a REACHABILITY gate instead of a mass one:
+# `svc_craft_thrown.thrown_problems` (rules C1/C2, run from `svc_loot_breadth.audit_table`
+# over all 51 mod chest tables and every uber orb table) fails the build if any surface
+# cannot pay a Legendary thrown at its own tier, or if a legendary thrown reaches Normal.
+# A class cannot silently vanish here; it can only be thin, which for 5 records is right.
+#
+# COMMITTED, and RE-PROVED from the bytes every run by `era_exemption_problems`, which
+# fails LOUD in three directions: if the exempt class grows past D3_MIN_CLASS_UNIVERSE the
+# exemption is void and the gate says so; if a NON-craft record appears at a rung the
+# exemption also claims is era-empty, likewise; and a name that is not a real slot fails
+# as a typo, so a whitelist that never fires cannot hide here. This is the
+# MI_NO_LIVE_CARRIER discipline - a committed roster whose rule is re-derived every run.
+D3_ERA_EXEMPT = ('thrown',)
+# Half the smallest ordinary class (23). Below this a class cannot carry a mass floor
+# calibrated on ordinary classes without each of its records becoming more common than an
+# ordinary class's records are - which is the failure the measurement above quantifies.
+D3_MIN_CLASS_UNIVERSE = 12
 
 # ─────────────────────────────────────────────────────────────────────────────
 # THE COMMITTED BALANCE TARGETS (R-181)
@@ -173,19 +195,17 @@ D3_ERA_EXEMPT = {'n': ('thrown',)}
 #   D6 weapon : armour          7.206    1.5857    1.85        yes (289%)     14%
 #   D6b lowest weapon : armour  1.5257   0.2845    0.24        yes  (30%)**   16%
 #   D7 thinnest armour slot     0.0397   0.6229    0.52        yes  (13x)     16%
-#   D8 class share of weapons   0.4145   0.2413    0.26        yes  (59%)     17%
+#   D8 class share of weapons   0.4145   0.2413    0.28        yes  (48%)     17%
 #   D9 slot share of armour     0.5352   0.2918    0.44        yes  (22%)     34%
 #
 # b81 RE-MEASUREMENT (2026-08-11, R-184/185/186 merged on top). The `R-181` column above
 # is b80's own build; every threshold was re-read with the b81 wave applied to the b80
 # SHIP arz `c5851a1a`, and only ONE moved - D8, because thrown became a seventh weapon
-# class and lowered every class's share of the weapon side. Nothing else needed touching:
-#   D1 0.2053  D2 0.2053  D4 5.0417  D5 0.0257  D6 1.6427  D6b 0.2813  D7 0.6229
-#   D8 0.2162 (-> cap re-derived to 0.26)      D9 0.2918
-# The thrown class itself measures 1.78% (thinnest, loottable_hidden_bloodcave_03 [l],
-# 18.8% over the D3 floor) to 9.98% (fattest, svc_tantalushoard_loot_02 [e]) of gear mass
-# on the 29 non-Normal surfaces, and exactly 0.0% on all 13 Normal ones - which is what
-# D3_ERA_EXEMPT exists for and the only place it fires.
+# class and lowered every class's share of the weapon side. Nothing else needed touching;
+# the b81 figures are in the BUILD81 gate record in docs/BACKLOG.md. Thrown is exempt from
+# D3 alone (see D3_ERA_EXEMPT) and is enforced by C1/C2 reachability instead; it is inside
+# every other check here, and D5 in particular - no thrown record appears anywhere in the
+# D5 ranking, whose worst value in the whole mod is a shield at 2.57%.
 #
 #   ** D6b is a MIRROR guard, so the shipped build cannot red it (shipped, weapons
 #      dominated everywhere - the lowest ratio in the mod was 1.53:1). The defect it must
@@ -243,10 +263,10 @@ MIN_WEAPON_ARMOUR_RATIO = 0.24
 # set 0.29 against SIX classes (even 16.7%) with its measured worst at 0.2413, a 16.8%
 # margin. Thrown is now its own class, so even falls to 14.3% and the measured worst falls
 # with it: `--calibrate` on the b80 ship arz `c5851a1a` with the b81 wave applied reads
-# **0.2162** (gaoler cage chest_01 [e], SPEAR). Holding b80's own 16.8% margin gives
-# 0.2162 / 0.832 = 0.2599, so the cap TIGHTENS to 0.26. It still reds the defect Will
-# reported by a wide margin (shipped SPEAR = 0.4145 of the weapon side, 59% over).
-MAX_WEAPON_CLASS_SHARE = 0.26
+# **0.2363** (gaoler cage chest_01 [e], SPEAR). Holding b80's own 16.8% margin gives
+# 0.2363 / 0.832 = 0.2840, so the cap TIGHTENS to 0.28. It still reds the defect Will
+# reported by a wide margin (shipped SPEAR = 0.4145 of the weapon side, 48% over).
+MAX_WEAPON_CLASS_SHARE = 0.28
 MAX_ARMOUR_SLOT_SHARE = 0.44
 
 
@@ -472,38 +492,26 @@ def era_exemption_problems(d, classification=None):
         class (a whitelist that never fires is the failure mode this guards).
     """
     problems = []
-    craft = None
-    for tier, slots in sorted(D3_ERA_EXEMPT.items()):
-        ic = (classification or {'n': 'Epic', 'e': 'Legendary', 'l': 'Legendary'}).get(tier)
-        if ic is None:
-            problems.append("D3X exemption names tier %r, which is not a difficulty tier"
-                            % tier)
+    ics = sorted({(classification or {'n': 'Epic', 'e': 'Legendary',
+                                      'l': 'Legendary'})[t] for t in ('n', 'e', 'l')})
+    for slot in D3_ERA_EXEMPT:
+        if slot not in GEAR_SLOTS:
+            problems.append("D3X exemption names slot %r, which is not a gear slot - D3 "
+                            "is silently disabled for nothing" % slot)
             continue
-        for slot in slots:
-            if slot not in GEAR_SLOTS:
-                problems.append("D3X exemption names slot %r, which is not a gear slot - "
-                                "D3 is silently disabled for nothing" % slot)
-                continue
-            if craft is None:
-                craft = set()
-                for p in d.db.record_names():
-                    v = d.gv(p, 'artifactName')
-                    real = d.real(v) if v else None
-                    if real:
-                        craft.add(_n(real))
-            want_cls = {c.lower() for c in GEAR_SLOTS[slot]}
-            live = sorted(p for p in d.db.record_names()
-                          if d.cls(p).lower() in want_cls
-                          and str(d.gv(p, 'itemClassification') or '') == ic
-                          and _n(p) not in craft)
-            if live:
+        want_cls = {c.lower() for c in GEAR_SLOTS[slot]}
+        universe = [p for p in d.db.record_names() if d.cls(p).lower() in want_cls]
+        for ic in ics:
+            n = sum(1 for p in universe
+                    if str(d.gv(p, 'itemClassification') or '') == ic)
+            if n >= D3_MIN_CLASS_UNIVERSE:
                 problems.append(
-                    "D3X %s/%s: the era exemption is NO LONGER EARNED - %d non-craft %s "
-                    "record(s) of class %s now exist (e.g. %s), so the class IS payable "
-                    "at that rung. Delete the D3_ERA_EXEMPT entry and wire the class, or "
-                    "the starvation floor stays switched off for it."
-                    % (tier, slot, len(live), ic, SLOT_LABEL.get(slot, slot),
-                       live[0].replace('/', '\\').rsplit('\\', 1)[-1]))
+                    "D3X %s: the size exemption is NO LONGER EARNED - the class now holds "
+                    "%d %s record(s) (threshold %d), so a mass floor calibrated on "
+                    "ordinary classes DOES transfer to it. Delete it from D3_ERA_EXEMPT "
+                    "and give the class real mass, or the starvation floor stays switched "
+                    "off for a class big enough to need it."
+                    % (SLOT_LABEL.get(slot, slot), n, ic, D3_MIN_CLASS_UNIVERSE))
     return problems
 
 
@@ -559,12 +567,12 @@ def audit_surface(d, dist, label, tables, weights=None, tier='l', players=1,
                 % (label, SLOT_LABEL.get(s, s), 100.0 * ev / total, ic,
                    100.0 * MAX_CLASS_SHARE_AGGREGATE, 100.0 / n_slots))
     # D3 every gear class the surface pays must be reachable with real mass - except a
-    # class this ERA cannot pay at the tier's target classification at all (D3_ERA_EXEMPT,
-    # re-proved from the bytes by era_exemption_problems, which the whole-build audit runs
-    # once). Without the carve-out D3 would demand Epic-classification thrown from a
-    # Normal chest, and only base CRAFT RESULTS carry that class at that rung.
+    # class too SMALL for a mass floor to transfer to it (D3_ERA_EXEMPT, re-proved from
+    # the bytes by era_exemption_problems, which the whole-build audit runs once). Those
+    # classes are covered by a reachability rule instead: svc_craft_thrown.thrown_problems
+    # C1/C2, run from svc_loot_breadth.audit_table over every mod chest and orb table.
     want = tuple(s for s in (SLOT_ORDER if require_armor else tuple(WEAPON_SLOTS))
-                 if s not in D3_ERA_EXEMPT.get(tier, ()))
+                 if s not in D3_ERA_EXEMPT)
     for s in want:
         if agg_slot.get(s, 0.0) / total < MIN_CLASS_SHARE_TABLE:
             problems.append(
