@@ -671,6 +671,57 @@ REGISTRY = [
                             # assembled db. In-game confirmation launch-gated (name read-back proven
                             # from the rebuilt Text.arc in this lane).
                             # Negative test: py tools/patches/gorgon_vanilla_names.py --negtest
+    'red_uber_orbs',        # R-200 (Will 2026-08-10): "boar snatcher legendary spider should drop
+                            # a mystical orb like the other red uber monsters". "Mystical orb" is
+                            # literal - every genericbossorb_0N chest carries description
+                            # tagEndChest02, and base Text_EN defines tagEndChest02 = "Mystical
+                            # Orb" (b53 predicted this exact sentence). The Boar Snatcher is
+                            # um_boareater_40/42/44 (display tag tagAEMonsterName06; the RECORD is
+                            # named "boareater", which is why a filename search finds nothing) -
+                            # a base-game AE Boss-class SPIDER placed in PineForest04 +
+                            # SpartaOptCave03, carrying no treasureProxyName at all.
+                            # WHY NO GATE CAUGHT IT - TWO HOLES, BOTH CLOSED HERE. (1) There was
+                            # no orb-breadth gate at all: every orb wiring in the repo is a
+                            # hand-typed list (_BOSS_ORB_TARGETS, general_guardians, polis_vault,
+                            # diadochi, four_generals, devourer_kit, leinth_wave) and the only orb
+                            # GATES are uber_apex_orb's (the 8-record Toxeus roster + Leinth) and
+                            # general_guardians' own - R-99 already learned in this exact domain
+                            # that a typed list is how the Endless Hunt shipped orb-less.
+                            # (2) THE HOLE THAT ACTUALLY HID IT: every roster derivation in this
+                            # repo runs over the MOD db only, but the runtime resolution universe
+                            # is mod UNION BASE. The Boar Snatcher is base-only, so it was
+                            # invisible to every derivation and would have survived a naively
+                            # written class gate too. This module therefore derives its roster
+                            # over the UNION (it loads the base arz itself - 0.6s, cached - since
+                            # build_svc_database `del base_db`s long before the registry runs;
+                            # apply() REQUIRES it, verify() downgrades LOUDLY to mod-only, the
+                            # fx_dangling_cleanup B-GATE-HARDEN-1 idiom, never a silent pass).
+                            # CLASS: Monster.tpl + monsterClassification=='Boss' (the repo's own
+                            # word for RED - see _amend_boss_loot_orbs) AND (a) basename um_* (the
+                            # uber namespace uber_quest_drops swept for R-101) or (b) a
+                            # tagSVCMonster* display tag (our own ubers under a donor filename;
+                            # adds 3 records - Dagon, the Hades Marshal, Aithon - of which only
+                            # Aithon was a miss).
+                            # 55 red ubers measured, 41 already orbed, 14 missing -> 8 WIRED
+                            # (Boar Snatcher x3 -> orb01; Neferkha 32 -> orb02, whose terminal
+                            # as_ghosthero_32 is SHARED with 5 mummy heroes so the orb must ride
+                            # the uber; um_frost_36 -> orb02; um_phagia_44 -> orb03, its lower
+                            # twin um_phagia_34 was on orb02 already; Aithon 55 -> orb04;
+                            # Kravmoloch 74 -> orb04, NOT orb05 which R-99 reserves) + 6 EXEMPT
+                            # (4 transform shells whose TERMINAL carries the orb - the
+                            # _MN_ORB_SHELL precedent - and 2 dropItems=0 soul-summon copies),
+                            # each exemption re-proven mechanically so it cannot rot.
+                            # Base-only records are IMPORTED field-for-field first (a mod record
+                            # REPLACES its base counterpart wholesale, so a stub would delete the
+                            # spider's kit); apply() proves the import is base-identical except
+                            # the added field. Tier pins are cross-checked against the MEASURED
+                            # consumer bands (minimum distance, ties to the lower tier), so the
+                            # ladder is evidence rather than taste. Adds consumers only - never
+                            # edits an orb/pool/chest/table - so uber_apex_orb's orb01/orb04
+                            # FLOORS and its "orb05 carriers == the Toxeus roster" assertion both
+                            # stay green. Registered second-to-last so verify() reads the final
+                            # assembled db after every other orb writer.
+                            # Negative test: py tools/patches/red_uber_orbs.py --negtest <arz>
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
