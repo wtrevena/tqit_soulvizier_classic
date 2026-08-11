@@ -5110,11 +5110,29 @@ proof. Will's check: kill any uber that drops a Mystical Orb (a red-uber orb, Ch
 generic-orb uber) and expect helms / chest plates / bracers / greaves / shields out of the ORB at
 roughly the rate the cage chests now pay them.
 
-**ONE THING IS OWED TO THE `fix/craft-thrown-breadth` MERGE, and it is not hypothetical any more.**
-`BL-R181-DEBT-4` predicted that bucketing `WeaponHunting_RangedOneHand` with `bow` would be invalidated
-the moment that lane lands. Measured here by accident and worth recording: audited against a
-concurrently-built arz carrying that lane's content, **D8 bow reads 29.2-29.8% against its 29.0% cap on
-six of the new orb surfaces** - they are the thinnest weapon pools in the mod, so the mis-bucketing
-shows there FIRST. On the canonical build80 artifact the same check reads 0.2413. Do both halves of
-`BL-R181-DEBT-4` at that merge; this lane deliberately does not, because giving thrown its own slot
-before its content exists would red D3 for a class that pays nothing.
+**`BL-R181-DEBT-4` WAS OBSERVED LIVE HERE, THEN CLOSED BY b81'S OWN MERGE.** That debt predicted that
+bucketing `WeaponHunting_RangedOneHand` with `bow` would be invalidated the moment
+`fix/craft-thrown-breadth` landed. Measured here by accident, mid-flight, against an arz that lane had
+just built: **D8 bow read 29.2-29.8% against its then-29.0% cap on six of the new orb surfaces** - they
+are the thinnest weapon pools in the mod, so a mis-bucketed weapon class shows THERE first. b81 then
+merged and did both halves itself (thrown has its own slot in `WEAPON_SLOTS`/`SLOT_ORDER`;
+`MAX_WEAPON_CLASS_SHARE` re-derived 0.29 -> 0.28 for seven weapon classes). Re-verified after merging
+main into this lane: **D8's worst reading over all 57 surfaces is 0.2363.** The observation is kept
+because it is the evidence the debt was real.
+
+**RE-MEASURED AFTER `main` ADVANCED (b81, thrown as a real twelfth gear class).** `main` moved while
+this lane was in flight, so every number above was re-taken against `local/build81_run1_c502f173.arz`
+with the merge in place: distribution PASS on 57 surfaces across all 12 classes, orb / chest /
+craft-thrown gates PASS, **16 negatives red and 3 positive controls green**, registry 59 modules order
+`ba6fde285aad`, and the D5 pins all still earned (49-51 moved 0.0453 -> 0.0451, still above the 0.030
+global cap, so none went stale). The merge had exactly two conflicts, both ADDITIVE - each side had
+added an independent block - and this lane's negtest cases were renumbered N10/N11 to stop colliding
+with b81's N7-N9. **Blast radius, proven exactly:** every loot module EXCEPT `orb_armor_rows`
+reproduces the shipped b81 bytes identically on all 360 FixedItemLoot records; adding it changes
+exactly **15 records, 12 fields each, and nothing else**.
+
+**MEASURE FROM `local/`, NOT FROM `work/`.** Mid-lane, `work/SoulvizierClassic/Database/
+SoulvizierClassic.arz` was rewritten by a concurrent build (md5 `c502f173` at 01:53, against build80's
+`c5851a1a`). Two readings taken against it before that was noticed were discarded and re-taken. This is
+`BL-R181-DEBT-8` biting a second time; while a fleet is running, the committed artifacts in `local/`
+are the only safe baselines.

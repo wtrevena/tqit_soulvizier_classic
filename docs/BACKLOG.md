@@ -109,7 +109,9 @@ a pin that falls back under the cap reds as dead config.
   narrow set of high-band legendaries that overlap the unique tables - the same content D4's own
   docstring records as "this mod owns neither". Fixing it means widening base-game pools, which is a
   content decision, not a sweep.
-- **`BL-R181-DEBT-4` - ESCALATED WITH A MEASUREMENT.** It predicted that bucketing
+- **`BL-R181-DEBT-4` - CLOSED BY b81'S OWN MERGE; the measurement below is kept as the evidence it was
+  real.** Post-merge verification: thrown has its own slot and `MAX_WEAPON_CLASS_SHARE` was re-derived
+  0.29 -> 0.28, and D8's worst reading over all 57 surfaces is **0.2363**. It predicted that bucketing
   `WeaponHunting_RangedOneHand` with `bow` would be invalidated when `fix/craft-thrown-breadth` lands.
   Measured here against a concurrently-built arz carrying that lane's content: **D8 bow reads
   29.2-29.8% against its 29.0% cap on six of the new orb surfaces** - the thinnest weapon pools in the
@@ -119,20 +121,62 @@ a pin that falls back under the cap reds as dead config.
 - **`BL-R181-DEBT-1` / `-5` unchanged** and both are still Will's. This wave's in-game proof rides
   along with DEBT-1's cage run: kill any Mystical Orb uber and expect worn armour out of the ORB.
 
-**REPRODUCE ANY NUMBER IN THIS RECORD** (`<a>` = `local/build80_ship_c5851a1a.arz`, `<d>` =
-`local/build79_ship_883a31e2.arz`, the pre-R-181 defect baseline):
+**REPRODUCE ANY NUMBER IN THIS RECORD.** `<a>` = the CURRENT baseline
+`local/build81_run1_c502f173.arz` (post-merge; use `local/build80_ship_c5851a1a.arz` to reproduce the
+pre-merge column). `<d>` = `local/build79_ship_883a31e2.arz`, the pre-R-181 defect baseline. **Never
+measure from `work/` while a fleet is running** - see the header of this record.
 
 ```
 py tools/gate_loot_distribution.py <a> --apply                  # 57 surfaces, PASS
 py tools/gate_loot_distribution.py <a> --apply --calibrate      # worst observed, per check
 py tools/gate_loot_distribution.py <d>                          # the defect state -> 622 findings
 py tools/gate_orb_loot_breadth.py <a>                           # R-220's gate, 18 tables
-py tools/gate_chest_loot_breadth.py <a> --apply                 # R-180's gate, 35 tables
-py tools/debug/negtest_armor_breadth.py <a>                     # 13 negatives + 3 positive controls
+py tools/gate_chest_loot_breadth.py <a> --apply                 # R-180's gate, 51 tables
+py tools/debug/negtest_armor_breadth.py <a>                     # 16 negatives + 3 positive controls
 py tools/debug/negtest_orb_breadth.py <a>                       # 11 negatives
-py tools/patches/_check_registry.py                             # 58 modules, order 4a8297a0e59d
+py tools/patches/_check_registry.py                             # 59 modules, order ba6fde285aad
 ```
 
+
+### POST-MERGE RE-VERIFICATION (2026-08-11, after `main` advanced with b81 craft-thrown)
+
+`main` moved while this lane was in flight: `fix/craft-thrown-breadth` merged and **promoted thrown to
+a real twelfth gear class**, which changes the denominator of D2/D3/D8 and adds `D3_ERA_EXEMPT`. Every
+number above was therefore RE-MEASURED after merging main (`9b1ac82`, both conflicts additive - each
+side added an independent block, both kept). The two conflicts were
+`svc_armor_breadth.apply_wave` (their `craft_thrown_breadth` import next to this lane's
+`orb_armor_rows` import) and `negtest_armor_breadth` (their D3X cases next to this lane's; this lane's
+were renumbered **N10/N11** to stop colliding with their N7-N9).
+
+**BASELINE IS NOW `local/build81_run1_c502f173.arz`** (55,556,551 B, 51,247 records) - the arz b81
+built. Re-run against it with the merged code:
+
+| check | post-merge result |
+|---|---|
+| `gate_loot_distribution.py <arz> --apply` | **PASS - 57 surfaces, all 12 equipment classes** |
+| `gate_orb_loot_breadth.py` / `gate_chest_loot_breadth.py --apply` / `gate_craft_thrown_breadth.py` | **PASS** - 18 / 51 / all |
+| `negtest_armor_breadth.py` | **PASS - 16 negatives RED, 3 positive controls GREEN** (this lane's 4 + b81's 3 D3X + the 9 from R-181) |
+| `negtest_orb_breadth.py` | **PASS - 11/11** |
+| `patches/_check_registry.py` | **OK: 59 modules**, order `ba6fde285aad4fc60158fa368ae23cdab2a6087ac0860ca7c6e24e5c651aa4bb` |
+| calibration | D1 0.2079 / D2 0.2079 / D4 5.0417 / D5 0.0451 / D6 1.5950 / D6b 0.2812 / D7 0.2850 / **D7b 0.0443** / D8 0.2363 (new cap 0.28) / D9 0.2918 |
+
+**BLAST RADIUS, PROVEN EXACTLY.** Applying every loot module EXCEPT `orb_armor_rows` to the build80 arz
+reproduces the shipped build81 bytes **identically on all 360 FixedItemLoot records in the db**. Adding
+`orb_armor_rows` changes **exactly 15 records, 12 fields each, and nothing else** - the fifteen R-220
+orb tables and no others. That is the whole delta of this lane on the loot surface.
+
+**`BL-R181-DEBT-4` IS NOW CLOSED BY b81, NOT OWED BY THIS LANE.** The D8 bow reading of 29.2-29.8% that
+this lane measured mid-flight was taken against b81's intermediate arz, before its own merge landed;
+b81 did BOTH halves of the debt (thrown got its own slot in `WEAPON_SLOTS`/`SLOT_ORDER`, and
+`MAX_WEAPON_CLASS_SHARE` was re-derived 0.29 -> 0.28 for seven weapon classes). Verified post-merge:
+**D8 worst is 0.2363 against the 0.28 cap.** The observation is kept in the record because it is the
+evidence that the debt was real and that the new orb surfaces are where a mis-bucketed weapon class
+shows FIRST - they are the thinnest weapon pools in the mod.
+
+**THE FOUR D5 PINS SURVIVED THE MERGE AND ARE STILL EARNED.** Thrown items widen every surface's gear
+pool slightly, so the pinned shares moved DOWN a hair (49-51: 0.0453 -> 0.0451). All four remain above
+the 0.030 global cap, so none is stale - and the stale-pin check would have failed the gate if one had
+fallen under it.
 ## SHIP RECORD - R-181 ARMOUR BREADTH + LOOT DISTRIBUTION is **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/armor-loot-breadth` merge, tag `build80-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
@@ -1233,7 +1277,10 @@ surface. 0.24 reds that by 30%, and negtest N7 re-plants it so the number stays 
   14.3%). Note the Python files auto-merge cleanly against `fix/orb-loot-breadth`,
   `fix/craft-thrown-breadth` and `main` - only the three doc ledgers conflict, append-adjacent - which
   is exactly why this needs a written note: nothing will fail to tell you.
-  **ESCALATED 2026-08-11 with a MEASUREMENT, no longer a prediction** (`fix/orb-armor-rows`): audited
+  **CLOSED 2026-08-11 by b81's own merge (thrown got its own slot, `MAX_WEAPON_CLASS_SHARE` re-derived
+  0.29 -> 0.28); post-merge D8 worst = 0.2363. The measurement below is kept as the evidence the debt
+  was real, and as the note that the orb surfaces are where a mis-bucketed weapon class shows FIRST.**
+  Measured by `fix/orb-armor-rows` mid-flight, before that merge landed: audited
   against an arz a concurrent lane had just built carrying that lane's content, **D8 bow reads
   29.2-29.8% against its 29.0% cap on six of the new orb surfaces** - the thinnest weapon pools in the
   mod, so the mis-bucketing shows THERE first and shows as a GATE FAILURE, not as a silent skew. On
