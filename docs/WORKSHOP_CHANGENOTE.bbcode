@@ -1,15 +1,14 @@
-[h2]Fixed: Atlantis, Ragnarok and Eternal Embers no longer appear on the portal page[/h2]
+[h2]Fixed: the mystical orbs that uber monsters drop can now pay every weapon class, spears included[/h2]
 
-[b]This mod is capped at Immortal Throne, and the travel window finally says so.[/b] If you own the Titan Quest expansions, opening a rebirth fountain or teleport showed act tabs for Atlantis, Ragnarok and Eternal Embers alongside Greece, Egypt, Orient and Immortal Throne. Those acts are not part of this mod and were never meant to be offered.
+[b]The orbs had the same hole the chests did.[/b] Every uber monster's mystical orb rolled its weapons from a list that covered axes, clubs, swords, bows and staves and quietly left out spears. A spear of any quality was impossible out of 15 of the 18 orb loot tables, on every difficulty. The chest half of this was fixed in an earlier update; this is the other half of the loot economy.
 
 [list]
-[*][b]The portal page now lists exactly four acts:[/b] Greece, Egypt, Orient and Immortal Throne. Every legitimate destination on those four pages is untouched, including Olympus and all of Hades.
-[*][b]The quest log lost its DLC act tabs too.[/b] The same record hole put Atlantis, Ragnarok and Eternal Embers tabs in the quest log. They are gone for the same reason.
-[*][b]Nothing was removed from the game you own.[/b] This changes only what this mod's act-selection screens offer. Your expansions are untouched outside the mod, and players who own no expansions see no difference at all: they never had those tabs.
-[*][b]The cause.[/b] The portal window's page list is a single database record. Soulvizier shipped an Immortal-Throne-era copy of it with four pages, but this port's user-interface cleanup pass deleted that copy, so the base game's own seven-page version took over. The four base pages are now imported back faithfully with the three expansion pages removed.
-[*][b]A permanent gate so it cannot come back.[/b] The build now fails loudly if any expansion act reappears on either screen, and equally if one of the four legitimate acts goes missing.
+[*][b]Every orb tier now draws from the full weapon set.[/b] Axe, club, sword, bow, staff and spear, at the orb's own difficulty. Spears go from zero reachable to 18 on Normal, 9 on Epic and 22 on Legendary out of every orb tier.
+[*][b]More distinct items reachable per orb.[/b] Tier by tier on Legendary: 194 to 260, 138 to 241, 196 to 262, 258 to 308. The Toxeus apex orb was already correct and is unchanged.
+[*][b]The weapon and shield rows fire more often.[/b] Weapons go from about 13 percent to 40 percent and shields from about 13 percent to 30 percent, which are the rates the Toxeus apex orb has used since the chest update. The whole ladder now behaves the same way.
+[*][b]Nothing was taken away.[/b] The spawn count equations, gold, relic row, potion row, both armour rows and the apex orb's larger payout are byte for byte what they were. No entry was removed from any orb and no drop rate was lowered.
+[*][b]Normal difficulty stays Normal.[/b] The difficulty an orb is opened on decides which item tier it can pay, so no legendary gear appears on Normal.
+[*][b]A permanent gate so it cannot come back.[/b] The build now fails loudly if any uber orb stops being able to pay a weapon class, if a pool collapses, or if a new uber quietly drags an unrelated loot table into the sweep.
 [/list]
 
-[i]This update changes two user-interface records only. No drop rate, loot table, stat, skill, monster or map was touched. The Epic and Legendary soul names, the Boar Snatcher orb, the Spartan Crypt entrance and the chest breadth work from the previous updates are all included.[/i]
-
-[i]Known and being worked on: an Atlantis owner can still reach Atlantis by boat from Rhodes. That voyage is a separate fix and is tracked.[/i]
+[i]This update changes loot tables only. No stat, skill, monster, quest or map was touched. The portal page cap, the Epic and Legendary soul names, the Boar Snatcher orb, the Spartan Crypt entrance and the chest breadth work from the previous updates are all included.[/i]

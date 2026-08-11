@@ -1,5 +1,41 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD79-DEV DEPLOYED TO DEV (2026-08-10) - R-220 uber orb loot breadth; arz-ONLY
+> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `883a31e2b87f03a54a51c550147c8242`**
+> (55,551,723 B, 51,236 records), copied with md5 source==dest verification **while TQ.exe was NOT running**
+> (nothing killed, Steam not restarted). **1 of 62 DEV files changed**, 0 removed; the 61 siblings were
+> re-hashed after the copy and are byte-identical. det-2x **byte-IDENTICAL** across two independent full builds.
+> - **What it is:** R-220, Will's order "for the mystical orbs that the uber monsters drop, the items should
+>   drop with increased breadth as well so all classes of items could be dropped". R-180 fixed the CHESTS;
+>   the ORBS carried the identical collapsed weapon row in a second donor family (`1h_all_*01` = axe/club/
+>   sword, with bow and staff named directly and SPEAR forgotten), so **0 spears of any quality were
+>   reachable from 15 of the 18 uber orb tables, at every tier and every difficulty**. Scope is DERIVED from
+>   the consumer (51 uber carriers -> 7 proxies, 6 in reach -> 18 tables), never typed. 15 tables now name
+>   the tier-correct `svc_unique_weapons_{n,e,l}01` master at weight 800, with the weapon row at 40% and the
+>   shield row at 30% (orb05's shipped values since build75). Spear **0 -> 18 / 9 / 22**.
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Text.arc a9fed7ba` / `Levels.arc 7a7ca9ac` (TESTHUB,
+>   the DEV variant) / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged on the DEV
+>   surface. 0 new tags authored, so `validate_tags` PASSES against the EXISTING `Text.arc`.
+> - **Record-diff vs the shipped `f6638462`: ADDED 0 / REMOVED 0 / MODIFIED 15, ZERO unexplained** - every one
+>   a loot table with exactly 4 changed fields, and the tier law is readable off the diff (every `[n]` table
+>   took `n01`, every `[e]` took `e01`, every `[l]` took `l01`). The 3 apex tables do not appear at all.
+> - **NEW permanent gate:** `tools/gate_orb_loot_breadth.py` + the in-build `orb_loot_breadth.verify()`
+>   sharing one implementation (O1-O6), negative-tested **11/11**. A second `apply()` on the finished arz is
+>   a measured no-op (0 tables widened, 0 chance raises), so the payout can never be double-raised.
+> - **Contracts: 0 P0 / 0 P1 / 4492 P2, and the build78 baseline under the identical config also gives 4492** -
+>   zero new violations, measured both directions. Gate record: `docs/BACKLOG.md` -> BUILD79-DEV GATE RECORD.
+>   Ruling: `docs/WILL_RULINGS.md` -> R-220.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `f6638462` (the build78 arz this replaced);
+>   the same bytes are kept at `local/build78_ship_f6638462.arz`, this artifact at `local/build79_run1_883a31e2.arz`.
+> - **Will's in-game check:** kill any orb-dropping uber and open the Mystical Orb - spears should now be
+>   possible, with visible class variety across kills. Same trip as R-180: the Prison of Souls / Hades Palace
+>   floor 4 **Unbound Gaoler** drops a tier-4 orb; the **Boar Snatcher** (Pine Forest / SpartaOptCave03) is the
+>   low-level tier-1 control. Full note at the top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and restart
+>   Steam first.
+> - ⚠️ **The higher DROP RATE is a separable, un-asked-for half and is vetoable in one line**
+>   (`svc_orb_breadth.RAISE_ROW_CHANCES = False`); the breadth half is untouched either way. See the BACKLOG
+>   record's closing section.
+
 > ## BUILD78 SHIPPED TO DEV **AND** STEAM (2026-08-10) - R-210 portal-page DLC cap; arz-ONLY
 > **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
 > `Database/SoulvizierClassic.arz` = `f663846233295da3e8824bfa4d8925c8`** (55,551,546 B, 51,236 records).
