@@ -31,6 +31,7 @@
 | `HANDOFF_LIVE_STATE.md` | The single current-state board: what/where, build27 sizes+MD5s, deploy asymmetry, standing rules. | 2026-07-08 | LIVE |
 | `BACKLOG.md` | The single bug/queue board (live-test findings + standing queue + Workshop feedback triage). | 2026-07-08 | LIVE |
 | `CUT_CONTENT.md` | Declared-unreachable-by-design areas (so the map contract suite does not flag them). | 2026-07-08 | LIVE |
+| `PORTAL_PAGE_DLC_CAP.md` | R-210: where the in-game portal page's act list comes from, why the DLC pages leaked in, the arz-record cap + its gate, and the still-open Rhodes-to-Atlantis travel leak. | 2026-08-10 | LIVE |
 
 ## RECIPE - how-to manuals & release procedures
 
@@ -62,6 +63,7 @@
 |---|---|---|---|
 | `MASTERY_AUDIT.md` | All 10 masteries + 2 DLC audit (0 port defects; protected Occult/Hunting trees). | 2026-07-07 | RECIPE |
 | `UBER_WEAPONS_AUDIT.md` | DRX "supra" ultra-craftable set audit (Blood Whisper + Paragon verified). | 2026-07-07 | RECIPE |
+| `CHEST_DROP_MATRIX.md` | Will's drop-breadth reference: what every mod chest can and cannot pay, per weapon class / armour slot / craft component, parsed from the shipped arz `16994072`. | 2026-08-10 | RECIPE |
 | `IT_ENDPOINT_AUDIT.md` | Does the playable arc end at Immortal Throne? (the act-portal cap). | 2026-07-07 | RECIPE |
 | `SOULS_COMPLETENESS_AUDIT.md` | Souls roster completeness audit + tag list. | 2026-07-06 | RECIPE |
 | `BOSS_SOULS_DESIGN.md` | Boss-souls design doc (the ~60-soul roster, per-tier values). | 2026-07-06 | RECIPE |

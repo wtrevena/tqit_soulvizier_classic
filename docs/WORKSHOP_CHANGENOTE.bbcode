@@ -1,13 +1,15 @@
-[h2]Fixed: red uber monsters that dropped no loot orb[/h2]
+[h2]Fixed: Atlantis, Ragnarok and Eternal Embers no longer appear on the portal page[/h2]
 
-[b]A player report, and the audit it triggered.[/b] The Boar Snatcher - the red legendary spider in the Greek pine forest and the Spartan optional cave - died without dropping a Mystical Orb, while the other red uber monsters all drop one. He does now.
+[b]This mod is capped at Immortal Throne, and the travel window finally says so.[/b] If you own the Titan Quest expansions, opening a rebirth fountain or teleport showed act tabs for Atlantis, Ragnarok and Eternal Embers alongside Greece, Egypt, Orient and Immortal Throne. Those acts are not part of this mod and were never meant to be offered.
 
 [list]
-[*][b]The Boar Snatcher drops a Mystical Orb.[/b] All three of his level variants were wired to the same generic boss orb the other low-level red ubers pay out. He is a base-game monster the mod had never touched, which is exactly why he slipped through: every drop audit this mod had ever run looked only at records the mod itself owns, and he is not one of them.
-[*][b]Seven more red ubers were silently orb-less, and are now fixed too.[/b] Once the audit was widened to the real runtime world - the mod plus the base game together - it found 55 red uber monsters, of which 14 paid no orb. Neferkha, the frost uber, the higher Phagia, Aithon in the Olympian Arena and Kravmoloch all now drop an orb matched to their level band. Six more are deliberate exceptions and were proven to be so: four are transformation shells whose final form already carries the orb, and two are summoned copies that are not supposed to drop anything at all.
-[*][b]A permanent gate so this class of bug cannot come back.[/b] Every orb in this mod used to be attached by a hand-typed list, which is how monsters got missed. The build now derives the whole red uber roster from the data and fails loudly if any red uber ships without an orb, with each exception having to re-prove itself every build.
+[*][b]The portal page now lists exactly four acts:[/b] Greece, Egypt, Orient and Immortal Throne. Every legitimate destination on those four pages is untouched, including Olympus and all of Hades.
+[*][b]The quest log lost its DLC act tabs too.[/b] The same record hole put Atlantis, Ragnarok and Eternal Embers tabs in the quest log. They are gone for the same reason.
+[*][b]Nothing was removed from the game you own.[/b] This changes only what this mod's act-selection screens offer. Your expansions are untouched outside the mod, and players who own no expansions see no difference at all: they never had those tabs.
+[*][b]The cause.[/b] The portal window's page list is a single database record. Soulvizier shipped an Immortal-Throne-era copy of it with four pages, but this port's user-interface cleanup pass deleted that copy, so the base game's own seven-page version took over. The four base pages are now imported back faithfully with the three expansion pages removed.
+[*][b]A permanent gate so it cannot come back.[/b] The build now fails loudly if any expansion act reappears on either screen, and equally if one of the four legitimate acts goes missing.
 [/list]
 
-[i]No drop rate was lowered and no existing chest, orb or loot table was changed - this update only adds orbs to monsters that had none. The Spartan Crypt entrance fix and the chest breadth work from the previous update are included.[/i]
+[i]This update changes two user-interface records only. No drop rate, loot table, stat, skill, monster or map was touched. The Epic and Legendary soul names, the Boar Snatcher orb, the Spartan Crypt entrance and the chest breadth work from the previous updates are all included.[/i]
 
-[i]Credits: [b]amgoz1[/b] for Soulvizier and the emblem, used with permission - [b]soa[/b] for Soulvizier AERA, the merge base for this Anniversary Edition port - [b]Dragonlord[/b] for DRX.[/i]
+[i]Known and being worked on: an Atlantis owner can still reach Atlantis by boat from Rhodes. That voyage is a separate fix and is tracked.[/i]
