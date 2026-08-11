@@ -1,33 +1,42 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> ## 🆕 R-250 (2026-08-11): THE DEVOURER OF BLOOD NOW WEARS THE DEMONS' BLACK SHROUD
+> ## 🆕 R-250 (2026-08-11): THE ENSLAVER OF SOULS NOW WEARS HIS DEMONS' BLACK SHROUD, ALL THE TIME
 > **⚠️ BUILT, NOT YET DEPLOYED** (branch `fix/toxeus-shroud`; it goes out with the next build).
 > **Fully quit TQ and restart Steam before testing** (standing rule).
 >
 > **First, the name.** You wrote *"toxeus the murderer, devourer of souls"*. There is no Devourer of
-> Souls - the mod has a **Devourer of BLOOD** and an **Enslaver of SOULS** - so we picked from the data
-> instead of guessing: the **Enslaver already got that shroud** (monster and all three summon tiers,
-> live since build83), and the **Devourer of Blood had no shroud at all** while his minions are
-> literally Blood Demons. So this went on the **Devourer of Blood**. **If you meant a different one,
-> say so and it moves in one line.**
+> Souls - the mod has a **Devourer of BLOOD** and an **Enslaver of SOULS**. What decided it was your
+> other clause, *"the same one that his demon summon guys have"*: the **Enslaver's** shadow marauders
+> wear that black shroud (you confirmed it yourself - *"the demons that he summons have the proper
+> black shroud"*), while the **Devourer's** minions are Blood Demons with red blood effects and no
+> shroud to copy. So this went on the **ENSLAVER OF SOULS**. If you meant the other one, say so - it
+> moves in one line.
 >
-> **What he had before:** no body shroud whatsoever. What looked like smoke was two small puffs on his
-> **hands** (his black-poison effect), not something around him.
+> **Why you were right to file it a third time.** His demons' shroud is not a setting we could copy;
+> it is **built into their model**, which is why they smoke constantly, even standing still. What he
+> had instead was (a) smoke that only plays while he is RUNNING, and he is a caster who stands still,
+> (b) a version that only switched on once a fight started, and (c) both of those came out of his
+> **hands**, not from around him. On top of that, the fix that removed his green glow last week moved
+> him onto a model with no built-in smoke at all - so he ended up with nothing. All three are fixed.
 >
 > **THE TEST - two places, because there are two of him:**
-> 1. **The world boss.** Fight the Devourer of Blood (the hidden-chest secret). He should be wrapped in
->    the **same black smoke the Enslaver's shadow marauders wear**, standing still as well as moving.
-> 2. **The summon.** If you have his soul, summon him. The **pet must look the same as the boss** -
->    that is the half that was missed last time on the Enslaver, so it is worth the extra look.
+> 1. **The summon.** Summon the Enslaver and just **stand there, out of combat, doing nothing**. That
+>    is the whole point of this fix: black smoke should be wrapping his body **immediately and
+>    constantly**, not only once something attacks. Compare him side by side with his own Enslaved
+>    Shadow Marauders - it should be the same smoke.
+> 2. **The world boss.** Fight the Enslaver of Souls himself; same look, standing and moving.
 >
-> **THE ONE THING TO WATCH FOR, honestly flagged:** his older **hand** smoke is still there underneath
-> the new shroud, and that hand effect uses an asset we have never confirmed the colour of - notes in
-> the repo call it green-rendering. If he reads **green, or green-and-black**, that is a real finding,
-> not you imagining it: say so and we delete or repoint the hand effect. Nobody has seen this in game
-> yet, so your eye is the only test that counts.
+> **WHAT TO WATCH FOR, honestly flagged:** nobody has seen this in game - your eye is the only test
+> that counts. Two specific things worth reporting: is the smoke **around his body** (we hung it at his
+> waist, because his skeleton does not have the attach point his demons' model uses), and is it **too
+> thick / always-on annoying** now that it never switches off. Either is a one-line change.
 >
-> **NOT CHANGED, on purpose:** the **Endless Hunt** (already black via his own mesh) and **Toxeus, End
-> of All Things** (the crafted supra pet). Tell us if you want the End of All Things shrouded too.
+> **NOT CHANGED, on purpose - and one of them is a question for you:**
+> - The **Devourer of Blood** has **no shroud either** (his only effect is two small black-poison puffs
+>   on his hands). We did not touch him, because you did not ask and crimson is his design.
+>   **Do you want him shrouded too, and in what colour?**
+> - The **Endless Hunt** already has this smoke built into his model. Nothing to do.
+> - **Toxeus, End of All Things** (the crafted supra pet) - still your call whether he gets his own look.
 
 > ## 🆕 R-211 (2026-08-11): ATLANTIS IS UNREACHABLE NOW, THE SHIP TOO (not just the portal page)
 > **✅ LIVE ON DEV as `build82` (arz `09a0f51d`).** arz-only (no map / quest / Text change).
