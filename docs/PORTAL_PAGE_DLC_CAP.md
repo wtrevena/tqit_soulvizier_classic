@@ -8,6 +8,15 @@
 > **Standing ruling this enforces (Will, 2026-07-10, BACKLOG):** "lets not make atlantis or anything
 > past immortal throne reachable for now and we will fine tune immortal throne then if we want to
 > add in the other areas later then we can."
+>
+> ⚠️ **AMENDMENT 2026-08-10 (R-211, branch `fix/atlantis-voyage-cap`): section 8's
+> `BL-PORTALCAP-DEBT-1` is CLOSED.** The Rhodes -> Gadir -> Atlantis boat chain this doc measured and
+> parked is now capped, arz-only, in `docs/ATLANTIS_VOYAGE_CAP.md`. The chosen layer was option (1)
+> from section 8, extended: the Rhodes Marinos `DLCActorSpawner` loses its `actorToSpawn` (the
+> template's declared default is ""), the two boundary boat captains are hidden
+> (`startVisible=0` + `IncludeInMap=0`), and both Tartarus act portals get the A5 AND-unsatisfiable
+> DLC gate. Options (2) and (3) were NOT used: the mod-`XPack3`-archive shadowing question is still
+> unproven and no map rebuild was needed.
 
 ---
 

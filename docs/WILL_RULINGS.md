@@ -4365,6 +4365,57 @@ list entry: `XPack3/Quests/x3mq_AtlantisAdventure.qst` is registered at index 21
 are placed in `Rhodes_CityFinal_01` on the mandatory spine. An Atlantis-DLC owner can still SAIL to
 Atlantis. That leak stays OPEN as `BL-PORTALCAP-DEBT-1`; it needs its own lane and Will's sign-off on
 the layer. See `docs/PORTAL_PAGE_DLC_CAP.md`.
+
+**AMENDMENT 2026-08-10:** the sail leak is now CLOSED by **R-211** (branch `fix/atlantis-voyage-cap`).
+`BL-PORTALCAP-DEBT-1` is RESOLVED.
+
+---
+
+## R-211 [2026-08-10] IMPLEMENTED (branch `fix/atlantis-voyage-cap`) - no DLC act may be REACHABLE, not merely un-listed
+
+**VERBATIM (Will, 2026-08-10, on the R-210 report):** Atlantis is disabled in this mod. R-210 removed
+the Atlantis PAGE and left the SHIP; this lane closes the last access path.
+
+R-211 is the travel half of the same standing IMMORTAL-THRONE CAP ruling (Will, 2026-07-10: "lets not
+make atlantis or anything past immortal throne reachable for now and we will fine tune immortal
+throne then if we want to add in the other areas later then we can"). Read as the general rule:
+**a DLC act must be UNREACHABLE, and an act-selection surface being clean is not the same thing as
+the act being unreachable.** Every future cap lane enumerates transit routes, not list entries.
+
+**WHY IT SURVIVED THE OTHER THREE CAPS.** Both A5 caps are POST-HADES transitions and R-210 was UI
+only. **Atlantis branches from RHODES, mid-Immortal-Throne**, on the mandatory Olympus -> Rhodes ->
+Hades spine, so no prior cap ever touched it.
+
+**THE ROUTE.** `x3mq_Marinos_Rhodes` has ZERO static placements in our `world01.map` and enters the
+world ONLY through the `DLCActorSpawner` `x3mq_marinos_rhodes_spawner.dbr` (placed once, in
+`Rhodes_CityFinal_01`). Talking to him fires `x3mq_AtlantisAdventure.qst` (map QUESTS idx 211, inside
+the 255-entry load window) -> `Action_BoatDialog(rhodes_boatmantogadir)`, the only transition from the
+reachable Immortal-Throne world into the XPack3 act; the chain ends at
+`Action_BoatDialog(gadir_boatmantoatlantis)`. `XPack3TartarusPortal.qst` (idx 205) unlocks the
+Tartarus act portal from Gadir or Corinth.
+
+**LAYER (and why the quest layer is unavailable).** All 20 XPack3 quests are registered under the
+`XPack3/Quests/...` namespace, so the A5 md5-full-registry-path trap applies verbatim and a mod quest
+at the plain `Quests.arc` root would ship inert. So: DB-record cap, the A5 pattern (a `.dbr`'s
+identity IS its record path; the mod `.arz` overrides the base `.arz` per path, runtime-confirmed).
+**arz-only: no map rebuild, no `Quests.arc` change, so neither deploy coupling is engaged.**
+
+**SIX OVERRIDES, each on a shape the base game itself ships.** Delete `actorToSpawn` on both
+`DLCActorSpawner` records (the template declares it `file_dbr` / `defaultValue ""`, so absence IS the
+declared default); hide the two boundary boat captains with `startVisible=0` + `IncludeInMap=0`
+(`startVisible=0` ships on 604 retail records; `IncludeInMap=0` is the A5 minimap-ghost lesson; and
+NO quest in ANY of the five base quest archives fires `Action_ShowNpc` at either captain, so nothing
+can undo it); and give both Tartarus act portals the A5 AND-unsatisfiable DLC gate. `dlcRequirement`
+is deliberately left alone (a picklist; deleting it could read as "no DLC required"). The Malta /
+Hesperides captains and every RETURN boatman are deliberately untouched - interior to an act that is
+now unreachable, and the return boats are the anti-strand path.
+
+**GATE.** `tools/gate_atlantis_voyage_cap.py`, fail-loud, negative-tested (4 planted defects, one of
+them a COLLATERAL xpack3 override, so the gate fails on over-reach as well as under-reach), wired
+in-memory and on the WRITTEN `.arz`. Its V5 check proves the DERIVED list of resolvable
+Atlantis-transit routes is EMPTY. **NOT PROVEN IN-GAME** (`BL-VOYAGECAP-DEBT-1`): the one-line check
+needs an Atlantis-DLC owner - after Typhon, walk Rhodes and find no Marinos and no captain offering
+Gadir. See `docs/ATLANTIS_VOYAGE_CAP.md`.
 ---
 
 ## R-181 [2026-08-10] IMPLEMENTED (branch `fix/armor-loot-breadth`, module `tools/patches/armor_loot_breadth.py`) - armour must drop like armour, and no class may run away with the run
@@ -4798,6 +4849,71 @@ row AND its guaranteed slot, testhub and Steam alike.
 **MEASURED RESULT:** legendary thrown reachable from a Legendary chest **0 -> 5**, from an Epic chest
 **0 -> 5**, from Normal **0 -> 0** (2 non-legendary thrown instead). The class-breadth gate family
 grows the C1/C2 rules so a regression reds; 9/9 negative tests behave as specified.
+
+## R-184/185/186 SHIPPED ADDENDUM (2026-08-11, `build81-dev` + `build81-ship`, arz `f1671207`)
+
+Shipped after the b80 merge. Everything below is MEASURED on the built arz; the rulings above are
+unchanged in substance, and the two numbers that moved are corrected here rather than edited silently.
+
+**THE MERGE FOUND SOMETHING NEITHER LANE COULD SEE ALONE, AND IT WAS WORTH THE ROUND TRIP.** b80
+(R-181) left a written merge hazard in `tools/svc_loot_distribution.py` (`BL-R181-DEBT-4`): it had
+bucketed `WeaponHunting_RangedOneHand` into the `bow` slot because nothing paid that class yet, and it
+listed the two things the merging lane owed. Both are now done - thrown has its own slot (12 gear
+classes, not 11) and `MAX_WEAPON_CLASS_SHARE` was re-derived for seven weapon classes, **0.29 ->
+0.28** (measured worst 0.2363 SPEAR, b80's own 16.8% margin; still reds the shipped 0.4145 by 48%).
+The debt is DISCHARGED.
+
+**THE FIRST ATTEMPT AT THE THIRD CONSEQUENCE WAS WRONG, AND THE RECORD SAYS SO.** Giving thrown its
+own slot put it inside D3, b80's 1.45% starvation floor. It failed on 9 of 42 surfaces, so round 1 of
+the merge raised the class to full parity mass (1350) and flattened the four supra to uniform weights
+to satisfy D5. Every gate went green. It was still wrong, and only turning the numbers back into what
+a player sees showed it:
+
+| six-chest Gaoler cage run, Legendary | at parity (1350) | AS SHIPPED (250) |
+|---|---:|---:|
+| thrown items per run | 6.48 | **1.26** |
+| a SPECIFIC craft-only supra thrown | 1.30 | **0.081** |
+| a SPECIFIC plain legendary SPEAR | 0.44 | 0.44 |
+| supra thrown vs plain spear | **2.9x MORE common** | **5.4x rarer** |
+
+A cage run handing Will 1.3 Charon's Tolls is the same shape as the report he already filed against
+this wave family (*"you overcorrected, that run 4 scorpions tail spears dropped"*), and it would gut
+the craft chain R-184 and R-185 exist to repair. **No gate would ever have complained.**
+
+**ROOT CAUSE, AND THE RULE THAT REPLACED IT.** D3's floor was calibrated on this mod's ordinary gear
+classes. MEASURED whole-database universe per class at its own target classification:
+
+> **Legendary:** thrown **5** | bow 23 | mace 24 | SPEAR 24 | staff 25 | sword 28 | legs 33 | shield 33 | arms 37 | helm 39 | axe 41 | torso 71
+> **Epic:** thrown **3** | SPEAR 32 | bow 33 | mace 37 | staff 38 | sword 44 | legs 53 | shield 59 | axe 66 | arms 68 | helm 80 | torso 123
+
+Thrown is **4.6x smaller than the smallest ordinary class**. A mass floor written for 23 records does
+not transfer to 5. So thrown is exempt from D3's MASS floor (`SLD.D3_ERA_EXEMPT`, threshold
+`D3_MIN_CLASS_UNIVERSE = 12`, half the smallest ordinary class) - **and not from scrutiny**: "the
+class is payable" is still enforced, by REACHABILITY instead of mass (C1/C2 over all 51 mod chest
+tables and all 18 uber orb tables). The class may be thin; it cannot vanish. Three negatives prove the
+exemption reds when it stops being earned, reds on a typo'd slot name, and is load-bearing at all
+(removing it produces 22 D3 thrown findings, so it is protecting something real).
+
+**TWO CORRECTIONS OF RECORD to R-186 above:**
+1. The thrown master weight is unchanged at **250**, but it is no longer a literal - it is
+   `SLB._CLASS_WEIGHT // 4`, so a future balance lane re-scales thrown with everything else instead of
+   silently shrinking it, which is exactly what b80 did to the hard-coded number. R-186 derived the
+   quarter from an ESTIMATE ("a class weight buys ~20 records"); the measured smallest ordinary class
+   is 23, so 5/23 is a quarter and **the original ratio was right for a better reason than it gave**.
+2. R-186's quoted shares were against the pre-b80 master (7 members, total 6100). Against b80's master
+   (total 8100) they are **e/l 250/8350 = 2.99%** and **n 100/8200 = 1.22%** of a weapon-master roll.
+
+**R-184 AS SHIPPED, measured on the built arz:** mythic formulas now reach every Normal act table at
+**1.478% / 1.554% / 1.596% / 1.423%** (acts 1-4) - below the base game's own Epic 2% and Legendary 5%,
+as ruled. Normal craftable coverage **42/42**; legendary GEAR reachable from the Normal weapon branch
+**0 of 116 leaves**, and from the Normal thrown table **0 of 2**.
+
+**R-185 AS SHIPPED:** 82 distinct reagents = **22 MI/green** (exempt, each proven monster-farmable) +
+54 ordinary + 6 artifact + **0 missing**; **61 reachable from a Legendary chest**; thinnest non-MI
+spread **19 of 19** legendary chest surfaces (floor 10). All 42 craftables completable. *(The "19
+MI/green" in R-185 above counted the ORIGINAL 78-reagent universe; the repoint retires the
+`mi_l_machae` ghost and introduces the three green vit wands, so 19 - 0 + 3 = 22 in the 82-reagent
+universe. Same roster, different denominator.)*
 ---
 
 ## Uber orb loot breadth (new section; decade 220-229, opened 2026-08-10, lane `fix/orb-loot-breadth`)

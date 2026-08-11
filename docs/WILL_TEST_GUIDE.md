@@ -1,5 +1,47 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-184/185/186 (2026-08-11): THE CRAFT CHAIN - FORMULAS ON NORMAL, EVERY REAGENT FARMABLE, THROWN LEGENDARIES DROP
+> **✅ LIVE ON DEV as `build81` (arz `f1671207`).** arz-only (no map / quest / Text change).
+> **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is measured on
+> the shipped build, not estimated.
+>
+> **THREE THINGS TO LOOK FOR, in the order they are quickest to check:**
+>
+> **1. Mythic Formulas can now appear on NORMAL - but legendary ITEMS still cannot.**
+> Play a Normal-difficulty character and open mod chests (the Gaoler cage is the densest, but any of
+> them works - this also applies to ordinary monster formula drops, not just chests). Mythic Formulas
+> for the uber craftables are now possible: they sit at **~1.5% of a formula roll**, deliberately
+> **rarer than the base game already makes them on Epic (2%) and Legendary (5%)**, so this is a "over a
+> session you should see one or two", not "every chest". What you must **NOT** see on Normal is a
+> legendary ITEM - that is unchanged and re-proved: the Normal weapon branch reaches **116 items, 0 of
+> them Legendary**, and the new thrown table on Normal reaches **2 items, 0 Legendary**.
+> *If a legendary item drops on Normal, that is a bug - tell me and I will treat it as P0.*
+>
+> **2. Farm Legendary and the reagents accumulate - no specific boss, no specific area.**
+> All **42** uber craftables are now completable. Before this build, **seven** of them could not be
+> finished at all by anyone playing this mod: Ananke's Canvas, Mortok's Skull, The All-Seeing Eye, and
+> the four thrown ones (Charon's Toll, Hati, The Last Word, Sanguine Orbit) - the thrown four named
+> **Ragnarok items this mod's database does not contain**, so their recipes were dead ends.
+> Now: **61 of the 82 reagents drop from Legendary chests**, and every one of them is payable by **19
+> of 19** legendary chest surfaces, so no single boss or area gates anything. The 22 that stay
+> monster-specific are the **green / Monster Infrequent** items you exempted - and each one is now
+> *proven* to have a live monster that drops it (one green had no live carrier at all; it is
+> chest-placed instead).
+>
+> **3. The legendary thrown weapons drop.** They could not drop from anything before - there was no
+> unique one-hand-ranged loot table in the whole database, so one was authored.
+> Expect **about 1.3 thrown weapons per six-chest Gaoler cage run** on Legendary. Most of those are the
+> ordinary DRX vit wand; the four craft-tier ones stay prizes at **~0.08 per run each**, which is
+> roughly **five times rarer than any specific legendary spear**. That is deliberate: they are still
+> meant to be crafted, and a chest handing you one should feel like luck.
+> ⚠️ **This is the number I most want your eye on.** I built a version where the thrown class carried
+> a full class's weight - it looked correct by every automated check, and it paid **1.3 of each craft
+> weapon per run**, which would have made crafting them pointless. I rebuilt it. If it still feels too
+> generous (or too stingy) in play, it is one constant and one line to change.
+>
+> **Where to go:** Prison of Souls / Hades Palace floor 4, kill Alkyoneus the Soul-Gaoler, open all 6
+> cage chests, 2-3 runs. Same trip as the last three builds, so you can compare directly.
+
 > ## 🆕 R-220 (2026-08-10): THE MYSTICAL ORBS NOW PAY EVERY CLASS TOO - SPEARS INCLUDED
 > **✅ LIVE ON DEV AND ON STEAM as `build79` (arz `883a31e2`).** arz-only (no map/quest/Text change).
 > **Fully quit TQ and restart Steam before testing** (standing rule). The numbers in the table below are

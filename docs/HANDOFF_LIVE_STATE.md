@@ -1,5 +1,70 @@
 # HANDOFF LIVE STATE
 
+> ## BUILD81 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-184/185/186 the craft chain; arz-ONLY
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
+> `Database/SoulvizierClassic.arz` = `f16712077f315e5d5cf38a32f9c1fec6`** (55,556,551 B, 51,247 records).
+> **Workshop item 3759792705 is now build81 CANONICAL** (was build80): `Upload finished ... : OK`,
+> ManifestID **`8270033132631496719`** (steamcmd 2026-08-11 03:22:40 -> 03:22:57), `-Update
+> -Visibility 0` with the VDF read back to confirm `"visibility" "0"` (stays PUBLIC). 56 files,
+> 1188.3 MB, single wrapper. **STEAM = DEV = `main`.** Details in the entry below (the DEV half) and in
+> `docs/BACKLOG.md` -> BUILD81-DEV GATE RECORD. Tag `build81-ship` at this doc commit.
+> - **Push-gate before upload:** dist==work all 5 artifacts PASS, TESTHUB guard PASS (packaged
+>   `6784cf0f`, NOT the TESTHUB `7a7ca9ac`), `run_contracts` on the DIST payload **0 P0 / 0 P1 / 4492
+>   P2** - identical to the live baseline, so ZERO new violations. Changenote 3,193 chars, VDF-safe.
+> - **TQ.exe never running, never killed; Steam never restarted.** DEV was deployed first
+>   (`build81-dev`).
+> - **Rollback (Steam):** re-upload the build80 arz, kept at `local/build80_ship_c5851a1a.arz`; the
+>   other four artifacts are unchanged. This ship's artifact: `local/build81_run1_f1671207.arz`.
+
+> ## BUILD81-DEV DEPLOYED TO DEV (2026-08-11) - R-184/185/186 the craft chain; arz-ONLY
+> **`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `f16712077f315e5d5cf38a32f9c1fec6`**
+> (55,556,551 B, 51,247 records), copied with md5 source==dest verification **while TQ.exe was NOT
+> running** (nothing killed, Steam not restarted). **1 of 62 DEV files changed**, 0 added, 0 removed;
+> the 61 siblings were re-hashed after the copy and are byte-identical. det-2x **byte-IDENTICAL**
+> across two independent full builds, the second with the prefix cache DISABLED.
+> - **What it is:** Will's craft-chain order after reading `docs/CHEST_DROP_MATRIX.md` - *"i meant do
+>   the mythic formulas drop. they can drop in normal as well, but the legendary items should not drop
+>   in normal. All of the reagents need to be droppable somewhere in the game... Yes we should make the
+>   legendary thrown weapons droppable."* Three defects, all measured and all closed:
+>   **(1)** the 42 uber "supra" formulas sat only on the Epic/Legendary act tables, so a Normal chest
+>   reached **0 of 42**; both supra pools are now members of all four `01_act*_arcaneformulae` at
+>   **1.42%-1.60%** - rarer on Normal than the base game already makes them on Epic (2%) and Legendary
+>   (5%). Normal coverage **0/42 -> 42/42**, and legendary GEAR on the Normal branch stays **0**.
+>   **(2)** 36 of the 78 reagents were unreachable from any Legendary chest, including 3 that **do not
+>   exist in this database** (Ragnarok `xpack2` records the four thrown recipes named, so all four were
+>   uncompletable for everyone playing the mod). Now **61 of 82 reachable**, every non-MI reagent on
+>   **19 of 19** legendary chest surfaces, all **42/42 craftables completable**.
+>   **(3)** the thrown class had no unique loot table in this era at all: **0 of 5** legendary thrown
+>   were reachable from anything. `svc_unique_thrown_{n,e,l}01` is authored and named as the seventh
+>   class of the breadth master.
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Text.arc a9fed7ba` / `Levels.arc 6784cf0f` /
+>   `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged. **0 new tags authored**,
+>   so `validate_tags` PASSES against the EXISTING `Text.arc`.
+> - **Record-diff vs the shipped `c5851a1a`: ADDED 8 / REMOVED 0 / MODIFIED 16, ZERO unexplained.**
+>   Non-reduction proved mechanically over the whole diff: **18 values raised, 0 lowered, 18 members
+>   added, 0 removed**. The only replacements are the 12 reagent refs on the four thrown recipes, which
+>   is precisely what R-185 rules.
+> - **NEW permanent gate:** `tools/gate_craft_thrown_breadth.py` + the in-build
+>   `craft_thrown_breadth.verify()` sharing one implementation (F1/G1/G3/G4/C1/C2), negative-tested
+>   **12/12**. `svc_armor_breadth.apply_wave` now runs this module first in registry order so the dry
+>   run mirrors the real build.
+> - **⚠️ THE b80 MERGE WAS THE HARD PART - read the addendum before touching loot weights.** b80 had
+>   left a written merge hazard (`BL-R181-DEBT-4`); it is DISCHARGED (thrown is its own gear slot, 12
+>   classes not 11; `MAX_WEAPON_CLASS_SHARE` re-derived 0.29 -> 0.28). The non-obvious part: round 1
+>   satisfied b80's D3 mass floor by giving thrown full class parity, **all gates went green, and it
+>   was still wrong** - it paid 1.30 of each craft-only supra thrown per cage run, 2.9x a plain
+>   legendary spear. It was rebuilt. Thrown keeps its vetted quarter-class weight and is exempt from
+>   D3's MASS floor on a measured size rule (5 records against 23 for the next-smallest class), held to
+>   a REACHABILITY rule instead. Full argument: `docs/WILL_RULINGS.md` -> R-184/185/186 SHIPPED
+>   ADDENDUM.
+> - **Contracts: 0 P0 / 0 P1 / 4492 P2 == the build79/build80 baseline.** Gate record:
+>   `docs/BACKLOG.md` -> BUILD81-DEV GATE RECORD. Registry: 58 modules.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `c5851a1a` (the build80 arz this
+>   replaced); the same bytes are kept at `local/build80_ship_c5851a1a.arz`, this artifact at
+>   `local/build81_run1_f1671207.arz`.
+> - **Will's in-game check:** full note at the top of `docs/WILL_TEST_GUIDE.md`. Fully quit TQ and
+>   restart Steam first.
+
 > ## BUILD80 SHIPPED TO DEV **AND** STEAM (2026-08-11) - R-181 armour breadth + loot distribution; arz-ONLY
 > **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
 > `Database/SoulvizierClassic.arz` = `c5851a1abbebe9eb7744c9311fa14728`** (55,552,948 B, 51,239 records).

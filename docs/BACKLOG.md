@@ -180,6 +180,148 @@ pool slightly, so the pinned shares moved DOWN a hair (49-51: 0.0453 -> 0.0451).
 the 0.030 global cap, so none is stale - and the stale-pin check would have failed the gate if one had
 fallen under it.
 
+## SHIP RECORD - R-184/185/186 THE CRAFT CHAIN is **LIVE ON STEAM** (2026-08-11, `main` @ the round-2 `fix/craft-thrown-breadth` merge, tag `build81-ship`)
+
+**Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
+'trevenaw7' [U:1:106507138] to Steam Public...OK`), `Preparing update... Preparing content...
+Uploading content... Committing update...Success.` + `Updated Workshop item: 3759792705`. Confirmed
+independently from `C:\steamcmd\logs\workshop_log.txt`, not from the console text alone:
+
+```
+[2026-08-11 03:22:40] [AppID 475150] Upload starting for workshop item 3759792705 by AppID 475150
+[2026-08-11 03:22:56] [AppID 475150] Uploaded new content ( ManifestID 8270033132631496719 ) for item 3759792705.
+[2026-08-11 03:22:57] [AppID 475150] Upload finished for workshop item 3759792705 : OK
+```
+
+**STEAM = DEV = `main`:** `Database/SoulvizierClassic.arz` = **`f16712077f315e5d5cf38a32f9c1fec6`**
+(55,556,551 B, 51,247 records), CHANGED from build80's `c5851a1a`. The other four artifacts
+(`Levels.arc 6784cf0f` CANONICAL, `Text.arc a9fed7ba`, `Quests.arc 607ec99c`, `Creatures.arc
+8c0d8d53`) are byte-unchanged and were re-uploaded as-is. 56 files, 1188.3 MB, single wrapper.
+`-Update -Visibility 0` with the VDF read back to confirm `"visibility" "0"` - the item stays PUBLIC.
+
+**PUSH-GATE, run before the upload and all green:** dist==work on all 5 artifacts PASS; TESTHUB guard
+PASS (packaged Levels md5 `6784CF0F`, proven different from the TESTHUB `7A7CA9AC` - the local-only
+variant is never uploaded); `run_contracts` against the DIST payload **0 P0 / 0 P1 / 4492 P2**,
+identical to the live baseline, so ZERO new violations reach Steam; changenote 3,193 chars, VDF-safe.
+
+**TQ.exe was NOT running at any point, was never killed, and Steam was never restarted.** DEV was
+deployed and verified first (`build81-dev`). **Rollback (Steam):** re-upload the build80 arz, kept at
+`local/build80_ship_c5851a1a.arz`; the other four artifacts are unchanged.
+
+## BUILD81-DEV GATE RECORD - R-184/185/186 THE CRAFT CHAIN: mythic formulas drop on Normal, every reagent is farmable, the legendary thrown drop - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-11, `main` @ the round-2 `fix/craft-thrown-breadth` merge, tag `build81-dev`)
+
+**Will's order (verbatim, 2026-08-10):** *"i meant do the mythic formulas drop. they can drop in normal
+as well, but the legendary items should not drop in normal. All of the reagents need to be droppable
+somewhere in the game, ideally from chests since that is where people will look. if players farm
+legendary long enough, they should be able to find all the reagents without having to farm a specific
+area or a specific character (except for the monster unique droppable items like the green items that
+are needed to build some of the formulas...). Yes we should make the legendary thrown weapons
+droppable."* Ledgered **R-184 / R-185 / R-186** + the SHIPPED ADDENDUM in `docs/WILL_RULINGS.md`.
+
+**SHIP ORDER HONOURED.** This lane held on branch until ALL FOUR queued waves had landed their
+deploys: soul-naming (`build77-dev` + `build77-ship`), portal-atlantis (`build78`, DEV + Steam),
+orb-breadth (`build79`, DEV + Steam) and loot-balance/armour (`build80-dev` 00:52, `build80-ship`
+01:0x). `main` was then at `e5659cc`. TQ.exe was NOT running at any point in this lane, was never
+killed, and Steam was never restarted.
+
+**THE MERGE WAS THE HARD PART, AND IT TOOK TWO ROUNDS.** Textual auto-merge was clean; the semantic
+merge was not, and b80 had said so in advance (`BL-R181-DEBT-4`, a written CROSS-LANE MERGE HAZARD note
+in `tools/svc_loot_distribution.py`). Full argument in the R-184/185/186 SHIPPED ADDENDUM; in short:
+thrown got its own gear slot (12 classes, not 11), `MAX_WEAPON_CLASS_SHARE` was re-derived for seven
+weapon classes (**0.29 -> 0.28**), and round 1's attempt to satisfy b80's D3 mass floor by giving
+thrown full class parity was **built, measured, and REJECTED** because it paid 1.30 of each craft-only
+supra thrown per cage run (2.9x a plain legendary spear). The shipped answer keeps R-186's vetted
+quarter-class weight and exempts thrown from D3's MASS floor on a measured size rule, enforcing
+payability by REACHABILITY instead.
+
+**THE BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, into
+the work/ layout, **exit 0 "Done."**, log `local/build81_r186_run3.log`).
+
+| artifact | md5 | bytes | vs `build80` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`f16712077f315e5d5cf38a32f9c1fec6`** | 55,556,551 (51,247 rec) | **CHANGED** from `c5851a1a` (+3,603 B, +8 rec) |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**arz-ONLY, and both deploy couplings are SATISFIED rather than waived.** The wave authors **NO text
+tag** (grep-proven: no `ensure_string` / tag write anywhere in `svc_craft_thrown.py` or
+`patches/craft_thrown_breadth.py`; it adds 8 loot tables and repoints 12 reagent references), so
+`validate_tags` PASSES against the EXISTING `Text.arc` and the arz+Text coupling holds with no Text
+rebuild. Nothing map-side moved, so the Levels+Quests coupling is not engaged. All four siblings were
+md5-proven unchanged on disk, not assumed.
+
+**RECORD-DIFF vs the shipped `c5851a1a`: ADDED 8 / REMOVED 0 / MODIFIED 16, ZERO unexplained.**
+
+| bucket | records | what |
+|---|---:|---|
+| ADDED | 5 | `svc_craft_reagents_{torso,amulet,ring,artifact,orphanmi}_l01` (R-185) |
+| ADDED | 3 | `svc_unique_thrown_{n,e,l}01` (R-186) |
+| MODIFIED | 4 | `01_act{1..4}_arcaneformulae` - `supra` + `supra_special` added, 4 fields each (R-184) |
+| MODIFIED | 4 | the four `svc_thrown_*_formula` recipes - 3 reagent refs each, off the Ragnarok ghosts (R-185) |
+| MODIFIED | 5 | reagent hosts: `amulet_l01`, `finger_l01` (4 fields each, two families), `unique_torso_l01`, `04_l_misc`, `unique_1h_l01` (2 each) |
+| MODIFIED | 3 | `svc_unique_weapons_{n,e,l}01` - the thrown member in a free slot, 2 fields each (R-186) |
+
+**NON-REDUCTION (R-100 #17 / Will 2026-08-08), proved MECHANICALLY over the whole diff:** **18 numeric
+values RAISED, 0 LOWERED; 18 loot members ADDED, 0 REMOVED.** The ONE place this wave replaces rather
+than adds is the 12 reagent references on the four thrown recipes, which is exactly what R-185 rules -
+they named `xpack2\...\1hranged\{u_l_08, u_e_06, mi_l_machae}`, Ragnarok records this build does not
+carry, so all four craftables were uncompletable for everyone playing the mod.
+
+**MEASURED ON THE BUILT ARZ - what Will asked for, item by item:**
+
+| Will's words | measured |
+|---|---|
+| "do the mythic formulas drop... in normal as well" | supra reaches all four Normal act tables at **1.478 / 1.554 / 1.596 / 1.423 %** - below the base game's own Epic 2% and Legendary 5%. Normal craftable coverage **0/42 -> 42/42** |
+| "the legendary items should not drop in normal" | legendary GEAR from the Normal weapon branch **0 of 116 leaves**; from the Normal thrown table **0 of 2**. B3 + C2 + the relic-tier gate all re-prove it |
+| "all of the reagents... droppable somewhere... ideally from chests" | 82 reagents = 22 MI/green + 54 ordinary + 6 artifact + **0 missing**; **61 reachable from a Legendary chest**; all 42 craftables completable |
+| "without having to farm a specific area or a specific character" | non-MI spread: thinnest reagent reaches **19 of 19** legendary chest surfaces (floor 10) |
+| "except for the... green items" | 22 MI/green exempt, and each is PROVEN monster-farmable; the one green with no live carrier (`mi_l_gigantes2`) is chest-placed instead, and G3 fails the build if that roster drifts either way |
+| "make the legendary thrown weapons droppable" | thrown payable on **51 mod chest tables** + all 18 uber orb tables; **1.26 thrown per six-chest Gaoler cage run** on Legendary, a specific supra thrown **0.081 per run** (5.4x rarer than a specific legendary spear - reachable, still a prize) |
+
+**GATES** (every coexisting gate plus the new ones, all against the BUILT arz `f1671207`):
+
+| gate | result |
+|---|---|
+| `gate_craft_thrown_breadth` (NEW: F1/G1/G3/G4/C1/C2) | **PASS** |
+| `gate_chest_loot_breadth` (R-180) | **PASS** - 51 tables, pools n 181 / e 116-121 / l 327 |
+| `gate_loot_distribution` (R-181, b80) | **PASS** - 42 surfaces, **12** equipment classes |
+| `gate_orb_loot_breadth` (R-220, b79) | **PASS** - 18 tables, spear 18/9/22 |
+| `gate_relic_difficulty_tiers` (R-100) | **PASS** - 33 branches |
+| `gate_dlc_act_ui_cap` (R-210, b78) | **PASS** - T1-T7, four acts, zero DLC |
+| `negtest_craft_thrown` | **12/12** behave as specified |
+| `negtest_armor_breadth` (b80's, +3 new D3X cases) | **12/12** - all 9 of b80's planted skews still red |
+| `negtest_chest_breadth` (R-180's) | **4/4** |
+| `tools/patches/_check_registry.py` | **OK: 58 modules**, order `a1b1a0677301ae821c28edaa86e86e6cf9a46c4d20a1a67f6e35ed97cf8d7a29` |
+| `run_contracts.py`, all 6 modules, LIVE work/+local/ | **GATE PASS - 0 P0 / 0 P1 / 4492 P2 == the build79/build80 baseline**, so ZERO new violations |
+| determinism (det-2x) | **PASS - byte-IDENTICAL `f1671207` from two independent full builds**, the second with the prefix cache DISABLED (`SVC_NO_CACHE=1`) |
+
+**THE NEW GATE, and why it is not a rubber stamp.** `tools/gate_craft_thrown_breadth.py` +
+the in-build `craft_thrown_breadth.verify()` share ONE implementation (the
+`gate_relic_difficulty_tiers` precedent), and `svc_armor_breadth.apply_wave` now runs
+`craft_thrown_breadth` first in registry order so the dry run mirrors the real build (the b79
+precedent - without it `ensure_masters` silently drops the thrown member and the audit measures a
+build that does not exist). Rules: **F1** every craftable has a chest-droppable formula per tier;
+**G1** every non-MI reagent is Legendary-chest reachable; **G3** every green exemption is EARNED by a
+live monster (dev duplicates discounted) or chest-placed; **G4** the SPREAD rule, half the legendary
+surfaces and never fewer than 3; **C1/C2** the thrown class pays at every tier with no legendary
+thrown on Normal.
+
+**ROLLBACK (one step):** `local/build80_ship_c5851a1a.arz` = the build80 arz this replaces; this
+artifact is kept at `local/build81_run1_f1671207.arz`.
+
+**DEBT REGISTERED AT COMMIT TIME:**
+- **`BL-R181-DEBT-4` DISCHARGED** - thrown has its own slot and `MAX_WEAPON_CLASS_SHARE` is re-derived.
+- **`BL-R186-DEBT-1` (P2, NEW):** thrown is exempt from D3's mass floor because the class is 5 records.
+  If a lane ever authors more one-hand-ranged uniques, `era_exemption_problems` will RED and the
+  exemption must be deleted and the class given real mass. The gate enforces this; nothing to remember.
+- **`BL-R186-DEBT-2` (P2, NEW):** the three base-game Epic thrown craft results (`f_n_kaskeron`,
+  `f_l_qilinseternalpyre`, `f_l_godshatter`) are still not droppable, deliberately - a Normal chest
+  therefore pays no Epic-classification thrown. Will's call if that should change.
+- **`BL-R185-DEBT-1` (P2, NEW):** the four thrown recipes now read "legendary thrown + plain thrown +
+  one green thrown" instead of the Ragnarok original. The result items are unchanged; the shopping
+  list is not. Cosmetic, and visible to a player who memorised the old recipe.
 
 ## SHIP RECORD - R-181 ARMOUR BREADTH + LOOT DISTRIBUTION is **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/armor-loot-breadth` merge, tag `build80-ship`)
 
@@ -791,6 +933,79 @@ Disclosed in `docs/WILL_TEST_GUIDE.md` as a veto point, not buried.
   Recorded in R-220 so nobody later reads it as an accident.
 
 ---
+## LANE RECORD - R-211 ATLANTIS SEA-VOYAGE CAP: the SHIP is gone too. `BL-PORTALCAP-DEBT-1` CLOSED (2026-08-10, branch `fix/atlantis-voyage-cap`, static gates only - Ship phase owns the build)
+
+R-210 removed the Atlantis PAGE and explicitly left the VOYAGE, as `BL-PORTALCAP-DEBT-1`: *"an
+Atlantis-DLC owner can still SAIL Rhodes -> Gadir -> Atlantis. The page is gone, the voyage is not."*
+This lane closes the last Atlantis access path. Ledgered **R-211**. Full RCA + route audit + layer
+argument: `docs/ATLANTIS_VOYAGE_CAP.md`.
+
+**WHY IT SURVIVED THREE PRIOR CAPS.** Both A5 caps are POST-HADES; R-210 was UI only. **Atlantis
+branches from RHODES, mid-Immortal-Throne**, on the mandatory spine, so nothing had ever covered it.
+
+**THE ROUTE (measured on the deployed build78 artifacts).** `x3mq_Marinos_Rhodes` has **ZERO** static
+placements in `world01.map` and enters the world ONLY through the `DLCActorSpawner`
+`x3mq_marinos_rhodes_spawner.dbr` (placed once, `Rhodes_CityFinal_01`). Talking to him fires
+`x3mq_AtlantisAdventure.qst` (QUESTS idx 211 of the 255-entry load window) ->
+`Action_BoatDialog(rhodes_boatmantogadir)`, the only transition from the reachable IT world into the
+XPack3 act; the chain ends at `Action_BoatDialog(gadir_boatmantoatlantis)`.
+`XPack3TartarusPortal.qst` (idx 205) unlocks the Tartarus act portal from Gadir or Corinth.
+
+**ALL ACCESS ROUTES ENUMERATED - 10, of which 4 were live and are now closed at EVERY link:**
+1 Rhodes -> Gadir, 2 Gadir -> Atlantis, 3 Gadir -> Tartarus, 4 Corinth -> Tartarus (live, now capped);
+5 portal page + 6 quest-log act tab (already closed by R-210); **7 no fixed-item act portal into
+Atlantis EXISTS** (all 17 DLC-gated `FixedItem*` records in the base DB are Ragnarok/EE portals, not
+one names Atlantis/Gadir/Tartarus); **8 no non-DLC quest can open one** (base `Quests.arc`,
+`xpack/Quests.arc` and `XPack4/Quests.arc` hold ZERO `records\xpack3\` references); **9 no level
+stitch/walk-in exists** (DLC level set byte-identical to vanilla, 0 DLC-namespaced levels among our
+46 additions); 10 difficulty unlock is not a transit and Atlantis never gated it.
+
+**LAYER (arz-only, the A5 pattern).** All 20 XPack3 quests are registered under the
+`XPack3/Quests/...` namespace, so the A5 md5-full-registry-path trap applies and a mod quest at the
+plain `Quests.arc` root would ship inert. So a DB-record cap: a `.dbr`'s identity IS its record path
+and the mod `.arz` overrides the base `.arz` per path (runtime-confirmed by A5). **No map rebuild, no
+`Quests.arc` change: neither deploy coupling is engaged, and this rides any arz push.**
+
+**SIX RECORD OVERRIDES.** Delete `actorToSpawn` on both `DLCActorSpawner` records (template declares
+it `file_dbr` / `defaultValue ""`); `startVisible=0` + `IncludeInMap=0` on the two boundary boat
+captains (`rhodes_boatmantogadir`, `gadir_boatmantoatlantis`); A5 AND-unsatisfiable DLC gate
+(`RequireDLC=TQA2` + `RequireNoDLC=TQA2`) on both Tartarus portals. `dlcRequirement` deliberately
+untouched (picklist `DLC1;DLC2`; deleting it could read as "no DLC required"). Malta/Hesperides
+captains and every RETURN boatman deliberately untouched (anti-strand path).
+
+**NO REGRESSION TO IT-ERA TRAVEL:** both hidden captains are `records\xpack3\` Atlantis-DLC additions;
+IT's own travel NPCs are `records\xpack\` and untouched. A non-DLC player's Rhodes is unchanged; a DLC
+owner's Rhodes now matches it.
+
+**GATES (static, this lane).**
+
+| gate | result |
+|---|---|
+| `gate_atlantis_voyage_cap` on the **shipped build78 arz** `f6638462` (BEFORE) | **FAIL, 7 checks** - all six records absent, `V5 4 resolvable Atlantis-transit route(s) remain`. The leak reproduced as an artifact fact |
+| the real `apply_atlantis_voyage_cap()` | **6 record overrides written**; in-build FIDELITY assert PASS (every unedited field byte-faithful to base, values + dtypes) |
+| `gate_atlantis_voyage_cap` on the **written capped .arz** (AFTER) | **PASS V1-V5** - `resolvable Atlantis-transit routes = []` |
+| negative tests (`--negtest`, 4 planted defects) | **all 4 RED** - spawner re-armed, captain un-hidden, portal un-gated, and a COLLATERAL xpack3 override (so the gate fails on over-reach too, not only under-reach) |
+| record delta vs the shipped `f6638462` | **ADDED 6 / REMOVED 0 / MODIFIED 0**, all six the capped records |
+| `py_compile` on both edited/new tools | **PASS** |
+
+**DEBT REGISTER**
+- `BL-VOYAGECAP-DEBT-1` (**P1, LAUNCH-GATED**) - NOT PROVEN IN-GAME. **Will's one-line test (needs an
+  Atlantis-DLC owner): after Typhon, walk Rhodes - no Marinos, no captain offering Gadir, no Atlantis
+  adventure in the quest log.** Runtime risks carried: (a) the engine tolerating a `DLCActorSpawner`
+  with `actorToSpawn` absent (evidence: the template declares `defaultValue = ""`, the same argument
+  R-210 shipped on); (b) a hidden `Npc` being non-conversable (evidence: `startVisible=0` ships on
+  **604** retail records and is TQ's own `Action_ShowNpc` gating idiom).
+- `BL-VOYAGECAP-DEBT-2` (P3, scope) - the two Tartarus portal suppressions were not strictly required
+  (Tartarus is only reachable from Gadir or Corinth, both closed). Included because Tartarus is an
+  XPack3 area under the same ruling and the idiom is A5-proven. Flagged so a vet can challenge them
+  independently.
+- `BL-VOYAGECAP-DEBT-3` (P3, cosmetic) - an in-fiction refusal line from the Rhodes captain was
+  rejected for now: his dialog is a `.dbr` inside the base `Resources\XPack3\Dialog.arc`, so authoring
+  one would depend on the unproven mod-arc-vs-base-arc shadowing this lane refused to bet on.
+
+**NOT RUN HERE (Ship phase owns them):** full DB build + determinism, record-diff vs baseline,
+`run_contracts`, deploy. **Deploy coupling: arz only** (no Text tag authored, nothing map-side moved).
+
 ## SHIP RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis is GONE from the portal page, **LIVE ON STEAM** (2026-08-10, `main` @ the `fix/portal-atlantis-cap` merge `599e5f0`, tag `build78-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
@@ -835,8 +1050,10 @@ artifact is already byte-identical to `build77-ship`.
 - **`BL-PORTALCAP-DEBT-2` NOT PROVEN IN-GAME.** Nobody has opened a portal and counted the tabs.
   **Will's one-line test: open a portal - four act tabs (Greece / Egypt / Orient / Immortal Throne), no
   Atlantis, and the Immortal Throne page still lists Olympus and all of Hades.**
-- **`BL-PORTALCAP-DEBT-1` (P1, OPEN):** an Atlantis-DLC owner can still SAIL Rhodes -> Gadir -> Atlantis.
-  The page is gone, the voyage is not. Own lane, needs Will's sign-off on the layer.
+- **`BL-PORTALCAP-DEBT-1` (P1, ~~OPEN~~ RESOLVED 2026-08-10 by R-211):** an Atlantis-DLC owner can still
+  SAIL Rhodes -> Gadir -> Atlantis. The page is gone, the voyage is not. Own lane, needs Will's sign-off
+  on the layer. **-> that lane is `fix/atlantis-voyage-cap`; the voyage is now capped arz-only, see the
+  R-211 lane record at the top of this file.**
 - The Workshop cover image is still absent (`WARNING: no preview image`), unchanged by this push and
   still Will's separate action.
 
@@ -1106,7 +1323,13 @@ is registered at **index 211** of the map's **255**-entry QUESTS window, and BOT
 `gadir_boatmantoatlantis` placed in `Gadir01B`. **An Atlantis-DLC owner can still SAIL to Atlantis.**
 
 **DEBT REGISTER**
-- `BL-PORTALCAP-DEBT-1` (**P1, OPEN, real act leak**) - the Rhodes to Gadir to Atlantis boat chain is
+- `BL-PORTALCAP-DEBT-1` (**P1, RESOLVED 2026-08-10 by R-211**, branch `fix/atlantis-voyage-cap`) - the
+  Rhodes to Gadir to Atlantis boat chain is now capped arz-only; see the R-211 lane record below and
+  `docs/ATLANTIS_VOYAGE_CAP.md`. The "one-field DB suppression is NOT available" reading below was
+  right about `RequireDLC` and wrong about the conclusion: `DLCActorSpawner.tpl` declares
+  `actorToSpawn` with `defaultValue = ""`, so DELETING that one field kills the spawn with the same
+  "absence is the declared default" argument R-210 itself shipped on. Original text kept verbatim:
+  the Rhodes to Gadir to Atlantis boat chain is
   live. The A5 one-field DB suppression is NOT available: a whole-base-DB census found DLC gate fields
   (`RequireDLC`/`RequireNoDLC`) on **17 records only, all `FixedItemTeleport.tpl` /
   `FixedItemTyphonPortal.tpl`**, with no Atlantis token at all (only `TQA2`, `TQX4`); Marinos is a
