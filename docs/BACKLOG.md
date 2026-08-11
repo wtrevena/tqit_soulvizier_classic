@@ -1,5 +1,120 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD81-DEV GATE RECORD - R-184/185/186 THE CRAFT CHAIN: mythic formulas drop on Normal, every reagent is farmable, the legendary thrown drop - BUILT, ALL GATES GREEN, DEPLOYED TO DEV (2026-08-11, `main` @ the round-2 `fix/craft-thrown-breadth` merge, tag `build81-dev`)
+
+**Will's order (verbatim, 2026-08-10):** *"i meant do the mythic formulas drop. they can drop in normal
+as well, but the legendary items should not drop in normal. All of the reagents need to be droppable
+somewhere in the game, ideally from chests since that is where people will look. if players farm
+legendary long enough, they should be able to find all the reagents without having to farm a specific
+area or a specific character (except for the monster unique droppable items like the green items that
+are needed to build some of the formulas...). Yes we should make the legendary thrown weapons
+droppable."* Ledgered **R-184 / R-185 / R-186** + the SHIPPED ADDENDUM in `docs/WILL_RULINGS.md`.
+
+**SHIP ORDER HONOURED.** This lane held on branch until ALL FOUR queued waves had landed their
+deploys: soul-naming (`build77-dev` + `build77-ship`), portal-atlantis (`build78`, DEV + Steam),
+orb-breadth (`build79`, DEV + Steam) and loot-balance/armour (`build80-dev` 00:52, `build80-ship`
+01:0x). `main` was then at `e5659cc`. TQ.exe was NOT running at any point in this lane, was never
+killed, and Steam was never restarted.
+
+**THE MERGE WAS THE HARD PART, AND IT TOOK TWO ROUNDS.** Textual auto-merge was clean; the semantic
+merge was not, and b80 had said so in advance (`BL-R181-DEBT-4`, a written CROSS-LANE MERGE HAZARD note
+in `tools/svc_loot_distribution.py`). Full argument in the R-184/185/186 SHIPPED ADDENDUM; in short:
+thrown got its own gear slot (12 classes, not 11), `MAX_WEAPON_CLASS_SHARE` was re-derived for seven
+weapon classes (**0.29 -> 0.28**), and round 1's attempt to satisfy b80's D3 mass floor by giving
+thrown full class parity was **built, measured, and REJECTED** because it paid 1.30 of each craft-only
+supra thrown per cage run (2.9x a plain legendary spear). The shipped answer keeps R-186's vetted
+quarter-class weight and exempts thrown from D3's MASS floor on a measured size rule, enforcing
+payability by REACHABILITY instead.
+
+**THE BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, into
+the work/ layout, **exit 0 "Done."**, log `local/build81_r186_run3.log`).
+
+| artifact | md5 | bytes | vs `build80` |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`f16712077f315e5d5cf38a32f9c1fec6`** | 55,556,551 (51,247 rec) | **CHANGED** from `c5851a1a` (+3,603 B, +8 rec) |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**arz-ONLY, and both deploy couplings are SATISFIED rather than waived.** The wave authors **NO text
+tag** (grep-proven: no `ensure_string` / tag write anywhere in `svc_craft_thrown.py` or
+`patches/craft_thrown_breadth.py`; it adds 8 loot tables and repoints 12 reagent references), so
+`validate_tags` PASSES against the EXISTING `Text.arc` and the arz+Text coupling holds with no Text
+rebuild. Nothing map-side moved, so the Levels+Quests coupling is not engaged. All four siblings were
+md5-proven unchanged on disk, not assumed.
+
+**RECORD-DIFF vs the shipped `c5851a1a`: ADDED 8 / REMOVED 0 / MODIFIED 16, ZERO unexplained.**
+
+| bucket | records | what |
+|---|---:|---|
+| ADDED | 5 | `svc_craft_reagents_{torso,amulet,ring,artifact,orphanmi}_l01` (R-185) |
+| ADDED | 3 | `svc_unique_thrown_{n,e,l}01` (R-186) |
+| MODIFIED | 4 | `01_act{1..4}_arcaneformulae` - `supra` + `supra_special` added, 4 fields each (R-184) |
+| MODIFIED | 4 | the four `svc_thrown_*_formula` recipes - 3 reagent refs each, off the Ragnarok ghosts (R-185) |
+| MODIFIED | 5 | reagent hosts: `amulet_l01`, `finger_l01` (4 fields each, two families), `unique_torso_l01`, `04_l_misc`, `unique_1h_l01` (2 each) |
+| MODIFIED | 3 | `svc_unique_weapons_{n,e,l}01` - the thrown member in a free slot, 2 fields each (R-186) |
+
+**NON-REDUCTION (R-100 #17 / Will 2026-08-08), proved MECHANICALLY over the whole diff:** **18 numeric
+values RAISED, 0 LOWERED; 18 loot members ADDED, 0 REMOVED.** The ONE place this wave replaces rather
+than adds is the 12 reagent references on the four thrown recipes, which is exactly what R-185 rules -
+they named `xpack2\...\1hranged\{u_l_08, u_e_06, mi_l_machae}`, Ragnarok records this build does not
+carry, so all four craftables were uncompletable for everyone playing the mod.
+
+**MEASURED ON THE BUILT ARZ - what Will asked for, item by item:**
+
+| Will's words | measured |
+|---|---|
+| "do the mythic formulas drop... in normal as well" | supra reaches all four Normal act tables at **1.478 / 1.554 / 1.596 / 1.423 %** - below the base game's own Epic 2% and Legendary 5%. Normal craftable coverage **0/42 -> 42/42** |
+| "the legendary items should not drop in normal" | legendary GEAR from the Normal weapon branch **0 of 116 leaves**; from the Normal thrown table **0 of 2**. B3 + C2 + the relic-tier gate all re-prove it |
+| "all of the reagents... droppable somewhere... ideally from chests" | 82 reagents = 22 MI/green + 54 ordinary + 6 artifact + **0 missing**; **61 reachable from a Legendary chest**; all 42 craftables completable |
+| "without having to farm a specific area or a specific character" | non-MI spread: thinnest reagent reaches **19 of 19** legendary chest surfaces (floor 10) |
+| "except for the... green items" | 22 MI/green exempt, and each is PROVEN monster-farmable; the one green with no live carrier (`mi_l_gigantes2`) is chest-placed instead, and G3 fails the build if that roster drifts either way |
+| "make the legendary thrown weapons droppable" | thrown payable on **51 mod chest tables** + all 18 uber orb tables; **1.26 thrown per six-chest Gaoler cage run** on Legendary, a specific supra thrown **0.081 per run** (5.4x rarer than a specific legendary spear - reachable, still a prize) |
+
+**GATES** (every coexisting gate plus the new ones, all against the BUILT arz `f1671207`):
+
+| gate | result |
+|---|---|
+| `gate_craft_thrown_breadth` (NEW: F1/G1/G3/G4/C1/C2) | **PASS** |
+| `gate_chest_loot_breadth` (R-180) | **PASS** - 51 tables, pools n 181 / e 116-121 / l 327 |
+| `gate_loot_distribution` (R-181, b80) | **PASS** - 42 surfaces, **12** equipment classes |
+| `gate_orb_loot_breadth` (R-220, b79) | **PASS** - 18 tables, spear 18/9/22 |
+| `gate_relic_difficulty_tiers` (R-100) | **PASS** - 33 branches |
+| `gate_dlc_act_ui_cap` (R-210, b78) | **PASS** - T1-T7, four acts, zero DLC |
+| `negtest_craft_thrown` | **12/12** behave as specified |
+| `negtest_armor_breadth` (b80's, +3 new D3X cases) | **12/12** - all 9 of b80's planted skews still red |
+| `negtest_chest_breadth` (R-180's) | **4/4** |
+| `tools/patches/_check_registry.py` | **OK: 58 modules**, order `a1b1a0677301ae821c28edaa86e86e6cf9a46c4d20a1a67f6e35ed97cf8d7a29` |
+| `run_contracts.py`, all 6 modules, LIVE work/+local/ | **GATE PASS - 0 P0 / 0 P1 / 4492 P2 == the build79/build80 baseline**, so ZERO new violations |
+| determinism (det-2x) | **PASS - byte-IDENTICAL `f1671207` from two independent full builds**, the second with the prefix cache DISABLED (`SVC_NO_CACHE=1`) |
+
+**THE NEW GATE, and why it is not a rubber stamp.** `tools/gate_craft_thrown_breadth.py` +
+the in-build `craft_thrown_breadth.verify()` share ONE implementation (the
+`gate_relic_difficulty_tiers` precedent), and `svc_armor_breadth.apply_wave` now runs
+`craft_thrown_breadth` first in registry order so the dry run mirrors the real build (the b79
+precedent - without it `ensure_masters` silently drops the thrown member and the audit measures a
+build that does not exist). Rules: **F1** every craftable has a chest-droppable formula per tier;
+**G1** every non-MI reagent is Legendary-chest reachable; **G3** every green exemption is EARNED by a
+live monster (dev duplicates discounted) or chest-placed; **G4** the SPREAD rule, half the legendary
+surfaces and never fewer than 3; **C1/C2** the thrown class pays at every tier with no legendary
+thrown on Normal.
+
+**ROLLBACK (one step):** `local/build80_ship_c5851a1a.arz` = the build80 arz this replaces; this
+artifact is kept at `local/build81_run1_f1671207.arz`.
+
+**DEBT REGISTERED AT COMMIT TIME:**
+- **`BL-R181-DEBT-4` DISCHARGED** - thrown has its own slot and `MAX_WEAPON_CLASS_SHARE` is re-derived.
+- **`BL-R186-DEBT-1` (P2, NEW):** thrown is exempt from D3's mass floor because the class is 5 records.
+  If a lane ever authors more one-hand-ranged uniques, `era_exemption_problems` will RED and the
+  exemption must be deleted and the class given real mass. The gate enforces this; nothing to remember.
+- **`BL-R186-DEBT-2` (P2, NEW):** the three base-game Epic thrown craft results (`f_n_kaskeron`,
+  `f_l_qilinseternalpyre`, `f_l_godshatter`) are still not droppable, deliberately - a Normal chest
+  therefore pays no Epic-classification thrown. Will's call if that should change.
+- **`BL-R185-DEBT-1` (P2, NEW):** the four thrown recipes now read "legendary thrown + plain thrown +
+  one green thrown" instead of the Ragnarok original. The result items are unchanged; the shopping
+  list is not. Cosmetic, and visible to a player who memorised the old recipe.
+
 ## SHIP RECORD - R-181 ARMOUR BREADTH + LOOT DISTRIBUTION is **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/armor-loot-breadth` merge, tag `build80-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'

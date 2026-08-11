@@ -381,10 +381,13 @@ the wave has to author one.
 
 ---
 
-## 7. The uber-craft chain after R-184 / R-185 / R-186 (2026-08-10)
+## 7. The uber-craft chain after R-184 / R-185 / R-186 (SHIPPED 2026-08-11 as build81)
 
 Everything in this section is derived by `py tools/gate_craft_thrown_breadth.py <arz> --verbose
 --mi-sources`, which is also the build's own fail-loud gate, so it cannot drift from what ships.
+**Measured on the shipped arz `f16712077f315e5d5cf38a32f9c1fec6`** (55,556,551 B, 51,247 records),
+which is live on DEV and on Steam. Sections 1-6 above describe the build76/77-era arz `16994072` that
+prompted Will's questions and are left as written; where the two disagree, this section is current.
 
 ### 7.1 Formula reachability, per difficulty
 
@@ -460,11 +463,29 @@ so none of them can drop **and R-186 deliberately did not make them droppable** 
 | `svc_unique_thrown_l01` | same eight | |
 
 They are named by `svc_unique_weapons_{tier}01` at a **per-tier** weight: **250** on Epic/Legendary
-(5 legendary records against ~20 per full class weight) and **100** on Normal (a 2-record band).
-Measured against the masters as they shipped (7 members, total **6100** at every tier): **250 / 6350
-= 3.94%** of a weapon roll on e/l, **100 / 6200 = 1.61%** on Normal, and a specific supra thrown
-~0.26% of a weapon roll. *(The 2026-08-10 first cut printed "250 against 6700 = 3.6%" here and in
-R-186; 6700 matches no measured state of the record.)*
+and **100** on Normal. The 250 is not a literal any more - it is `svc_loot_breadth._CLASS_WEIGHT // 4`,
+so a future balance lane re-scales thrown with every other class instead of silently shrinking it.
+Against b80's master (7 members, total **8100** at every tier) that is **250 / 8350 = 2.99%** of a
+weapon-master roll on e/l and **100 / 8200 = 1.22%** on Normal.
+
+**WHY A QUARTER OF A CLASS AND NOT A WHOLE ONE - the b80 merge measured both.** The obvious reading of
+b80's parity law (every weapon class carries identical mass) says thrown should take a full class
+weight. It was built that way, and it is wrong for a five-record class:
+
+| six-chest Gaoler cage run, Legendary | full parity | **AS SHIPPED** |
+|---|---:|---:|
+| thrown items per run | 6.48 | **1.26** |
+| a specific craft-only supra thrown | 1.30 | **0.081** |
+| a specific plain legendary SPEAR | 0.44 | 0.44 |
+| the supra vs the spear | 2.9x MORE common | **5.4x rarer** |
+
+Forcing a five-record class to carry a broad class's mass makes each of its records disproportionately
+common - and four of the five are craft-only prizes. The whole-database class census is the reason:
+at Legendary, thrown is **5** records against **23** for the next-smallest class (bow), so a mass
+floor calibrated on ordinary classes does not transfer to it. That is why thrown is exempt from the
+R-181 distribution gate's D3 mass floor and is held to a **reachability** rule (C1/C2, over all 51 mod
+chest tables and all 18 uber orb tables) instead. The exemption is re-proved from the bytes every
+build and dies automatically if the class ever grows past 12 records.
 
 ### 7.5 The four thrown formulas, before and after
 
