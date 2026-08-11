@@ -1,5 +1,76 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## 🧭 LANE RECORD - R-210 PORTAL-PAGE DLC CAP: Atlantis / Ragnarok / Eternal Embers removed from the act-selection UI (2026-08-10, branch `fix/portal-atlantis-cap`, NOT BUILT/SHIPPED HERE)
+
+**Will (verbatim):** "in the portal page i see atlantis which should be disabled in this mod". Full RCA,
+audit and proof: **`docs/PORTAL_PAGE_DLC_CAP.md`**. Ruling: **R-210** in `docs/WILL_RULINGS.md`.
+
+**LIST SOURCE.** The portal window's page list is ONE record,
+`records\ingameui\teleportmap\teleportmap.dbr` (`WorldlMapWindow.tpl`): each act page is a
+`<Page>Button` / `<Page>MapImage` / `<Page>ZoneList` triple, and base TQAE carries SEVEN pages (Greece,
+Egypt, Orient, Hades, Scandia=Ragnarok, Atlantis, China=Eternal Embers). SV 0.98i ships an IT-era copy
+with only the four base pages, but `strip_ui_overrides()` deletes every `records\ingameui\` record that
+is not a mastery tree, so the mod shipped **no override** and the record resolved from the **BASE** `.arz`
+- DLC tabs and all. Measured on build76: 0 teleportmap records in the mod arz. The quest log's act tabs
+(`records\ingameui\player quests\questwindow.dbr` buttons/maps 5/6/7 pointing at XPack2/3/4) fell through
+the same hole.
+
+**AUDIT.** All 56 base `records\ingameui\` / `records\ui\` records naming a DLC namespace classified. The
+COMPLETE set of DLC-act ENTRIES in the act-selection UI is **3 portal pages + 3 quest-log tabs = 15
+fields on 2 records**. The 3 DLC tab-button records and 26 DLC zone records are leaves reachable only
+from those lists; `teleportmapbackground.dbr` (XPack4 frame art shown to non-DLC owners too) and the 24
+`altcasinomerchantwindow` orb records are NOT act selection and were deliberately left alone.
+
+**FIX + LAYER.** `build_svc_database.apply_dlc_act_ui_cap()` imports each BASE record byte-faithfully and
+deletes exactly the DLC fields (9 + 6). Mod-`.arz`-over-base per record path, the A5 pattern (the A5
+inert-fix trap is specific to archive-hosted quest files keyed by md5 of the FULL registry path; a
+`.dbr`'s identity IS its record path). The real trap here is ORDERING: the cap runs immediately AFTER
+`strip_ui_overrides()` and **asserts** it, because applied earlier it would be deleted again and ship
+inert. `_import_base_record_override()` was extracted so A5 and this cap share one copy (BL-107).
+
+**GATE `tools/gate_dlc_act_ui_cap.py`** (fail-loud, committed golden allow-list; wired into the DB build
+twice - in-memory right after the cap, and on the WRITTEN `.arz` after `gate_unlock_alignment`).
+T1 record present (the anti-inert proof) / T2 no banned DLC field / T3 page-field set == golden /
+T4 no field value names a DLC namespace / T5 quest-log tabs 1-4 only / T6 rendered page list ==
+`Greece, Egypt, Orient, Hades` / T7 no stray teleportmap override.
+
+| gate (static; run against build76's shipped arz + the base-game arz) | result |
+|---|---|
+| BEFORE: gate on the shipped build76 arz | **FAIL as expected** - `T1 teleportmap.dbr ABSENT`, `T5 questwindow.dbr ABSENT` (the bug, as an artifact fact) |
+| AFTER: real `apply_dlc_act_ui_cap()` then arz written to disk then gate on the FILE | **PASS 7/7**, portal pages = `['Greece','Egypt','Orient','Hades']` |
+| `--negtest` (Atlantis back / a legit page dropped / Atlantis quest-log tab back) | **PASS - all 3 planted defects RED** |
+| fidelity: capped record vs base record | **PASS** - identical minus exactly the DLC fields (names, dtypes, values, record type) |
+| record delta vs the build76 arz | **+2 records, 0 removed, 0 changed** |
+| `py_compile` on both touched modules | **PASS** |
+
+**SEVERITY - the portal page is the tip, not the whole leak.** `XPack3/Quests/x3mq_AtlantisAdventure.qst`
+is registered at **index 211** of the map's **255**-entry QUESTS window, and BOTH
+`x3mq_marinos_rhodes_spawner.dbr` (a `DLCActorSpawner`) and `rhodes_boatmantogadir.dbr` are **placed in
+`XPack/Levels/Area01_Rhodes/Rhodes_CityFinal_01.lvl`** on the mandatory spine, with
+`gadir_boatmantoatlantis` placed in `Gadir01B`. **An Atlantis-DLC owner can still SAIL to Atlantis.**
+
+**DEBT REGISTER**
+- `BL-PORTALCAP-DEBT-1` (**P1, OPEN, real act leak**) - the Rhodes to Gadir to Atlantis boat chain is
+  live. The A5 one-field DB suppression is NOT available: a whole-base-DB census found DLC gate fields
+  (`RequireDLC`/`RequireNoDLC`) on **17 records only, all `FixedItemTeleport.tpl` /
+  `FixedItemTyphonPortal.tpl`**, with no Atlantis token at all (only `TQA2`, `TQX4`); Marinos is a
+  `DLCActorSpawner` and the boatmen are plain `Npc.tpl`. Four candidate layers are ranked in
+  `docs/PORTAL_PAGE_DLC_CAP.md` section 8; recommend overriding the Rhodes spawner in the mod `.arz` as
+  its own lane, with Will's sign-off. This supersedes the "PARKED" status of the Rhodes/Atlantis entry
+  cap recorded under the 2026-07-10 IT-cap ruling: it is now measured, not conditional.
+- `BL-PORTALCAP-DEBT-2` (P2, LAUNCH-GATED) - NOT PROVEN IN-GAME. Everything above is a database + gate
+  proof. Will opening a portal and seeing four tabs is the launch gate. Runtime risk carried: the engine
+  tolerating a `WorldlMapWindow` record with the DLC page fields absent. Evidence it does: the template
+  declares every page variable with `defaultValue = ""`, and retail ships
+  `records\ingameui\mini map\world\worldmap.dbr` on the same template with NO page fields at all.
+- `BL-PORTALCAP-DEBT-3` (P3, scope) - the quest-log cap was not in Will's report; included because it is
+  the same law, the same record shape and the same removal, and SV 0.98i's own copy of that record
+  already stops at act 4. Flagged so a vet can challenge it separately from the portal page.
+
+**NOT RUN HERE (Ship phase owns them):** full DB build + determinism, record-diff vs baseline,
+`run_contracts`, deploy. No Text/map rebuild is needed (arz-only). Deploy coupling: **arz only**; no
+Levels/Quests/Text change, so this rides any arz push.
+
 ## 🚢 SHIP RECORD - R-200 RED-UBER ORBS: the Boar Snatcher's mystical orb is **LIVE ON STEAM** (2026-08-10, `main` @ `6b9167a`, tag `build76-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user 'trevenaw7'
