@@ -122,7 +122,7 @@ recipe actually wants.
 | 39 | **Ananke's Ring** | ring | any chest, **N/E/L** | Star of Elysium `chest L` | Thoth's Mark `chest L` | Black Pearl Ring `chest L` |
 | 40 | **Band of the Elder Savage** | ring | any chest, **N/E/L** | Archimedes' Cogwheel `chest L` | Chiron's Loop `chest EL` | Heliotrope Jewel `chest L` |
 | 41 | **Mortok's Skull** | artifact | any chest, **N/E/L** | Thoth's Glory `chest L` | Ikon of Zeus `chest L` | Crescent Moon of Artemis `chest L` + `Epic craft` |
-| 42 | **The All-Seeing Eye** | artifact | any chest, **N/E/L** | Marduk's Tablet of Destiny `chest L` | Golden Eye of Sun Wukong `chest L` | Demeter's Bounty `chest L` |
+| 42 | **The All-Seeing Eye** | artifact | any chest, **N/E/L** | Marduk's Tablet of Destiny `chest L` | Golden Eye of Sun Wukong `chest L` | Demeter's Bounty `chest L` + `Epic craft` |
 
 ---
 
@@ -702,8 +702,8 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (2 formula records; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Marduk's Tablet of Destiny** (lvl 5) - **CHEST-FARM (Legendary chests only)**
-- **Golden Eye of Sun Wukong** (lvl 5) - **CHEST-FARM (Legendary chests only)**
-- **Demeter's Bounty** (lvl 5) - **CHEST-FARM (Legendary chests only)**
+- **Marduk's Tablet of Destiny** (lvl 5) - **CHEST-FARM (Legendary chests only)** - or craft it, but only from its **Legendary** arcane formula
+- **Golden Eye of Sun Wukong** (lvl 5) - **CHEST-FARM (Legendary chests only)** - same: the formula is Legendary-tier too
+- **Demeter's Bounty** (lvl 5) - **CHEST-FARM (Legendary chests only)**, but it is **also craftable on EPIC** from `e_da_demetersbounty_formula`, which the Epic act tables pay
 
-**Farm it along the way:** Marduk's Tablet of Destiny, Golden Eye of Sun Wukong, Demeter's Bounty only drop from **Legendary-tier** chests, so the craft itself waits for Legendary.
+**Farm it along the way:** all three drop from **Legendary-tier** chests. Marduk's Tablet of Destiny and Golden Eye of Sun Wukong are what actually gate this recipe - divine artifacts whose arcane formulas appear only on the **Legendary** act tables - so the craft waits for Legendary however early Demeter's Bounty turns up.

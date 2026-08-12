@@ -27,6 +27,26 @@ Every replacement is a record that already existed, is `itemClassification = Leg
 is Legendary-only, and is already reachable from 19/19 Legendary chest surfaces - so no
 loot table moves, no new record enters the universe, and rules G1/G4 cannot regress.
 
+ROUND 2 (2026-08-11), AND IT CHANGED THE GATE, NOT JUST A PICK. The vet found LAW A
+failing on one of the four recipes Will named. Hati's round-1 slot-2 pick was
+`e_da_crescentmoonofartemis`, which satisfied every arm S1 had - Legendary class, no
+sub-Legendary chest pool reaches it, a Legendary pool does, no sub-Legendary table names
+it - and gated nothing, because a divine artifact is not FOUND, it is MADE, and its
+formula is paid by the four EPIC `02_act*_arcaneformulae_table` records. Hati stayed
+Epic-craftable inside its own fix.
+
+  * the pick is now `u_l_artemis'silverbow` - built by nothing, drop-only, 19/19
+    Legendary surfaces, and a reagent of nothing else;
+  * `legendary_only` gained ARM 5, the craft-path check, because arms 1-4 only ever asked
+    who PAYS an item and never who can BUILD one. That is the part that matters: it is a
+    class of hole, not one bad pick, and the two negatives N2c/N2d now hold it open.
+
+Arm 5 is deliberately NOT "a crafted reagent never gates": every divine artifact in the
+game is a craft result (77 of 77), so that rule would have redded the two DRX artifact
+craftables with no legal fix. Their gates are paid only by the LEGENDARY `03_act*` tables,
+so they are genuinely gated and this module leaves them alone. 42 of 42 craftables carry a
+Legendary-gated reagent under the sound rule.
+
 LAW C's own fix is NOT here: it is four memberships in
 `svc_craft_thrown.THROWN_MEMBERS['e']` (the supra thrown leave the Epic thrown table and
 stay on the Legendary one), because that module OWNS `svc_unique_thrown_e01` and two
