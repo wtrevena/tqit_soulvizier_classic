@@ -15,7 +15,7 @@ C "the last word should not be dropped in epic, only legendary".
 ### WHAT WAS WRONG, AND THE BEFORE/AFTER
 | law | offenders BEFORE | AFTER |
 |---|---|---|
-| **A** every recipe has a Legendary-only reagent | **4 of 42** (Charon's Toll, Hati, Sanguine Orbit, The Last Word - exactly the four Will named; the other 38 were already gated) | **0** - every craftable carries at least 1; 46 of 91 reagents are Legendary-only |
+| **A** every recipe has a Legendary-only reagent | **4 of 42** (Charon's Toll, Hati, Sanguine Orbit, The Last Word - exactly the four Will named; the other 38 were already gated) | **0** - every craftable carries at least 1; **45 of 92** reagents are Legendary-only |
 | **B** no two recipes share a reagent set | **5 duplicate groups over 15 craftables** - a SIX-way axe group (Charybdis, Darkflame, Erysichthon, Phoenix Ascendant, Scylla, Wrath of the Furies), a three-way mace group (Omega, Sword Fish, Doomcaller's Maul), and the pairs {Aquimae, Crystal Tear of Nyx} (Will's own example), {Ripulsar, Shrike}, {Stormbringer, Ten Suns' Wrath}. 32 distinct sets | **0 duplicate groups, 42 distinct sets** |
 | **C** no supra item below Legendary | **4** - the supra thrown were members of `svc_unique_thrown_e01` as well as `_l01`; via `svc_unique_weapons_e01` that reached **all 16 Epic chest surfaces, through 24 loot tables** (every Epic mod chest, general's hoard, polis vault, the blood-cave mega chest, the Epic uber orb tables). Per tier: N 0 / **E 4** / L 4 | **N 0 / E 0 / L 4** |
 
@@ -78,10 +78,10 @@ retirement - rule S4c reds if a later lane finishes the job Will did not ask for
 ### GATE RECORD (all static, all on the post-wave in-memory db)
 | gate | result |
 |---|---|
-| `SSR.audit_supra_laws` (S1/S2/S3/S4) | **PASS - 0 problems.** 42 craftables / 59 formulas, **42 distinct reagent sets, 0 duplicate groups**, 46 of 91 reagents Legendary-only, every craftable carries >= 1, **4 supra items loot-reachable and 0 below Legendary** |
-| `SCT.audit_db` (F1 formulas, G1/G3/G4 reagents, C1/C2 thrown) | **PASS - 0 problems.** 42/42 craftables formula-reachable on N, E and L; 91 reagents = 22 MI + 63 ordinary + 6 artifact + **0 missing**; 70 reachable from Legendary chests; **thinnest non-MI spread 19 of 19** legendary surfaces (floor 10); **51 mod chest tables audited for thrown** |
+| `SSR.audit_supra_laws` (S1/S2/S3/S4) | **PASS - 0 problems.** 42 craftables / 59 formulas, **42 distinct reagent sets, 0 duplicate groups**, **45 of 92** reagents Legendary-only, every craftable carries >= 1, **4 supra items loot-reachable and 0 below Legendary** |
+| `SCT.audit_db` (F1 formulas, G1/G3/G4 reagents, C1/C2 thrown) | **PASS - 0 problems.** 42/42 craftables formula-reachable on N, E and L; **92 reagents = 22 MI + 64 ordinary + 6 artifact** + **0 missing**; **71** reachable from Legendary chests; **thinnest non-MI spread 19 of 19** legendary surfaces (floor 10); **51 mod chest tables audited for thrown** |
 | `SLB.audit_db` (B1/B2/B3 chest breadth + C1/C2 per chest) | **PASS - 51 chest tables, 0 problems.** This is the gate that would have caught the rejected one-move fix |
-| `py tools/debug/negtest_supra_recipe_laws.py` | **PASS - 10/10 behave, exit 0.** N0 control GREEN; **N1 = the shipped defect replanted** (4 supra thrown back on the Epic table) reds S4; N2/N2b demote a LAW B / LAW A replacement onto an Epic table and red S1; N3 unhooks a gate reagent entirely (uncompletable is not gated); N4 plants a duplicate set; N5 makes two formulas of one craftable disagree; N6 points a reagent at its dead `records\equipmentweapon\axe\` twin; **N7** plants a non-thrown supra into a table (S4b); **N8** over-applies LAW C by stripping the Legendary table too (S4c) |
+| `py tools/debug/negtest_supra_recipe_laws.py` | **PASS - 13/13 behave, exit 0.** N0 control GREEN; **N1 = the shipped defect replanted** (4 supra thrown back on the Epic table) reds S4; N2/N2b demote a LAW B / LAW A replacement onto an Epic table and red S1; **N2c** puts Hati's gate back on the Epic-craftable Crescent Moon (the craft arm fires); **N2d** is its false-red guard (the deep-gated divine artifacts must still count); **N2e** makes Thoth's Glory's own chain Epic-satisfiable **without touching a loot table** - round 2's rule could not see that plant, round 3's reds on it; N3 unhooks a gate reagent entirely (uncompletable is not gated); N4 plants a duplicate set; N5 makes two formulas of one craftable disagree; N6 points a reagent at its dead `records\equipmentweapon\axe\` twin; **N7** plants a non-thrown supra into a table (S4b); **N8** over-applies LAW C by stripping the Legendary table too (S4c) |
 | standalone `py tools/gate_supra_recipe_laws.py <build83 arz>` | **RED, as it must be** - 3 offenders on the unfixed baseline (S1 4 craftables, S2 5 groups, S4 4 items on E/L) |
 
 **A DEFECT THIS LANE FOUND IN ITS OWN IN-FLIGHT WORK, caught by rule S3:** the LAW B table pointed Ten
@@ -152,10 +152,15 @@ merge.
   `svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table ->
   l_da_thothsglory_formula`. So an Epic chest can pay a Legendary-tier divine-artifact formula. This is
   a chest-WIRING tier-discipline defect (R-100 #17) that predates R-231 and affects every Legendary
-  item reachable that way, not just formulas. It is why `legendary_only` arm 5 reads a formula's
-  **direct** table holders rather than its upward closure - reading the closure would have redded all
-  four Legendary divine artifacts and both DRX artifact craftables on the strength of someone else's
-  bug. Fix it where it lives (the Epic chest/hoard wiring), then arm 5 can be tightened to the closure.
+  item reachable that way, not just formulas. Fix it where it lives (the Epic chest/hoard wiring).
+  **ROUND-3 UPDATE: the gate no longer depends on this being fixed, and no longer looks away from
+  it.** Round 2 read a formula's **direct** table holders precisely to avoid this defect redding the
+  four Legendary divine artifacts - which meant the gate's stated reason ("the formula is the gate")
+  was false on exactly those four. Round 3 accepts the measurement (an Epic chest DOES pay them) and
+  proves the gate one level deeper instead: those formulas consume `l_ga_doxakalo` /
+  `l_ga_elementalrage` / `l_ga_totemofthepolymath` and the Legendary relic
+  `03_act4_cunningofoddyseus`, none of which anything below Legendary pays. Fixing the wiring will
+  change nothing about S1's verdicts; it will only remove a lie from the chest tables.
 
 ### ROUND-2 CORRECTIONS (the vet caught LAW A failing on one of the four recipes Will named)
 - **HIGH, fixed:** Hati's round-1 gate `e_da_crescentmoonofartemis` passed S1 while gating nothing -
@@ -175,6 +180,38 @@ merge.
   precedent; `BL-R231-DEBT-2`'s C2 justification corrected; the b81 thrown dict now states that its
   slot-2 values are intent-and-assertion, not shipped values; Hati's formula tooltip reads **Mythic
   Formula** like its 41 siblings.
+### ROUND-3 CORRECTIONS (the vet falsified round 2's *reason* on round 2's own evidence)
+- **HIGH, fixed:** round 2's craft check read only the tier of the tables that NAME a formula, on the
+  theory that "the formula is the gate". Measured on the lane-applied db, that theory is false on the
+  exact four formulas round 2 cited as its PASS evidence: **an EPIC mod chest reaches
+  `l_da_thothsglory_formula` and its three siblings on 15 of 16 Epic surfaces** (`BL-R231-DEBT-4`).
+  The 42/42 outcome was right, the mechanism was not, and a future divine-artifact reagent with no
+  Legendary member deeper in its chain would have PASSED while being fully Epic-craftable - round 1's
+  hole class. `legendary_only` now delegates to **`obtainable_below_legendary`**, one recursive
+  question asked at every depth: can a player who never enters Legendary end up HOLDING this record,
+  by drop or by craft? Measured evidence decides (chest pools -> upward table closure -> the formula's
+  own reagent slots, per SLOT because a slot is a per-difficulty array); the base game's record-name
+  tier convention is consulted **only** where this overlay arz cannot measure at all (`n_la_amberflask`
+  resolves, sits in no pool at any tier and is named by no table in the mod's 51k records - reading
+  that silence as Legendary would have turned round 1's defect back into a PASS).
+  **Same 45-of-92 outcome, now proved:** Thoth's Glory gates on `l_ga_doxakalo` +
+  `03_act4_cunningofoddyseus`; Ikon of Zeus on `l_ga_elementalrage`; Marduk's Tablet and Golden Eye on
+  `l_ga_totemofthepolymath`; Crescent Moon still reds, and the walk now shows WHY (all three slots of
+  its Epic formula are Epic-payable) instead of asserting it from a file name.
+- **New negative `N2e`:** make Thoth's Glory's own craft chain Epic-satisfiable without touching a
+  single loot table. Round 2's rule cannot see that plant; round 3's reds on it. **13/13 negatives.**
+- **MEDIUM, fixed - doc totals:** the reagent counts on this board and in the player guide were
+  round-1 numbers the round-2 correction pass updated only in `WILL_RULINGS.md`. Measured and now
+  consistent everywhere: **92 distinct reagents, 45 Legendary-only, 72 chest-payable, 20 that no chest
+  pays** (which are exactly 20 of the 22 Monster Infrequents; the other two greens, **Animus** and
+  **Perversion of the Bloodborn** `mi_vit_wand_01`, do sit in a chest pool), 71 Legendary-chest
+  reachable, `SCT` split 22 MI + 64 ordinary + 6 artifact.
+- **LOW, fixed:** `WILL_RULINGS.md` R-231 said "10/10 negatives behave" in its body and "12/12" in its
+  round-2 delta table. Both are now **13/13**, measured.
+- **The player guide's Mortok's Skull / All-Seeing Eye passages** told players the arcane formula was
+  the gate. They now name the Legendary greater artifacts and the relic that actually gate, and say
+  plainly that an Epic chest can hand you the formula.
+
 - **TWO THINGS NEEDING ONE WORD FROM WILL** (see `docs/WILL_RULINGS.md` R-231 round 2): (1) the four
   supra thrown still drop on **Legendary** (N 0 / E 0 / L 4) - ratify or correct; (2) **LAW B is met at
   the minimum** - 42/42 sets distinct, 0 duplicate groups, but de-duplicated recipes still share two of

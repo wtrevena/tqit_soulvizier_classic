@@ -37,15 +37,24 @@ Epic-craftable inside its own fix.
 
   * the pick is now `u_l_artemis'silverbow` - built by nothing, drop-only, 19/19
     Legendary surfaces, and a reagent of nothing else;
-  * `legendary_only` gained ARM 5, the craft-path check, because arms 1-4 only ever asked
-    who PAYS an item and never who can BUILD one. That is the part that matters: it is a
-    class of hole, not one bad pick, and the two negatives N2c/N2d now hold it open.
+  * `legendary_only` gained a CRAFT-PATH check, because its drop arms only ever asked who
+    PAYS an item and never who can BUILD one. That is the part that matters: it is a class
+    of hole, not one bad pick, and the negatives N2c/N2d/N2e hold it open.
 
-Arm 5 is deliberately NOT "a crafted reagent never gates": every divine artifact in the
-game is a craft result (77 of 77), so that rule would have redded the two DRX artifact
-craftables with no legal fix. Their gates are paid only by the LEGENDARY `03_act*` tables,
-so they are genuinely gated and this module leaves them alone. 42 of 42 craftables carry a
-Legendary-gated reagent under the sound rule.
+ROUND 3 (2026-08-11, third vet) fixed the craft check's own reasoning. Round 2 read the
+tier of the tables that NAME a formula and called the formula the gate; measured, an EPIC
+mod chest reaches `l_da_thothsglory_formula` and its three siblings on 15 of 16 Epic
+surfaces, so that reason was false on the very four formulas round 2 cited as proof. The
+check is now `obtainable_below_legendary`, a recursion that asks "can this be had below
+Legendary, by drop or by craft" at every depth and follows a formula into its own reagent
+slots.
+
+It is deliberately NOT "a crafted reagent never gates": every divine artifact in the game
+is a craft result (77 of 77), so that rule would have redded the two DRX artifact
+craftables with no legal fix. They gate one level below their formulas - `l_ga_doxakalo`
+plus the Legendary relic `03_act4_cunningofoddyseus`, `l_ga_elementalrage`,
+`l_ga_totemofthepolymath` - so they are genuinely gated and this module leaves them alone.
+42 of 42 craftables carry a Legendary-gated reagent under the sound rule.
 
 LAW C's own fix is NOT here: it is four memberships in
 `svc_craft_thrown.THROWN_MEMBERS['e']` (the supra thrown leave the Epic thrown table and

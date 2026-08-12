@@ -26,7 +26,7 @@ Legendary**. You build each one at an Enchanter/Mystic from:
 1. its **Mythic Formula** (a recipe scroll), plus
 2. **three reagent items** you have to find.
 
-There are **42 craftables**, built by 59 formula records, needing **91 distinct reagents** -
+There are **42 craftables**, built by 59 formula records, needing **92 distinct reagents** -
 and all 42 reagent sets are different from one another.
 
 ## The three things worth knowing before you farm
@@ -35,10 +35,13 @@ and all 42 reagent sets are different from one another.
 `supra` / `supra_special` formula tables, and every mod chest and boss hoard reaches them on
 **Normal, Epic and Legendary**. You can bank recipes right now on Epic. There is no reason to wait.
 
-**2. Reagents split two ways.** Of the 91 reagents, **69 come from chests** (the Gaoler cage counts,
+**2. Reagents split two ways.** Of the 92 reagents, **72 come from chests** (the Gaoler cage counts,
 and so do the general-guard hoards, the Mystical Orb chests and the blood-cave mega chest) and
-**22 are Monster Infrequents** - the green items that only ever drop from one monster family. No
-chest in the game pays a green. Those are the ones you have to go and hunt.
+**22 are Monster Infrequents** - the green items that drop from one monster family. Twenty of those
+greens are exactly the 20 reagents **no chest in the game pays**, so those are the ones you go and
+hunt. The other two are greens a chest pays as well, and the table below labels them that way:
+**Animus** (`mi_l_gigantes2`, Legendary chests) and **Perversion of the Bloodborn**
+(`mi_vit_wand_01`, Normal chests).
 
 **3. None of the 42 is craftable at Epic any more.** Every recipe wants at least one reagent you can
 only get at **Legendary** - that is Will's ruling A, and it now applies to the four thrown weapons
@@ -46,11 +49,19 @@ only get at **Legendary** - that is Will's ruling A, and it now applies to the f
 the other 38. Epic is for banking, not for finishing.
 
 For 40 of the 42 that gate is a **unique item only Legendary chests pay**. For the two artifact
-recipes (**Mortok's Skull**, **The All-Seeing Eye**) it is a **divine artifact whose arcane formula
-only appears on the Legendary act tables** - you can hold the reagent's recipe on Epic, but not the
-formula that makes it. Both shapes are checked against the database on every build, drop paths and
-craft paths alike; a reagent that merely *looks* Legendary no longer counts. (That check is new as of
-round 2, and it caught Hati's first gate being an artifact you can craft on Epic.)
+recipes (**Mortok's Skull**, **The All-Seeing Eye**) it is a **divine artifact you cannot assemble
+before Legendary**. Note what that is *not*: the artifact's arcane formula is **not** the gate - an
+Epic chest really does pay `l_da_thothsglory_formula` and its three siblings, on 15 of the 16 Epic
+chest surfaces. The gate sits one step further down. Each of those Legendary formulas wants a
+**Legendary greater artifact** that nothing below Legendary can hand you (`l_ga_doxakalo`,
+`l_ga_elementalrage`, `l_ga_totemofthepolymath`), and Thoth's Glory additionally wants the Legendary
+relic `03_act4_cunningofoddyseus`. Hold the formula on Epic all you like; the pieces are Legendary.
+
+Both shapes are checked against the database on every build, drop paths and craft paths alike, and
+the check follows the craft chain down rather than trusting a formula's file name. (Round 2 added the
+craft check and it caught Hati's first gate being an artifact you can craft on Epic. Round 3 fixed
+the check's own reasoning, after the vet measured that Epic chests pay the very Legendary formulas
+round 2 had called the gate.)
 
 ## What to do on Epic right now
 
@@ -128,7 +139,7 @@ recipe actually wants.
 
 ## The green shopping list
 
-Twenty-two of the 91 reagents are Monster Infrequents. These 20 are the ones no chest will ever
+Twenty-two of the 92 reagents are Monster Infrequents. These 20 are the ones no chest will ever
 pay; the other two carry a chest placement and are labelled `chest ...` in the table above.
 Everything else on this page can come out of a chest.
 
@@ -690,11 +701,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (2 formula records; tables `supra_special.dbr`).
 
 **Reagents:**
-- **Thoth's Glory** (lvl 5) - **CHEST-FARM (Legendary chests only)** - or craft it, but only from its **Legendary** arcane formula
-- **Ikon of Zeus** (lvl 5) - **CHEST-FARM (Legendary chests only)** - same: the formula is Legendary-tier too
-- **Crescent Moon of Artemis** (lvl 5) - **CHEST-FARM (Legendary chests only)**, but it is **also craftable on EPIC** from `e_da_crescentmoonofartemis_formula`, which the Epic act tables pay
+- **Thoth's Glory** (lvl 5) - **CHEST-FARM (Legendary chests only)** - or craft it, but not before Legendary: an Epic chest can pay you `l_da_thothsglory_formula`, and that formula then wants the Legendary greater artifact `l_ga_doxakalo` **and** the Legendary relic `03_act4_cunningofoddyseus`
+- **Ikon of Zeus** (lvl 5) - **CHEST-FARM (Legendary chests only)** - same shape: its formula is Epic-payable, but it wants `l_ga_elementalrage`, which is not
+- **Crescent Moon of Artemis** (lvl 5) - **CHEST-FARM (Legendary chests only)**, but it is **also craftable on EPIC** from `e_da_crescentmoonofartemis_formula`, which the Epic act tables pay - and every one of that formula's three pieces is Epic-payable too, so this one really is an Epic craft
 
-**Farm it along the way:** all three drop from **Legendary-tier** chests. Thoth's Glory and Ikon of Zeus are what actually gate this recipe - both are divine artifacts whose arcane formulas appear only on the **Legendary** act tables, so you cannot assemble Mortok's Skull before Legendary however early you find the Crescent Moon.
+**Farm it along the way:** all three drop from **Legendary-tier** chests. Thoth's Glory and Ikon of Zeus are what actually gate this recipe, and the gate is one step below their arcane formulas: you can hold both formulas on Epic, but the Legendary greater artifacts they consume never drop before Legendary. So Mortok's Skull waits for Legendary however early the Crescent Moon turns up.
 
 ### The All-Seeing Eye
 *Legendary artifact, item level 65. carries a granted skill*
@@ -702,8 +713,8 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (2 formula records; tables `supra.dbr`, `supra_special.dbr`).
 
 **Reagents:**
-- **Marduk's Tablet of Destiny** (lvl 5) - **CHEST-FARM (Legendary chests only)** - or craft it, but only from its **Legendary** arcane formula
-- **Golden Eye of Sun Wukong** (lvl 5) - **CHEST-FARM (Legendary chests only)** - same: the formula is Legendary-tier too
-- **Demeter's Bounty** (lvl 5) - **CHEST-FARM (Legendary chests only)**, but it is **also craftable on EPIC** from `e_da_demetersbounty_formula`, which the Epic act tables pay
+- **Marduk's Tablet of Destiny** (lvl 5) - **CHEST-FARM (Legendary chests only)** - or craft it, but not before Legendary: its formula is Epic-payable and then wants the Legendary greater artifact `l_ga_totemofthepolymath`
+- **Golden Eye of Sun Wukong** (lvl 5) - **CHEST-FARM (Legendary chests only)** - same shape, and the same Legendary piece: `l_ga_totemofthepolymath`
+- **Demeter's Bounty** (lvl 5) - **CHEST-FARM (Legendary chests only)**, but it is **also craftable on EPIC** from `e_da_demetersbounty_formula`, which the Epic act tables pay - pieces included
 
-**Farm it along the way:** all three drop from **Legendary-tier** chests. Marduk's Tablet of Destiny and Golden Eye of Sun Wukong are what actually gate this recipe - divine artifacts whose arcane formulas appear only on the **Legendary** act tables - so the craft waits for Legendary however early Demeter's Bounty turns up.
+**Farm it along the way:** all three drop from **Legendary-tier** chests. Marduk's Tablet of Destiny and Golden Eye of Sun Wukong are what actually gate this recipe, one step below their arcane formulas: both formulas consume `l_ga_totemofthepolymath`, which nothing pays before Legendary. So the craft waits for Legendary however early Demeter's Bounty turns up.

@@ -11,16 +11,18 @@ legtip)"
 
 WHAT IT ASSERTS (see tools/svc_supra_recipes.py for the measured causes):
   S1  every supra craftable names at least one reagent whose ONLY obtain paths are
-      Legendary-tier. "Legendary-only" is proved FIVE ways, not asserted: the record is
-      itemClassification = Legendary (so R-100 #17 confines it to `_l` hosts), no Normal
-      or Epic chest pool reaches it, a LEGENDARY chest pool DOES reach it (a reagent
-      nothing can pay is uncompletable, not gated), no loot table in its upward reference
-      closure is a Normal- or Epic-tier table - which is the check that catches a MONSTER
-      paying it on a lower difficulty - and, arm 5, if anything in the game BUILDS the
-      reagent then every formula that does must itself be Legendary-tier-only. Arm 5 is
-      what separates "found in legendary" (Will's words) from "merely classified
-      Legendary": it is why Hati's gate is a drop-only bow and not a divine artifact you
-      can craft from an Epic arcane formula.
+      Legendary-tier. "Legendary-only" is proved, not asserted: the record is
+      itemClassification = Legendary (so R-100 #17 confines it to `_l` hosts), a LEGENDARY
+      chest pool reaches it (a reagent nothing can pay is uncompletable, not gated), and
+      `obtainable_below_legendary` says NO - one recursive walk that covers the Normal and
+      Epic chest pools, the upward table closure (which is what catches a MONSTER paying it
+      on a lower difficulty) and the CRAFT path, following a formula into its own reagent
+      slots rather than trusting the formula's tier. That walk is what separates "found in
+      legendary" (Will's words) from "merely classified Legendary": it is why Hati's gate
+      is a drop-only bow and not a divine artifact you can craft from an Epic arcane
+      formula, and why Thoth's Glory counts as a gate for the reason that is actually true
+      (its formula wants Legendary-only pieces) rather than the one round 2 published (an
+      Epic chest pays that formula on 15 of 16 Epic surfaces).
   S2  no two supra craftables name an identical reagent multiset. S2b additionally fails
       a craftable whose several formula records disagree about its own reagents.
   S3  every reagent the de-duplication introduced still resolves, is not one of the 13

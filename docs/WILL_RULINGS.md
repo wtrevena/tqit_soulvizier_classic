@@ -5474,8 +5474,9 @@ shared by the in-build gate, the standalone gate and the negatives):** S1 Legend
 recipe; S2 reagent-set uniqueness (+S2b two formulas of one craftable must agree); S3 every
 replacement resolves, is not one of the 13 dead `records\equipmentweapon\axe\` twins, and is
 Legendary-reachable; S4 no supra item below Legendary (+S4b the 38 craft-only supras named by no loot
-table at all, +S4c the four stay droppable on Legendary). **10/10 negatives behave**, N1 being the
-shipped defect replanted byte-for-byte.
+table at all, +S4c the four stay droppable on Legendary). **13/13 negatives behave** (corrected in
+place: this line read 10/10 from round 1 and the round-2 delta table read 12/12; the current suite is
+13/13), N1 being the shipped defect replanted byte-for-byte.
 
 **S3 EARNED ITS KEEP DURING THE LANE:** the in-flight LAW B table pointed Ten Suns' Wrath at
 Zhurong's Firebow, which an EPIC chest pool reaches - it would have de-duplicated the recipe while
@@ -5549,12 +5550,14 @@ are "craftable from base arcane formulae the chests DO drop, but not droppable t
    four thrown gates remain four different item classes - amulet / **bow** / spear / mace.
 2. **`legendary_only` gained arm 5, the craft-path check:** if any formula in the database builds the
    reagent, every one of those formulas must itself be Legendary-tier-only by the same closure test.
-   No recursion into the formula's own reagents is needed or wanted - if the formula is Legendary-only
-   the reagent cannot be had below Legendary whatever its sub-reagents cost, and if it is not,
-   redding is the conservative call for a gate. (A recursion would also be fragile: formula reagent
+   ~~No recursion into the formula's own reagents is needed or wanted~~ **- CORRECTED IN ROUND 3, see
+   below: the recursion IS needed, because "the formula is the gate" is false in this database.** The
+   round-2 caution behind that sentence was real and survives inside the recursion: formula reagent
    slots are per-difficulty ARRAYS, measured -
-   `e_da_crescentmoonofartemis_formula.reagent3BaseName = [02x_vengeance, 03x_vengeance]` - and
-   `03x_vengeance` is a base-game record this mod's arz does not even contain.)
+   `e_da_crescentmoonofartemis_formula.reagent3BaseName = [02x_vengeance, 03x_vengeance]` - so the
+   walk reads them per SLOT (any one variant satisfies a slot; every slot must be satisfied), and
+   `03x_vengeance` is a base-game record this mod's arz does not contain, which is why an absent
+   record counts as obtainable rather than as a gate.
    `table_tier` was widened at the same time to read the base game's spelled-out convention
    (`xq04 - arcaneformulae_legendary`), so every table paying a formula can be classified instead of
    returning `None` and being silently forgiven.
@@ -5564,11 +5567,16 @@ artifact in the game is a craft result (**77 of 77** have a formula; TQ drops fo
 artifacts), so a blanket rule would have redded the two DRX artifact craftables
 (`artifact_mortoksskull`, `artifact_plus2`) with no legal fix available and forced a cosmetic reagent
 swap into recipes Will never complained about. Measured instead: their gates - Thoth's Glory, Ikon of
-Zeus, Marduk's Tablet of Destiny, Golden Eye of Sun Wukong - are paid **only** by the LEGENDARY
-`03_act1..4_arcaneformulae_table` records, so they are genuinely Legendary-gated and **need no edit**.
-Negative test N2d is the false-red guard that keeps it that way; N2c replants the Hati defect and
-proves arm 5 fires. Final: **42 of 42 craftables carry a Legendary-gated reagent under the sound
-rule.**
+Zeus, Marduk's Tablet of Destiny, Golden Eye of Sun Wukong - are genuinely Legendary-gated and **need
+no edit**. ~~because they are paid only by the LEGENDARY `03_act1..4_arcaneformulae_table` records~~
+**- ROUND-3 CORRECTION: that stated reason was false. Their formulas ARE reachable from an EPIC mod
+chest, on 15 of 16 Epic surfaces (`BL-R231-DEBT-4`). What gates them is one level deeper: those
+formulas consume `l_ga_doxakalo` (+ the Legendary relic `03_act4_cunningofoddyseus`),
+`l_ga_elementalrage` and `l_ga_totemofthepolymath`, and nothing below Legendary pays those.** The
+verdict is unchanged and now measured rather than assumed. Negative test N2d is the false-red guard
+that keeps it that way; N2c replants the Hati defect and proves the craft arm fires; N2e (round 3)
+makes Thoth's Glory's own chain Epic-satisfiable without touching a loot table and proves the
+recursion fires. Final: **42 of 42 craftables carry a Legendary-gated reagent under the sound rule.**
 
 **ROUND-2 GATE READINGS, measured on the build83 ship arz `44499f56` with the lane's own two
 idempotent writes applied (static gates only; Ship does the build):**
@@ -5592,8 +5600,71 @@ provenance) reports **0 problems** on the same database, so the b81-adjacent gat
 reaches the **LEGENDARY** arcane-formula tables on **15 of 16 Epic surfaces** - traced concretely as
 `svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table ->
 l_da_thothsglory_formula`. That is a chest-WIRING tier defect that predates this lane and belongs to
-the chest-table owner, not to a recipe module. Arm 5 asks whether the FORMULA's own tables are
-Legendary, which is the question this module can answer honestly.
+the chest-table owner, not to a recipe module. ~~Arm 5 asks whether the FORMULA's own tables are
+Legendary, which is the question this module can answer honestly.~~ **ROUND-3 CORRECTION: that
+sidestep is what made the gate's stated reason false. The walk now takes this measurement at face
+value - an Epic chest DOES pay those formulas - and proves the gate one level below them instead. The
+debt stays open and is still the chest owner's to fix; the gate's verdicts no longer depend on it
+either way.**
+
+### ROUND 3 (2026-08-11, third vet): THE OUTCOME WAS RIGHT, THE REASON WAS FALSIFIED
+
+**WHAT THE VET MEASURED.** Round 2's craft check read only the tier of the tables that NAME a
+formula, on the stated theory that "the formula is the gate". On the lane-applied db, all four
+formulas round 2 quoted as its PASS evidence are reachable from **15 of 16 EPIC chest surfaces**
+(BFS-derived: `svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table ->
+l_da_thothsglory_formula`). So the theory is false exactly where the ledger asserted it, the module
+docstring taught it, and `docs/SUPRA_CRAFTING_GUIDE.md` told players it as fact under a header
+promising "no source is guessed". **42/42 still held** - the vet re-derived that independently - but a
+future divine-artifact reagent with no Legendary member deeper in its chain would have PASSED while
+being fully Epic-craftable. That is round 1's hole class, not a wording nit.
+
+**THE FIX.** `legendary_only` now delegates to **`obtainable_below_legendary`**, which asks ONE
+question at every depth: *can a player who never sets foot in Legendary end up HOLDING this record,
+by drop or by craft?* Order is the point - measured evidence decides, convention is consulted only
+where this database physically cannot measure:
+1. record does not resolve -> obtainable (a base-game record the overlay never copied; an unprovable
+   claim must never become a PASS);
+2. a Normal/Epic chest pool reaches it -> obtainable;
+3. a Normal/Epic-tier table in its upward closure names it -> obtainable (the MONSTER path);
+4. **the craft path**: for each formula that builds it, if that formula is itself obtainable below
+   Legendary AND every one of its reagent SLOTS has one variant obtainable below Legendary, the record
+   can be MADE below Legendary. Slots, not a flat list, because a slot is a per-difficulty array;
+5. nothing fired. If the record is VISIBLE to the measurement, the silence is the answer -
+   Legendary-only. If it is invisible (no pool at any tier, no table anywhere), fall back to the base
+   game's own record-name convention: `n_`/`e_`/`0N_` -> obtainable, `l_`/`03_` -> Legendary, no tier
+   in the name -> obtainable.
+
+**WHY STEP 5 NEEDS THAT FALLBACK, AND IT IS NOT A LOOPHOLE.** This arz is a ~51k-record OVERLAY, not
+the whole game. `n_la_amberflask` resolves, sits in no chest pool at any tier and is named by no loot
+table in it. Reading that silence as "Legendary-only" gates the entire base-game artifact chain behind
+Legendary and turns `e_da_crescentmoonofartemis` into a PASS - i.e. it re-blesses round 1's defect.
+Measured both ways before choosing.
+
+**READINGS (same arz, same two idempotent writes; static gates only, Ship builds):**
+
+| reading | round 2 | round 3 |
+|---|---|---|
+| negative tests | 12/12 | **13/13**, +N2e (the recursion fires) |
+| reagents provably Legendary-only | 45 of 92 | **45 of 92 - identical, and now proved** |
+| craftables carrying a Legendary gate | 42/42, right answer / false reason | **42/42, measured** |
+| Thoth's Glory's gate | `l_da_thothsglory_formula`'s own table tier (FALSE - an Epic chest pays it) | **`l_ga_doxakalo` + the Legendary relic `03_act4_cunningofoddyseus`** |
+| Ikon of Zeus / Marduk's Tablet / Golden Eye | same false reason | **`l_ga_elementalrage` / `l_ga_totemofthepolymath` x2** |
+| Crescent Moon of Artemis | RED (asserted from the formula's tier) | **RED, and shown: all three slots of its Epic formula are Epic-payable** |
+| S1-S4 / `SCT.audit_db` / `SLB.audit_db` | 0 problems | **0 problems** (51 chest tables) |
+
+**N2e, the negative round 2 could not have written:** make Thoth's Glory's own craft chain
+Epic-satisfiable (swap `l_ga_doxakalo` -> `n_ga_furyoftheages`, `03_act4_cunningofoddyseus` ->
+`01_act4_shadeofhektor`) **without touching a single loot table**. Round 2's rule cannot see that
+plant; round 3's reds on it.
+
+**DOC CORRECTIONS THE SAME PASS (the round-2 correction pass had updated this ledger and left the
+board and the player guide behind):** `docs/BACKLOG.md` said "46 of 91 reagents" in two places and the
+guide said "91 distinct reagents" / "69 come from chests". Measured: **92 reagents, 45 Legendary-only,
+72 chest-payable, 20 that no chest pays** - exactly 20 of the 22 Monster Infrequents, the other two
+greens (**Animus**, **Perversion of the Bloodborn** `mi_vit_wand_01`) being chest-payable - **71**
+Legendary-chest reachable, `SCT` split **22 MI + 64 ordinary + 6 artifact**. The guide's two artifact
+passages no longer tell players the arcane formula is the gate.
 
 ### TWO THINGS THAT NEED ONE WORD FROM WILL
 
