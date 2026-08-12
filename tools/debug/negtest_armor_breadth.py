@@ -412,34 +412,61 @@ def main(argv):
         return next((r for r in reps
                      if r.get('label') == SLD.ARMOR_SLOT_FLOOR_REF_SURFACE), None)
 
+    # WHAT THIS CASE ASSERTS, AND WHY IT IS NO LONGER "D7 SPECIFICALLY".
+    # The original N12 isolated D7, because on the OLD anchor there was a real band
+    # (0.40 .. 0.52/open) where D7 caught a regression D7b could not see. On the R-240
+    # anchor that band does not exist in the other direction either: MEASURED on
+    # `gaoler cage chest_01 [l]`, D7b binds at 0.0375/iteration x S=12.48 = 0.468/open
+    # while D7 binds at 0.0644/open, so **D7 is 7.3x LOOSER than D7b here and can never
+    # fire first**. Demanding a D7-specific red would mean cutting armour ~96% - not a
+    # regression test, a demolition test - and it would be asserting a property the
+    # contract no longer has.
+    # So the case now asserts the invariant that DID survive and is the one that
+    # matters: a real armour regression on the floor's own reference surface is CAUGHT.
+    # Which check catches it is measured and reported by N12b/N12c, and the fact that
+    # D7 is now dominated is `BL-R240-DEBT-9`, not something this test should paper over.
     def _cut_reference_armour(d, k):
         rep = _ref_report(d, k)
         if rep is None:
             return                     # D7X already reds this; probe returns [] -> XX
-        # ARMOUR SLOTS ONLY. `slot_mass` carries weapon slots too, and D7's floor is an
-        # ARMOUR floor - sizing the cut off a weapon slot compares two different things
-        # and produces a nonsense factor (the first draft of this rewrite did exactly
-        # that and asked for a -25% cut).
-        mass = rep.get('slot_mass') or {}
-        worst = min([mass.get(s, 0.0) for s in SLD.ARMOR_SLOTS] or [0.0])
-        # Put the thinnest worn slot 10% BELOW the live floor. Guard the degenerate
-        # case so a surface already under the floor still gets a real cut.
-        f = (SLD.ARMOR_SLOT_FLOOR / worst) * 0.9 if worst > SLD.ARMOR_SLOT_FLOOR else 0.5
         for t in rep.get('tables', []):
             real = k.real(t)
             if not real:
                 continue
             for g in SAB.armor_groups(d, real):
-                d.set_field(real, 'loot%dChance' % g, SAB.ARMOR_ROW_CHANCE * f)
+                d.set_field(real, 'loot%dChance' % g, SAB.ARMOR_ROW_CHANCE * 0.40)
 
-    def _probe_reference_d7(d, k):
+    def _probe_reference_armour(d, k):
         probs, _reps = SAB.audit_db(d, k)
         return [p for p in probs
-                if p.startswith('D7 ') and SLD.ARMOR_SLOT_FLOOR_REF_SURFACE in p]
+                if SLD.ARMOR_SLOT_FLOOR_REF_SURFACE in p
+                and (p.startswith('D7 ') or p.startswith('D7b ') or p.startswith('D6 '))]
 
-    check("D7 armour cut below the LIVE floor on the LIVE reference surface (%s, "
-          "floor %.4f/open)" % (SLD.ARMOR_SLOT_FLOOR_REF_SURFACE, SLD.ARMOR_SLOT_FLOOR),
-          _cut_reference_armour, _probe_reference_d7)
+    check("armour cut 60%% on the LIVE reference surface (%s) is CAUGHT (D7/D7b/D6)"
+          % SLD.ARMOR_SLOT_FLOOR_REF_SURFACE,
+          _cut_reference_armour, _probe_reference_armour)
+
+    # N12c - WHICH CHECK BINDS FIRST on the reference surface. Report-only. This is the
+    #      number behind `BL-R240-DEBT-9`: if D7b's per-iteration floor is uniformly
+    #      tighter than D7's absolute floor on the very surface D7 is anchored to, then
+    #      the absolute floor is decorative there and someone should decide whether that
+    #      is intended.
+    drc, krc = load_fixed(arz)
+    _pp, reps_rc = SAB.audit_db(drc, krc)
+    rrc = next((r for r in reps_rc
+                if r.get('label') == SLD.ARMOR_SLOT_FLOOR_REF_SURFACE), None)
+    if rrc is None:
+        print("     D7-vs-D7b on the reference surface: surface not in the audit set")
+    else:
+        S = rrc.get('S_eff', 0.0) or 1.0
+        d7b_equiv = SLD.ARMOR_SLOT_FLOOR_PER_SPAWN * S
+        print("     D7-vs-D7b on the REFERENCE surface %s (S=%.2f): D7 binds at "
+              "%.4f/open, D7b binds at %.4f/open equivalent (%.4f/iter x S). D7b is "
+              "%.1fx TIGHTER, so D7 CANNOT FIRE FIRST here - the absolute floor is "
+              "dominated on its own anchor. See BL-R240-DEBT-9."
+              % (SLD.ARMOR_SLOT_FLOOR_REF_SURFACE, S, SLD.ARMOR_SLOT_FLOOR, d7b_equiv,
+                 SLD.ARMOR_SLOT_FLOOR_PER_SPAWN,
+                 (d7b_equiv / SLD.ARMOR_SLOT_FLOOR) if SLD.ARMOR_SLOT_FLOOR else 0.0))
 
     # N12b - WHAT THE 8x FLOOR DROP ACTUALLY COST, as a number rather than a claim.
     #      R-240's re-derivation is correct (holding 0.52/open against a container that

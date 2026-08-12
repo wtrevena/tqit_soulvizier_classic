@@ -5969,12 +5969,22 @@ D7X2 problem, names it, prints it, and reds on anything else. A new **N12b measu
 run, how deep a cut the old anchor can now absorb** - reported rather than asserted, because a test
 that asserts a hole stays open is not a test.
 
-**WHAT IS LEFT IS A DESIGN QUESTION, NOT A BUG (`BL-R240-DEBT-9`).** The re-anchor is right: holding
-0.52/open against a container that now spawns ~1.1 iterations would turn D7 into a numSpawn demand and
-red the whole mod for the ruling itself. D7b (0.0375 per spawn iteration) is unchanged and asserted on
-all 63 surfaces. But the absolute floor now carries real slack, and its coverage fell from **42 of 57**
-canonical surfaces to **18 of 57**. Whether D7b alone suffices, or the absolute floor must scale per
-volume band, is an R-181 composition decision and therefore a different lane.
+**WHAT IS LEFT IS A DESIGN QUESTION, NOT A BUG (`BL-R240-DEBT-9`), AND CHASING THE REWRITE TO GROUND
+MADE IT SHARPER THAN "THE FLOOR HAS SLACK".** Measured on `gaoler cage chest_01 [l]` (S=12.48): D7
+binds at 0.0644/open, D7b binds at 0.0375/iteration = **0.468/open equivalent**. **D7b is 7.3x tighter,
+so D7 can no longer fire first on the very surface it is anchored to.** Proven by planting: a 60%
+armour cut there reds D6 and D7b on four slots and yields **zero** D7 findings; a D7-specific red would
+need roughly a 96% cut. On the old anchor (`svc_uberorb_apex_e01c`, thinnest armour slot 0.6229/open
+over S=10.58, matching b80's own calibration to the digit) a cut must now exceed **89.7% to red D7 and
+36.3% to red D7b**, against **16.5%** before. Coverage separately fell from **42 of 57** canonical
+surfaces to **18 of 57**.
+
+**NONE OF THIS MAKES THE RE-ANCHOR WRONG.** Holding 0.52/open against a container that now spawns ~1.1
+iterations would turn D7 into a numSpawn demand and red the whole mod for the ruling itself, and D7b is
+unchanged and asserted on all 63 surfaces, so armour parity IS still enforced. The open question is
+what to do with an absolute floor that has become decorative on its own anchor: keep it as a dominated
+no-op, retire it and say so, or re-derive it per volume band. That is an R-181 composition decision and
+therefore a different lane. `N12c` prints the dominance ratio on every run so the answer cannot be lost.
 
 **THE RULE THIS ONE PRODUCES.** *A lane that changes a contract must re-run that contract's NEGATIVE
 BATTERY, not merely its gate. A gate answers "is the current build clean"; only the battery answers

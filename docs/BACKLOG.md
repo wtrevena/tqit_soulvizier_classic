@@ -483,15 +483,28 @@ so the arz+Text coupling holds with no Text rebuild.
   or the cut - it reads `SLD.ARMOR_SLOT_FLOOR_REF_SURFACE` and **sizes the cut from the live floor**, so
   whoever moves the anchor next still gets a plant that lands just under it. The positive control now
   sets aside exactly the D7X2 problem, names it, prints it, and reds on anything else.
-  **WHAT REMAINS OPEN, AND IT IS A DESIGN QUESTION FOR WILL, NOT A BUG:** the re-anchor is correct
-  (holding 0.52/open against a container that now spawns ~1.1 iterations would turn D7 into a numSpawn
-  demand and red the whole mod for the ruling itself), and D7b at 0.0375/iteration is unchanged and
-  asserted on all 63 surfaces. But the absolute floor now has **real slack**: a new `N12b` MEASURES and
-  PRINTS, every run, how deep an armour cut the old anchor surface can absorb before D7 or D7b reds.
-  Absolute-floor COVERAGE also fell from **42 of 57** canonical surfaces to **18 of 57**.
-  **The question: is D7b alone enough, or does the absolute floor need re-deriving per volume band?**
-  That is an R-181 composition decision, one lane, not a volume lane. Closing evidence: a stated ruling
-  plus, if D7 is to keep teeth, a floor that scales with the surface.
+  **WHAT REMAINS OPEN, AND IT IS SHARPER THAN "THE FLOOR HAS SLACK".** Chasing the N12 rewrite to
+  ground produced the real result, measured on `gaoler cage chest_01 [l]` (S=12.48):
+
+  | check | binds at | on this surface |
+  |---|---|---|
+  | **D7** absolute | 0.0644 / open | the anchor's own floor |
+  | **D7b** per-iteration | 0.0375 / iter = **0.468 / open** equivalent | **7.3x TIGHTER** |
+
+  **D7 can no longer fire first on the very surface it is anchored to - the absolute floor is
+  DOMINATED on its own anchor.** Proven by planting: a 60% armour cut on that surface reds D6 and D7b
+  on four slots and produces **zero** D7 findings; forcing a D7-specific red would need roughly a 96%
+  cut, which is a demolition, not a regression. On the OLD anchor (`svc_uberorb_apex_e01c`, thinnest
+  armour slot 0.6229/open over S=10.58 - matching b80's own calibration to the digit) a cut must now
+  exceed **89.7% to red D7 and 36.3% to red D7b**, against **16.5%** under the pre-R-240 floor.
+  Absolute-floor COVERAGE separately fell from **42 of 57** canonical surfaces to **18 of 57**.
+  **NONE OF THIS MAKES THE RE-ANCHOR WRONG** - holding 0.52/open against a container that now spawns
+  ~1.1 iterations would turn D7 into a numSpawn demand and red the whole mod for the ruling itself -
+  and D7b is unchanged and asserted on all 63 surfaces, so armour parity IS still enforced.
+  **THE QUESTION FOR WILL: keep D7 as a dominated no-op, retire it and say so, or re-derive it per
+  volume band so it has independent teeth again?** An R-181 composition decision, one lane, not a
+  volume lane. `N12c` prints the dominance ratio every run so the answer cannot be lost. Closing
+  evidence: a stated ruling, plus (if D7 is to keep teeth) a floor that scales with the surface.
 
 ---
 
