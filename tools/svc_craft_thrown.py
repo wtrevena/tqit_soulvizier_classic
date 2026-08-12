@@ -210,10 +210,14 @@ _SUPRA_THROWN_WEIGHT = 10       # a tenth of the ordinary legendary wand: these 
 # 51,253-record database whose name is The Last Word - `records\drxitem\supra\
 # svc_wep_lastword.dbr` (no same-name base item, so nothing to disambiguate). It, and its
 # three siblings, were members of `svc_unique_thrown_e01` as well as the Legendary table,
-# and through `svc_unique_weapons_e01` that Epic membership reached **51 surfaces** (every
-# mod chest, every general's hoard, both polis vaults, the blood-cave mega chest and all
-# 18 uber orb tables). So a craft-only supra was a straight Epic chest drop. That is the
-# whole defect, and it is closed by removing FOUR memberships from ONE table.
+# and through `svc_unique_weapons_e01` that Epic membership reached **all 16 Epic chest
+# surfaces, via 24 loot tables** (every Epic mod chest, general's hoard, polis vault, the
+# blood-cave mega chest and the Epic uber orb tables). So a craft-only supra was a straight
+# Epic chest drop. That is the whole defect, and it is closed by removing FOUR memberships
+# from ONE table. (Measured, post-fix: `svc_wep_lastword` surf n=0 e=0 l=19, and its total
+# loot-table closure falls 51 -> 27. The 51 that round 1 called "Epic surfaces" was the
+# item's total closure across BOTH tiers, not the Epic part; the Epic part is 24 tables,
+# and 51 is separately the mod's whole chest-surface count, 16 N + 16 E + 19 L.)
 #
 # SCOPE, STATED: Will named The Last Word; all four thrown supras are the same kind of
 # object (craft-only, itemClassification = Legendary, authored by the same wave), so all
@@ -352,6 +356,21 @@ GHOST_REAGENTS = (
 # three green vit wands come from ONE DRX monster family (the blood-cave reavers), so
 # two-greens-per-recipe made every thrown craftable depend on that family twice. One
 # green per recipe halves that, and the four (common, green) pairs are all distinct.
+#
+# ⚠ SLOT 2 IS NO LONGER THE SHIPPED VALUE, AND THAT IS DELIBERATE - READ THIS BEFORE
+# TRUSTING THE MIDDLE COLUMN. Will's 2026-08-11 LAW A ("one of the items needed to craft
+# the formula needs to be found in legendary") lands on exactly this slot, and
+# `svc_supra_recipes.RECIPE_OVERRIDES` rewrites it immediately after this module runs, in
+# the committed registry order (`craft_thrown_breadth` then `supra_recipe_laws`). The
+# `m_vit_wand_0N` values below are therefore the b81 INTENT and the documented `old` value
+# the override asserts against - they are not what a built database contains. The final
+# slot-2 values are, and the module that owns them is the one that states the law:
+#     Charon's Toll  -> u_l_essenceofstyx        Sanguine Orbit -> u_l_bloodofouranos
+#     Hati           -> u_l_artemis'silverbow    The Last Word  -> u_l_scepterofthanatos
+# The two-writes-one-field shape is safe rather than accidental (registry order is
+# committed and asserted; `apply_recipe_overrides` fails loud if the slot does not hold
+# the value named here; both writes are idempotent) but it IS a second writer, so the
+# handshake is spelled out at both ends instead of being inferred from run order.
 THROWN_FORMULA_REAGENTS = {
     r'records\drxitem\supra\zrecipes\svc_thrown_charonstoll_formula.dbr':
         (_WAND % 'u_vit_wand', _WAND % 'm_vit_wand_03', _WAND % 'mi_vit_wand_01'),

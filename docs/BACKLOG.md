@@ -17,7 +17,7 @@ C "the last word should not be dropped in epic, only legendary".
 |---|---|---|
 | **A** every recipe has a Legendary-only reagent | **4 of 42** (Charon's Toll, Hati, Sanguine Orbit, The Last Word - exactly the four Will named; the other 38 were already gated) | **0** - every craftable carries at least 1; 46 of 91 reagents are Legendary-only |
 | **B** no two recipes share a reagent set | **5 duplicate groups over 15 craftables** - a SIX-way axe group (Charybdis, Darkflame, Erysichthon, Phoenix Ascendant, Scylla, Wrath of the Furies), a three-way mace group (Omega, Sword Fish, Doomcaller's Maul), and the pairs {Aquimae, Crystal Tear of Nyx} (Will's own example), {Ripulsar, Shrike}, {Stormbringer, Ten Suns' Wrath}. 32 distinct sets | **0 duplicate groups, 42 distinct sets** |
-| **C** no supra item below Legendary | **4** - the supra thrown were members of `svc_unique_thrown_e01` as well as `_l01`; via `svc_unique_weapons_e01` that reached **51 Epic surfaces** (every mod chest, every general's hoard, both polis vaults, the blood-cave mega chest, all 18 uber orb tables). Per tier: N 0 / **E 4** / L 4 | **N 0 / E 0 / L 4** |
+| **C** no supra item below Legendary | **4** - the supra thrown were members of `svc_unique_thrown_e01` as well as `_l01`; via `svc_unique_weapons_e01` that reached **all 16 Epic chest surfaces, through 24 loot tables** (every Epic mod chest, general's hoard, polis vault, the blood-cave mega chest, the Epic uber orb tables). Per tier: N 0 / **E 4** / L 4 | **N 0 / E 0 / L 4** |
 
 **THE LAST WORD HAS NO NAME TWIN.** Exactly one record in the database carries that name -
 `records\drxitem\supra\svc_wep_lastword.dbr`, `itemNameTag = tagSVCwpnLastWord`. Nothing to
@@ -110,13 +110,33 @@ merge.
   `svc_l_runbreaker` = the mod's own guaranteed drop); of 32 Epic-classification spears exactly 2 sit
   outside the chest pools and both are purposed (`svc_e_runbreaker`, `f_e_leisimpaler`); the 101
   `\spear\default\` and 39 `\spear\old\` records are base random-generation art and dev-era
-  duplicates - no itemLevel, no unique name tag - not orphaned uniques. **New craftable spear supras
-  must be AUTHORED FROM SCRATCH** - new item records + new Text tags + art + stat blocks - which is a
-  content lane with a Text.arc coupling and a full player-surface checklist, not a reagent edit.
-  Needs Will's go-ahead on scope before anyone spends a build on it.
+  duplicates: **0 of the 141 carry an `itemLevel`**, which is the evidence that settles it. (Round 2
+  correction, measured: `\spear\default\` holds **102** records, not 101, and while all 102 lack an
+  `itemNameTag`, **all 39 `\spear\old\` records DO have one** - the round-1 sentence "no itemLevel, no
+  unique name tag" was true of `default\` and false of `old\`. The conclusion is unchanged because it
+  rests on `itemLevel`, but the name-tag half was wrong and a later lane must not trust it.)
+  **ROUND-2 CORRECTION TO THE COST, and this is the part Will should re-read before ruling.** Round 1
+  told him new spear supras "must be AUTHORED FROM SCRATCH - new item records + new Text tags + ART".
+  **The art claim is disproved by our own shipped code.** `tools/patches/uber_orphan_weapons.py` (b66)
+  promoted 14 weapons to the supra tier and its docstring states every result "KEEPS its orphan's
+  mesh/skin/icon (**no new art** - Will's efficiency law)"; further, **3 of those 14 (Hati, Sword Fish,
+  Di Jun's Pride) were BASE-GAME-ONLY records not present in this mod's database at all**, and were
+  reconstructed verbatim from the bundled field dump `tools/patches/data/b66_orphan_donor_fields.json`
+  (verified: the file holds exactly the 3 keys `hati`, `swordfish`, `dijunspride`). So (a) the donor
+  pool is **not** limited to orphans already in this arz, and (b) no art work is implied. The honest
+  cost per new spear supra is: **one result record cloned from a donor spear + one Text tag + one
+  formula shell + the loot wiring the other 42 already have** - a small content lane with a Text.arc
+  deploy coupling, still not a reagent edit, but nothing like "author from scratch with art".
+  What remains genuinely true: **no spear orphan exists inside this database**, so any new spear supra
+  needs a base-game donor dump extending `b66_orphan_donor_fields.json` first. Still needs Will's
+  go-ahead on scope, but on a corrected price.
 - **`BL-R231-DEBT-2` (P3):** `m_vit_wand_01/02/03` (Reaver's Wand) are no longer reagents of anything.
-  They remain the Common thrown band on all three thrown tables and rule C2 needs them there, so this
-  is a note rather than a leak - but if a future lane ever retires the Common band, C2 goes with it.
+  They stay members of the thrown tables and this is a note rather than a leak. **Round-2 correction to
+  the reason:** round 1 said "rule C2 needs them there", and that is true of `m_vit_wand_01` ONLY -
+  C2 is the Normal-tier rule and `THROWN_MEMBERS['n']` names just `mi_vit_wand_01` + `m_vit_wand_01`.
+  `m_vit_wand_02` and `m_vit_wand_03` sit on the e/l tables only, where C1 is carried by `u_vit_wand`,
+  so **no rule needs those two**. Harmless either way, but a later lane retiring the Common band would
+  cost C2 only via `m_vit_wand_01`.
 - **`BL-R231-DEBT-3` (P2, LAUNCH-GATED):** NOT PROVEN IN-GAME. Everything above is a database and gate
   result. Will's check: on **Epic**, open mod chests and confirm no red-name thrown supra drops; at an
   Enchanter, confirm The Last Word's middle reagent now reads **Scepter of Thanatos**; on

@@ -51,9 +51,13 @@ middle and green slots - so LAW B costs them nothing.
 LAW C - 4 offenders, and 38 clean. The 42 supra ITEMS are craft-only by design and 38 of
 them are named by no loot table anywhere in the database. The four b81 authored - the
 supra thrown - were members of BOTH `svc_unique_thrown_e01` and `svc_unique_thrown_l01`,
-and through `svc_unique_weapons_e01` the Epic membership reached **51 surfaces**: every
-mod chest, every general's hoard, both polis vaults, the blood-cave mega chest and all 18
-uber orb tables. That is what Will saw. Measured leak surface, per tier:
+and through `svc_unique_weapons_e01` the Epic membership reached **all 16 Epic chest
+surfaces** - every Epic mod chest, general's hoard, polis vault, the blood-cave mega chest
+and the Epic uber orb tables - which is **24 loot tables**. (The often-quoted 51 is the
+item's TOTAL pre-fix loot-table closure across BOTH the Epic and the Legendary path; 27 of
+those 51 remain, and they are the Legendary path Will kept. 51 is also, coincidentally,
+the mod's total chest-surface count, 16 N + 16 E + 19 L - which is how the two numbers got
+conflated in round 1.) That is what Will saw. Measured leak surface, per tier:
     Normal 0 supra items | EPIC 4 | Legendary 4
 There is NO name collision to disambiguate: exactly one record in the database carries
 the name The Last Word, `records\drxitem\supra\svc_wep_lastword.dbr` (itemNameTag
@@ -102,14 +106,26 @@ gate, and the shape improves from "legendary thrown + a plain thrown + a green t
 
     Charon's Toll    m_vit_wand_03 -> Essence of Styx            the toll is paid on the
                                                                  river he ferries
-    Hati             m_vit_wand_01 -> Crescent Moon of Artemis   the wolf is handed the
-                                                                 moon he chases
+    Hati             m_vit_wand_01 -> Artemis' Silver Bow        the wolf that hunts the
+                                                                 moon takes the moon
+                                                                 huntress's own bow
     Sanguine Orbit   m_vit_wand_03 -> Blood of Ouranos           sky-blood, still falling
     The Last Word    m_vit_wand_02 -> Scepter of Thanatos        Death gets the last word
 
-Four different item classes (amulet, artifact, spear, mace) so the four recipes do not
-all send the player to one farm surface, and every one is Legendary-only and reachable
-from 19 of 19 Legendary chest surfaces (proved by rule S3, not asserted).
+Four different item classes (amulet, bow, spear, mace) so the four recipes do not all
+send the player to one farm surface, and every one is DROP-ONLY, Legendary-only and
+reachable from 19 of 19 Legendary chest surfaces (proved by rules S1 and S3, not
+asserted).
+
+ROUND 1 GOT HATI WRONG AND THE GATE DID NOT CATCH IT. Round 1 picked Crescent Moon of
+Artemis for Hati, and it passed S1 while gating nothing: a divine artifact is not FOUND,
+it is MADE, and `e_da_crescentmoonofartemis_formula` is paid by the four EPIC
+`02_act*_arcaneformulae_table` records. So Hati remained completable on Epic - the defect
+Will filed, surviving inside its own fix. Two things changed in response, and the second
+matters more than the first: the reagent moved to Artemis' Silver Bow (nothing in the
+database builds it, and 19/19 Legendary surfaces pay it), and `legendary_only` grew arm 5,
+the craft-path check, so the gate can now SEE a craft path at all. Arm 5 is what makes
+"found in legendary" a measured claim instead of a naming convention.
 
 WHAT IT COSTS: `m_vit_wand_01/02/03` stop being reagents of anything. They are NOT
 orphaned - they are the Common thrown band that keeps rule C2 (thrown payable on Normal)
@@ -183,7 +199,8 @@ there. The rule is asserted here so the law is stated where it is checked:
 =============================================================================
 THE GATES (all fail loud, all in the craft gate family)
 =============================================================================
-  S1  every supra recipe names >= 1 reagent whose ONLY obtain paths are Legendary-tier.
+  S1  every supra recipe names >= 1 reagent whose ONLY obtain paths are Legendary-tier -
+      DROP paths (arms 1-4) and CRAFT paths (arm 5) alike.
   S2  no two supra craftables name an identical reagent multiset.
   S3  every reagent this module writes still resolves AND is reachable from the
       Legendary chest pool (the dead-twin guard).
@@ -254,9 +271,16 @@ RECIPE_OVERRIDES = {
     _ZR % 'svc_thrown_charonstoll_formula': (
         _SUPRA % 'svc_wep_charonstoll', 2,
         _WAND % 'm_vit_wand_03', _AMULET % 'u_l_essenceofstyx'),
+    # ROUND 2 CORRECTION. Round 1 put Crescent Moon of Artemis here and it did NOT gate
+    # anything: a divine artifact is MADE, and its formula drops from the EPIC act tables,
+    # so Hati stayed Epic-craftable - the exact defect Will filed, surviving its own fix.
+    # Artemis' Silver Bow is the same goddess with the opposite provenance: nothing builds
+    # it (reagent of no formula, result of no formula), it is `u_l_` drop-only, and 19 of
+    # 19 Legendary chest surfaces pay it. The wolf that hunts the moon is handed the
+    # moon-huntress's own bow, and now he has to earn it on Legendary.
     _ZR % 'svc_thrown_hati_formula': (
         _SUPRA % 'svc_wep_hati', 2,
-        _WAND % 'm_vit_wand_01', _ARTIFACT % 'e_da_crescentmoonofartemis'),
+        _WAND % 'm_vit_wand_01', _ITEM % ('bow', "u_l_artemis'silverbow")),
     _ZR % 'svc_thrown_sanguineorbit_formula': (
         _SUPRA % 'svc_wep_sanguineorbit', 2,
         _WAND % 'm_vit_wand_03', _ITEM % ('spear', 'u_l_bloodofouranos')),
@@ -317,7 +341,16 @@ DEAD_RECORD_PREFIXES = (r'records\equipmentweapon\\',)
 _TIER_SUFFIX_RE = re.compile(r'_([nel])0\d[a-z]?\.dbr$')
 _ACT_PREFIX_RE = re.compile(r'\\(0[123])_(?:act|master|m_|l_|e_|n_)')
 _RELIC_RE = re.compile(r'\\relics\\(0[123])_act')
+# The base game's OTHER tier convention, on the quest-reward formula tables: the difficulty
+# is spelled out at the END of the record name (`xq04 - arcaneformulae_legendary.dbr`,
+# `xsq02 - arcaneformulae_epic.dbr`). Without this arm those tables read as tier `None`,
+# which is the difference between "this formula is Legendary-only" being PROVED and being
+# merely unrefuted - and the craft-path arm below is only sound if every table that pays a
+# formula can be classified. Measured: 2 legendary + 2 epic quest tables per divine
+# artifact formula, and they are the only `?`-tier tables in the whole formula closure.
+_WORD_TIER_RE = re.compile(r'_(normal|epic|legendary)\.dbr$')
 _TIER_FOR_NUM = {'01': 'n', '02': 'e', '03': 'l'}
+_TIER_FOR_WORD = {'normal': 'n', 'epic': 'e', 'legendary': 'l'}
 
 
 def table_tier(path):
@@ -326,6 +359,9 @@ def table_tier(path):
     m = _TIER_SUFFIX_RE.search(p)
     if m:
         return m.group(1)
+    m = _WORD_TIER_RE.search(p)
+    if m:
+        return _TIER_FOR_WORD[m.group(1)]
     for rx in (_RELIC_RE, _ACT_PREFIX_RE):
         m = rx.search(p)
         if m:
@@ -333,19 +369,97 @@ def table_tier(path):
     return None
 
 
-def legendary_only(db, lk, ex, reagent, pools=None):
-    """(bool, reason) - are ALL of `reagent`'s obtain paths Legendary-tier?
+def formula_index(db):
+    """{result record: [formula records that build it]} over the WHOLE database - not just
+    the supra ones. This is the craft-path arm's input: `SCT.uber_formulas` deliberately
+    stops at supra results, but the question "can this reagent be MADE below Legendary"
+    has to see every formula in the game, because the divine artifacts the DRX artifact
+    recipes are built from are craft results themselves. Cached on the db object; the walk
+    is one pass over 51k records and `legendary_only` is called ~120 times per audit."""
+    cached = getattr(db, '_svc_formula_index', None)
+    if cached is not None:
+        return cached
+    idx = defaultdict(list)
+    for name in db.record_names():
+        cls = str(_sc(db.get_field_value(name, 'Class')) or '')
+        if 'formula' not in cls.lower():
+            continue
+        art = _sc(db.get_field_value(name, 'artifactName'))
+        if isinstance(art, str) and art:
+            idx[_n(art)].append(name)
+    try:
+        db._svc_formula_index = idx
+    except AttributeError:
+        pass
+    return idx
 
-    Four conditions, every one measured off the database:
+
+def legendary_only(db, lk, ex, reagent, pools=None):
+    r"""(bool, reason) - are ALL of `reagent`'s obtain paths Legendary-tier?
+
+    FIVE conditions, every one measured off the database:
       1. `itemClassification == Legendary`. R-100 #17 (tier discipline) confines a
-         Legendary item to `_l`-tier hosts, so this is what makes the other three
-         checks a proof rather than a spot sample;
+         Legendary item to `_l`-tier hosts, so this is what makes the other checks a
+         proof rather than a spot sample;
       2. no Normal-tier and no Epic-tier chest pool reaches it;
       3. a LEGENDARY chest pool DOES reach it - Will's completability law is not
          suspended by his gating law, and "gated behind nothing" is not a pass;
       4. no loot table in its upward reference closure is a Normal- or Epic-tier table.
          This is the check that catches a MONSTER path: a reaver's Epic loot slot names
          an `02_` master, and an `02_` master is not Legendary.
+      5. THE CRAFT PATH (added round 2, and it is the arm that matters). Conditions 1-4
+         only ever look at DROP paths, so a reagent that is itself the RESULT of a
+         formula passed them while being buildable at Epic. Will's word is *found* -
+         "one of the items needed to craft the formula needs to be **found in
+         legendary**" - and a thing you make from an Epic formula is not found in
+         Legendary. So: if any formula in the database builds this reagent, EVERY one of
+         those formulas must itself be Legendary-tier-only by the same closure test.
+
+    WHY ARM 5 READS *DIRECT* TABLE HOLDERS AND ARM 4 READS THE UPWARD CLOSURE. They are
+    asking different questions. Arm 4 asks "can something pay this ITEM below Legendary",
+    and a monster's Epic loot slot names an `02_` master several levels up, so the closure
+    is the only honest reach. Arm 5 asks "at what difficulty is this FORMULA sold", and
+    that is decided by the tables that name it as a member. The closure is actively WRONG
+    here, and it was measured being wrong: the four Legendary divine-artifact formulas
+    have 6 direct holders each, all of them tier `l`, but a 123-table upward closure that
+    includes Epic-tier parents - because an Epic mod chest wires into the LEGENDARY arcane
+    tables (the `BL-R231-DEBT-4` residual below). Reading the closure therefore redded all
+    four and, with them, both DRX artifact craftables - a false RED caused entirely by a
+    defect in someone else's chest wiring. Direct holders separate the two cases cleanly:
+    `l_da_*_formula` -> 6 tables, 6 Legendary, 0 bad; `e_da_crescentmoonofartemis_formula`
+    -> 6 tables, 6 EPIC, 6 bad.
+
+    WHY ARM 5 NEEDS NO RECURSION INTO THE FORMULA'S OWN REAGENTS. If the formula that
+    builds the reagent is reachable only from Legendary-tier tables, the reagent cannot be
+    obtained below Legendary no matter how cheap its sub-reagents are, because the formula
+    is the gate. If the formula IS reachable below Legendary, redding is the conservative
+    call for a gate. Either way the answer is decided at the formula, and a recursion
+    would only add fragility (formula reagent slots are per-difficulty ARRAYS - measured:
+    `e_da_crescentmoonofartemis_formula.reagent3BaseName` = [`02x_vengeance`,
+    `03x_vengeance`] - so a naive walk reads difficulty variants as conjunctive, and
+    `03x_vengeance` is a base-game record this mod's arz does not even contain).
+
+    MEASURED, and this is what arm 5 changes (build83 ship arz 44499f56):
+      RED  e_da_crescentmoonofartemis  <- `02_act1..4_arcaneformulae_table` (EPIC) plus
+           `xq04/xsq02 - arcaneformulae_epic`. This was round 1's Hati gate, and the arm
+           existing is why Hati now points at a drop-only bow instead.
+      PASS l_da_thothsglory, l_da_ikonofzeus, l_da_mardukstabletofdestiny,
+           l_da_goldeneyeofsunwukong <- `03_act1..4_arcaneformulae_table` (LEGENDARY)
+           plus `xq04/xsq02 - arcaneformulae_legendary`, and nothing else. So the two
+           DRX artifact craftables (`artifact_mortoksskull`, `artifact_plus2`) are
+           genuinely Legendary-gated and need no reagent edit - which is the answer the
+           arm had to be able to give, because EVERY divine artifact in the game is a
+           craft result (77 of 77 have a formula; TQ drops formulas, never artifacts), so
+           a blanket "a crafted reagent is never a gate" rule would have made those two
+           recipes unfixable-by-construction and forced a cosmetic swap.
+
+    KNOWN RESIDUAL, and it is deliberately NOT laundered here: an EPIC mod chest reaches
+    the LEGENDARY arcane-formula tables on 15 of 16 Epic surfaces
+    (`svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table
+    -> l_da_thothsglory_formula`). That is a chest-WIRING tier defect that predates this
+    lane and belongs to the chest-table owner, not to a recipe module; arm 5 asks whether
+    the FORMULA's own tables are Legendary, which is the question this module can answer
+    honestly. Registered as a debt so it is fixed where it lives.
     """
     pools = pools if pools is not None else {t: SCT.chest_pool(db, lk, ex, t)
                                              for t in TIERS}
@@ -368,6 +482,15 @@ def legendary_only(db, lk, ex, reagent, pools=None):
     if bad:
         return False, 'named by %d non-Legendary-tier loot table(s), e.g. %s' % (
             len(bad), _n(bad[0]).rsplit('\\', 1)[-1])
+    rev = SCT.reverse_index(db)
+    for formula in formula_index(db).get(rl, ()):
+        direct = [h for h in rev.get(_n(formula), ()) if SLB.is_loot_table(lk, h)]
+        fbad = sorted(t for t in direct if table_tier(t) in ('n', 'e'))
+        if fbad:
+            return False, ('MADE, not found: %s builds it and is paid by %d '
+                           'non-Legendary-tier table(s), e.g. %s'
+                           % (_n(formula).rsplit('\\', 1)[-1][:-4], len(fbad),
+                              _n(fbad[0]).rsplit('\\', 1)[-1]))
     return True, 'Legendary-tier surfaces only'
 
 
