@@ -311,14 +311,22 @@ a SUPERSEDED WRITER'S OUTPUT SURVIVING UNDER THE NEW WRITER'S AT A FROZEN PATH.
    plus the Lyia-clone `maenadalertpak` cast sound, under the name "Graft the
    Burning Heartwood". R-125's player-surface law names the icon explicitly.
    FIXED AT THE SOURCE OF TRUTH: `_SUMMON_SKILL_ICON['summon_charon_oarsman']` in
-   apply_svc_patches.py now maps `skill icons\soul\flamering{up,down}.tex` - the
-   ring of flame the summoned ember oak literally wears; UNCLAIMED by any other
-   row in that table; both halves PRESENT in the shipped DRXtextures.arc. The hit
-   sound is not written by `_build_boss_summon` at all, so this module sets it to
-   the terminal donor's OWN `bogdwelleralertpak`, the `<family>alertpak` convention
-   the already-fixed summons use. HONEST: `maenadalertpak` is a CLASS-wide residue
-   (31 of the 52 soul summons in the DB carry it) that this lane did not create and
-   does not fix beyond its own record - registered as `BL-BOUGH-DEBT-9`.
+   apply_svc_patches.py now maps `skill icons\soul\flamewave{up,down}.tex` - a fire
+   glyph for a burning ember oak, with **0 references across every string field of
+   all 51,253 records**, i.e. it collides with no other summon AND no other granted
+   skill. That is strictly stronger than every established row in that table
+   (`bloodbathup` shares with 3 live skills, `thunderorbup` with 4, `voidsnapup`
+   with 1). Both halves PRESENT in the shipped DRXtextures.arc. `flamering{up,down}`
+   was the tighter 1:1 with the pet's own `ringofflame` and IS proven to render, but
+   it is worn by the Yaoguai soul's granted skill - a player holding both souls
+   would see one glyph on two buttons, which is the duplicate-identity class Will
+   keeps filing; it stays documented as the proven-render fallback
+   (`BL-BOUGH-DEBT-10` covers the one-look confirmation).
+   The hit sound is not written by `_build_boss_summon` at all, so this module sets
+   it to the terminal donor's OWN `bogdwelleralertpak`, the `<family>alertpak`
+   convention the already-fixed summons use. HONEST: `maenadalertpak` is a
+   CLASS-wide residue (31 of the 52 soul summons in the DB carry it) that this lane
+   did not create and does not fix beyond its own record - `BL-BOUGH-DEBT-9`.
 
 13. **THE SCALER SWAP WAS BLIND.** Round 2 wrote `skillName12 = boss_scaling`
    unconditionally on both forms and declared `_SK_HERO_SCALING` without ever
@@ -477,10 +485,12 @@ _SK_PLAGUE = r'records\skills\nature\drxplague.dbr'                        # Ski
 #   ICON: retargeted at the SOURCE OF TRUTH - `_SUMMON_SKILL_ICON` in
 #     apply_svc_patches.py, keyed 'summon_charon_oarsman' - so the monolith's own
 #     earlier build of this skill is correct too and there is no second writer to
-#     drift. `flamering{up,down}` = the ring of flame the ember oak literally
-#     wears; UNCLAIMED by any other _SUMMON_SKILL_ICON row; both halves PRESENT
-#     in the shipped DRXtextures.arc. Mirrored here ONLY so verify() can prove
-#     the end state without importing a private table's semantics.
+#     drift. `flamewave{up,down}` is a fire glyph with **0 references across every
+#     string field of all 51,253 records** (no other summon AND no other granted
+#     skill - stronger than every established row in that table, which all share
+#     with a live skill), and both halves are PRESENT in the shipped
+#     DRXtextures.arc under `skill icons/soul/`. Mirrored here ONLY so verify()
+#     can prove the end state without importing a private table's semantics.
 #   HIT SOUND: `_build_boss_summon` never writes it, so every boss summon it
 #     builds inherits Lyia's Maenad pak (MEASURED: 31 of the 52 soul summons in
 #     the DB carry `maenadalertpak` - a CLASS-wide residue, registered as
@@ -488,8 +498,8 @@ _SK_PLAGUE = r'records\skills\nature\drxplague.dbr'                        # Ski
 #     the established `<family>alertpak` convention the fixed summons already use
 #     (mummy/zombie/chimera/hydra): the terminal donor `um_emberoak_42` declares
 #     `alertSound = ...\bogdwelleralertpak.dbr` on its own record.
-_SUMMON_ICON = (r'DRXtextures\skill icons\soul\flameringup.tex',
-                r'DRXtextures\skill icons\soul\flameringdown.tex')
+_SUMMON_ICON = (r'DRXtextures\skill icons\soul\flamewaveup.tex',
+                r'DRXtextures\skill icons\soul\flamewavedown.tex')
 _SUMMON_HIT_SOUND = r'records\sounds\soundpak\monstersorient\bogdwelleralertpak.dbr'
 _DEAD_ICON_TOKEN = 'drownedspirit'      # Charon's ghost glyph: 3 carriers DB-wide
 _DEAD_SOUND_TOKEN = 'maenadalertpak'    # the Lyia-clone residue

@@ -60,10 +60,13 @@ reproduced and proved fixed rather than argued about.
 | in-game colour prefixes | `{^r}` both boss forms, `{^G}` champion, `{^F}` soul - all present, gated |
 | proxy preview mesh + scale | `Ascacophus02.msh` @ 2.8 on BOTH the canonical forecourt proxy and the TESTHUB yard proxy (was Charon01 @ 1.7) |
 | race in tooltip | **Plant** on all three (inherited from the donors; the roster had zero Plant ubers) |
-| soul icon | unchanged `SVItems\jewelry\soul_{n,e,l}_icon.tex` via `_create_soul` boilerplate |
+| soul ITEM icon | unchanged `SVItems\jewelry\soul_{n,e,l}_icon.tex` via `_create_soul` boilerplate |
+| **soul STAT BLOCK** (new, R-231-F #1) | RE-THEMED, not just re-labelled: **13 superseded ferryman fields stripped per tier** (cold / slow-cold / cold-res / vitality / life-leech / fear / **`offensivePercentCurrentLife`**, which is base Charon's own signature lever) before the fire+pierce block is written. Round 2 layered the new stats ON TOP of the old ones and the tooltip still read as the ferryman |
+| **granted-skill icon** (new, R-231-F #2) | `_SUMMON_SKILL_ICON['summon_charon_oarsman']` -> `DRXtextures\skill icons\soul\flamewave{up,down}.tex`, a fire glyph with **0 references DB-wide** (no other summon, no other granted skill). Was Charon's `drownedspirit{up,down}` - the glyph on the player's skill bar every cast. Never-rendered-in-mod residual: `BL-BOUGH-DEBT-10` |
+| **granted-skill cast sound** (new, R-231-F #2) | `skillHitSound` -> the terminal donor's own `bogdwelleralertpak`. Was Lyia's `maenadalertpak`; that is a CLASS-wide residue on 31 of 52 soul summons, fixed here only for this record - see `BL-BOUGH-DEBT-9` |
 | pet-bar portrait | `_build_boss_summon(..., player_facing=True)` default - on-identity, never the Lyia nymph (the b40 deferred-portraits lesson) |
 | R-100 #7 exclamation marker | `DisplayAsQuestItem` re-asserted 1 / 1 / 0 after the re-clone (`uber_quest_markers` writes it earlier in REGISTRY and its `verify()` re-derives on the final db) |
-| sounds | donor-native throughout; no sound record is authored or repointed |
+| monster sounds | donor-native throughout; no sound RECORD is authored. The one sound POINTER this lane rewrites is the granted summon's `skillHitSound` (row above) |
 | **NOT proven in-game** | scale / density / colour-in-renderer - `BL-BOUGH-DEBT-2` and `BL-BOUGH-DEBT-3` below |
 
 ### DEBT REGISTER (open, this lane)
@@ -119,9 +122,18 @@ reproduced and proved fixed rather than argued about.
   cosmetic - the run cycle may read fast - not structural. Confirm in the TESTHUB yard alongside
   the scale sweep (BL-BOUGH-DEBT-2) and record the reading either way.
 
-* **`BL-BOUGH-DEBT-7` (P3, OPEN) - the two monolith-wide changes, and what was measured.**
-  Both edits to `apply_svc_patches` are global, so both were checked against every caller before
-  being called safe:
+* **`BL-BOUGH-DEBT-7` (P3, OPEN) - the THREE monolith-wide changes, and what was measured.**
+  Every edit to `apply_svc_patches` is global, so each was checked against every caller before being
+  called safe. **Round 3 added the third and it is the narrowest of the set:**
+
+  3. **`_SUMMON_SKILL_ICON['summon_charon_oarsman']` retargeted - PROVEN SCOPED, measured.** The row
+     is reached ONLY through `_summon_skill_basename('...\summon_charon_oarsman.dbr')`, and a tree
+     grep for that basename returns exactly two live references: `_GB_SUMMON` in
+     `_create_goldenbough_boss` and `_SUMMON` in `charon_rework` - **the same encounter**, whose
+     whole point is that it stops being Charon. No other lane can reach the key, and no other
+     `_SUMMON_SKILL_ICON` row changed. Residual is cosmetic-only and tracked as `BL-BOUGH-DEBT-10`.
+
+  The two round-2 changes:
 
   1. **The D19 guard (`_run_fields and` dropped) - PROVEN SAFE, measured.** The change only bites a
      caller whose SOURCE monster sits on an anim table that binds no `*RunAnim` row at all. All
@@ -150,6 +162,48 @@ reproduced and proved fixed rather than argued about.
   `perPartyMemberDropItemName` it exists to clear; the monolith also still authors the amulet tiers,
   hoard chain, world chest, limit and pool/proxy skeleton that the rework REUSES). It is wasted work
   and a trap for the next reader. Collapse it only together with `BL-BOUGH-DEBT-1`.
+
+* **`BL-BOUGH-DEBT-8` (P1, OPEN - SHIP-PHASE BLOCKER, not a code defect).** This lane ran
+  **static gates only**, per its brief ("static gates only - Ship builds"), and it creates a NEW
+  PLACED SURFACE: one scale-2.8 body plus two 1.55 Champions where one 1.7 body stood. Process
+  law #4 exists for exactly this case. **NONE of the following may be skipped before any deploy:**
+  1. **b44 landing/clearance gate on `q_goldenbough_lone`** - the encounter footprint grew.
+  2. **Full DB build + COUPLED `Text.arc` build.** The module mints one brand-new tag key
+     (`tagSVCMonsterAkremonBlaze`); arz + Text are a coupled deploy and `validate_tags` is the
+     fail-loud gate that proves it landed.
+  3. **`run_contracts`** against the baseline **0 P0 / 0 P1 / 4492 P2** - zero new violations.
+  4. **det-2x byte-identical** + **record-diff with zero unexplained entries.**
+  5. **The full `run_registry_gates` battery in a real build.** Round-2 vetting ran the four
+     registry-scoped pet/soul gates standalone (all GREEN), but the battery mutates and is only
+     meaningful end to end. Watch for the `summon-pet registry: SUPERSEDED` line (see DEBT-7).
+  6. **b86 integration watch.** b86 adds a C3 cross-family duplicate-display-name gate whose waiver
+     list explicitly bans anything under `svc_uber\`. `{^F}Soul of the Grasping Root` is unique
+     across the 726 distinct soul name tags in today's DB, so C3 should pass - but it must be
+     re-run on the MERGED tree, not on this branch alone.
+
+* **`BL-BOUGH-DEBT-9` (P2, OPEN) - the Maenad cast sound is a CLASS-WIDE residue on the boss
+  summons.** `_build_boss_summon` clones `summon_lyia` and never writes `skillHitSound`, so every
+  boss summon it builds inherits Lyia's `records\sounds\soundpak\monstersgreek\maenadalertpak.dbr`.
+  MEASURED on the live arz: **31 of the 52** `records\skills\soulskills\summon_*` records carry it,
+  against 2 `mummyalertpak`, 2 `zombiealertpak` and a long tail of correctly family-matched paks.
+  This lane did not create it and fixed only its own record (`summon_charon_oarsman` ->
+  `bogdwelleralertpak`, the terminal donor's own declared `alertSound`). **Fix the class in its own
+  wave:** default `skillHitSound` in `_build_boss_summon` to the SOURCE monster's own `alertSound`
+  when it declares one, exactly as `_align_pet_identity` already does for the PET's sounds - the
+  convention is established, it is just not applied to the summon SKILL. Touches ~29 records other
+  lanes own, so it needs its own vet, not a drive-by.
+
+* **`BL-BOUGH-DEBT-10` (P3, OPEN) - the granted summon's new icon has never been rendered in this
+  mod.** `DRXtextures\skill icons\soul\flamewave{up,down}.tex` was chosen precisely BECAUSE it has
+  **0 references across every string field of all 51,253 records** - it cannot collide with any
+  other summon or granted skill on a player's skill bar, which is stronger than every established
+  row in `_SUMMON_SKILL_ICON` (all of which share with a live skill). The flip side is that nothing
+  in the mod has ever drawn it. Both halves are PRESENT in the shipped `DRXtextures.arc`, and a UI
+  icon carries none of the cross-mesh UV risk the 343_dark_smoke lesson is about - it draws or it
+  does not - so **no colour is claimed for it**. **ONE LOOK CLOSES THIS:** equip the soul, glance at
+  the skill bar. If it reads wrong, `DRXtextures\skill icons\soul\flamering{up,down}.tex` is the
+  documented proven-render fallback (live carriers `yaoguai_flamering.dbr` + its pcsafe clone), at
+  the cost of sharing a glyph with the Yaoguai soul's own granted skill.
 
 ### EIGHT WILL-DECISIONS - all implemented at the recommended value behind a named constant, none blocking
 

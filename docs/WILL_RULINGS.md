@@ -5481,8 +5481,16 @@ escorted by two **HANDBRIARS**. **This wave owns the final boss + soul naming un
   carries the identical record. It is a first for a LIVING boss.*
 * **BEAT 2 IS A REAL PHASE BEAT WITH NO NEW SPAWN TECH.** `svc_bough_splitting`
   (`Skill_PassiveOnLifeBuffSelf`, `lifeMonitorPercent 33.0`, 12s, cd 5) fires ITSELF at 33% life -
-  the `um_vashkarr_99` pattern - and this lane folds the thorn retaliation into that record, so the
-  thorns come out WITH the splitting instead of on a random cast roll.
+  ~~the `um_vashkarr_99` pattern~~ **CORRECTED IN ROUND 3: that citation is REFUTED.**
+  `um_vashkarr_99` carries `lowhealth_berserkerrage01` at `skillLevel 0`, i.e. INACTIVE by the mod's
+  own B-SOUL-PROC-1 lesson, so it proves nothing. The mechanic is fine and the real live precedents
+  are `elder_um_boarmonstrous_16` (`skillLevel 5`) and `elder_am_boar_09` (`skillLevel 3`) on
+  `lowhealth_boarberserkerrage01`; this lane wires `svc_bough_splitting` at level 10, inside its
+  `skillMaxLevel 15`. (R-231-E measured this and the module's CORRECTION 7 records it, but the
+  refuted citation was left standing here, outside R-231-E's supersede banner - which covered only
+  "the names and the phase-2 body". A stale claim in the design law of record is a decoy for the
+  next agent, so it is corrected in place.) This lane folds the thorn retaliation into that record,
+  so the thorns come out WITH the splitting instead of on a random cast roll.
 * **NAMES ARE THIS LANE'S INVENTION AND SHIP AS DEFAULTS FLAGGED FOR WILL VETO**, per the standing
   creative-bar rule (the R-125 precedent). Six Will-decisions are listed in the lane report; every
   one is implemented at its recommended value behind a named constant, so none of them blocks.
@@ -5523,10 +5531,15 @@ The record NAMES now lie about their contents. That is registered as `BL-BOUGH-D
 breaking build, exactly as the frozen ITEM paths are.
 
 One sanctioned workaround IS retired: `_SUMMON_IDENTITY_ALLOW['ferryman']` is deleted, because the
-soul's summon is now the SAME species as its dropper (both `SVMesh/meshes/hellflower.msh`) and the
-F2 identity gate - which compares the summon SOURCE's mesh to the DROPPER's mesh - is green with no
-exemption. `'voranthys'` stays. If this wave is ever reverted, that gate reds loudly and names the
-record, which is the correct alarm.
+soul's summon is now the SAME species as its dropper (both **`DRX\meshes\emberoakmesh.msh`**) and
+the F2 identity gate - which compares the summon SOURCE's mesh to the DROPPER's mesh - is green with
+no exemption. `'voranthys'` stays. If this wave is ever reverted, that gate reds loudly and names
+the record, which is the correct alarm.
+> **ROUND-3 CORRECTION, in place.** This bullet read `SVMesh/meshes/hellflower.msh` - round-1 text
+> left un-updated after R-231-E swapped the phase-2 donor to `um_emberoak_42` for D19 mobility. The
+> CONCLUSION was and is correct (the identity gate is green with no exemption, re-proved by running
+> `_verify_soul_summon_identity` standalone over the post-rework db), but the ledger is design law
+> and a wrong record path in it is a decoy for the next agent.
 
 ### THE FIVE SPEC CORRECTIONS THIS LANE MEASURED (the ratified spec was wrong on each)
 
@@ -5551,7 +5564,9 @@ record, which is the correct alarm.
 
 ### THE GATE THAT SHIPS WITH THE NEW SURFACE (process law #4)
 
-`charon_rework.verify()`, fail-loud, negative-tested (**20** planted defects as of round 2, every one
+`charon_rework.verify()`, fail-loud, negative-tested (**28** planted defects plus one apply-time
+assert as of round 3 - `py tools/debug/negtest_charon_rework.py` reports 29 RED, 0 gate holes, every
+one
 RED, restoration proved GREEN after each): the proxy chain resolves to the new boss on BOTH the
 forecourt and the TESTHUB yard; all three guaranteed rewards stay wired; A9 (own-rig clones only,
 the donor's own skin, no invented `actorHeight` per R-126); the crash laws (no `charFxPak`, no
@@ -5714,3 +5729,137 @@ mod's own B-SOUL-PROC-1 lesson, so it proved nothing. The live precedent is
 `elder_um_boarmonstrous_16` (Champion, level 5) and `elder_am_boar_09` (level 3). The mechanic is
 sound; only the citation was bad. **RULING: a number does not enter the design law of record until
 it has been measured on the artifact in the wave that writes it down.**
+
+---
+
+### R-231-F - ROUND-3 AMENDMENT [2026-08-11]. The two surfaces the PLAYER KEEPS were still Charon.
+
+An independent vet of the round-2 module proved two P1s, two P2s and three P3s. Every one is fixed.
+**Both P1s are the SAME defect class as round 2's P0** - *a superseded writer's output surviving
+under the new writer's at a FROZEN path* - and both of them landed on the surfaces a player actually
+keeps: the soul in his stash, and the skill on his skill bar.
+
+**RULING, generalised because this is now three occurrences in three rounds:**
+> **When a wave rewrites content at a path FROZEN for save-compat, it owns clearing what the earlier
+> writer left there. A creator helper that "ensures" a record (`_ensure_record` no-ops when the
+> record exists) and a setter that layers keys (`_set_soul_fields`) CANNOT re-theme anything - they
+> can only add to it. The gate for such a wave must prove the OLD identity is ABSENT, not merely
+> that the new one is PRESENT.**
+
+#### 1. P1 - the soul was RE-LABELLED, not RE-THEMED.
+
+Measured after `apply()` over the live build83 arz: `ferryman_soul_e.dbr` still carried the whole
+shipped "Soul of the Unferried" stat block underneath the new one -
+
+`offensiveCold{Min,Max,Modifier}` · `offensiveSlowCold{Min,DurationMin}` · `defensiveCold` ·
+`offensiveLife{Min,Max}` (vitality) · `offensiveLifeLeechMin` · `defensiveLifeLeech` ·
+`offensiveFear{Min,Max}` · **`offensivePercentCurrentLifeMin`**
+
+- the last being **base Charon's own signature lever** (`charon_geyserform1`, 24 roster carriers),
+which the ratified spec forbade on this soul BY NAME. The new fire/pierce block layered on top, so
+the tooltip read Cold + Slow + Cold Resist + Vitality + Life Leech + Fear + %Current Life on an item
+called *"Soul of the Grasping Root"* dropped by a burning tree, at roughly double the offensive load
+anyone had balanced.
+
+**FIX:** `_strip_superseded_soul_stats` clears the superseded bonus-STAT block before `_create_soul`
+rebuilds - deliberately SURGICAL (the six stat prefixes `offensive`/`defensive`/`retaliation`/
+`character`/`augmentSkill`/`itemSkill`, minus exactly the keys the rebuild is about to write), so
+nothing structural is ever in reach and `itemQualityTag` / `itemText` are re-applied afterwards by
+`run_registry_gates` finalization, which runs after every registry module. MEASURED: 13 ferryman
+fields removed per tier, 13 new ones added, **0 structural losses**. `itemSkill*` is in the prefix
+set on purpose - it makes a stale `itemSkillAutoController` (the D19/D21 manual-cast law)
+structurally impossible to inherit.
+
+#### 2. P1 - the granted summon still wore Charon's face.
+
+`records\skills\soulskills\summon_charon_oarsman.dbr` shipped
+`SVTextures\skills\drownedspirit{up,down}.tex` - a **drowned-ghost** glyph, and a Charon-specific one
+(only 3 records in the 51,253-record DB reference `drownedspirit*`) - plus Lyia's
+`maenadalertpak` cast sound, under the name *"Graft the Burning Heartwood"*. **R-125's
+player-surface law names the icon explicitly**, and this is the icon the player looks at every cast.
+
+**FIX, at the SOURCE OF TRUTH:** `_SUMMON_SKILL_ICON['summon_charon_oarsman']` in
+`tools/apply_svc_patches.py` now maps `DRXtextures\skill icons\soul\flamewave{up,down}.tex` - a fire
+glyph for a burning ember oak. **This row beats the table's own convention rather than merely meeting
+it: it is the first entry with ZERO collisions of any kind.** `flamewave{up,down}` is referenced by
+**0 records across EVERY string field of all 51,253** - no other summon, and no other granted skill
+either - and both halves are **PRESENT** in the shipped `DRXtextures.arc` (1,463 entries) under
+`skill icons/soul/`. Every established row in that table shares its glyph with a live non-summon
+skill (`bloodbathup` 3, `thunderorbup` 4, `voidsnapup` 1); this one shares with nothing.
+
+Two alternatives were measured and rejected. `flamering{up,down}` is a tighter 1:1 with the pet's own
+`ringofflame` and is PROVEN to render (live carriers `yaoguai_flamering.dbr` + its pcsafe clone) -
+but that is a **soul-granted** skill, so a player holding the Yaoguai soul and this one would see one
+glyph on two skill-bar buttons, which is the duplicate-identity class Will keeps filing. It stays
+documented in the table as the proven-render fallback. `summonquilvine{up,down}` is already claimed
+by the live `summon_hellflower.dbr` and is the wrong species since the phase-2 donor became the ember
+oak. **Honest residual:** a glyph with zero live carriers has never been seen on screen in this mod
+either; a UI icon carries none of the cross-mesh UV risk the 343_dark_smoke lesson is about, no
+colour is claimed for it, and one look at the skill bar closes it (`BL-BOUGH-DEBT-10`).
+The hit sound goes to the terminal donor's OWN `bogdwelleralertpak` - the `<family>alertpak`
+convention every already-fixed summon uses.
+**HONEST:** `maenadalertpak` is a **class-wide** residue - `_build_boss_summon` never writes
+`skillHitSound`, so **31 of the 52** soul summons in the DB carry it. This lane did not create it and
+fixes only its own record; the class is registered as `BL-BOUGH-DEBT-9`.
+
+#### 3. P2 - the scaler swap was blind, and the constant that would have caught it was unused.
+
+`skillName12` was overwritten unconditionally on both boss forms while `_SK_HERO_SCALING` was
+declared and referenced nowhere - the intent to verify the swap existed and was never implemented.
+Both boss donors do carry `hero_scaling` there, but the ESCORT donor `am_junglecreep_41` carries
+`globalproperties_legendary01` in the same slot, so **one future donor swap would have destroyed a
+difficulty row with a GREEN gate**. `_swap_scaler` now asserts the incumbent and SystemExits
+otherwise. **Honest scope:** `globalproperties_*` rows carry only `characterBaseAttackSpeedTag` plus
+UI bitmaps - no stat or resistance scaling - and 8 of the 53 Boss-class ubers declare none at all, so
+the shipped shape sits inside the roster norm. Latent-trap fix, not a balance change.
+
+#### 4. P2 - the law-4 build obligations are a SHIP-PHASE constraint, not a code defect.
+
+This lane ran static gates only, per its brief. The b44 landing/clearance gate on
+`q_goldenbough_lone`, the full DB build + **COUPLED** Text.arc build, `validate_tags`,
+`run_contracts` against the 0/0/4492 baseline, det-2x byte-identity, record-diff and the b86
+duplicate-display-name gate are all recorded as `BL-BOUGH-DEBT-8` so the ship phase cannot skip them.
+
+#### 5. P3 x3 - stale claims in this ledger and in the module, corrected in place.
+
+* **R-231-D** said the soul's summon body is `SVMesh/meshes/hellflower.msh`. The shipped body is
+  `DRX\meshes\emberoakmesh.msh` (round-1 text left behind by R-231-E's donor swap). The conclusion
+  was correct; the path was not.
+* **R-231-B** still cited `um_vashkarr_99` as the beat-2 precedent, which R-231-E itself refuted
+  (`skillLevel 0` = inactive). R-231-E's supersede banner covered only "the names and the phase-2
+  body", so the refuted citation was left standing as if true. Corrected in place.
+* The `hero_quillvines` retinue adds are **also** stationary (`quillvine_01..06`, all on
+  `anm_quilvine.dbr` at runSpeed 0.0), not just the `quillwards` wall pets. Donor-native,
+  unmutated, no crash law touched - but the disclosure named only the wall pets, and "the retinue
+  keeps firing" must not be read as "it sends things after you". Both pet families count toward the
+  add-density reading owed under `BL-BOUGH-DEBT-2`.
+
+**RULING (process): a stale claim in the design law of record is a decoy for the next agent.** A
+supersede banner must either enumerate everything it supersedes or be widened; leaving a refuted
+sentence standing under a narrow banner is how a wave re-litigates a question that was already
+settled.
+
+#### 6. WHAT WAS ACTUALLY RUN THIS ROUND (static only, per the lane's brief)
+
+All against the live build83 arz (`work/SoulvizierClassic/Database/SoulvizierClassic.arz`, 51,253
+records), with the monolith's stale `charon_minion_30` pet registration SEEDED so the harness sees
+the real build state:
+
+| reading | result |
+|---|---|
+| `charon_rework.apply()` + `verify()` | GREEN |
+| soul re-theme, PRE/POST field diff, all 3 tiers | **13 ferryman fields removed per tier, 13 new added, 0 structural losses** (`itemText` / `itemQualityTag` / `bitmap` / `mesh` / `Class` all intact) |
+| granted summon | icon `drownedspirit*` -> `flamewave*`; `skillHitSound` `maenadalertpak` -> `bogdwelleralertpak` |
+| `_verify_soul_summon_identity` (F2) | GREEN **with no `ferryman` exemption**, stale pair seeded |
+| `_verify_soul_augments_resolve` | GREEN |
+| `_verify_no_unclassified_soul_leaks` | GREEN |
+| `_verify_soul_itemskill_activation` | GREEN |
+| `_verify_granted_skill_diversity` | GREEN |
+| `_verify_no_supra_dead_refs` | GREEN |
+| `_verify_boss_orbs` | GREEN |
+| `patches.selfcheck()` | OK, 60 modules, order `96d61e6f2b0ce307` |
+| `negtest_charon_rework.py` | **29 RED, 0 gate holes**, every restoration proved GREEN |
+
+**NOT RUN, and blocking the ship phase, not this lane:** the b44 landing/clearance gate, the full DB
+build, the COUPLED Text.arc build, `validate_tags`, `run_contracts`, det-2x and record-diff. All six
+are enumerated in `BL-BOUGH-DEBT-8` so they cannot be skipped.

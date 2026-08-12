@@ -10971,25 +10971,41 @@ _SUMMON_SKILL_ICON = {
     # burning DRX ember oak - so the drowned ferryman's glyph sat on the player's
     # skill bar every single cast, which is precisely the residue Will's order
     # exists to remove (R-125 player-surface law names the icon explicitly).
-    # WHY THIS GLYPH: the summoned body's own signature native skill is
-    # `ringofflame` - a TOGGLED burning ring the ember oak simply wears - so a
-    # flame-ring glyph is a 1:1 match for what the pet looks like on screen.
-    # MEASURED before the swap, both halves of the table's own convention:
-    #   * UNCLAIMED - no other _SUMMON_SKILL_ICON entry uses flamering{up,down};
-    #     the only live carrier of the pair anywhere in the DB is the base skill
-    #     `yaoguai_flamering.dbr` (not a summon, so no summon reads as another).
-    #   * ARC-RESOLVES - `skill icons/soul/flameringup.tex` AND
-    #     `.../flameringdown.tex` are both PRESENT in the shipped
-    #     work/SoulvizierClassic/Resources/DRXtextures.arc (1,463 entries).
-    # The obvious alternative, `summonquilvine{up,down}`, was REJECTED: it is
-    # already claimed by the live `summon_hellflower.dbr` soul summon, and it is
-    # the wrong species now that the phase-2 donor is the ember oak.
+    # WHY THIS GLYPH: the summoned body is a BURNING ember oak - its native kit is
+    # `ringofflame` + `volcanicorb` + `drxheatshield` - so the identity is fire.
+    # MEASURED, and this row BEATS the table's own convention rather than merely
+    # meeting it: it is the first entry here with ZERO collisions of any kind.
+    #   * UNCLAIMED, ABSOLUTELY. `flamewaveup.tex` / `flamewavedown.tex` are
+    #     referenced by **0 records** across EVERY string field of all 51,253 -
+    #     not by another summon, and not by any other granted skill either.
+    #     Compare the established rows, every one of which DOES share its glyph
+    #     with a live non-summon skill: `bloodbathup` (3 others), `thunderorbup`
+    #     (4 others), `voidsnapup` (1 other).
+    #   * ARC-RESOLVES - both halves PRESENT in the shipped
+    #     work/SoulvizierClassic/Resources/DRXtextures.arc (1,463 entries), under
+    #     `skill icons/soul/`, the folder this table's glyphs come from.
+    # REJECTED ALTERNATIVES, both measured:
+    #   * `flamering{up,down}` - a tighter 1:1 with the pet's own `ringofflame`
+    #     and PROVEN to render (live carriers `yaoguai_flamering.dbr` + its pcsafe
+    #     clone). Rejected because that is a SOUL-GRANTED skill: a player holding
+    #     the Yaoguai soul AND this one would see one glyph on two skill-bar
+    #     buttons, which is the duplicate-identity class Will keeps filing. Kept
+    #     documented as the proven-render fallback if the flame wave reads wrong.
+    #   * `summonquilvine{up,down}` - already claimed by the live
+    #     `summon_hellflower.dbr`, and the wrong species since the phase-2 donor
+    #     became the ember oak.
+    # HONEST RESIDUAL: a glyph with zero live carriers has never been seen on
+    # screen in this mod either. A UI icon carries none of the cross-mesh UV risk
+    # the 343_dark_smoke lesson is about (it draws or it does not), and no colour
+    # is claimed for it here; one look at the skill bar closes it -
+    # `BL-BOUGH-DEBT-10`.
     # NO OTHER LANE IS AFFECTED: this key is reached only via
     # `_summon_skill_basename('...\summon_charon_oarsman.dbr')`, and that one
     # summon skill is built by exactly two call sites - the monolith's
-    # `_create_goldenbough_boss` and `charon_rework`, which are the same encounter.
-    'summon_charon_oarsman':   (r'DRXtextures\skill icons\soul\flameringup.tex',
-                                r'DRXtextures\skill icons\soul\flameringdown.tex'),
+    # `_create_goldenbough_boss` (`_GB_SUMMON`) and `charon_rework`, which are the
+    # SAME encounter. Nothing else under tools/ names it.
+    'summon_charon_oarsman':   (r'DRXtextures\skill icons\soul\flamewaveup.tex',
+                                r'DRXtextures\skill icons\soul\flamewavedown.tex'),
     'summon_hadesmarshal':     (r'DRXtextures\skill icons\soul\wrathofthestyxup.tex',
                                 r'DRXtextures\skill icons\soul\wrathofthestyxdown.tex'),
     'summon_kravmoloch_warden':(r'DRXtextures\skill icons\spirit\bonefiendup.tex',
