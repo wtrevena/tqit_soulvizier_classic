@@ -423,9 +423,12 @@ so the arz+Text coupling holds with no Text rebuild.
   map build, so it is planned into the wave rather than discovered at the end of it. **Canonical
   `B41_SPECS` is untouched and `local/Levels_merged.arc` stays byte-identical, so this changes nothing
   about the Steam delta, which remains arz-only.** Closing evidence: the DEV cage pours again.
-- `BL-R240-DEBT-8` (round-4) - ⚠️ **AFTER THIS MERGES, `gate_loot_distribution.py` REDS ON EVERY
-  PRE-R-240 ARTIFACT. THAT IS THE ANCHOR WORKING. DO NOT TREAT IT AS YOUR LANE'S DEFECT.** Exact text,
-  reproduced against the shipped b83 arz `44499f56`:
+- `BL-R240-DEBT-8` (round-4) - ⚠️ **AFTER THIS MERGES, `gate_loot_distribution.py` AND THE IN-BUILD
+  `armor_loot_breadth.verify` RED ON EVERY PRE-R-240 ARTIFACT. THAT IS THE ANCHOR WORKING. DO NOT TREAT
+  IT AS YOUR LANE'S DEFECT.** Both share the same D7X2 implementation, so the standalone audit and the
+  registry hook fail together; the full 53-hook sweep confirms it (`armor_loot_breadth` is one of
+  exactly three modules that red on the untrimmed b83 arz and pass on the trimmed one, the other two
+  being this lane's own). Exact text, reproduced against the shipped b83 arz `44499f56`:
   `D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the reference surface gaoler
   cage chest_01 [l], which MEASURES 12.4800 spawn iterations`.
   **WHY:** R-240 re-anchored `ARMOR_SLOT_FLOOR` onto the cage's post-trim volume, so the floor is now a
