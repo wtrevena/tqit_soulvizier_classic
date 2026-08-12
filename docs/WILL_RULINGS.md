@@ -6504,7 +6504,7 @@ quest chests, which is what they have always done.
 
 ---
 
-## R-241 [2026-08-11] IMPLEMENTED (branch `fix/loot-volume-trim`, module `tools/patches/orb_legendary_chance.py`) - an uber orb has a CHANCE at a legendary, not a guarantee
+## R-241 [2026-08-11] IMPLEMENTED, then SUPERSEDED-BY-R-242 (2026-08-12) for the general orbs - an uber orb has a CHANCE at a legendary, not a guarantee. [branch `fix/loot-volume-trim`, module `tools/patches/orb_legendary_chance.py`] **NOTE: R-242 replaces the flat 21.2% apex demotion with a per-difficulty 0/50/75 treatment on the 15 GENERAL orbs and EXCLUDES the Toxeus/Leinth apex; the apex 100 -> 21.2 demotion below is RETAINED by R-242 as the apex's frozen build85 state. `BL-R241-DEBT-1` is CLOSED-BY-R-242. Read R-242 at the end of this file.**
 
 **WILL, VERBATIM (2026-08-11):**
 
@@ -6607,7 +6607,7 @@ exists for, and round-3's M8, which drives the legendary rate under the low-chan
 undischarged-notice CLEARS at 3.7% rather than being a permanent banner) and 4 positive controls GREEN
 (round-3 added Q4: the notice FIRES on the shipping build, 60.9% against the 25% bar, naming the debt).
 
-### THE HALF THIS LANE COULD NOT REACH - `BL-R241-DEBT-1`, WILL DECISION
+### THE HALF THIS LANE COULD NOT REACH - `BL-R241-DEBT-1`, WILL DECISION [CLOSED-BY-R-242, 2026-08-12: Will ruled the general orbs to explicit per-difficulty numbers (0/50/75) and the Toxeus/Leinth apex to keep its current loot - option (B) taken for the general orbs, exclusion for the apex]
 
 **P(at least one legendary) lands at 54-61% on Legendary difficulty, and 60% is not "a low chance".**
 Stated here rather than buried, because the ruling is not fully discharged and a green gate must not
@@ -6837,3 +6837,82 @@ defect cannot leak into the next case and make the battery lie.
 amended in the ledger with the superseding quote, the surviving half is re-proved rather than
 assumed, and the negative battery is re-earned clause by clause. A green build that was made green by
 deleting a proof is not a green build.*
+
+---
+
+## R-242 [2026-08-12] IMPLEMENTED (branch `fix/orb-rates-by-difficulty`, module `tools/patches/orb_legendary_chance.py`) - uber-orb legendary/blue chance BY DIFFICULTY; Toxeus + Leinth excluded. SUPERSEDES R-241's flat 21.2% demotion and CLOSES `BL-R241-DEBT-1`.
+
+**WILL, VERBATIM (2026-08-12), part 1:**
+
+> "yeah actually all the orbs that uber monsters drop should have a 50% chance of dropping a legendary item on epic, a 75% of dropping a legendary item on legendary, a 0% chance of dropping a legendary item on normal, but a 75% chance of dropping a blue item on normal (this is a sub legendary item, idk what the name of this class of item is but they show up blue)"
+
+**WILL, VERBATIM (2026-08-12), part 2 (the exclusion):**
+
+> "Note that Leinth and the toxeus variants keep their current higher / better orbs / better drop rates / more loot"
+
+This is the "genuinely rare, deliberate decision" R-241 deferred as `BL-R241-DEBT-1`. R-241 flatly demoted the apex relic row to 21.2% as the whole answer and left the Legendary chance at 54-61% ("not a low chance"). Will's new ruling replaces that: the GENERAL orbs get an explicit per-difficulty legendary/blue treatment, and the Toxeus + Leinth apex is EXCLUDED and kept at its build85 state. **`BL-R241-DEBT-1` is CLOSED-BY-R-242.**
+
+### "BLUE" = EPIC, PROVEN FROM THE BYTES
+
+"blue" is itemClassification **Epic**, one tier below Legendary (the standard TQ ladder Broken < Common < Magical < Rare < Epic < Legendary; Epic renders blue, engine-baked, no classification->color record exists in either arz). MEASURED on the build85 arz `5a6d63a9`: on every NORMAL orb the four unique-gear rows resolve to **Epic-classification** records with **0.00% legendary GEAR**; on the EPIC/LEGENDARY orbs those same rows resolve to **Legendary**. So "the blue item a Normal orb drops" IS the Epic gear it pays, and "75% blue on normal" means raising the chance the Normal orb's Epic gear rows fire.
+
+### THE PARTITION - DERIVED, NOT TYPED
+
+The 18 in-scope uber-orb loot tables (svc_orb_breadth's own derived scope) split into:
+
+| set | count | tables | treatment |
+|---|---:|---|---|
+| **GENERAL** | 15 | `uberorb_default_{13-15,19-21,29-31,39-41,43-45,49-51,53-55,55-57,63-65}` + `uberorb_default_{n,e,l}01c` + `boss_charon_{n,e,l}01b` | 0/50/75 legendary + 75 blue-on-normal |
+| **EXCLUDED** | 3 | `svc_uberorb_apex_{n,e,l}01c` | kept byte-identical to build85 (Will part 2) |
+
+A table is **EXCLUDED iff every uber chain that reaches it has carriers that are ALL Toxeus (or Leinth)**. The derived excluded set is **cross-checked against the pinned apex roster** (`X0`) so a general orb rewired onto Toxeus/Leinth loot, or a fourth apex table, reds instead of silently changing scope. MEASURED: the 3 apex tables' only carriers are the R-99 Toxeus roster (`um_toxeus_21/99`, `um_bloodtoxeus_99`, `um_toxeus_enslaver_99`, `um_toxeus_hunt_99/_l_99`) plus Leinth's chests; none of the 15 general tables is reached by any Toxeus/Leinth carrier. The partition is exact and derivable.
+
+### THE LOAD-BEARING CORRECTION - THERE IS NO SINGLE "LEGENDARY ROW"
+
+The ruling's phrasing assumes a legendary row whose chance is the legendary chance. The bytes say otherwise: legendary/blue output is **EMERGENT** across the four unique-GEAR rows loot1 (weapons), loot2 (torso/head), loot5 (legs/arms), loot6 (shield), each firing at its own `loot{g}Chance` over S spawn iterations. loot4 (amulet/relic/ring/formula) carries almost no legendary mass - setting it to 50% would yield ~2.5% legendary, not 50%. So Will's "50% chance of dropping a legendary item" is read faithfully as observable orb behaviour:
+
+> **P(at least one legendary item per orb open) = the target.**
+
+and the lever is a **UNIFORM per-(table, difficulty) chance on loot1/2/5/6**, CALIBRATED per table against the emergent model to hit the number. Uniform because it preserves the weapon:armour:shield mass ratio (R-181 D3/D4/D6 parity) and RAISING chances only strengthens the D7b armour-per-iteration floor - so the change is armour-parity-safe by construction and touches only `loot{g}Chance`, the exact field domain R-241's scope proof already permitted.
+
+### THE DIFFICULTY MECHANISM
+
+Each difficulty of each general orb is a physically SEPARATE FixedItemLoot record; the difficulty is selected UPSTREAM by the proxy's `accessory1`/`accessoryEpic1`/`accessoryLegendary1` slot. So the chances are set DIRECTLY on each of the 15 distinct records (the relic-tiering-approved pattern, NOT the rejected container game-mode array).
+
+### WHAT SHIPPED (arz-only, build86)
+
+On the 15 general tables, loot1/2/5/6 calibrated from 40.0 to the per-table value that lands the target (all within +/-5pp band): **Normal ~46.5-46.8%** (blue/Epic 75%, legendary GEAR held at 0), **Epic ~41.4-56.1%** (legendary 50%), **Legendary ~56.9-67.2%** (legendary 75%). On the 3 excluded apex tables, the guaranteed relic row is still demoted 100 -> 21.2 (the DERIVED family value, R-241's), which IS their build85 state - letting it revert to 100 would both change the bytes and re-arm a guaranteed legendary row.
+
+**MODIFIED 15 records / 60 field moves, all `loot{g}Chance`, all RAISES; the 3 apex tables 0 fields changed (byte-identical to build85).** 0 members, 0 weights, 0 spawn equations, so breadth, distribution and the relic law survive verbatim and the variety still lands WHEN one rolls.
+
+| tier | target | general P(target) after | excluded apex (frozen b85) |
+|---|---|---|---|
+| Normal | blue(Epic) 75%, leg-GEAR 0% | 75.0%, leg-GEAR **0.00%** | Epic 69.0%, leg 0.1% |
+| Epic | legendary 50% | ~50.0% | legendary 48.9% |
+| Legendary | legendary 75% | ~75.0% | legendary **60.9%** |
+
+### THE GATE, AND ITS MIRRORS
+
+`tools/gate_orb_legendary.py` / `tools/patches/orb_legendary_chance.verify()`, one shared implementation in `tools/svc_orb_legendary.py`:
+
+- **X0** the DERIVED Toxeus/Leinth exclusion set equals the pinned apex roster (a rewired consumer reds, not silently changes scope).
+- **G1** each general orb pays its per-difficulty target within +/-5pp.
+- **G2** a Normal general orb pays 0% legendary GEAR (the tier law; the base-game scroll/formula leak on loot4 is exempt and measured apart - the ~0.1-0.35% "legendary on normal" is Legendary-classified mercenary scrolls / arcane formulae, never gear).
+- **G3** each excluded apex table is byte-identical to build85 (loot profile + numSpawn), and **G3b** its OUTPUT is frozen too, so a shared unique master the apex READS (e.g. `svc_unique_weapons_l01`, shared with the general orbs) cannot be retuned to leak into the frozen apex while its own bytes stay put.
+- **G5** every orb still pays at least 1.50 items of any kind (the empty-box mirror, so a rate band cannot be met by deleting the reward).
+
+Negatives: `py tools/debug/negtest_orb_legendary.py <arz>` - 6 planted defects + the partition-drift guard RED, 3 positive controls GREEN (the wave green, the inversion notice fires, the coexisting breadth/distribution/volume gates stay green on the same db).
+
+### THE HONEST RESIDUE - `BL-R242-DEBT-1`, WILL DECISION
+
+Freezing the excluded apex at its build85 numbers makes it **WEAKER than the general orbs on Legendary legendary-chance: apex 60.9% vs general 75%.** That is an inversion of Will's "keep their better orbs / more loot" - after this lane the general orbs drop legendaries MORE OFTEN than the "better" Toxeus/Leinth apex on Legendary. The apex keeps a **volume edge** (S 1.131 vs 1.125) and a **richer loot4** (21.2 vs 12.7 relics/jewelry/formulae) only. This is the LITERAL byte-unchanged exclusion Will ruled (part 2), and it is the instruction of THIS lane. The gate PRINTS this on every run (`inversion_notice`) and does NOT red on it - lifting the apex above the general target is a composition decision, Will's A/B call:
+
+- **(A) Accept the inversion**: the apex's superiority is volume + loot4 + identical breadth. Cost: nothing.
+- **(B) Bump the apex** Legendary/Epic legendary chance to strictly exceed the general target (e.g. apex leg >= 80% / >= 55%). Cost: one follow-up lane; the inversion notice clears in the same commit.
+
+Also disclosed (intrinsic, not a defect): raising the gear rows raises total gear VOLUME per open (~+45% gear on Legendary), partially re-inflating R-240's trim - the smallest-blast-radius lever; the alternative (nudging numSpawn) re-opens R-240 and is not recommended.
+
+### OPEN FLAGS FOR WILL (surfaced, defaults taken per the recon)
+
+1. **Charon/Akremon is treated as GENERAL** (`boss_charon_{n,e,l}01b`, terminal `um_charonform2_ferryman_99` = Akremon after build85). It is neither Leinth nor a Toxeus variant, so by the literal ruling it is general and gets 0/50/75. Its orb currently shares the apex-richer loot4=21.2 (untouched by this wave). Flagged because Akremon is a marquee uber Will may want kept apex-tier.
+2. **No blue floor added on Epic/Legendary orbs** - Will only specified Normal's 75% blue. Incidental Epic drops left as-is.
