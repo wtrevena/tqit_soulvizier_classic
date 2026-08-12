@@ -1,5 +1,111 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD85-DEV GATE RECORD - R-231 THE GOLDEN BOUGH UBER REWORK (Charon out, AKREMON THE GRASPING ROOT in) - BUILT, ALL GATES GREEN, DEPLOYED TO DEV; STEAM UPLOAD PENDING (2026-08-12, `main` @ the `feat/charon-rework` fast-forward merge, tip `a282faa`)
+
+**INTEGRATED.** `main` was at `f989a3b` (build84) and the lane `feat/charon-rework` was 0 behind / 18 ahead
+(the lane had already merged build84 in at `f3217f9` and reconciled with the R-240/R-241 Charon-orb loot
+trim), so `git merge --no-edit feat/charon-rework` was a clean **fast-forward to `a282faa`** - zero
+conflicts, no merge commit owed. TQ.exe was NOT running. This is the next sequential ship after build84;
+the `b86`/`b87` codenames in older notes are dev names, the ship number is **BUILD85**.
+
+**WHAT IT IS:** Will's 2026-08-11 order - *"the charon uber boss we created needs to be re-worked, he is
+pretty much identical to the base game charon boss we cloned him off. maybe we can replace him with a
+different uber monster that is more unique."* The old Golden Bough uber carried `boss_charon_43` /
+`boss_charonform2_43`'s kit byte-for-byte. It is REPLACED IN PLACE, at the three frozen monster record
+paths the reused proxy/placement chain names, by **Akremon, the Grasping Root** (phase 1: Plant,
+Ascacophus02 @2.8, bleed-immune, root-snare + the mod's ONLY `Skill_DefensiveWall` quillvine wall +
+quill fan, splits at 33% into thorns + an authored +35% physical with ZERO absorption / ZERO regen) ->
+**Akremon, the Heartwood Ablaze** (terminal: Plant, DRX emberoak @2.0, ring-of-flame + volcanic orb x3 +
+heatshield, NOT bleed-immune) with two **Handbriar** champions. The Golden Bough amulet, the hoard chest
+("The Orchard of Hands"), the soul ("Soul of the Grasping Root" -> "Graft the Burning Heartwood") and the
+orb are REUSED. Full design + corrections: `docs/WILL_RULINGS.md` R-231-A..I; debt register: the R-231
+LANE RECORD below.
+
+**arz + a COUPLED `Text.arc` (NOT arz-only).** This is the one deploy-shape difference from build84. The
+module mints one new tag (`tagSVCMonsterAkremonBlaze`, the terminal name) and rewrites seven existing
+`tagSVC*` strings; shipped against the FROZEN `a9fed7ba` Text the terminal would render a RAW TAG
+(C-RES-TAG-1 P1). So arz and Text ship together (the standing "arz+Text ship together" rule), and
+`validate_tags` PROVES the coupling landed. `Levels.arc 6784cf0f` (canonical) / `Quests.arc 607ec99c` /
+`Creatures.arc 8c0d8d53` are md5-proven byte-unchanged; no map/Quests rebuild (the frozen proxy chain is
+reused). The DB build emits the 9 Akremon strings into `uber_soul_tags.txt`, and `build_text_arc.py`
+rebuilds Text.arc from it.
+
+**THE BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_NO_CACHE=1 SVC_RELEASE_DROPS=1
+SVC_REQUIRE_GATES=1`, into the work/ layout, **exit 0 "Done."**; then `build_text_arc.py` with
+`SVC_BASE_TEXT_EN` = the base-game `Text\Text_EN.arc`).
+
+| artifact | md5 | bytes | vs `build84` (`4bfea2e6`) |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`5a6d63a952322a9c307da60a0056b328`** | 55,582,018 (51,298 rec) | **CHANGED** (+1,839 B, **+1 rec**) |
+| `Resources/Text.arc` (COUPLED) | **`ce0efda4f4884a3079a20fd855f2d9ca`** | 89,629 | **CHANGED** (+78 B; 1 minted + 7 rewritten tag(s)) |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**DETERMINISM: det-2x BYTE-IDENTICAL.** Two independent COLD builds (`SVC_NO_CACHE=1`), the second into a
+separate scratch path, produced `5a6d63a9` both times, 55,582,018 B, `cmp` byte-identical. (Run 2 exited
+1 only on the post-write A9/D5 render gate refusing to run outside the work/ layout - a deliberate
+B-GATE-HARDEN-1 guard, orthogonal to arz determinism; the same D5 gate PASSED on the run-1 work/ build.)
+
+**RECORD-DIFF vs the shipped `4bfea2e6`: ADDED 1 / REMOVED 0 / MODIFIED 14 = the 15-record lane
+footprint, ZERO unexplained** (matches the vet's expected_record_diff exactly). ADDED (1):
+`records\skills\monster skills\lowhealth\svc_bough_splitting.dbr`. MODIFIED (14): `q_goldenbough_lone`
+pool (1 fld) + `q_yard_goldenbough` pool (1) + `q_goldenbough_lone` proxy (2) + `q_yard_goldenbough` proxy
+(2) + `ferryman_soul_{n,e,l}` (28 each) + `charon_oarsman_{1,2,3}` pets (71 each) +
+`summon_charon_oarsman` (3) + `svc_charon_wraith_99` escort (104) + `um_charon_ferryman_99` phase 1 (175)
++ `um_charonform2_ferryman_99` terminal (208). **build84's R-240/R-241 loot records
+(`boss_charon_*01b`, `svc_uberorb_apex_*`, `uberorb_default_*`, the polisvault twins) are ABSENT from the
+diff = the loot trim is fully preserved** by the merge reconciliation. Record count 51,297 -> 51,298 (the
+one added split skill).
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (whole fail-loud battery, `SVC_REQUIRE_GATES=1`) | **exit 0, "Done."** |
+| det-2x byte identity | **PASS** - `5a6d63a9` == `5a6d63a9` (both cold, `SVC_NO_CACHE=1`, `cmp` byte-identical) |
+| `charon_rework.verify` (in-build) | **OK** - proxy chain resolves to Akremon + 2 Handbriars on forecourt AND TESTHUB yard; soul re-THEMED (0 surviving ferryman cold/vitality/life-leech/fear/%-current-life fields, fire+pierce present); flame-ring glyph + own-family cast sound (not Charon's drowned-spirit, not Lyia's Maenad); all 6 placed+summoned bodies D19-mobile; Epic 35,000 == Gaoler, beat 2 with 0 absorption / 0 regen + authored +35% phys; Misc1/2/3 muted 0.0 both forms, Bough at Misc4 100.0; mana regen authored; CC 75/60/60, terminal 300% stun wall gone; EXACTLY ONE summon-pet registration on the terminal's own donor; no `charon_*` signature skills or shared rotation |
+| in-build coexisting battery | **all PASS** - chest_loot_breadth (69 tables, SPEAR incl), armor_loot_breadth (63 surfaces), red_uber_orbs (55 red ubers), orb_loot_breadth (18), orb_armor_rows (18), loot_volume_trim (R-240, 69 canonical + 18 TESTHUB twin), orb_legendary_chance (R-241), craft_thrown_breadth (42/42/42), polis_vault, mastery_unlock_alignment, R-210 DLC cap (`['Greece','Egypt','Orient','Hades']`), R-211 Atlantis voyage cap (`[]`), + 53 registry verify() hooks. No `summon-pet registry: SUPERSEDED` line for ANY family (clean; the watch condition holds) |
+| `validate_tags` (arz -> COUPLED Text.arc) | **PASS** - all 383 referenced mod tags + all 443 authoritative `uber_soul_tags` present in `ce0efda4` Text.arc; 2 pre-existing non-blocking base monster-name WARNs (`tagNewMonster66/46`). This is the PROOF the arz+Text coupling landed |
+| D5 render-chain (`validate_render_chain`) | **PASS** - 263 pets / 3053 art refs checked, 0 blocking; the new emberoak-body summon pet (`charon_oarsman_{1,2,3}`) resolves mesh + internal shaders; 22 upstream WARNs (non-blocking) |
+| `run_contracts`, all 6 modules, on the built arz | **GATE PASS - 0 P0 / 0 P1 / 4510 P2** (balance 0, map 6, quests 2, resources 4391, souls 0, summons 111) |
+| P2 delta vs build84 baseline 4510 | **+0. Zero new P2, zero new violation class.** The 15-record lane footprint introduces no new contract finding |
+| canonical siblings byte-unchanged | **PASS** - Levels `6784cf0f` / Quests `607ec99c` / Creatures `8c0d8d53` md5-proven unchanged on disk after both builds |
+
+**DEPLOYED TO DEV** - a COUPLED arz+Text copy (this lane is NOT arz-only, so `deploy_to_custommaps.ps1`
+was NOT used: it recursively copies the whole work mod incl. canonical `Levels.arc 6784cf0f`, which would
+CLOBBER the DEV TESTHUB play surface). Targeted copy of exactly two files into
+`CustomMaps\SoulvizierClassicDEV`: `Database\SoulvizierClassicDEV.arz` = `5a6d63a9` and
+`Resources\Text.arc` = `ce0efda4`, each with md5 **source == dest** verification **while TQ.exe was NOT
+running** (nothing killed, Steam not restarted, checked immediately before the copy). **2 of 62 DEV files
+changed, 0 added, 0 removed;** the whole folder was md5-inventoried before (`local/dev_pre.md5` snapshot)
+and after and the other 60 are byte-identical. **DEV `Resources\Levels.arc` stays the TESTHUB
+`7a7ca9ac`** (Will's play surface, deliberately untouched), Quests `607ec99c` / Creatures `8c0d8d53`
+unchanged. arz+Text only, no map change -> no Steam restart owed.
+
+**PACKAGED (not uploaded).** `scripts/package_workshop.ps1`: **TESTHUB guard OK** (packaged Levels
+`6784CF0F` != TESTHUB `7A7CA9AC`), single `SoulvizierClassic` wrapper, 56 files / 1188.4 MB. **dist==work
+all 5 artifacts PASS** (arz `5a6d63a9`, Text `ce0efda4`, Levels `6784cf0f`, Quests `607ec99c`, Creatures
+`8c0d8d53` all byte-identical work vs dist). Dist staging path:
+`dist/workshop/content/SoulvizierClassic`.
+
+**STEAM UPLOAD + GITHUB PUSH ARE THE MAIN SESSION'S TO RUN.** This lane did NOT run SteamCMD and did NOT
+push to a remote. **READY FOR STEAM UPLOAD: build85, arz `5a6d63a952322a9c307da60a0056b328` + coupled
+Text `ce0efda4f4884a3079a20fd855f2d9ca`.**
+
+**Rollback (one step, COUPLED):** `local/DEV_arz_deployed_prev.arz` = build84 `4bfea2e6` +
+`local/DEV_text_deployed_prev.arc` = build84 `a9fed7ba` -> copy both back over the DEV
+`Database\SoulvizierClassicDEV.arz` and `Resources\Text.arc` together. This build's arz at
+`local/build85_run1.arz` = `5a6d63a9`.
+
+**NOT PROVEN IN-GAME (Will's DEV check).** Fight Akremon at the Golden Bough forecourt (Styx river edge,
+Act 4). Open playtest items registered as `BL-BOUGH-DEBT-2/3/6/10/11/12`: scale 2.8 footprint/clearance
+at the reused placement, `quillwards` add-density (boss + 2 Handbriars + up to 6 quillvine adds + wall
+pets), both forms are Plant (fire build finds the terminal easier - deliberate), the soul-tooltip
+movement penalty must READ on the item (rounds 3-4 wrote it into a dead field), the flame-ring granted
+skill glyph has never been rendered in-mod, and beat 2's thorn FX at 33% life is base-resolved. See
+`docs/WILL_TEST_GUIDE.md` item 12. Full quit TQ + restart Steam before testing.
+
 ## LANE RECORD - R-231 THE GOLDEN BOUGH UBER REWORK: Charon is out, AKREMON THE GRASPING ROOT is in (2026-08-11, ROUND 4, branch `feat/charon-rework`, module `tools/patches/charon_rework.py`, static gates only - the Ship phase owns the build)
 
 **Will, verbatim (2026-08-11):** *"the charon uber boss we created needs to be re-worked, he is
