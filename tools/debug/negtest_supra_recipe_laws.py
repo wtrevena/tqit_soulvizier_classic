@@ -21,14 +21,19 @@ Planted defects, one per arm of the contract:
             table -> The Last Word's ONLY Legendary-only reagent stops being one, and
             the recipe is Epic-craftable again.
   N2c S1  - THE CRAFT PATH. Put Hati's gate back on `e_da_crescentmoonofartemis`, which
-            passes arms 1-4 (Legendary class, no sub-Legendary chest pool, a Legendary
-            pool reaches it, no sub-Legendary table names it) and is nevertheless MADE
-            from an EPIC arcane formula. Round 1 shipped exactly this and the gate said
-            PASS. Only arm 5 sees it.
-  N2d S1  - the false-red guard for arm 5: the four Legendary divine artifacts whose
-            formulas are paid ONLY by `03_act*_arcaneformulae_table` must still count as
+            passes every DROP arm (Legendary class, no sub-Legendary chest pool, a
+            Legendary pool reaches it, no sub-Legendary table names it) and is
+            nevertheless MADE from an EPIC arcane formula whose every reagent slot is
+            payable at Epic. Round 1 shipped exactly this and the gate said PASS.
+  N2d S1  - the false-red guard: the four Legendary divine artifacts must still count as
             Legendary-only, or the two DRX artifact craftables become unfixable by
-            construction (every divine artifact in the game is a craft result).
+            construction (every divine artifact in the game is a craft result). Note that
+            their formulas do NOT prove it - an Epic chest pays those on 15 of 16 Epic
+            surfaces - so what must hold is the deeper gate.
+  N2e S1  - THE RECURSION. Make Thoth's Glory's own craft chain Epic-satisfiable (swap
+            its Legendary greater artifact and Legendary relic for Normal ones) without
+            touching a single loot table. Round 2's rule cannot see this plant at all;
+            the gate must now RED. This is the vet's hole class, planted.
   N3  S1  - unhook `u_l_pagos` from every loot table that names it -> Aquimae's gate is
             no longer FINDABLE, which is uncompletable rather than gated. Proves the
             third arm of `legendary_only` (a Legendary chest pool must still reach it).
@@ -158,12 +163,13 @@ def main(argv):
     # N2c - THE CRAFT PATH, and this is the negative round 1 did not have. Put Hati's
     # gate back on `e_da_crescentmoonofartemis`: a reagent that is itemClassification =
     # Legendary, that no Normal or Epic chest pool reaches, that a Legendary pool DOES
-    # reach, and that no sub-Legendary loot table names - so it passes arms 1-4 of
-    # `legendary_only` exactly as it did in round 1 - but which is MADE by
-    # `e_da_crescentmoonofartemis_formula`, and that formula is paid by the four EPIC
-    # `02_act*_arcaneformulae_table` records. Only arm 5 can see this, so this test is
-    # the proof that arm 5 exists and fires. If it ever goes green, the gate has gone
-    # back to blessing an Epic-craftable reagent as a Legendary gate.
+    # reach, and that no sub-Legendary loot table names - so every DROP arm of
+    # `legendary_only` passes it, exactly as in round 1 - but which is MADE by
+    # `e_da_crescentmoonofartemis_formula`, an EPIC formula whose three reagent slots are
+    # `n_ga_furyoftheages` (Normal), `e_ga_laceofcelerity` (Epic) and `02x_vengeance`
+    # (named by `02_act1_scrolls`, Epic). Every slot is payable at Epic, so the artifact
+    # is, so the recipe was. Only the craft walk can see this. If it ever goes green, the
+    # gate is back to blessing an Epic-craftable reagent as a Legendary gate.
     db = _built(arz)
     lk = SLB.Lookup(db)
     hati = lk.real(r'records\drxitem\supra\zrecipes\svc_thrown_hati_formula.dbr')
@@ -171,12 +177,17 @@ def main(argv):
                  lk.real(r'records\xpack\item\artifacts\e_da_crescentmoonofartemis.dbr'))
     results.append(_run('N2c', 'S1', db))
 
-    # N2d - the OTHER side of arm 5, and the reason it is not a blanket "crafted reagents
-    # never gate" rule: the two DRX artifact craftables are built from divine artifacts,
-    # and EVERY divine artifact in the game is a craft result (77 of 77). Their gates -
-    # Thoth's Glory, Ikon of Zeus, Marduk's Tablet, Golden Eye - are paid only by the
-    # LEGENDARY `03_act*_arcaneformulae_table` records, so arm 5 must PASS them. This is
-    # the false-red guard: a gate that reds on everything is not a gate.
+    # N2d - the OTHER side of the craft walk, and the reason it is not a blanket "crafted
+    # reagents never gate" rule: the two DRX artifact craftables are built from divine
+    # artifacts, and EVERY divine artifact in the game is a craft result (77 of 77).
+    # Thoth's Glory, Ikon of Zeus, Marduk's Tablet and Golden Eye must therefore still
+    # count as Legendary-only. NOTE WHAT DOES *NOT* PROVE IT: their formulas are tier-`l`
+    # records, but an EPIC mod chest reaches all four on 15 of 16 Epic surfaces through
+    # `03_act4_arcaneformulae_sp` (BL-R231-DEBT-4), so "the formula is Legendary" is
+    # false here and round 2 leaned on it anyway. What gates them is one level deeper -
+    # `l_ga_doxakalo` and the Legendary relic `03_act4_cunningofoddyseus` - and N2e below
+    # is the test that this is measured rather than assumed. This is the false-red guard:
+    # a gate that reds on everything is not a gate.
     db = _built(arz)
     lk = SLB.Lookup(db)
     ex = SLB.Expander(db, lk)
@@ -189,9 +200,36 @@ def main(argv):
         if not good:
             ok = False
             print("        UNEXPECTED RED %s: %s" % (art, why))
-    print("  %-4s %-4s %-52s %s" % ('N2d', 'S1', 'EXPECT GREEN (Legendary-formula '
-                                    'artifacts still gate)', 'PASS' if ok else 'FAIL'))
+    print("  %-4s %-4s %-52s %s" % ('N2d', 'S1', 'EXPECT GREEN (deep-gated artifacts '
+                                    'still gate)', 'PASS' if ok else 'FAIL'))
     results.append(ok)
+
+    # N2e - THE RECURSION ITSELF, and this is the negative round 2 could not have
+    # written, because under round 2's rule the plant below changes nothing: it read the
+    # tier of the tables that name the formula, and this test does not touch a table.
+    # Take the deepest-gated reagent in the game (Thoth's Glory) and make its craft chain
+    # fully Epic-satisfiable - swap the Legendary greater artifact `l_ga_doxakalo` for the
+    # Normal `n_ga_furyoftheages`, and the Legendary relic `03_act4_cunningofoddyseus` for
+    # the Normal `01_act4_shadeofhektor` (16 Normal chest surfaces pay it). The artifact
+    # is now craftable at Epic from an Epic-payable formula, so it must stop counting as
+    # a Legendary gate. This is the vet's hole class: a divine-artifact reagent whose
+    # sub-chain has no Legendary member, passing on the strength of its formula's name.
+    db = _built(arz)
+    lk = SLB.Lookup(db)
+    ex = SLB.Expander(db, lk)
+    pools = {t: SCT.chest_pool(db, lk, ex, t) for t in SSR.TIERS}
+    thoth = lk.real(r'records\xpack\item\artifacts\arcaneformulae'
+                    r'\l_da_thothsglory_formula.dbr')
+    for field, cheap in (
+            ('reagent1BaseName', r'records\xpack\item\artifacts\n_ga_furyoftheages.dbr'),
+            ('reagent3BaseName', r'records\item\relics\01_act4_shadeofhektor.dbr')):
+        SLB._set_str(db, thoth, field, lk.real(cheap) or cheap)
+    good, why = SSR.legendary_only(
+        db, lk, ex, r'records\xpack\item\artifacts\l_da_thothsglory.dbr', pools)
+    print("  %-4s %-4s %-52s %s" % ('N2e', 'S1', 'EXPECT RED (Epic-craftable sub-chain)',
+                                    'FAIL' if good else 'PASS'))
+    print("        %s" % why[:170])
+    results.append(not good)
 
     # N3 - a gate reagent that nothing can pay is uncompletable, not gated
     db = _built(arz)

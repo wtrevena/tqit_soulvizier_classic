@@ -120,12 +120,26 @@ asserted).
 ROUND 1 GOT HATI WRONG AND THE GATE DID NOT CATCH IT. Round 1 picked Crescent Moon of
 Artemis for Hati, and it passed S1 while gating nothing: a divine artifact is not FOUND,
 it is MADE, and `e_da_crescentmoonofartemis_formula` is paid by the four EPIC
-`02_act*_arcaneformulae_table` records. So Hati remained completable on Epic - the defect
-Will filed, surviving inside its own fix. Two things changed in response, and the second
-matters more than the first: the reagent moved to Artemis' Silver Bow (nothing in the
-database builds it, and 19/19 Legendary surfaces pay it), and `legendary_only` grew arm 5,
-the craft-path check, so the gate can now SEE a craft path at all. Arm 5 is what makes
-"found in legendary" a measured claim instead of a naming convention.
+`02_act*_arcaneformulae_table` records - and, measured one level deeper in round 3, every
+one of that formula's three reagent slots is payable at Epic too, so the artifact really
+was Epic-craftable. Hati remained completable on Epic: the defect Will filed, surviving
+inside its own fix. Two things changed in response, and the second matters more than the
+first: the reagent moved to Artemis' Silver Bow (nothing in the database builds it, and
+19/19 Legendary surfaces pay it), and `legendary_only` learned to walk CRAFT paths, not
+just drop paths. That walk is what makes "found in legendary" a measured claim instead of
+a naming convention.
+
+ROUND 2 GOT THE REASON WRONG AND THE VET CAUGHT IT. Round 2's craft check read only the
+tier of the tables that name a formula, on the stated theory that "the formula is the
+gate". The theory is false in this database, on the exact four formulas round 2 quoted as
+its PASS evidence: an EPIC mod chest reaches `l_da_thothsglory_formula` and its three
+siblings on 15 of 16 Epic surfaces, through `03_act4_arcaneformulae_sp` (BL-R231-DEBT-4).
+The 42/42 outcome was right; the mechanism behind it was not, and a future divine-artifact
+reagent with no Legendary member deeper in its chain would have passed while being fully
+Epic-craftable. Round 3 replaced the read with `obtainable_below_legendary`, a recursion
+that asks the same question at every depth and names the record that actually gates: for
+Thoth's Glory that is `l_ga_doxakalo` and the Legendary relic `03_act4_cunningofoddyseus`,
+not the formula.
 
 WHAT IT COSTS: `m_vit_wand_01/02/03` stop being reagents of anything. They are NOT
 orphaned - they are the Common thrown band that keeps rule C2 (thrown payable on Normal)
@@ -200,7 +214,8 @@ there. The rule is asserted here so the law is stated where it is checked:
 THE GATES (all fail loud, all in the craft gate family)
 =============================================================================
   S1  every supra recipe names >= 1 reagent whose ONLY obtain paths are Legendary-tier -
-      DROP paths (arms 1-4) and CRAFT paths (arm 5) alike.
+      DROP paths (mod chest pools + the upward table closure, which is what catches a
+      monster paying it) and CRAFT paths (`obtainable_below_legendary`, recursive) alike.
   S2  no two supra craftables name an identical reagent multiset.
   S3  every reagent this module writes still resolves AND is reachable from the
       Legendary chest pool (the dead-twin guard).
@@ -352,6 +367,15 @@ _WORD_TIER_RE = re.compile(r'_(normal|epic|legendary)\.dbr$')
 _TIER_FOR_NUM = {'01': 'n', '02': 'e', '03': 'l'}
 _TIER_FOR_WORD = {'normal': 'n', 'epic': 'e', 'legendary': 'l'}
 
+# The base game's tier convention on ITEM records, not tables: relics and charms are
+# `0N_act*` (and the DRX-disabled `0Nx_` twins), artifacts are `<tier>_la_/ga_/da_`
+# (lesser / greater / divine). This is the ONLY evidence available for the deep half of
+# a craft chain, because this arz is an OVERLAY: `n_la_amberflask` resolves, is named by
+# no loot table in the mod's database and sits in no chest pool at any tier, since the
+# base-game tables that pay it were never copied into the mod. Silence there is not
+# evidence of Legendary-gating, so `obtainable_below_legendary` falls back to the name.
+_RECORD_TIER_RE = re.compile(r'^(?:(0[123])x?_|([nel])_(?:la|ga|da)_)')
+
 
 def table_tier(path):
     """'n' | 'e' | 'l' | None for a loot-table record name."""
@@ -367,6 +391,36 @@ def table_tier(path):
         if m:
             return _TIER_FOR_NUM.get(m.group(1))
     return None
+
+
+def record_tier(path):
+    r"""'n' | 'e' | 'l' | None for an ITEM record, read off the base game's own naming
+    law (`03_act4_cunningofoddyseus` -> Legendary, `n_la_amberflask` -> Normal). Used
+    ONLY where measurement is blind - see `_RECORD_TIER_RE`."""
+    m = _RECORD_TIER_RE.match(_n(path).rsplit('\\', 1)[-1])
+    if not m:
+        return None
+    return _TIER_FOR_NUM.get(m.group(1)) if m.group(1) else m.group(2)
+
+
+def reagent_slots(db, formula):
+    r"""[[variant, ...], ...] - a formula's reagents GROUPED BY SLOT.
+
+    `SCT.reagents_of` flattens every reagent field into one list, which is the right
+    shape for "what does this recipe want" but the WRONG shape for "can this recipe be
+    completed below Legendary": a slot is a per-difficulty ARRAY (measured:
+    `e_da_crescentmoonofartemis_formula.reagent3BaseName` = [`02x_vengeance`,
+    `03x_vengeance`]), so satisfying ANY variant satisfies the slot, while EVERY slot
+    must be satisfied. Grouping is what lets the craft walk answer both halves."""
+    out = []
+    ff = db.get_fields(formula) or {}
+    for k in sorted(ff, key=lambda z: z.split('###')[0]):
+        b = k.split('###')[0]
+        if b.startswith('reagent') and b.endswith('BaseName'):
+            variants = [v for v in ff[k].values if isinstance(v, str) and v]
+            if variants:
+                out.append(variants)
+    return out
 
 
 def formula_index(db):
@@ -394,72 +448,169 @@ def formula_index(db):
     return idx
 
 
-def legendary_only(db, lk, ex, reagent, pools=None):
+def obtainable_below_legendary(db, lk, ex, record, pools, memo=None, _stack=None,
+                               _prov=None):
+    r"""(bool, why) - can a player who never sets foot in Legendary END UP HOLDING
+    `record`, by DROP or by CRAFT? This is the whole of arms 2, 4 and 5 of
+    `legendary_only`, and it is deliberately the same question at every depth.
+
+    THE ORDER IS THE POINT. Measured evidence decides; convention is consulted only
+    where this database physically cannot measure:
+
+      1. the record does not resolve -> True. An absent record is a base-game record the
+         overlay never copied, so nothing here can prove it is Legendary-gated, and an
+         unprovable claim must never become a PASS.
+      2. a NORMAL or EPIC chest pool reaches it -> True (measured, mod chests).
+      3. some loot table in its upward closure is a Normal- or Epic-tier table -> True.
+         This is the MONSTER path: a reaver's Epic loot slot names an `02_` master.
+      4. THE CRAFT PATH. For every formula that builds it: if that formula is itself
+         obtainable below Legendary (this same function, one level up) AND every one of
+         its reagent SLOTS has at least one variant obtainable below Legendary, then the
+         record can be MADE below Legendary -> True.
+      5. nothing above fired. If the record is VISIBLE to the measurement (some pool
+         reaches it, or some loot table names it) the silence IS the answer: Legendary
+         surfaces only -> False. If it is invisible - no pool at any tier, no table
+         anywhere - fall back to `record_tier`: `n`/`e` -> True, `l` -> False, and no
+         tier at all -> True, because a gate may never rest on an unprovable claim.
+
+    WHY THIS IS A RECURSION AND NOT A READ OF THE FORMULA'S OWN TIER. Round 2 asked only
+    "which tables name this formula", on the theory that the formula IS the gate. That
+    theory is FALSE in this database and the vet measured it falsified on the very four
+    formulas round 2 quoted as its evidence: `l_da_thothsglory_formula` and its three
+    siblings are tier-`l` records with 6 tier-`l` direct holders, and an EPIC mod chest
+    reaches all four on 15 of 16 Epic surfaces (`svc_charonhoard_loot_02 ->
+    03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table -> l_da_thothsglory_formula`
+    - the BL-R231-DEBT-4 chest-wiring defect). Round 2 got 42/42 anyway, but for a reason
+    its own data contradicted, and a future divine-artifact reagent whose sub-chain had no
+    Legendary-only member would have PASSED while being fully Epic-craftable - the same
+    class of hole that shipped in round 1.
+
+    The real gate sits one level deeper, and now the walk says so out loud (measured on
+    the build83 ship arz `44499f56`):
+      PASS l_da_thothsglory - an Epic chest really does pay its formula, but that formula
+           needs `l_ga_doxakalo` (Legendary greater artifact, built only from `l_la_*`
+           lesser artifacts) AND `03_act4_cunningofoddyseus` (a Legendary relic: 5 loot
+           tables, all tier `l`, 19 of 19 Legendary chest surfaces, 0 Epic). Two
+           independent Legendary blockers, so Mortok's Skull is gated after all.
+      PASS l_da_ikonofzeus, l_da_mardukstabletofdestiny, l_da_goldeneyeofsunwukong - the
+           same shape, which is what keeps the two DRX artifact craftables
+           (`artifact_mortoksskull`, `artifact_plus2`) fixable at all: EVERY divine
+           artifact in the game is a craft result (77 of 77 have a formula; TQ drops
+           formulas, never artifacts), so a blanket "a crafted reagent never gates" rule
+           would have forced a cosmetic reagent swap on two recipes that are already
+           correct.
+      RED  e_da_crescentmoonofartemis - round 1's Hati gate. Its Epic formula wants
+           `n_ga_furyoftheages` (Normal), `e_ga_laceofcelerity` (Epic) and `02x_vengeance`
+           (named by `02_act1_scrolls`, Epic). Every slot is payable at Epic, so the
+           artifact is too, and the recipe it gated was Epic-craftable. The defect Will
+           filed was real, and this walk is the first thing in the lane that proves it
+           rather than assuming it from the formula's file name.
+
+    WHY STEP 5 NEEDS A NAME-BASED FALLBACK AT ALL. The mod's arz is an overlay of ~51k
+    records, not the whole game. `n_la_amberflask` resolves, sits in no chest pool at any
+    tier and is named by no loot table in it - the base-game tables that pay it were never
+    copied. Reading that silence as "Legendary-only" would have gated the entire base-game
+    artifact chain behind Legendary and turned `e_da_crescentmoonofartemis` into a PASS -
+    i.e. it would have re-blessed round 1's defect. The tier is in the record name because
+    the base game put it there, and that is the honest reading where measurement ends.
+    """
+    memo = memo if memo is not None else {}
+    _stack = _stack if _stack is not None else set()
+    _prov = _prov if _prov is not None else [0]
+    rl = _n(record)
+    if rl in memo:
+        return memo[rl]
+    if rl in _stack:
+        _prov[0] += 1                     # a craft cycle: no answer, and do not cache one
+        return False, 'craft cycle'
+    real = lk.real(record)
+    if not real:
+        return True, ('record is absent from this arz (base-game overlay), so nothing '
+                      'here can prove it is Legendary-gated')
+    mark = _prov[0]
+    verdict = None
+    if rl in pools['n']:
+        verdict = (True, 'a NORMAL-tier chest pool reaches it')
+    elif rl in pools['e']:
+        verdict = (True, 'an EPIC-tier chest pool reaches it')
+    _monsters, tables = SCT.mi_monster_sources(db, lk, record)
+    if verdict is None:
+        bad = sorted(t for t in tables if table_tier(t) in ('n', 'e'))
+        if bad:
+            verdict = (True, 'named by %d non-Legendary-tier loot table(s), e.g. %s'
+                       % (len(bad), _n(bad[0]).rsplit('\\', 1)[-1]))
+    blockers = []
+    if verdict is None:
+        _stack.add(rl)
+        try:
+            for formula in formula_index(db).get(rl, ()):
+                if not obtainable_below_legendary(db, lk, ex, formula, pools, memo,
+                                                  _stack, _prov)[0]:
+                    continue               # the formula itself is a Legendary gate
+                blocked = None
+                for variants in reagent_slots(db, lk.real(formula) or formula):
+                    if not any(obtainable_below_legendary(db, lk, ex, v, pools, memo,
+                                                          _stack, _prov)[0]
+                               for v in variants):
+                        blocked = variants[0]
+                        break
+                if blocked is None:
+                    verdict = (True, 'MADE below Legendary: %s is itself payable below '
+                                     'Legendary and so is every one of its reagent slots'
+                               % _n(formula).rsplit('\\', 1)[-1][:-4])
+                    break
+                blockers.append((formula, blocked))
+        finally:
+            _stack.discard(rl)
+    if verdict is None:
+        if tables or any(rl in pools[t] for t in TIERS):
+            why = 'Legendary-tier surfaces only'
+            if blockers:
+                why = ('Legendary-gated one level down: %s is payable below Legendary '
+                       'but needs %s, which is not'
+                       % (_n(blockers[0][0]).rsplit('\\', 1)[-1][:-4],
+                          _n(blockers[0][1]).rsplit('\\', 1)[-1][:-4]))
+            verdict = (False, why)
+        else:
+            rt = record_tier(record)
+            if rt in ('n', 'e'):
+                verdict = (True, "the base game's own record-name convention makes it a "
+                                 "%s-tier record" % {'n': 'Normal', 'e': 'Epic'}[rt])
+            elif rt == 'l':
+                why = "Legendary by the base game's own record-name convention"
+                if blockers:
+                    why += (', and %s needs %s'
+                            % (_n(blockers[0][0]).rsplit('\\', 1)[-1][:-4],
+                               _n(blockers[0][1]).rsplit('\\', 1)[-1][:-4]))
+                verdict = (False, why)
+            else:
+                verdict = (True, 'no loot table in this arz names it and its name carries '
+                                 'no tier: unprovable, so it cannot count as a gate')
+    if _prov[0] == mark:                   # nothing in this subtree hit a cycle: cacheable
+        memo[rl] = verdict
+    return verdict
+
+
+def legendary_only(db, lk, ex, reagent, pools=None, memo=None):
     r"""(bool, reason) - are ALL of `reagent`'s obtain paths Legendary-tier?
 
-    FIVE conditions, every one measured off the database:
+    THREE conditions, every one measured off the database:
       1. `itemClassification == Legendary`. R-100 #17 (tier discipline) confines a
-         Legendary item to `_l`-tier hosts, so this is what makes the other checks a
-         proof rather than a spot sample;
-      2. no Normal-tier and no Epic-tier chest pool reaches it;
-      3. a LEGENDARY chest pool DOES reach it - Will's completability law is not
+         Legendary item to `_l`-tier hosts, so this is what makes the rest a proof
+         rather than a spot sample;
+      2. a LEGENDARY chest pool DOES reach it - Will's completability law is not
          suspended by his gating law, and "gated behind nothing" is not a pass;
-      4. no loot table in its upward reference closure is a Normal- or Epic-tier table.
-         This is the check that catches a MONSTER path: a reaver's Epic loot slot names
-         an `02_` master, and an `02_` master is not Legendary.
-      5. THE CRAFT PATH (added round 2, and it is the arm that matters). Conditions 1-4
-         only ever look at DROP paths, so a reagent that is itself the RESULT of a
-         formula passed them while being buildable at Epic. Will's word is *found* -
-         "one of the items needed to craft the formula needs to be **found in
-         legendary**" - and a thing you make from an Epic formula is not found in
-         Legendary. So: if any formula in the database builds this reagent, EVERY one of
-         those formulas must itself be Legendary-tier-only by the same closure test.
+      3. `obtainable_below_legendary` says NO. That one call carries the drop paths (mod
+         chest pools at Normal and Epic, plus the upward table closure that catches a
+         MONSTER paying it on a lower difficulty) AND the craft path, recursively: Will's
+         word is *found* - "one of the items needed to craft the formula needs to be
+         **found in legendary**" - and a thing you can MAKE at Epic is not found in
+         Legendary, however Legendary its own file name looks.
 
-    WHY ARM 5 READS *DIRECT* TABLE HOLDERS AND ARM 4 READS THE UPWARD CLOSURE. They are
-    asking different questions. Arm 4 asks "can something pay this ITEM below Legendary",
-    and a monster's Epic loot slot names an `02_` master several levels up, so the closure
-    is the only honest reach. Arm 5 asks "at what difficulty is this FORMULA sold", and
-    that is decided by the tables that name it as a member. The closure is actively WRONG
-    here, and it was measured being wrong: the four Legendary divine-artifact formulas
-    have 6 direct holders each, all of them tier `l`, but a 123-table upward closure that
-    includes Epic-tier parents - because an Epic mod chest wires into the LEGENDARY arcane
-    tables (the `BL-R231-DEBT-4` residual below). Reading the closure therefore redded all
-    four and, with them, both DRX artifact craftables - a false RED caused entirely by a
-    defect in someone else's chest wiring. Direct holders separate the two cases cleanly:
-    `l_da_*_formula` -> 6 tables, 6 Legendary, 0 bad; `e_da_crescentmoonofartemis_formula`
-    -> 6 tables, 6 EPIC, 6 bad.
-
-    WHY ARM 5 NEEDS NO RECURSION INTO THE FORMULA'S OWN REAGENTS. If the formula that
-    builds the reagent is reachable only from Legendary-tier tables, the reagent cannot be
-    obtained below Legendary no matter how cheap its sub-reagents are, because the formula
-    is the gate. If the formula IS reachable below Legendary, redding is the conservative
-    call for a gate. Either way the answer is decided at the formula, and a recursion
-    would only add fragility (formula reagent slots are per-difficulty ARRAYS - measured:
-    `e_da_crescentmoonofartemis_formula.reagent3BaseName` = [`02x_vengeance`,
-    `03x_vengeance`] - so a naive walk reads difficulty variants as conjunctive, and
-    `03x_vengeance` is a base-game record this mod's arz does not even contain).
-
-    MEASURED, and this is what arm 5 changes (build83 ship arz 44499f56):
-      RED  e_da_crescentmoonofartemis  <- `02_act1..4_arcaneformulae_table` (EPIC) plus
-           `xq04/xsq02 - arcaneformulae_epic`. This was round 1's Hati gate, and the arm
-           existing is why Hati now points at a drop-only bow instead.
-      PASS l_da_thothsglory, l_da_ikonofzeus, l_da_mardukstabletofdestiny,
-           l_da_goldeneyeofsunwukong <- `03_act1..4_arcaneformulae_table` (LEGENDARY)
-           plus `xq04/xsq02 - arcaneformulae_legendary`, and nothing else. So the two
-           DRX artifact craftables (`artifact_mortoksskull`, `artifact_plus2`) are
-           genuinely Legendary-gated and need no reagent edit - which is the answer the
-           arm had to be able to give, because EVERY divine artifact in the game is a
-           craft result (77 of 77 have a formula; TQ drops formulas, never artifacts), so
-           a blanket "a crafted reagent is never a gate" rule would have made those two
-           recipes unfixable-by-construction and forced a cosmetic swap.
-
-    KNOWN RESIDUAL, and it is deliberately NOT laundered here: an EPIC mod chest reaches
-    the LEGENDARY arcane-formula tables on 15 of 16 Epic surfaces
-    (`svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table
-    -> l_da_thothsglory_formula`). That is a chest-WIRING tier defect that predates this
-    lane and belongs to the chest-table owner, not to a recipe module; arm 5 asks whether
-    the FORMULA's own tables are Legendary, which is the question this module can answer
-    honestly. Registered as a debt so it is fixed where it lives.
+    Condition 3 is where round 1 shipped a hole (Hati gated by a divine artifact that an
+    Epic arcane formula builds) and where round 2 shipped a false rationale (it read the
+    formula's own table tier and called the formula the gate, on four formulas an Epic
+    chest demonstrably pays). Read `obtainable_below_legendary` for the measurements.
     """
     pools = pools if pools is not None else {t: SCT.chest_pool(db, lk, ex, t)
                                              for t in TIERS}
@@ -471,27 +622,12 @@ def legendary_only(db, lk, ex, reagent, pools=None):
     if ic != 'Legendary':
         return False, 'itemClassification=%s (only a Legendary item is tier-confined)' % (
             ic or 'none')
-    if rl in pools['n']:
-        return False, 'a NORMAL-tier chest pool reaches it'
-    if rl in pools['e']:
-        return False, 'an EPIC-tier chest pool reaches it'
     if rl not in pools['l']:
         return False, 'no Legendary chest pool reaches it (uncompletable, not gated)'
-    _monsters, tables = SCT.mi_monster_sources(db, lk, reagent)
-    bad = sorted(t for t in tables if table_tier(t) in ('n', 'e'))
-    if bad:
-        return False, 'named by %d non-Legendary-tier loot table(s), e.g. %s' % (
-            len(bad), _n(bad[0]).rsplit('\\', 1)[-1])
-    rev = SCT.reverse_index(db)
-    for formula in formula_index(db).get(rl, ()):
-        direct = [h for h in rev.get(_n(formula), ()) if SLB.is_loot_table(lk, h)]
-        fbad = sorted(t for t in direct if table_tier(t) in ('n', 'e'))
-        if fbad:
-            return False, ('MADE, not found: %s builds it and is paid by %d '
-                           'non-Legendary-tier table(s), e.g. %s'
-                           % (_n(formula).rsplit('\\', 1)[-1][:-4], len(fbad),
-                              _n(fbad[0]).rsplit('\\', 1)[-1]))
-    return True, 'Legendary-tier surfaces only'
+    below, why = obtainable_below_legendary(db, lk, ex, reagent, pools, memo)
+    if below:
+        return False, why
+    return True, why
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -595,14 +731,20 @@ def audit_supra_laws(db, lk=None, ex=None, verbose=False):
     by_result = recipe_sets(db, lk, forms)
 
     # ---- S1 -----------------------------------------------------------------
+    # ONE `below` memo for the whole audit: the craft walk re-enters the same base-game
+    # artifact chains for reagent after reagent, and the memo is what keeps a 92-reagent
+    # audit at a fraction of a second. It is deliberately per-CALL, not cached on the db,
+    # because callers that audit the same db object twice (pre-fix then post-fix) must
+    # not be served verdicts measured before the writes landed.
     verdicts = {}
+    below_memo = {}
     gated = {}
     for result, per_formula in sorted(by_result.items()):
         reagents = sorted({r for rg in per_formula.values() for r in rg})
         good = []
         for r in reagents:
             if r not in verdicts:
-                verdicts[r] = legendary_only(db, lk, ex, r, pools)
+                verdicts[r] = legendary_only(db, lk, ex, r, pools, below_memo)
             if verdicts[r][0]:
                 good.append(r)
         gated[result] = good
