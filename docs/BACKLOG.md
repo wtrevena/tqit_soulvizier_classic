@@ -1,5 +1,52 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+> ## 🚨 ROUND-4 VET CORRECTIONS (2026-08-11, branch `fix/loot-volume-trim`) - THE BUILD WOULD HAVE ABORTED. READ FIRST.
+> The round-3 vet ran all 53 registry `verify()` hooks against the applied db and found **two that red on
+> db CONTENT** - meaning they fail identically in a real build, and `run_registry_verifies`' own docstring
+> says *"a module verify() raising SystemExit propagates and aborts the build"*. Both are now fixed. Both
+> were **ruling collisions, not threshold edits**, so both were amended in the ledger with the superseding
+> quote rather than quietly relaxed. Full design record: `docs/WILL_RULINGS.md` -> **R-240/R-241 GATE
+> COLLISIONS**.
+>
+> 1. **`polis_vault.verify` T5 - 36 problems, build-aborting.** It asserted the shipped literal multiplier
+>    on all 18 cage loot tables with the message *"payout must never shrink"*. **R-240 IS the authorised
+>    shrink.** T5 now computes its expected value through R-240's own transform
+>    (`svc_loot_volume.trimmed_multipliers`), accepting **exactly two discrete committed values per
+>    field** - pre-R-240 and R-240 - so it stays an exact-match ratchet, not a band. New **T5b** reds a
+>    HALF-trimmed cage, which the original check could not see at all.
+> 2. **`uber_apex_orb.verify` - 18 problems, build-aborting, and in TWO independent copies.** It proved
+>    the apex calibre >= Leinth's frozen b96 tables. R-240 trims that calibre ~10x and R-241 demotes its
+>    `loot4Chance` 100 -> 21.2. The round-3 vet found the copy in check **(h)**; **a second copy in check
+>    (c) was behind it** and would have aborted the build three lines later on the same three records.
+>    **R-72/R-99's UNITY half survives whole** (Leinth on the same tables as the roster, never singled
+>    out - now proved TWICE) and **only the absolute-floor half is superseded**, by Will's own words.
+>    Gold, the unique-share weights and the no-`/` MP law are still proved against her originals.
+>    `_no_nerf_problems` is **not deleted**: it still runs verbatim at `apply()` time and on any
+>    pre-R-240 arz.
+> 3. **Both amendments are TWO-ERA on purpose**, so the ship lane's anti-inert control against the
+>    rollback artifact keeps working. Measured, same harness, two arz files: shipped b83 `44499f56`
+>    untouched -> **both PASS**; same arz + this lane's two waves -> **both PASS** (before: 36 and 18
+>    problems -> abort).
+> 4. **The amendments re-earned their teeth.** `py tools/debug/negtest_gate_amendments.py <arz>` -
+>    **12 plants, all RED**, one per clause of both amended checks in both directions, plus a proof that
+>    its own restore is clean so a plant cannot leak into the next case.
+> 5. **`gate_loot_distribution.py` now reds on every PRE-R-240 artifact** - the anchor working, not a
+>    defect. Registered as **`BL-R240-DEBT-8`** with the exact red text, who it bites (the ship lane's
+>    baseline control, and every other in-flight branch), and what to run instead. The gate now says so
+>    in its own failure text.
+> 6. **`gate_loot_volume.py --scope` exists now.** The PASS-line comment advertised it and `main()` did
+>    not implement it; it lists all 69 in-scope surfaces split canonical/TESTHUB.
+> 7. **Will's test note quoted only the optimistic spawn model** for the cage guarantee (99.6%). It now
+>    carries the truncated figure beside it (**98.3% Legendary, 94.0% Epic**), since that is the number
+>    the gate actually holds while the engine's rounding mode is unproven (`BL-R240-DEBT-5`).
+> 8. **44 inert twin records ship in the Steam arz, and the push-gate record-diff will show them.**
+>    Expected: `ADDED 44 / REMOVED 0 / MODIFIED 69`, and the only fields that move anywhere are
+>    `numSpawnMinEquation` (69), `numSpawnMaxEquation` (69) and `loot4Chance` (3) - zero members, zero
+>    weights, zero pool memberships. The 44 are the TESTHUB twin. On the canonical/Steam map they are
+>    unreachable **by construction and forever**; that is the only way one shared arz can express
+>    "canonical trims, TESTHUB stays rich". **Whoever reviews that diff should expect them and not treat
+>    them as stray.**
+
 > ## ROUND-3 VET CORRECTIONS (2026-08-11, branch `fix/loot-volume-trim`) - READ BEFORE THE TWO GATE RECORDS BELOW
 > Seven findings, all discharged. Two of them changed what the lane CLAIMS, not just what it does.
 >
@@ -376,6 +423,28 @@ so the arz+Text coupling holds with no Text rebuild.
   map build, so it is planned into the wave rather than discovered at the end of it. **Canonical
   `B41_SPECS` is untouched and `local/Levels_merged.arc` stays byte-identical, so this changes nothing
   about the Steam delta, which remains arz-only.** Closing evidence: the DEV cage pours again.
+- `BL-R240-DEBT-8` (round-4) - ⚠️ **AFTER THIS MERGES, `gate_loot_distribution.py` REDS ON EVERY
+  PRE-R-240 ARTIFACT. THAT IS THE ANCHOR WORKING. DO NOT TREAT IT AS YOUR LANE'S DEFECT.** Exact text,
+  reproduced against the shipped b83 arz `44499f56`:
+  `D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the reference surface gaoler
+  cage chest_01 [l], which MEASURES 12.4800 spawn iterations`.
+  **WHY:** R-240 re-anchored `ARMOR_SLOT_FLOOR` onto the cage's post-trim volume, so the floor is now a
+  DERIVED number and D7X2 re-proves the committed anchor against the measured bytes every run. On an
+  untrimmed arz the anchor surface genuinely measures 12.48, so the check fires exactly as designed.
+  **WHO THIS BITES:** (a) the ship lane's standing anti-inert control - running the coexisting gates
+  against the **rollback artifact** to prove they are not inert; (b) every other in-flight branch
+  (`feat/charon-rework`, `fix/supra-legendary-gate`, `fix/toxeus-shroud`, `fix/gaoler-killability`,
+  `fix/soul-rename-ratified` ...) whose gate battery carries a **pre-R-240 baseline**.
+  **WHAT TO DO INSTEAD:** run the anti-inert control on a **post-R-240** artifact, and read a
+  pre-R-240 D7X2 red as the control PASSING. The gate now says this itself: `svc_loot_distribution`
+  commits `ARMOR_SLOT_FLOOR_PRE_R240_REF_SPAWN = 12.480` purely so the failure text can recognise the
+  pre-trim volume and append *"THIS IS THE EXPECTED READING ON A PRE-R-240 ARTIFACT (BL-R240-DEBT-8)"*.
+  The constant is **not** a second accepted era - the floor stays anchored to the trimmed volume,
+  because the trimmed volume is what ships.
+  **THE REAL FIX, NOT TAKEN HERE:** make D7/D7X2 two-era the way R-240 made `polis_vault` T5 and
+  `uber_apex_orb` (c)/(h) two-era, so one gate serves both artifacts. That is a refactor of a gate
+  several in-flight lanes depend on, and **one lane per problem** means it is not this one. Closing
+  evidence: `gate_loot_distribution.py` exits 0 on both a pre- and a post-R-240 arz.
 
 ---
 

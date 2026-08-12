@@ -11,7 +11,10 @@
 > **1. "from the two chests, you get guaranteed 1 legendary item" (R-240).**
 > The canonical Gaoler cage, both chests opened once, on Legendary difficulty: it paid **36.4**
 > legendary-grade pieces and now pays **3.8** (Normal 43.7 -> 3.8, Epic 28.2 -> 2.7). It still pays at
-> least one **99.6%** of the time, so the guarantee survives the cut. Honest note: the mechanical floor
+> least one **99.6%** of the time on the optimistic reading, or **98.3%** if the engine truncates the
+> spawn count to a whole number (Epic: 96.9% vs **94.0%**) - we do not yet know which it does, so both
+> are gated and the pessimistic one is quoted alongside, because that is the number the gate actually
+> holds (`BL-R240-DEBT-5`). Either way the guarantee survives the cut. Honest note: the mechanical floor
 > is **2.74** per two-chest run, not 1.0 - six loot groups fire per spawn iteration and their chances
 > already sum past 280%, so "literally one" needs a composition change, not a volume one. That is
 > `BL-R240-DEBT-1`.

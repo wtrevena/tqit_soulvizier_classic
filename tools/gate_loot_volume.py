@@ -36,6 +36,10 @@ audit and the build gate cannot disagree (the gate_relic_difficulty_tiers preced
 Usage:
   py tools/gate_loot_volume.py <arz>              # audit, exit 1 on any finding
   py tools/gate_loot_volume.py <arz> --calibrate  # worst observed value per check
+  py tools/gate_loot_volume.py <arz> --scope      # LIST the in-scope surfaces, so the
+                                                  # PASS line's "every MOD-GOVERNED
+                                                  # canonical loot surface" can be read
+                                                  # as a set and not taken on trust
   py tools/gate_loot_volume.py <arz> --apply      # apply R-240 in memory first, so a
                                                   # PRE-wave arz measures against the
                                                   # same contract
@@ -59,7 +63,8 @@ import svc_loot_volume as SLV
 
 def main(argv):
     if len(argv) < 2:
-        print("usage: py tools/gate_loot_volume.py <arz> [--calibrate] [--apply]")
+        print("usage: py tools/gate_loot_volume.py <arz> [--calibrate] [--scope] "
+              "[--apply]")
         return 2
     db = ArzDatabase.from_arz(Path(argv[1]))
     if '--apply' in argv[2:]:
@@ -77,6 +82,28 @@ def main(argv):
     lk = SLB.Lookup(db)
     if '--calibrate' in argv[2:]:
         SLV.calibrate(db, lk)
+        return 0
+    if '--scope' in argv[2:]:
+        # The PASS line claims a set ("every MOD-GOVERNED canonical loot surface").
+        # This prints the set. A claim about a scope nobody can enumerate is exactly
+        # how BL-R181-DEBT-7 shipped fifteen starving surfaces through two green
+        # gates, so the enumeration is a command and not a comment.
+        scope = SLV.scope_tables(db, lk)
+        canon = sorted(k for k, (_r, _t, h) in scope.items() if not h)
+        hub = sorted(k for k, (_r, _t, h) in scope.items() if h)
+        print("\n=== R-240 scope: %d surface(s) = %d canonical + %d TESTHUB twin ==="
+              % (len(scope), len(canon), len(hub)))
+        for title, group in (('CANONICAL (trimmed, ceilings apply)', canon),
+                             ('TESTHUB TWIN (floors apply, never uploaded)', hub)):
+            print("\n-- %s: %d --" % (title, len(group)))
+            for k in group:
+                real, tier, _h = scope[k]
+                print("   [%s] %s" % (tier, SLB._n(real)))
+        print("\nOUT OF SCOPE BY DESIGN: every loot table this mod does not own. The "
+              "visible example is the base game's nine `defaultloot/orbrepeat_default_*` "
+              "tables - measured at E[legendary] <= 0.075 per open with P(>=1) <= 7.3%, "
+              "so they do not offend Will's ruling and are left at stock volume rather "
+              "than quietly swept in.")
         return 0
     print("\n=== loot-volume audit (R-240) ===")
     report = {}

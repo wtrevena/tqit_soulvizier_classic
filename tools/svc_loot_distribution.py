@@ -342,6 +342,12 @@ D5_PINNED = {
 # Every OTHER coexisting gate still passes on the untrimmed arz.
 ARMOR_SLOT_FLOOR_PER_ITER_AT_REF = 0.52 / 10.58   # 0.049149..., the b80 derivation
 ARMOR_SLOT_FLOOR_REF_SPAWN = 1.310   # spawn iterations of the R-240 anchor surface
+# The SAME surface's volume BEFORE the R-240 trim. Committed for one purpose only: so
+# D7X2 can recognise a pre-R-240 artifact and say so in its own failure text instead of
+# looking like a defect in whichever branch is running the gate (`BL-R240-DEBT-8`). It
+# is NOT an accepted era here - the floor stays anchored to the trimmed volume, because
+# the trimmed volume is what ships. Measured on the shipped b83 arz 44499f56.
+ARMOR_SLOT_FLOOR_PRE_R240_REF_SPAWN = 12.480
 ARMOR_SLOT_FLOOR = ARMOR_SLOT_FLOOR_PER_ITER_AT_REF * ARMOR_SLOT_FLOOR_REF_SPAWN
 # ── the ORIGINAL derivation, kept because a threshold nobody can re-derive is a
 #    threshold nobody can defend ──────────────────────────────────────────────
@@ -700,6 +706,23 @@ def reference_surface_problems(reports):
     # D7X2 - the committed anchor volume must still BE the reference surface's volume.
     measured = float(ref.get('S_eff', 0.0))
     if abs(measured - ARMOR_SLOT_FLOOR_REF_SPAWN) > 0.01 * ARMOR_SLOT_FLOOR_REF_SPAWN:
+        # THE ONE READING THAT IS EXPECTED AND IS NOT A DEFECT, named in the message
+        # itself so nobody has to already know it. Running this gate against a
+        # PRE-R-240 artifact - the rollback arz, or any branch cut before the volume
+        # trim - measures the anchor at its untrimmed volume and reds here. That is
+        # the anchor working, not the arz being broken, and it is `BL-R240-DEBT-8`.
+        # Without this sentence the ship lane's anti-inert control looks like a
+        # failure of whichever lane happens to be holding it.
+        _pre = abs(measured - ARMOR_SLOT_FLOOR_PRE_R240_REF_SPAWN) <= (
+            0.01 * ARMOR_SLOT_FLOOR_PRE_R240_REF_SPAWN)
+        _hint = (
+            "  >>> THIS IS THE EXPECTED READING ON A PRE-R-240 ARTIFACT (BL-R240-DEBT-8): "
+            "the measured %.4f IS the untrimmed anchor volume, so this arz simply "
+            "predates the R-240 volume trim and the gate is anchored to the trimmed "
+            "era. It is NOT a defect in this arz and NOT a defect in whichever branch "
+            "is running the gate. Use a post-R-240 artifact for the anti-inert "
+            "control, or read this one red as the control passing."
+            % measured) if _pre else ""
         problems.append(
             "D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=%.4f no longer matches the "
             "reference surface %s, which MEASURES %.4f spawn iterations. "
@@ -707,10 +730,10 @@ def reference_surface_problems(reports):
             "anchor rescales the armour-parity floor without anyone choosing to: %.4f "
             "today versus %.4f at the measured volume. Re-derive the constant against "
             "the surface (and say why the volume moved), or the floor means whatever "
-            "the last numSpawn edit happened to leave behind."
+            "the last numSpawn edit happened to leave behind.%s"
             % (ARMOR_SLOT_FLOOR_REF_SPAWN, ARMOR_SLOT_FLOOR_REF_SURFACE, measured,
                ARMOR_SLOT_FLOOR_PER_ITER_AT_REF, ARMOR_SLOT_FLOOR,
-               ARMOR_SLOT_FLOOR_PER_ITER_AT_REF * measured))
+               ARMOR_SLOT_FLOOR_PER_ITER_AT_REF * measured, _hint))
     return problems
 
 
