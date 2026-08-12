@@ -1,10 +1,16 @@
 r"""STANDALONE GATE + PLANTED NEGATIVES for `tools/patches/charon_rework.py` (R-231).
 
 Runs the module's `apply()` and then its fail-loud `verify()` over a BUILT arz,
-then plants ten defects one at a time and proves the gate REDs on each with
-restoration verified GREEN in between. This is the static proof the lane ships
-with the new surface (process law #4) - it needs no DB build, no deploy, and it
-writes nothing: the arz is loaded into memory and thrown away.
+then plants **28** defects one at a time and proves the gate REDs on each with
+restoration verified GREEN in between, plus **one apply-time assert** (the scaler
+swap refusing a non-`hero_scaling` incumbent) that no verify() gate can express.
+This is the static proof the lane ships with the new surface (process law #4) -
+it needs no DB build, no deploy, and it writes nothing: the arz is loaded into
+memory and thrown away.
+
+Round 3 added the eight that matter most, because they cover the two surfaces the
+PLAYER KEEPS - the soul's stat block and the granted summon's skill-bar face -
+where round 2 shipped Charon residue under a green gate.
 
     py tools/debug/negtest_charon_rework.py [path\to\SoulvizierClassic.arz]
 
@@ -211,6 +217,63 @@ neg('DURABILITY: life descending across difficulties',
     lambda: (db.set_field(CR._ORM, 'characterLife',
                           [22000.0, 17000.0, 13000.0]), None)[1],
     lambda _p: db.set_field(CR._ORM, 'characterLife', list(CR._ORM_LIFE)))
+
+
+# ── ROUND-3 NEGATIVES: one per finding the round-2 vet raised ──────────────
+# The two P1s were both "a superseded writer's output surviving under the new
+# writer's at a frozen path", on the two surfaces the PLAYER KEEPS: the soul's
+# stat block and the granted summon's skill-bar face.
+neg('P1 ferryman COLD block back on the soul',
+    lambda: (CR._sf(db, CR._SOUL_TIERS[1], 'offensiveColdMin', 46.8,
+                    CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: [ff.pop(k) for ff in [db.get_fields(CR._SOUL_TIERS[1])]
+                for k in list(ff) if k.split('###')[0] == 'offensiveColdMin'])
+neg("P1 Charon's OWN lever back on the soul (%CurrentLife)",
+    lambda: (CR._sf(db, CR._SOUL_TIERS[2], 'offensivePercentCurrentLifeMin', 3.9,
+                    CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: [ff.pop(k) for ff in [db.get_fields(CR._SOUL_TIERS[2])]
+                for k in list(ff)
+                if k.split('###')[0] == 'offensivePercentCurrentLifeMin'])
+neg('P1 life-leech + vitality back on the soul',
+    lambda: (CR._sf(db, CR._SOUL_TIERS[0], 'offensiveLifeLeechMin', 39.0,
+                    CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: [ff.pop(k) for ff in [db.get_fields(CR._SOUL_TIERS[0])]
+                for k in list(ff) if k.split('###')[0] == 'offensiveLifeLeechMin'])
+neg('P1 stale itemSkillAutoController on the soul',
+    lambda: (CR._sf(db, CR._SOUL_TIERS[1], 'itemSkillAutoController',
+                    r'records\x_controller.dbr', CR.DATA_TYPE_STRING), None)[1],
+    lambda _p: [ff.pop(k) for ff in [db.get_fields(CR._SOUL_TIERS[1])]
+                for k in list(ff)
+                if k.split('###')[0] == 'itemSkillAutoController'])
+neg("P1 Charon's drowned-spirit glyph back on the summon",
+    lambda: (db.set_field(CR._SUMMON, 'skillUpBitmapName',
+                          r'SVTextures\skills\drownedspiritup.tex'), None)[1],
+    lambda _p: db.set_field(CR._SUMMON, 'skillUpBitmapName', CR._SUMMON_ICON[0]))
+neg('P1 Lyia Maenad cast sound back on the summon',
+    lambda: (db.set_field(
+        CR._SUMMON, 'skillHitSound',
+        r'records\sounds\soundpak\monstersgreek\maenadalertpak.dbr'), None)[1],
+    lambda _p: db.set_field(CR._SUMMON, 'skillHitSound', CR._SUMMON_HIT_SOUND))
+neg('P2 hero_scaling survives alongside boss_scaling',
+    lambda: (CR._sf(db, CR._ORM, 'skillName20', CR._SK_HERO_SCALING,
+                    CR.DATA_TYPE_STRING), None)[1],
+    lambda _p: db.set_field(CR._ORM, 'skillName20', ''))
+neg('P2 the boss carries no boss_scaling at all',
+    lambda: (db.set_field(CR._BLOOM, 'skillName12', CR._SK_HPSCALING), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'skillName12', CR._SK_BOSS_SCALING))
+
+# ── APPLY-TIME assert (not a verify() gate): the scaler swap is no longer blind
+print("\n--- APPLY-TIME ASSERT: _swap_scaler refuses a non-hero_scaling slot ---")
+_prev = CR._one(db, CR._BRIAR, 'skillName12')
+try:
+    CR._swap_scaler(db, CR._BRIAR)          # junglecreep carries globalproperties_*
+except SystemExit as e:
+    print("  RED (correct) blind scaler overwrite -> %s"
+          % str(e).split('\n')[0][:118])
+else:
+    print("  ** GREEN (GATE HOLE) ** _swap_scaler overwrote %r blind" % _prev)
+    db.set_field(CR._BRIAR, 'skillName12', _prev)
+CR.verify(db, tags)
 
 print("\nHARNESS COMPLETE: apply + verify GREEN on the live arz, and the gate "
       "REDs on every planted defect with restoration proved each time.")

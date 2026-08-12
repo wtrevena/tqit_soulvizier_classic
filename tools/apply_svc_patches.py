@@ -10962,8 +10962,34 @@ _SUMMON_SKILL_ICON = {
                                 r'DRXtextures\skill icons\spirit\skellysummondown.tex'),
     'summon_broodmother':      (r'DRXtextures\skill icons\soul\summonslimebroodup.tex',
                                 r'DRXtextures\skill icons\soul\summonslimebrooddown.tex'),
-    'summon_charon_oarsman':   (r'SVTextures\skills\drownedspiritup.tex',
-                                r'SVTextures\skills\drownedspiritdown.tex'),
+    # 2026-08-11 (Golden Bough rework, Will's order): this row used to read
+    # `SVTextures\skills\drownedspirit{up,down}.tex` - a DROWNED-GHOST glyph, and a
+    # Charon-specific one: only 3 records in the whole 51,253-record DB reference
+    # `drownedspirit*` (drownedspirit_soul.dbr, asphyxiationbuff.dbr and this
+    # summon). `tools/patches/charon_rework.py` replaces that encounter with AKREMON
+    # and this skill now renders as "Graft the Burning Heartwood", summoning a
+    # burning DRX ember oak - so the drowned ferryman's glyph sat on the player's
+    # skill bar every single cast, which is precisely the residue Will's order
+    # exists to remove (R-125 player-surface law names the icon explicitly).
+    # WHY THIS GLYPH: the summoned body's own signature native skill is
+    # `ringofflame` - a TOGGLED burning ring the ember oak simply wears - so a
+    # flame-ring glyph is a 1:1 match for what the pet looks like on screen.
+    # MEASURED before the swap, both halves of the table's own convention:
+    #   * UNCLAIMED - no other _SUMMON_SKILL_ICON entry uses flamering{up,down};
+    #     the only live carrier of the pair anywhere in the DB is the base skill
+    #     `yaoguai_flamering.dbr` (not a summon, so no summon reads as another).
+    #   * ARC-RESOLVES - `skill icons/soul/flameringup.tex` AND
+    #     `.../flameringdown.tex` are both PRESENT in the shipped
+    #     work/SoulvizierClassic/Resources/DRXtextures.arc (1,463 entries).
+    # The obvious alternative, `summonquilvine{up,down}`, was REJECTED: it is
+    # already claimed by the live `summon_hellflower.dbr` soul summon, and it is
+    # the wrong species now that the phase-2 donor is the ember oak.
+    # NO OTHER LANE IS AFFECTED: this key is reached only via
+    # `_summon_skill_basename('...\summon_charon_oarsman.dbr')`, and that one
+    # summon skill is built by exactly two call sites - the monolith's
+    # `_create_goldenbough_boss` and `charon_rework`, which are the same encounter.
+    'summon_charon_oarsman':   (r'DRXtextures\skill icons\soul\flameringup.tex',
+                                r'DRXtextures\skill icons\soul\flameringdown.tex'),
     'summon_hadesmarshal':     (r'DRXtextures\skill icons\soul\wrathofthestyxup.tex',
                                 r'DRXtextures\skill icons\soul\wrathofthestyxdown.tex'),
     'summon_kravmoloch_warden':(r'DRXtextures\skill icons\spirit\bonefiendup.tex',

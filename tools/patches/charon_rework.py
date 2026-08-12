@@ -53,7 +53,15 @@ Three beats, two bodies, the SAME proven `actorToSpawnOnDeath` link.
     * QUILL VOLLEY - `razorquill_megaburst` (Skill_AttackProjectileFan): the
       reach that makes the snare a threat instead of a nap.
     * RETINUE FROM ITS OWN FAMILY (the R-125 bar, satisfied literally): the
-      donor's native `hero_quillvines` (Skill_SpawnPet) keeps firing, untouched.
+      donor's native `hero_quillvines` (Skill_SpawnPet, petLimit 6, burst 3)
+      keeps firing, untouched. HONEST, and corrected this round: those adds are
+      STATIONARY too - `quillvine_01..06` all sit on `anm_quilvine.dbr`, the same
+      locomotion-less table this lane bans for placed and summoned bodies, at
+      `characterRunSpeed 0.0`. So BOTH of phase 1's plant-summon skills produce
+      cover rather than chasers. That is the donor's native, unmutated base-game
+      behaviour (vines being rooted is correct) and no crash law is touched - but
+      "keeps firing" must not be read as "sends things after you". Both pet
+      families count toward the add-density reading owed under BL-BOUGH-DEBT-2.
 
   BEAT 2 - THE SPLITTING (`svc_bough_splitting`)
     A clone of `lowhealth_berserkerrage01` (Skill_PassiveOnLifeBuffSelf,
@@ -237,8 +245,12 @@ CORRECTIONS TO THE RATIFIED SPEC - each one measured on the LIVE arz
        INSIDE proven range). It also carries NO soul loot at all, so the escort
        cannot leak one even before `_svc_clear_soul_loot` runs.
    HONEST COST: the terminal is no longer amgoz1's own SV hellflower. The
-   immobile quilvine rig still appears in the fight, in the one role where being
-   rooted is correct - the `quillwards` wall pets.
+   immobile quilvine rig still appears in the fight, in the roles where being
+   rooted is correct - the `quillwards` WALL pets and, corrected this round, the
+   `hero_quillvines` RETINUE adds as well (`quillvine_01..06`, all on
+   `anm_quilvine.dbr` at runSpeed 0.0). Round 2 disclosed only the wall pets.
+   Nothing this lane places or summons sits on that table; both surviving
+   quilvine roles are the donor's own untouched base-game behaviour.
    SPEEDS, all written explicitly and all inside the measured Boss-uber band
    (min 0.35, median 1.00, max 4.00): phase 1 **1.35** (rig-proven exactly -
    `credits_ringlesstree` ships 1.35 on Ascacophus02.msh), the terminal **1.45**
@@ -266,6 +278,58 @@ CORRECTIONS TO THE RATIFIED SPEC - each one measured on the LIVE arz
    Ships 60 on phase 1 and **40** on the terminal. Bleed immunity (phase 1 only,
    donor-native) stays, because that is the deliberate half-fight lever and it is
    WILL-DECISION 6; a lever the fight then hands back is not a wall.
+
+--------------------------------------------------------------------------------
+ROUND 3 - the vet found the two surfaces the player actually KEEPS. Both were
+still Charon. Both are the same defect class as round 2's stale pet registration:
+a SUPERSEDED WRITER'S OUTPUT SURVIVING UNDER THE NEW WRITER'S AT A FROZEN PATH.
+--------------------------------------------------------------------------------
+11. **THE SOUL WAS RE-LABELLED, NOT RE-THEMED.** MEASURED after apply() over the
+   live build83 arz: the Epic tier still carried the shipped ferryman's
+   `offensiveCold{Min,Max,Modifier}`, `offensiveSlowCold*`, `defensiveCold`,
+   `offensiveLife{Min,Max}` (vitality), `offensiveLifeLeechMin`,
+   `defensiveLifeLeech`, `offensiveFear{Min,Max}` and `offensivePercentCurrentLifeMin`
+   - the last being **base Charon's own signature lever** (`charon_geyserform1`,
+   24 roster carriers), which the ratified spec forbade on this soul BY NAME. The
+   new fire/pierce block layered on top of all of it, roughly doubling the
+   offensive load nobody balanced, on the one reward the player keeps forever.
+   ROOT CAUSE: the soul PATH is frozen for save-compat, so `_create_soul` runs
+   over a record `_create_goldenbough_boss` already wrote THIS RUN;
+   `_ensure_record` no-ops on an existing record and `_set_soul_fields` only
+   layers keys. FIX: `_strip_superseded_soul_stats` clears the superseded bonus-
+   STAT block (offensive/defensive/retaliation/character/augmentSkill/itemSkill
+   prefixes, minus exactly what the rebuild is about to write) before
+   `_create_soul`; structural fields are never in reach, and `itemQualityTag` /
+   `itemText` are re-applied afterwards by `run_registry_gates` finalization
+   (`_apply_soul_tier_naming` / `_wire_soul_desc_itemtext`), which runs after every
+   registry module. verify() now proves the OLD identity is ABSENT rather than only
+   that the new one is present - round 2's gate read `itemNameTag` and nothing else.
+
+12. **THE GRANTED SUMMON STILL WORE CHARON'S FACE.** `summon_charon_oarsman`
+   shipped `SVTextures\skills\drownedspirit{up,down}.tex` - a DROWNED-GHOST glyph,
+   and a Charon-specific one (only 3 records DB-wide reference `drownedspirit*`) -
+   plus the Lyia-clone `maenadalertpak` cast sound, under the name "Graft the
+   Burning Heartwood". R-125's player-surface law names the icon explicitly.
+   FIXED AT THE SOURCE OF TRUTH: `_SUMMON_SKILL_ICON['summon_charon_oarsman']` in
+   apply_svc_patches.py now maps `skill icons\soul\flamering{up,down}.tex` - the
+   ring of flame the summoned ember oak literally wears; UNCLAIMED by any other
+   row in that table; both halves PRESENT in the shipped DRXtextures.arc. The hit
+   sound is not written by `_build_boss_summon` at all, so this module sets it to
+   the terminal donor's OWN `bogdwelleralertpak`, the `<family>alertpak` convention
+   the already-fixed summons use. HONEST: `maenadalertpak` is a CLASS-wide residue
+   (31 of the 52 soul summons in the DB carry it) that this lane did not create and
+   does not fix beyond its own record - registered as `BL-BOUGH-DEBT-9`.
+
+13. **THE SCALER SWAP WAS BLIND.** Round 2 wrote `skillName12 = boss_scaling`
+   unconditionally on both forms and declared `_SK_HERO_SCALING` without ever
+   using it. Both boss donors do carry `hero_scaling` there, but the ESCORT donor
+   `am_junglecreep_41` carries `globalproperties_legendary01` in the same slot, so
+   one future donor swap would have destroyed a difficulty row with a green gate.
+   `_swap_scaler` now ASSERTS the incumbent and verify() proves the end state.
+   HONEST SCOPE: `globalproperties_*` rows carry only `characterBaseAttackSpeedTag`
+   plus UI bitmaps - no stat or resistance scaling - and 8 of the 53 Boss-class
+   ubers declare none at all, so the shipped shape (phase 1 normal01 + epic01;
+   terminal none) sits inside the roster norm. Latent-trap fix, not a balance change.
 
 ================================================================================
 CRASH-LAW COMPLIANCE, ITEMISED
@@ -353,6 +417,27 @@ _SOUL_BASENAME = 'ferryman'      # LEGACY PATH, frozen for save-compat (TQ bakes
                                  # item paths at pickup; renaming orphans looted souls)
 _SOUL_TIERS = [r'records\item\equipmentring\soul\svc_uber\%s_soul_%s.dbr'
                % (_SOUL_BASENAME, t) for t in ('n', 'e', 'l')]
+# CORRECTION 11: because the soul PATH is frozen, `_create_soul` layers onto a
+# record the monolith already wrote this run. These are the field prefixes whose
+# SUPERSEDED values have to be cleared first, or the ferryman's cold/vitality/
+# life-leech identity keeps reading in the tooltip under the new fire/pierce one.
+# Deliberately the bonus-STAT prefixes only - nothing structural is in reach.
+# `itemSkill*` is in the set on purpose: it makes a stale `itemSkillAutoController`
+# (the D19/D21 manual-cast law) structurally impossible to inherit.
+_DEAD_SOUL_STAT_PREFIXES = ('offensive', 'defensive', 'retaliation', 'character',
+                            'augmentSkill', 'itemSkill')
+# The Charon identity, named field by field, so verify() can prove it is GONE
+# rather than merely prove that the new stats are PRESENT (round 2 only did the
+# latter - verify() read `itemNameTag` and nothing else on the tiers).
+_DEAD_SOUL_FIELDS = (
+    'offensiveColdMin', 'offensiveColdMax', 'offensiveColdModifier',
+    'offensiveSlowColdMin', 'offensiveSlowColdDurationMin', 'defensiveCold',
+    'offensiveLifeMin', 'offensiveLifeMax',            # vitality damage
+    'offensiveLifeLeechMin', 'defensiveLifeLeech',
+    'offensiveFearMin', 'offensiveFearMax',
+    'offensivePercentCurrentLifeMin', 'offensivePercentCurrentLifeMax',
+    'itemSkillAutoController',
+)
 
 # ── DONORS (each OWNS the rig its clone renders on - no cross-rig swap) ──────
 # EVERY ONE IS D19-MOBILE: its `charAnimationTableName` BINDS `unarmedRunAnim`.
@@ -383,6 +468,31 @@ _SK_HPSCALING = r'records\xpack\skills\bossskills\all_hpscaling_passive.dbr'
 _SK_CONVIMMUNE = r'records\skills\boss skills\boss_conversionimmunity.dbr'
 _SK_HEART_OF_OAK = r'records\skills\nature\drxheartofoak.dbr'              # Skill_BuffRadiusToggled
 _SK_PLAGUE = r'records\skills\nature\drxplague.dbr'                        # Skill_AttackBuff
+
+# ── THE GRANTED SUMMON'S OWN PLAYER SURFACES (CORRECTION 12) ────────────────
+# The summon skill is the thing on the player's SKILL BAR every time they cast
+# the soul, so R-125's player-surface law names its icon explicitly. Round 2
+# shipped it still wearing Charon's drowned-ghost glyph and the Lyia-clone
+# Maenad cast sound under the name "Graft the Burning Heartwood".
+#   ICON: retargeted at the SOURCE OF TRUTH - `_SUMMON_SKILL_ICON` in
+#     apply_svc_patches.py, keyed 'summon_charon_oarsman' - so the monolith's own
+#     earlier build of this skill is correct too and there is no second writer to
+#     drift. `flamering{up,down}` = the ring of flame the ember oak literally
+#     wears; UNCLAIMED by any other _SUMMON_SKILL_ICON row; both halves PRESENT
+#     in the shipped DRXtextures.arc. Mirrored here ONLY so verify() can prove
+#     the end state without importing a private table's semantics.
+#   HIT SOUND: `_build_boss_summon` never writes it, so every boss summon it
+#     builds inherits Lyia's Maenad pak (MEASURED: 31 of the 52 soul summons in
+#     the DB carry `maenadalertpak` - a CLASS-wide residue, registered as
+#     BL-BOUGH-DEBT-9, not invented by this lane). This lane fixes ITS OWN, using
+#     the established `<family>alertpak` convention the fixed summons already use
+#     (mummy/zombie/chimera/hydra): the terminal donor `um_emberoak_42` declares
+#     `alertSound = ...\bogdwelleralertpak.dbr` on its own record.
+_SUMMON_ICON = (r'DRXtextures\skill icons\soul\flameringup.tex',
+                r'DRXtextures\skill icons\soul\flameringdown.tex')
+_SUMMON_HIT_SOUND = r'records\sounds\soundpak\monstersorient\bogdwelleralertpak.dbr'
+_DEAD_ICON_TOKEN = 'drownedspirit'      # Charon's ghost glyph: 3 carriers DB-wide
+_DEAD_SOUND_TOKEN = 'maenadalertpak'    # the Lyia-clone residue
 
 # ── FX: monster-record fields ONLY. All four verified Class == EffectEntity ──
 _FX = r'records\xpack\effects\particles\creature'
@@ -542,6 +652,89 @@ def _cast(db, rec, suffix, skill, chance, rng, delay, timeout):
     _sf(db, rec, 'specialAttack%sTimeout' % suffix, float(timeout), F)
 
 
+def _swap_scaler(db, rec, slot=12):
+    r"""CORRECTION 13 - hero_scaling -> boss_scaling, ASSERTED, never blind.
+
+    Round 2 wrote `skillName12` unconditionally on both boss forms and never
+    checked the incumbent, while declaring a `_SK_HERO_SCALING` constant it then
+    referenced nowhere - the intent to verify the swap existed and was never
+    implemented. MEASURED across the donors this lane has used: both current boss
+    donors (`xhero_strongbark_44`, `um_emberoak_42`) carry `hero_scaling` at
+    slot 12, but the ESCORT donor `am_junglecreep_41` carries
+    `globalproperties_legendary01` in the same slot. One future donor swap would
+    therefore have silently destroyed a difficulty row with a GREEN gate.
+
+    HONEST SCOPE, so nobody reads this as a balance fix: `globalproperties_*` rows
+    carry only `characterBaseAttackSpeedTag` plus UI bitmaps - no stat or
+    resistance scaling - and 8 of the 53 Boss-class mod ubers declare none at all,
+    so the shipped shape (phase 1: normal01 + epic01; terminal: none) is well
+    inside the roster norm and the gameplay impact is nil. This is a latent-trap
+    fix, not a numbers change.
+    """
+    field = 'skillName%d' % slot
+    cur = _one(db, rec, field)
+    if _n(cur) != _n(_SK_HERO_SCALING):
+        raise SystemExit(
+            "charon_rework: expected the donor's %s on %s to be hero_scaling "
+            "(%s) before swapping in boss_scaling, but it is %r. Overwriting a "
+            "slot blind is how a difficulty/globalproperties row gets destroyed "
+            "with a green gate - re-measure the donor's slot map, then either "
+            "move the scaler or use _svc_add_skill and strip hero_scaling "
+            "explicitly." % (field, rec, _SK_HERO_SCALING, cur))
+    _sf(db, rec, field, _SK_BOSS_SCALING)
+
+
+def _strip_superseded_soul_stats(db, rec, keep):
+    r"""CORRECTION 11 - the frozen-path retheme trap, and the fix.
+
+    THE DEFECT, MEASURED after apply() over the live build83 arz: the shipped
+    "Soul of the Unferried" stat block SURVIVED UNDERNEATH the new one. Epic tier
+    still carried `offensiveCold{Min,Max,Modifier}`, `offensiveSlowCold*`,
+    `defensiveCold`, `offensiveLife{Min,Max}` (vitality), `offensiveLifeLeechMin`,
+    `defensiveLifeLeech`, `offensiveFear*` and - worst - `offensivePercentCurrentLifeMin`,
+    which is the BASE CHARON'S OWN SIGNATURE LEVER (`charon_geyserform1`) and which
+    the ratified spec explicitly forbade on this soul. The new fire/pierce stats
+    layered ON TOP, so the reward the player keeps forever still read as the
+    ferryman on an item called "Soul of the Grasping Root" dropped by a burning
+    tree - i.e. the exact complaint that opened this wave, on the one surface a
+    player never puts down.
+
+    ROOT CAUSE, STRUCTURAL NOT TYPO: the soul path is FROZEN for save-compat
+    (`_SOUL_BASENAME`), so `_create_soul` runs over a record the monolith's
+    `_create_goldenbough_boss` already wrote EARLIER IN THE SAME RUN.
+    `_create_soul` -> `_ensure_record` is a NO-OP when the record exists, and
+    `_set_soul_fields` only ever LAYERS keys. Nothing clears a superseded block.
+    Same defect class as the round-2 stale `_SUMMON_PET_BUILDS` registration: a
+    superseded writer's output surviving under the new writer's at a frozen path.
+
+    THE FIX, deliberately SURGICAL rather than a blanket wipe. Only the STAT block
+    is removed - fields whose name starts with one of the bonus-stat prefixes and
+    that this module is not itself about to write. Everything structural (Class,
+    templateName, mesh, bitmap, itemLevel, itemNameTag, itemText, itemQualityTag,
+    the drop sounds, the relic slot) is untouched, so nothing an earlier or later
+    pass owns can be lost. This is the proven monolith idiom (the supra-weapon
+    retheme clears exactly these prefixes "so its native element does not bleed
+    into the retheme"), and `keep` is passed explicitly so the strip can never
+    outrun what `_create_soul` is about to put back.
+
+    Returns the sorted list of stripped field names, for the apply() log.
+    """
+    ff = db.get_fields(rec)
+    if not ff:
+        return []
+    dead = [k for k in list(ff)
+            if k.split('###')[0].startswith(_DEAD_SOUL_STAT_PREFIXES)
+            and k.split('###')[0] not in keep]
+    for k in dead:
+        del ff[k]
+    if dead:
+        db._modified.add(rec)
+        for _cb in db._mutation_listeners:      # keep the shared record index honest
+            _cb(rec)
+        _TOUCHED.add(_n(rec))
+    return sorted(k.split('###')[0] for k in dead)
+
+
 def _free_cast_slots(db, rec):
     """The cast slots with no SkillName. The engine caps at five: '', 2, 3, 4, 5."""
     out = []
@@ -607,7 +800,7 @@ def apply(db, tags):
     _svc_clear_soul_loot(db, _ORM)
     _TOUCHED.add(_n(_ORM))
     # hero -> boss scaling (in place; do NOT add a second scaler)
-    _sf(db, _ORM, 'skillName12', _SK_BOSS_SCALING)
+    _swap_scaler(db, _ORM)
     for _sk, _lvl in ((_SK_EARTHBIND, 8), (_SK_QUILLWARDS, 8),
                       (_SK_MEGABURST, 8), (_SK_HPSCALING, 1),
                       (_SK_CONVIMMUNE, 1), (_SPLIT, 10)):
@@ -654,7 +847,7 @@ def apply(db, tags):
     _sf(db, _BLOOM, 'deathEffect', _FX_BLOOM_DEATH, S)
     _sf(db, _BLOOM, 'treasureProxyName', _ORB, S)          # CORRECTION 4 (hard gate)
     _svc_clear_soul_loot(db, _BLOOM)                       # before _create_soul rewires
-    _sf(db, _BLOOM, 'skillName12', _SK_BOSS_SCALING)
+    _swap_scaler(db, _BLOOM)
     for _sk, _lvl in ((_SK_NOVA, 8), (_SK_THORNYAURA, 8),
                       (_SK_HPSCALING, 1), (_SK_CONVIMMUNE, 1)):
         if not _svc_add_skill(db, _BLOOM, _sk, _lvl):
@@ -753,7 +946,10 @@ def apply(db, tags):
             'augmentSkillLevel1': (I, {'n': 3, 'e': 4, 'l': 5}[t]),
             'augmentSkillName2': (S, _SK_PLAGUE),
             'augmentSkillLevel2': (I, {'n': 2, 'e': 3, 'l': 4}[t]),
-            # re-themed off the old cold/vitality soul onto fire + pierce
+            # RE-THEMED off the old cold/vitality soul onto fire + pierce. Note
+            # the word RE-themed is only true because `_strip_superseded_soul_stats`
+            # runs first (CORRECTION 11); round 2 made the same claim while the
+            # ferryman's whole cold/vitality/life-leech block survived underneath.
             'offensiveFireMin': (F, r(64.0)), 'offensiveFireMax': (F, r(102.0)),
             'offensiveFireModifier': (F, r(20.0)),
             'offensivePierceMin': (F, r(48.0)), 'offensivePierceMax': (F, r(78.0)),
@@ -776,6 +972,28 @@ def apply(db, tags):
 
     tiers = [{'diff': t, 'itemLevel': il, 'stats': _stats(t)}
              for t, il in (('n', 48), ('e', 72), ('l', 100))]
+    # CORRECTION 11 - CLEAR THE SUPERSEDED FERRYMAN STAT BLOCK FIRST. The soul
+    # path is frozen for save-compat, so `_create_soul` layers onto a record the
+    # monolith wrote earlier in THIS run; `_ensure_record` no-ops on an existing
+    # record and `_set_soul_fields` only ever adds keys. Without this, the whole
+    # cold / vitality / life-leech / fear / offensivePercentCurrentLife identity
+    # of "Soul of the Unferried" survives UNDERNEATH the new fire+pierce stats -
+    # including base Charon's own signature lever, which the ratified spec
+    # explicitly forbade on this soul. `keep` is the exact key set the rebuild is
+    # about to write, so the strip can never outrun it.
+    _keep = set(asp._SOUL_BOILERPLATE)
+    for _t in tiers:
+        _keep |= set(_t['stats'])
+    _stripped = []
+    for _t in tiers:
+        _p = (r'records\item\equipmentring\soul\svc_uber\%s_soul_%s.dbr'
+              % (_SOUL_BASENAME, _t['diff']))
+        if db.has_record(_p):
+            _stripped.append((_t['diff'], _strip_superseded_soul_stats(db, _p, _keep)))
+    for _d, _fl in _stripped:
+        if _fl:
+            print("    soul tier %s: stripped %d superseded ferryman stat(s): %s"
+                  % (_d, len(_fl), ', '.join(_fl)))
     soul_paths = _create_soul(db, _SOUL_BASENAME, _TAG_SOUL, tiers,
                               monster=_BLOOM, drop_rate=66.0)
     for p in soul_paths:
@@ -817,6 +1035,21 @@ def apply(db, tags):
         dmg_max=[66.0, 110.0, 160.0], scale=1.4, loadout=None)
     for p in _PETS + [_SUMMON]:
         _TOUCHED.add(_n(p))
+    # CORRECTION 12 - THE GRANTED SKILL'S OWN PLAYER SURFACES.
+    # The ICON is fixed at the source of truth (`_SUMMON_SKILL_ICON` in the
+    # monolith), so `_build_boss_summon` above already stamped the flame-ring
+    # glyph on this skill; verify() proves the end state either way.
+    # The HIT SOUND is not written by `_build_boss_summon` at all, so the skill
+    # kept Lyia's Maenad cast pak. Retargeted onto the terminal donor's OWN alert
+    # pak - the `<family>alertpak` convention every already-fixed summon uses.
+    if db.has_record(_SUMMON_HIT_SOUND):
+        _sf(db, _SUMMON, 'skillHitSound', _SUMMON_HIT_SOUND)
+    else:
+        raise SystemExit(
+            "charon_rework: %s does not resolve. It is the terminal donor "
+            "um_emberoak_42's own declared alertSound and the replacement for the "
+            "Lyia-clone Maenad cast pak on the granted summon; an unresolved "
+            "sound ref is not an acceptable silent degrade." % _SUMMON_HIT_SOUND)
     # The source entry is DELETED in apply_svc_patches by this wave; this pop is
     # the idempotent belt-and-braces so a stale entry can never re-exempt us.
     asp._SUMMON_IDENTITY_ALLOW.pop('ferryman', None)
@@ -973,6 +1206,88 @@ def verify(db, tags):
         elif _n(gv(s, 'itemNameTag')) != _n(_TAG_SOUL):
             problems.append("soul %s itemNameTag=%r, expected %s"
                             % (s, gv(s, 'itemNameTag'), _TAG_SOUL))
+
+    # ---- 2b. THE SOUL IS ACTUALLY RE-THEMED, NOT JUST RE-LABELLED ----------
+    #
+    # Round 2's gate read `itemNameTag` on the tiers and NOTHING ELSE, so the
+    # entire shipped ferryman stat block survived underneath the new one and the
+    # gate stayed green (CORRECTION 11). The soul is THE reward the player keeps
+    # forever; a tooltip that still reads Cold Damage + Slow + Cold Resist +
+    # Vitality + Life Leech + Fear + % Current Life on an item called "Soul of the
+    # Grasping Root", dropped by a burning tree, fails Will's order on the one
+    # surface he cannot put down. So prove the OLD identity is GONE, not merely
+    # that the new one is present.
+    for s in _SOUL_TIERS:
+        if not resolves(s):
+            continue
+        survived = [f for f in _DEAD_SOUL_FIELDS if gv(s, f) is not None]
+        if survived:
+            problems.append(
+                "SOUL RETHEME INCOMPLETE: %s still carries %d superseded field(s) "
+                "from 'Soul of the Unferried': %s. The path is FROZEN for "
+                "save-compat, so _create_soul layers onto the monolith's own "
+                "earlier record (_ensure_record no-ops, _set_soul_fields only "
+                "adds) - _strip_superseded_soul_stats must run first. "
+                "offensivePercentCurrentLife in particular is base Charon's "
+                "signature lever (charon_geyserform1, 24 roster carriers) and the "
+                "ratified spec forbade it on this soul by name."
+                % (s, len(survived), survived))
+        # the new identity is present and the manual-cast law holds
+        if gv(s, 'offensiveFireMin') is None or gv(s, 'offensivePierceMin') is None:
+            problems.append("%s carries no fire+pierce offence - the re-theme did "
+                            "not land at all" % s)
+        if _n(gv(s, 'itemSkillName')) != _n(_SUMMON):
+            problems.append("%s itemSkillName=%r, expected the reworked summon %s"
+                            % (s, gv(s, 'itemSkillName'), _SUMMON))
+
+    # ---- 2c. THE GRANTED SUMMON'S OWN PLAYER SURFACES (R-125 law #3) -------
+    #
+    # The summon skill sits on the player's SKILL BAR every cast. Round 2 shipped
+    # it wearing Charon's drowned-ghost glyph (`drownedspirit*` - 3 carriers
+    # DB-wide, all Charon-adjacent) and the Lyia-clone Maenad cast pak, under the
+    # name "Graft the Burning Heartwood". On a wave whose entire premise is that
+    # Charon stops being visible here, that is the wrong residue to ship.
+    if resolves(_SUMMON):
+        for fld, want in (('skillUpBitmapName', _SUMMON_ICON[0]),
+                          ('skillDownBitmapName', _SUMMON_ICON[1])):
+            got_i = gv(_SUMMON, fld)
+            if _DEAD_ICON_TOKEN in _n(got_i):
+                problems.append(
+                    "%s %s=%r is still Charon's DROWNED-SPIRIT glyph. Retarget "
+                    "_SUMMON_SKILL_ICON['summon_charon_oarsman'] in "
+                    "apply_svc_patches.py - it is the source of truth and the "
+                    "monolith stamps it BEFORE this module runs."
+                    % (_SUMMON, fld, got_i))
+            elif _n(got_i) != _n(want):
+                problems.append("%s %s=%r, expected %s" % (_SUMMON, fld, got_i, want))
+        snd = gv(_SUMMON, 'skillHitSound')
+        if _DEAD_SOUND_TOKEN in _n(snd):
+            problems.append(
+                "%s skillHitSound=%r is the Lyia-clone Maenad pak. "
+                "_build_boss_summon never writes this field, so it has to be set "
+                "explicitly; use the summoned body's own family alert pak."
+                % (_SUMMON, snd))
+        elif _n(snd) != _n(_SUMMON_HIT_SOUND):
+            problems.append("%s skillHitSound=%r, expected the terminal donor's "
+                            "own alert pak %s" % (_SUMMON, snd, _SUMMON_HIT_SOUND))
+        elif not resolves(snd):
+            problems.append("%s skillHitSound=%r does not resolve" % (_SUMMON, snd))
+        if _n(gv(_SUMMON, 'skillDisplayName')) != _n(_TAG_SUMMON):
+            problems.append("%s skillDisplayName=%r, expected %s"
+                            % (_SUMMON, gv(_SUMMON, 'skillDisplayName'), _TAG_SUMMON))
+
+    # ---- 2d. THE SCALER SWAP LANDED, AND NO SECOND SCALER SURVIVES ---------
+    #      CORRECTION 13: round 2 blind-overwrote skillName12 and declared a
+    #      `_SK_HERO_SCALING` constant it never used. apply() now ASSERTS the
+    #      incumbent before the swap; this proves the end state.
+    for rec, label in ((_ORM, 'phase 1'), (_BLOOM, 'the terminal')):
+        _sks = {_n(gv(rec, 'skillName%d' % i)) for i in range(1, 25)}
+        if _n(_SK_BOSS_SCALING) not in _sks:
+            problems.append("%s (%s) carries no boss_scaling - an uber must scale "
+                            "as a Boss" % (rec, label))
+        if _n(_SK_HERO_SCALING) in _sks:
+            problems.append("%s (%s) still carries hero_scaling ALONGSIDE "
+                            "boss_scaling - two scalers stack" % (rec, label))
 
     # ---- 3. A9 RENDER CHAIN: no new art, no cross-rig swap -----------------
     for rec, donor, mesh in ((_ORM, _D_ORM, _MESH_ORM),
@@ -1363,7 +1678,12 @@ def verify(db, tags):
     print("  charon_rework.verify: OK (proxy chain resolves to Akremon + 2 "
           "Handbriars on BOTH the forecourt and the TESTHUB yard; Golden Bough "
           "guaranteed on the terminal; hoard + world chest + orb intact; soul "
-          "re-identified on the frozen tiers; A9 clean on 3 own-rig clones with "
+          "re-THEMED on the frozen tiers - 0 surviving ferryman cold/vitality/"
+          "life-leech/fear/%-current-life fields, fire+pierce present, no stale "
+          "itemSkillAutoController; the granted summon wears the flame-ring glyph "
+          "and its own family's cast sound, not Charon's drowned spirit and not "
+          "Lyia's Maenad; boss_scaling swapped in with hero_scaling gone; A9 clean "
+          "on 3 own-rig clones with "
           "no invented actorHeight; 0 charFxPak, 0 dangling skill refs, permanent "
           "pets TTL-free; no 'ferryman' exemption; EXACTLY ONE summon-pet "
           "registration and it names the terminal's own donor; all 6 placed and "
