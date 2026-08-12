@@ -1,16 +1,25 @@
 r"""STANDALONE GATE + PLANTED NEGATIVES for `tools/patches/charon_rework.py` (R-231).
 
 Runs the module's `apply()` and then its fail-loud `verify()` over a BUILT arz,
-then plants **28** defects one at a time and proves the gate REDs on each with
-restoration verified GREEN in between, plus **one apply-time assert** (the scaler
-swap refusing a non-`hero_scaling` incumbent) that no verify() gate can express.
-This is the static proof the lane ships with the new surface (process law #4) -
-it needs no DB build, no deploy, and it writes nothing: the arz is loaded into
-memory and thrown away.
+then plants **42** defects one at a time and proves the gate REDs on each with
+restoration verified GREEN in between, plus **two apply-time asserts** (the scaler
+swap refusing a non-`hero_scaling` incumbent, and a declared-slot swap refusing a
+missing incumbent) that no verify() gate can express. This is the static proof the
+lane ships with the new surface (process law #4) - it needs no DB build, no
+deploy, and it writes nothing: the arz is loaded into memory and thrown away.
 
-Round 3 added the eight that matter most, because they cover the two surfaces the
-PLAYER KEEPS - the soul's stat block and the granted summon's skill-bar face -
-where round 2 shipped Charon residue under a green gate.
+Round 3 added the eight that cover the two surfaces the PLAYER KEEPS - the soul's
+stat block and the granted summon's skill-bar face - where round 2 shipped Charon
+residue under a green gate.
+
+Round 4 added thirteen for one defect class: A DONOR'S OWN PAYLOAD RIDING ALONG
+UNDER A CLAIM THAT DID NOT MENTION IT. Beat 2's clone of
+`lowhealth_berserkerrage01` was silently granting 36% damage absorption, 8/s life
+regen and **+60% physical damage** (the last one still unmeasured after the vet's
+report) under a repeated claim of exact Gaoler durability parity; the terminal
+inherited the DRX emberoak's act-2/3 loot tables; the shell inherited a 75/13/1.6
+roll it had never had; the escort inherited a beetle-bile burst; and the soul pets
+lost the difficulty rows the SHIPPED pets carried.
 
     py tools/debug/negtest_charon_rework.py [path\to\SoulvizierClassic.arz]
 
@@ -261,6 +270,85 @@ neg('P2 hero_scaling survives alongside boss_scaling',
 neg('P2 the boss carries no boss_scaling at all',
     lambda: (db.set_field(CR._BLOOM, 'skillName12', CR._SK_HPSCALING), None)[1],
     lambda _p: db.set_field(CR._BLOOM, 'skillName12', CR._SK_BOSS_SCALING))
+
+
+# ── ROUND-4 NEGATIVES: one per finding the round-3 vet raised, plus the one it
+# missed. All the same defect class - A DONOR'S OWN PAYLOAD RIDING ALONG UNDER A
+# CLAIM THAT DID NOT MENTION IT - so every gate below reads the FINAL record.
+neg("P1 beat 2's inherited 36% damage shield is back",
+    lambda: (db.set_field(CR._SPLIT, 'damageAbsorptionPercent',
+                          [10.0, 12.0, 15.0, 18.0, 22.0, 24.0, 26.0, 29.0, 32.0,
+                           36.0, 38.0, 40.0, 43.0, 46.0, 50.0, 52.0, 54.0, 57.0,
+                           60.0, 65.0]), None)[1],
+    lambda _p: db.set_field(CR._SPLIT, 'damageAbsorptionPercent',
+                            CR._flat(CR._SPLIT_ABSORB)))
+neg("P1 beat 2 heals the boss in its own last third",
+    lambda: (db.set_field(CR._SPLIT, 'characterLifeRegen',
+                          CR._flat(8.0)), None)[1],
+    lambda _p: db.set_field(CR._SPLIT, 'characterLifeRegen',
+                            CR._flat(CR._SPLIT_REGEN)))
+neg("P1 beat 2's UNAUTHORED +60% physical (the one the vet missed)",
+    lambda: (db.set_field(CR._SPLIT, 'offensivePhysicalModifier',
+                          CR._flat(60.0)), None)[1],
+    lambda _p: db.set_field(CR._SPLIT, 'offensivePhysicalModifier',
+                            CR._flat(CR._SPLIT_PHYSMOD)))
+neg("P1 beat 2 wired past the end of its own array",
+    lambda: (db.set_field(CR._SPLIT, 'damageAbsorptionPercent', [0.0, 0.0]),
+             None)[1],
+    lambda _p: db.set_field(CR._SPLIT, 'damageAbsorptionPercent',
+                            CR._flat(CR._SPLIT_ABSORB)))
+neg('P2 terminal loot back on the act-2/3 band',
+    lambda: (db.set_field(CR._BLOOM, 'lootMisc3Item2',
+                          [r'records\xpack\item\loottables\arcaneformulae'
+                           r'\0%d_act2_arcaneformulae.dbr' % i
+                           for i in (1, 2, 3)]), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'lootMisc3Item2', list(CR._ACT4_FORMULAE)))
+neg('P2 terminal unique table dropped an act (n_03_unique_all)',
+    lambda: (db.set_field(CR._BLOOM, 'lootMisc1Item1',
+                          [r'records\item\loottables\raremisc\%s_03_unique_all.dbr'
+                           % t for t in ('n', 'e', 'l')]), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'lootMisc1Item1', list(CR._ACT4_UNIQUE)))
+neg('P2 the act-3 jungleroot row un-muted at the Styx',
+    lambda: (db.set_field(CR._BLOOM, 'chanceToEquipMisc1Item5', 4), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'chanceToEquipMisc1Item5', 0))
+neg("P2 the SHELL's undisclosed 75% loot roll is back",
+    lambda: (db.set_field(CR._ORM, 'chanceToEquipMisc3', 75.0), None)[1],
+    lambda _p: db.set_field(CR._ORM, 'chanceToEquipMisc3', 0.0))
+neg('P3 the escort is a beetle-bile spitter again (cast)',
+    lambda: (db.set_field(CR._BRIAR, 'specialAttackSkillName',
+                          CR._DEAD_BRIAR_SKILL), None)[1],
+    lambda _p: db.set_field(CR._BRIAR, 'specialAttackSkillName', CR._SK_QUILLBARB))
+neg('P3 the escort is a beetle-bile spitter again (declared slot)',
+    lambda: (db.set_field(CR._BRIAR, 'skillName1', CR._DEAD_BRIAR_SKILL), None)[1],
+    lambda _p: db.set_field(CR._BRIAR, 'skillName1', CR._SK_QUILLBARB))
+neg("P3 a monster's hero_scaling back on the player's permanent pet",
+    lambda: (db.set_field(CR._PETS[0], 'skillName12', CR._SK_HERO_SCALING),
+             None)[1],
+    lambda _p: db.set_field(CR._PETS[0], 'skillName12',
+                            CR._PET_DIFFICULTY_ROWS[0][0]))
+neg('P3 a soul pet loses a shipped difficulty row',
+    lambda: (db.set_field(CR._PETS[2], 'skillName13', ''), None)[1],
+    lambda _p: db.set_field(CR._PETS[2], 'skillName13',
+                            CR._PET_DIFFICULTY_ROWS[1][0]))
+neg('P2 the traveler NPC still sends you to "(Charon)"',
+    lambda: tags.__setitem__(CR._TAG_TRAVELER, 'Traveler: Golden Bough (Charon)'),
+    lambda _p: tags.pop(CR._TAG_TRAVELER, None))
+neg('P3 a soul pet difficulty row has the wrong vector',
+    lambda: (db.set_field(CR._PETS[1], 'skillLevel12', [1, 1, 1]), None)[1],
+    lambda _p: db.set_field(CR._PETS[1], 'skillLevel12',
+                            list(CR._PET_DIFFICULTY_ROWS[0][1])))
+
+# ── APPLY-TIME assert (not a verify() gate): a declared-slot swap is never blind
+print("\n--- APPLY-TIME ASSERT: _swap_declared_skill refuses a missing incumbent ---")
+try:
+    CR._swap_declared_skill(db, CR._BRIAR, CR._DEAD_BRIAR_SKILL, CR._SK_QUILLBARB,
+                            [1, 1, 1], 'the incumbent is already gone')
+except SystemExit as e:
+    print("  RED (correct) blind declared-slot overwrite -> %s"
+          % str(e).split('\n')[0][:118])
+else:
+    print("  ** GREEN (GATE HOLE) ** _swap_declared_skill wrote a slot blind")
+CR.verify(db, tags)
 
 # ── APPLY-TIME assert (not a verify() gate): the scaler swap is no longer blind
 print("\n--- APPLY-TIME ASSERT: _swap_scaler refuses a non-hero_scaling slot ---")

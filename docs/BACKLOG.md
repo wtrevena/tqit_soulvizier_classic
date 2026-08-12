@@ -1,6 +1,6 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## LANE RECORD - R-231 THE GOLDEN BOUGH UBER REWORK: Charon is out, AKREMON THE GRASPING ROOT is in (2026-08-11, ROUND 2, branch `feat/charon-rework`, module `tools/patches/charon_rework.py`, static gates only - the Ship phase owns the build)
+## LANE RECORD - R-231 THE GOLDEN BOUGH UBER REWORK: Charon is out, AKREMON THE GRASPING ROOT is in (2026-08-11, ROUND 4, branch `feat/charon-rework`, module `tools/patches/charon_rework.py`, static gates only - the Ship phase owns the build)
 
 **Will, verbatim (2026-08-11):** *"the charon uber boss we created needs to be re-worked, he is
 pretty much identical to the base game charon boss we cloned him off. maybe we can replace him with
@@ -13,6 +13,15 @@ R-231-A..D**, and **R-231-E carries the ROUND-2 amendment**: an independent vet 
 red-lined the whole DB build plus two P1s / three P2s / two P3s, all now fixed, and the fix pass
 found a ninth defect the vet had not looked for - **the ratified name "Ormenos" is already a live
 boss in this database** (the China Telkine, 59 records, its own soul). Read R-231-E before this.
+**R-231-F carries the ROUND-3 amendment** (the two surfaces the PLAYER KEEPS - the soul's stat
+block and the granted summon's skill-bar face - were both still Charon under a green gate), and
+**R-231-G carries the ROUND-4 amendment: THE NUMBERS NOBODY AUTHORED.** Beat 2 was a verbatim clone
+of `DefensiveMastery_Adrenaline` silently granting **36% damage absorption + 8/s regen + 60%
+physical damage** under this lane's own claim of exact Gaoler durability parity (the vet caught two
+of the three); the terminal inherited the DRX emberoak's **act-2/3** loot band; the shell inherited
+a 75/13/1.6 roll it had never had; the escort inherited a beetle-bile burst; the soul pets lost
+their difficulty rows; and `docs/WILL_TEST_GUIDE.md` - the document Will actually reads to test this
+- still described Charon. All fixed and gated. Read R-231-G before this.
 This entry is the DEBT REGISTER half.
 
 **WHAT SHIPPED (arz-only; the forecourt placement and proxy chain are REUSED, no map rebuild):**
@@ -54,7 +63,7 @@ reproduced and proved fixed rather than argued about.
 | summon skill name + DESC | `tagSVCSummonCharonOarsman` -> `Graft the Burning Heartwood` (+ DESC) |
 | pet name | `tagSVCPetOarsman` -> `Burning Heartwood` |
 | **MOBILITY** (new, R-231-E #3) | every placed and summoned body sits on a rig that BINDS `unarmedRunAnim`, and its `characterRunSpeed` is written explicitly: 1.35 / 1.45 / 1.30, pet 1.0. Round 1 shipped the TERMINAL, both escorts and the permanent pet at **0.0 on a table with no locomotion clip at all** |
-| **DURABILITY** (new, R-231-E #7) | Epic total **35,000**, matching the Gaoler's 35,000 exactly (`docs/reports/gaoler_variance_rca.md`, the ratified hard-but-fair reference). Round 1 was an uncalibrated 58,000 |
+| **DURABILITY** (new, R-231-E #7; **CORRECTED R-231-G #1**) | Epic total **35,000**, matching the Gaoler's 35,000 exactly (`docs/reports/gaoler_variance_rca.md`, the ratified hard-but-fair reference). Round 1 was an uncalibrated 58,000. **AND THAT NUMBER IS NOW THE WHOLE STORY:** rounds 1-3 shipped beat 2 as a verbatim clone of `lowhealth_berserkerrage01` (`DefensiveMastery_Adrenaline`) at `skillLevel 10`, which silently added **36% flat damage absorption + 8/s life regen + 60% physical damage**, permanently up (cd 5.0 < duration 12.0) for the whole last third of phase 1 - so phase 1's last 5,610 Epic HP actually cost ~56% more damage than this row claimed. All three arrays are now AUTHORED as flat 20-row values: absorption **0**, regen **0**, physical modifier **+35% (kept, stated, gated)** |
 | hoard chest name | `tagSVCCharonHoard` -> `The Orchard of Hands` |
 | amulet name / DESC | name UNCHANGED (`The Golden Bough`); DESC rewritten - the shipped one read *"Torn from Charon at his own deserted dock"* |
 | in-game colour prefixes | `{^r}` both boss forms, `{^G}` champion, `{^F}` soul - all present, gated |
@@ -68,6 +77,11 @@ reproduced and proved fixed rather than argued about.
 | R-100 #7 exclamation marker | `DisplayAsQuestItem` re-asserted 1 / 1 / 0 after the re-clone (`uber_quest_markers` writes it earlier in REGISTRY and its `verify()` re-derives on the final db) |
 | monster sounds | donor-native throughout; no sound RECORD is authored. The one sound POINTER this lane rewrites is the granted summon's `skillHitSound` (row above) |
 | **NOT proven in-game** | scale / density / colour-in-renderer - `BL-BOUGH-DEBT-2` and `BL-BOUGH-DEBT-3` below |
+| **ORDINARY LOOT BAND** (new, R-231-G #2/#3) | **TERMINAL** retargeted onto the act-4 band (`n/e/l_04_unique_all`, `04_*_misc`, `01/02/03_act4_relics`, `01/02/03_act4_arcaneformulae`) and both act-3 `jungleroot` rows muted; the emberoak re-clone had dropped it a full act, below its OWN phase 1 and below `um_polisgaoler_unbound_99`. **SHELL** muted to `chanceToEquipMisc1/2/3 = 0`, the shipped Charon shell's own shape, behind `_ORM_MUTE_MISC` - the strongbark re-clone had added an undisclosed 75/13/1.6 roll beside b84's loot-TRIM lane. The three GUARANTEED rewards were never touched |
+| **escort kit** (new, R-231-G #5) | `quillvine_barb` (physical + 50% pierce ratio) replaces the junglecreep donor's `beetlebile_vomitbile` poison burst, in BOTH the declared slot and the cast. Its 7 live carriers are `quillvine_01..06` - the same bodies the boss's own `quillwards` wall and `hero_quillvines` retinue field, so the escorts fire the briar the boss grows. Also a raw NERF (5 x 159/183/207 poison -> one barb at 245/263/300 physical) |
+| **soul-pet difficulty rows** (new, R-231-G #5) | the three `globalproperties_{normal,epic,legendary}01` rows restored with the SHIPPED `[1,0,0]/[0,1,0]/[0,0,1]` vectors, and a MONSTER's `hero_scaling` removed from a player's permanent pet. `_build_boss_summon` had overwritten them from the emberoak source. Strict non-regression: the end state is the shipped pet shape |
+| **TESTHUB traveler NPC name** (new, R-231-G #4) | `tagSVCNpcTravCharon` string -> `Traveler: Golden Bough (Akremon)`. A live player-facing label nobody had flagged; STRING only, record path + tag KEY frozen, no map rebuild |
+| **`docs/WILL_TEST_GUIDE.md`** (new, R-231-G #4) | rewritten for this encounter (was *"Charon, the Unferried ... ~60k total; drowned-oarsman escorts ... the Ferryman's Toll hoard"* - every clause false, and it named a chest label that no longer exists) |
 
 ### DEBT REGISTER (open, this lane)
 
@@ -122,9 +136,20 @@ reproduced and proved fixed rather than argued about.
   cosmetic - the run cycle may read fast - not structural. Confirm in the TESTHUB yard alongside
   the scale sweep (BL-BOUGH-DEBT-2) and record the reading either way.
 
-* **`BL-BOUGH-DEBT-7` (P3, OPEN) - the THREE monolith-wide changes, and what was measured.**
+* **`BL-BOUGH-DEBT-7` (P3, OPEN) - the FIVE monolith-wide changes, and what was measured.**
   Every edit to `apply_svc_patches` is global, so each was checked against every caller before being
-  called safe. **Round 3 added the third and it is the narrowest of the set:**
+  called safe. **Round 4 added two, both of which are strictly narrower than anything before them:**
+
+  4. **`HELOS_HUB_OUTBOUND` row `svc_helos_trav_charon` - STRING ONLY (R-231-G #4).** The traveler
+     NPC's display text moves from `'Traveler: Golden Bough (Charon)'` to `'... (Akremon)'`. The
+     record PATH and the tag KEY (`tagSVCNpcTravCharon`) are untouched, so the TESTHUB map's
+     place-by-name still resolves and no map rebuild is implied. One row, one string, one encounter.
+  5. **`_build_boss_summon`'s `.anm` strip LOG LINE - text only (R-231-G #5).** No behaviour, no
+     record, no field: the message claimed the strip left "the source anm table now drives the
+     body", which overstates a deliberately SOURCE-FAITHFUL function. Affects every lane's console
+     output and nothing else.
+
+  **Round 3 added the third:**
 
   3. **`_SUMMON_SKILL_ICON['summon_charon_oarsman']` retargeted - PROVEN SCOPED, measured.** The row
      is reached ONLY through `_summon_skill_basename('...\summon_charon_oarsman.dbr')`, and a tree
@@ -205,7 +230,7 @@ reproduced and proved fixed rather than argued about.
   documented proven-render fallback (live carriers `yaoguai_flamering.dbr` + its pcsafe clone), at
   the cost of sharing a glyph with the Yaoguai soul's own granted skill.
 
-### EIGHT WILL-DECISIONS - all implemented at the recommended value behind a named constant, none blocking
+### TEN WILL-DECISIONS - all implemented at the recommended value behind a named constant, none blocking
 
 1. **Names** - Akremon, the Grasping Root / Akremon, the Heartwood Ablaze / Handbriar / Soul of the
    Grasping Root. *This lane's invention; ships as the default, flagged for veto (R-125 precedent).*
@@ -228,6 +253,15 @@ reproduced and proved fixed rather than argued about.
 6. **Bleed immunity on phase 1** - it hard-counters the mod's own marquee bleed spears for half the
    fight. *Recommend keep: it is the fight's whole shape, and beat 3 gives the build back. One skill
    slot removes it if Will hates it in play.*
+9. **Beat 2's enrage** (NEW, R-231-G #1) - `_SPLIT_PHYSMOD = 35.0`, with `_SPLIT_ABSORB` and
+   `_SPLIT_REGEN` at 0. The donor would have given 36% absorption + 8/s regen + 60% physical for the
+   whole last third of phase 1, undisclosed. *Recommend keep: an enrage that hits harder costs the
+   player TIME; absorption and regen cost the player the fight, and the Gaoler RCA is explicit that
+   "unkillable, then killable" is the shape to avoid. Raise 35 -> 45 if Will finds phase 1 tame.*
+10. **Shell loot** (NEW, R-231-G #3) - `_ORM_MUTE_MISC = True`, i.e. phase 1 pays no ordinary Misc
+   loot, exactly as the shipped Charon shell did. *Recommend keep while b84's loot-volume trim is in
+   flight; flip the one constant for Mnemophage-shell parity (75/13/1.6) if Will wants both halves
+   paying.*
 
 ## SHIP RECORD - BL-R181-DEBT-7: the ordinary uber orbs pay ARMOUR now, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-ship`)
 

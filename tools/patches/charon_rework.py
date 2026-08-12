@@ -787,6 +787,14 @@ _TAG_SUMMON = 'tagSVCSummonCharonOarsman'       # KEY KEPT, string rewritten
 _TAG_PET = 'tagSVCPetOarsman'                   # KEY KEPT, string rewritten
 _TAG_AMULET = 'tagSVCitmGoldenBough'            # UNCHANGED
 _TAG_AMULET_DESC = 'tagSVCitmGoldenBoughDESC'   # rewritten
+# R-231-G #4 - the player surface nobody had flagged: the Helos/TESTHUB traveler
+# NPC that SENDS the player to this forecourt is named through the tags pipeline
+# and still read "Traveler: Golden Bough (Charon)" after three rounds. The string
+# is retargeted at its source of truth (`HELOS_HUB_OUTBOUND` in the monolith); the
+# KEY and the record path stay frozen, so the TESTHUB map's place-by-name still
+# resolves and no map rebuild is implied. Mirrored here only so verify() can prove
+# the end state without importing a private table.
+_TAG_TRAVELER = 'tagSVCNpcTravCharon'
 
 _REQUIRED_DONORS = (_D_ORM, _D_BLOOM, _D_BRIAR, _D_SPLIT)
 _REQUIRED_SKILLS = ((_SK_EARTHBIND, _SK_QUILLWARDS, _SK_THORNYAURA, _SK_MEGABURST,
@@ -2021,6 +2029,19 @@ def verify(db, tags):
     if _n(tags.get(_TAG_ORM)) == _n(tags.get(_TAG_BLOOM)):
         problems.append("both forms share one display string - the phase turn "
                         "must read on screen (the shipped encounter's own defect)")
+    # R-231-G #4: the traveler NPC that SENDS the player here is a player-facing
+    # label owned by the monolith's HELOS_HUB_OUTBOUND table, and it still read
+    # "Traveler: Golden Bough (Charon)" after three rounds. Asserted only when the
+    # monolith has actually run (the standalone negtest starts with empty tags), so
+    # this can never red a static harness while still holding in a real build.
+    _trav = str(tags.get(_TAG_TRAVELER, ''))
+    if _trav and 'charon' in _trav.lower():
+        problems.append(
+            "the traveler NPC that sends the player to this forecourt is still "
+            "named %r (%s). It is a player-facing label, and this wave exists "
+            "because Charon stops being what lives here. Retarget the string in "
+            "HELOS_HUB_OUTBOUND - the record path and the tag KEY stay frozen, so "
+            "no map rebuild is implied." % (_trav, _TAG_TRAVELER))
 
     # ---- 7b. NAME COLLISION: the boss's name is not already someone else's ---
     #

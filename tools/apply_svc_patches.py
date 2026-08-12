@@ -12850,7 +12850,11 @@ HELOS_HUB_OUTBOUND = [
     (r'records\quests\svc_helos_trav_warband.dbr',    'tagSVCNpcTravWarband',    'Traveler: Blood-Cave Warband',    'tagSVCHelosToWarband',     'The Blood-Cave Warband'),
     (r'records\quests\svc_helos_trav_dorus.dbr',      'tagSVCNpcTravDorus',      'Traveler: Tomb of the Queens (Kroisos)', 'tagSVCHelosToDorus',    'Kroisos, the Coin-Drowned'),
     (r'records\quests\svc_helos_trav_tantalus.dbr',   'tagSVCNpcTravTantalus',   'Traveler: Den of Tantalus',       'tagSVCHelosToTantalus',    'The Den of Tantalus'),
-    (r'records\quests\svc_helos_trav_charon.dbr',     'tagSVCNpcTravCharon',     'Traveler: Golden Bough (Charon)', 'tagSVCHelosToCharon',      'The Golden Bough'),
+    # R-231-G: the boss at this destination is no longer Charon. STRING only - the
+    # record path and the tag KEY are frozen (this NPC is placed by the TESTHUB map
+    # by name, and the records ship unconditional-but-inert on canonical/Steam), so
+    # nothing here forces a map rebuild.
+    (r'records\quests\svc_helos_trav_charon.dbr',     'tagSVCNpcTravCharon',     'Traveler: Golden Bough (Akremon)', 'tagSVCHelosToCharon',      'The Golden Bough'),
     (r'records\quests\svc_helos_trav_mnemophage.dbr', 'tagSVCNpcTravMnemophage', 'Traveler: Pools of Mnemosyne',    'tagSVCHelosToMnemophage',  'The Pools of Mnemosyne'),
     (r'records\quests\svc_helos_trav_ephialtes.dbr',  'tagSVCNpcTravEphialtes',  'Traveler: Dread Halls (Ephialtes)','tagSVCHelosToEphialtes',  'The Dread Halls'),
     # b39 HUB v2 (Will 2026-07-13, order ii): travelers for map-placed bosses NOT covered above.

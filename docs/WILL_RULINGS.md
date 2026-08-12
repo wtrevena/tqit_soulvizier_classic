@@ -5863,3 +5863,149 @@ the real build state:
 **NOT RUN, and blocking the ship phase, not this lane:** the b44 landing/clearance gate, the full DB
 build, the COUPLED Text.arc build, `validate_tags`, `run_contracts`, det-2x and record-diff. All six
 are enumerated in `BL-BOUGH-DEBT-8` so they cannot be skipped.
+
+---
+
+### R-231-G - ROUND-4 AMENDMENT [2026-08-11]. **THE NUMBERS NOBODY AUTHORED.**
+
+Round 3 fixed superseded WRITERS surviving at frozen paths. Round 4 fixes the mirror defect:
+**a donor's own payload riding along under a claim that did not mention it.** Five findings, one
+class, and the biggest one was still unmeasured after the vet's report.
+
+> **RULING (process, and the reason this section exists):** *when a lane clones a record and then
+> states a number about the result, it owns EVERY non-zero field in that record, not just the ones
+> it wrote.* A verbatim clone is not a neutral starting point - it is a set of authored decisions
+> made by somebody else for a different creature. Three of this lane's five round-4 findings were
+> invisible precisely because nobody diffed the donor's own values against the claim being made.
+> The standing fix is the one applied below: **author the value, or state the inherited one.**
+
+#### 1. P1 - BEAT 2 WAS SILENTLY A 36% DAMAGE SHIELD. THE VET CAUGHT TWO OF THREE.
+
+`svc_bough_splitting` was a verbatim clone of `lowhealth_berserkerrage01`, whose `ActorName` is
+`DefensiveMastery_Adrenaline`, wired on phase 1 at `skillLevel 10`. MEASURED on the live build83
+arz, the donor carries **three** non-zero 20-row level arrays and the clone inherited all three:
+
+| field | donor array | row 9 (= the wired level 10) | disclosed anywhere? |
+|---|---|---|---|
+| `damageAbsorptionPercent` | `[10,12,15,18,22,24,26,29,32,36,...,65]` | **36.0% flat absorption** | no |
+| `characterLifeRegen` | `[5,5,6,6,6,7,7,7,8,8,...,11]` | **8.0/s regen** | no |
+| `offensivePhysicalModifier` | `[15,20,25,30,35,40,45,50,55,60,...,110]` | **+60% physical damage** | **no - and the vet did not catch this one either** |
+
+With `lifeMonitorPercent 33.0`, `skillActiveDuration 12.0` and `skillCooldownTime 5.0` (cooldown
+SHORTER than duration) it is **permanently up for the whole last third of phase 1**. Meanwhile the
+claim repeated verbatim in the module header, in R-231-E #7 and in the BACKLOG player-surface
+checklist is *"Epic total 35,000, matching the Gaoler's 35,000 exactly"* - a figure computed from
+`characterLife` alone. Phase 1's last 5,610 Epic HP actually cost about **56% more damage** than
+that number stated.
+
+**RULED - author all three, as FLAT 20-ROW ARRAYS so no future retune of `_SPLIT_LEVEL` can
+mis-index back into a donor value:**
+
+* `damageAbsorptionPercent` -> **0.0**. The durability claim is now true as written. A boss that
+  ALSO shrugs off a third of incoming damage is a wall, and the order asked for a hard fight.
+* `characterLifeRegen` -> **0.0**. A boss healing during its own last third is the
+  "unkillable, then killable" shape `gaoler_variance_rca.md` exists to prevent.
+* `offensivePhysicalModifier` -> **35.0, KEPT AND STATED**. Beat 2 must DO something or it is a
+  cosmetic bark-crack, and an enrage that hits HARDER is the correct half of an Adrenaline donor to
+  keep: it costs the player time, not immunity. 35 is this lane's number, not the donor's
+  accidental 60, and `verify()` asserts it on every one of the 20 rows.
+
+Context, measured: only 3 of the 53 Boss-class mod ubers carry ANY `Skill_PassiveOnLifeBuffSelf` -
+`um_bloodcrow_50` (lvl 3), `um_bloodtoxeus_99` (lvl 4) and `um_vashkarr_99` (lvl **0** = inactive,
+exactly as R-231-E CORRECTION 7 states). At level 10 the verbatim clone would have been the
+strongest low-health self-buff on the roster by a wide margin.
+
+#### 2. P2 - THE TERMINAL'S ORDINARY LOOT BAND REGRESSED A FULL ACT.
+
+The re-clone from `um_emberoak_42` (a DRX **act-2/3** creature) replaced this encounter's
+Hades-tier tables with the donor's own: `n_03_unique_all` + `item\materials\jungleroot`;
+`03_*_misc`; `relic_15-21 / 41-45 / 57-61`; `01/02/03_act2_arcaneformulae`.
+
+**PHASE 1 of this same encounter was already correct** (`n_04_unique_all`, `04_*_misc`,
+`01/02/03_act4_relics`, act-4 formulae - the strongbark donor's own), so the two halves of one boss
+were banded a full act apart, and **the LOW one was the form carrying the Golden Bough, the soul
+and the orb**. The peer band is not a guess: `um_polisgaoler_unbound_99` - the very boss this lane
+anchors durability to - runs `01/02/03_act4_relics` + `01/02/03_act4_arcaneformulae`.
+
+**RULED:** the terminal's `Misc1/2/3` are retargeted onto the act-4 band by named constant
+(`_ACT4_UNIQUE` / `_ACT4_MISC` / `_ACT4_RELICS` / `_ACT4_FORMULAE`), and the two act-3 `jungleroot`
+crafting rows are muted by weight - a jungle root does not fall off a burning tree at the Styx.
+The three GUARANTEED rewards were never affected and are unchanged.
+
+#### 3. P2 - PHASE 1 WENT FROM DROPPING NOTHING TO A 75/13/1.6 ROLL. NOW IT IS A DECISION.
+
+MEASURED: the shipped `um_charon_ferryman_99` had **no Misc loot at all**. The strongbark re-clone
+inherited its full table (`Misc3 @75`, `Misc2 @13`, `Misc1 @1.6`). Defensible in isolation - every
+other transform shell drops, and this roll is byte-for-byte the Mnemophage shell's shape - but it
+is an **encounter-level loot INCREASE**, on the exact encounter behind Will's own R-100 #10
+complaint (*"the uber monster soul of the unferried also had three chests"*, which R-108 answered
+by cutting three chests to one), shipping in the same window as b84 `fix/loot-volume-trim`.
+
+**RULED: MUTED**, back to the shipped shell's own shape, behind `_ORM_MUTE_MISC` so it reverses in
+one line. This wave therefore does **not** raise the encounter's ordinary loot volume in any
+direction a trim lane would have to re-trim, and the terminal - now correctly banded per #2 - is
+where the payout lives. Verified: no breadth module derives scope from a monster's `lootMisc*`
+pointers (`orb_loot_breadth` keys on `treasureProxyName`; b84's `svc_loot_volume` is
+container-scoped), so muting the CHANCE orphans nothing.
+
+#### 4. P2 - `docs/WILL_TEST_GUIDE.md` WAS NOT UPDATED, UNDER A CHECKLIST CLAIMING "NONE SILENTLY DEFERRED".
+
+The document Will actually reads to test the thing this wave built still described *"Charon, the
+Unferried ... TWO PHASES, ~60k total; drowned-oarsman escorts; ... the Ferryman's Toll hoard"*.
+Every clause was false: Akremon the Grasping Root / the Heartwood Ablaze, **35,000** on Epic,
+Handbriar champions, Soul of the Grasping Root, and a hoard now labelled **"The Orchard of Hands"** -
+so Will would have hunted for a chest label that no longer exists. Both sibling lanes (b84, b86)
+update this file; this one did not.
+
+**RULED, and fixed beyond the finding:** the entry is rewritten to describe the actual fight and to
+name the one number most worth checking in play (the Gaoler-matched 35,000). Also found and fixed
+while sweeping the same file - **a live player surface nobody had flagged**: the Helos/TESTHUB
+traveler NPC is named through the tags pipeline as `'Traveler: Golden Bough (Charon)'`
+(`HELOS_HUB_OUTBOUND`, `tagSVCNpcTravCharon`). Retargeted to `(Akremon)` at the source of truth -
+STRING only, record path and tag KEY frozen, so no map rebuild is implied.
+
+#### 5. P3 - THREE STALE OPERATOR/FLAVOUR SURFACES.
+
+* `tools/debug/gate_uber_placement.py:117,169` still labelled the encounter *"M6 Charon / Soul of
+  the Unferried"*. The asserted half of the tuple is the AREA name, so the gate still passed - but
+  it is the gate a future agent reads to find this encounter. Relabelled.
+* **The Handbriar's entire rotation was beetle bile.** `am_junglecreep_41` was chosen for its rig
+  and its D19 mobility (R-231-E #3), never for its kit, and it ships exactly one cast:
+  `beetlebile_vomitbile`, a five-projectile POISON burst at MediumRange - under docs calling the
+  escort *"a ground-hugging whipping vine ... maximum silhouette contrast"*. **RULED:** the declared
+  slot and the cast both move to `quillvine_barb` (physical + `offensivePierceRatioMin 50`), whose
+  seven live carriers are `quillvine_01..06` - **the very bodies the boss's own `quillwards` wall
+  and `hero_quillvines` retinue put on the field**. The escorts now fire the same barb as the briar
+  the boss grows: the R-125 own-family bar satisfied at the ENCOUNTER level rather than the donor
+  level. HONEST: this is also a NERF in raw output (5 x 159/183/207 poison -> one barb at
+  245/263/300 physical), which is the right direction for an add beside a Gaoler-calibrated boss.
+* **The soul pets lost their difficulty rows, and `_swap_scaler`'s own discipline had never been
+  applied to the pets it was written for.** `_build_boss_summon` -> `_update_existing_fields`
+  overwrote the Lyia baseline's slots from the emberoak SOURCE, so the three pets took a MONSTER's
+  `hero_scaling` and lost `globalproperties_normal01` / `_epic01` / `_legendary01`. Gameplay impact
+  is nil by R-231-F CORRECTION 13's own measurement, but it is residue on a permanent player pet.
+  **RULED:** `_restore_pet_difficulty_rows` asserts `hero_scaling` IS the incumbent, swaps
+  `globalproperties_normal01` into that slot with the shipped `[1,0,0]` vector, and re-adds the
+  other two. End state = the SHIPPED pet shape, i.e. a strict non-regression.
+* Also corrected, monolith-wide: `_build_boss_summon`'s log line claimed the anim strip left *"the
+  source anm table now drives the body"*. It does not - the strip is SOURCE-FAITHFUL by design, so
+  the source's OWN weapon-row overrides survive, and on this donor some point at a foreign rig
+  (`staffWalkAnim = ...\Neanderthal_Run.anm`; unreachable at `loadout=None`, and class-wide - 16 of
+  the 237 soulskill pets carry the same clip). The line now states what the function actually did.
+
+#### 6. WHAT WAS RUN THIS ROUND (static only, per the lane's brief)
+
+All against the live build83 arz (51,253 records), monolith stale-pet registration SEEDED:
+
+| reading | result |
+|---|---|
+| `charon_rework.apply()` + `verify()` | GREEN |
+| `negtest_charon_rework.py` | **41 RED, 0 gate holes**, plus 2 apply-time asserts, every restoration proved GREEN |
+| post-apply field dump of all 5 fixes | absorption `[20 rows, all 0.0]`, regen `[20 rows, all 0.0]`, phys-mod `[20 rows, all 35.0]`; terminal Misc1/2/3 on the act-4 band with both jungleroot weights 0; shell `chanceToEquipMisc1/2/3 = [0,0,0]`; escort casts `quillvine_barb` with 0 beetle-bile; pets carry `[1,0,0]/[0,1,0]/[0,0,1]` and 0 `hero_scaling` |
+| durability, unchanged | `[13000,17000,22000]` + `[14000,18000,24000]` = **35,000 Epic**, and now that number is the whole story |
+
+**STILL NOT RUN, and still blocking the ship phase, not this lane:** the b44 landing/clearance
+gate, the full DB build, the COUPLED Text.arc build, `validate_tags`, `run_contracts`, det-2x and
+record-diff. All enumerated in `BL-BOUGH-DEBT-8`.
+
+**Names remain this lane's invention and ship as defaults flagged for Will veto** (R-231-B).

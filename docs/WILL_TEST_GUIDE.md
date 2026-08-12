@@ -97,7 +97,7 @@
 > | tier 3 - Inkeyes, Palai, Xaiweng, the General's Guardians | 96 -> **180** | 71 -> **96** | 196 -> **262** | 0 -> **18 / 9 / 22** |
 > | tier 4 - the custom apex roster (**Unbound Gaoler**, Tantalus Unbound, Mnemophage Core, Aithon, Dagon, Helepolis, Ephialtes, Kravmoloch, Sarkoth, Vashkarr, Ilsevar, Gorrahk, Voranthys, Broodmother, Drowned King, Hades Marshal, Bloodcrow...) | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
 > | tier 5 - the Toxeus roster | 181 | 116 | 308 | already fine (R-180) |
-> | Charon's Essence - the Ferryman's terminal form | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
+> | Charon's Essence - the Golden Bough terminal form (🆕 R-231: that form is now **Akremon, the Heartwood Ablaze**; the ORB keeps its shared base-game "Charon's Essence" display string, logged `BL-BOUGH-DEBT-4`) | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
 >
 > **EASIEST CHECK - it is the SAME TRIP you are already doing for R-180.** In the **Prison of Souls**
 > (Hades Palace floor 4), killing **Alkyoneus the Soul-Gaoler** finishes on his Unbound form, and the
@@ -545,7 +545,7 @@ learn where everything is, and **walk in** to the boss yourself.
 | **Traveler: Blood-Cave Warband** | the blood-cave connection chamber at the **regular demon pack** (~35u off the Enslaver horde) | walk up to the Enslaver warband (skeleton leader + 4 marauders) |
 | **Traveler: Medea Tomb (Dorus)** | the tomb **entrance** (cryptentrance), amid the drowned court | walk ~82u to **Dorus, the Drowned King** + hoard |
 | **Traveler: Den of Tantalus** | the Styx swamp-**stairs entrance**, amid anouran | walk ~36u to **Tantalus, the Insatiable** (2 forms) + hoard |
-| **Traveler: Golden Bough (Charon)** | the Styx **Hades-city settlement** (the boatman, storyteller + a Styx rift-shrine) | test the settlement NPCs; walk east to **Charon, the Unferried** + the Golden Bough |
+| **Traveler: Golden Bough (Akremon)** | the Styx **Hades-city settlement** (the boatman, storyteller + a Styx rift-shrine) | test the settlement NPCs; walk east to **Akremon, the Grasping Root** + the Golden Bough. 🆕 R-231: Charon is OUT of this forecourt entirely - the traveler NPC was renamed with him |
 | **Traveler: Pools of Mnemosyne** | the Mnemosyne cave **stairs-up entrance** | walk ~20u to **The Mnemophage** (boss-glyph ring) |
 | **Traveler: Dread Halls (Ephialtes)** | the Dread Halls **stairs-up entrance** | walk ~130u SW to **Ephialtes, the Waking Dread** in the deep vault |
 
@@ -610,9 +610,22 @@ New build36 uber bosses (mainline Act 4, all with hoards/orbs/souls; also reacha
 11. **Tantalus, the Insatiable** - the Den of Tantalus (Styx marsh border, Act 4). TWO FORMS -
     kill him and "Tantalus, the Hunger Unbound" rises; shade waves accelerate as he weakens.
     Soul of the Insatiable (summons a Famished Shade; negative life regen downside) + hoard.
-12. **Charon, the Unferried** - the Golden Bough forecourt (Styx river edge, Act 4). TWO PHASES,
-    ~60k total; drowned-oarsman escorts; drops the Soul of the Unferried (raises an oarsman) +
-    THE GOLDEN BOUGH amulet + the Ferryman's Toll hoard.
+12. 🆕 **Akremon, the Grasping Root** - the Golden Bough forecourt (Styx river edge, Act 4).
+    **REWORKED under R-231 (your 2026-08-11 order): Charon is GONE from this forecourt.** The
+    same shrine, the same walk, an entirely different fight. A colossal black tree with every
+    hand that ever reached for the Bough grown into it. TWO PHASES: phase 1 is **bleed-IMMUNE**
+    (park the bleed spears), roots you in place, and grows a literal wall of quillvines between
+    you and it - the only monster in the mod that builds terrain. At 33% life the bark splits and
+    the thorns come out. Kill it and **Akremon, the Heartwood Ablaze** walks out of the trunk:
+    faster, on fire, and **NOT bleed-immune** - the build you shelved gets the kill. Two
+    **Handbriar** champions whip alongside.
+    **35,000 on Epic across both forms, matched exactly to Alkyoneus the Soul-Gaoler** (the fight
+    you beat on the second attempt) - so it should be hard, and it should die. Tell us if it is a
+    wall; that is the number we most want checked.
+    Drops **THE GOLDEN BOUGH** amulet (guaranteed), the **Soul of the Grasping Root** (grants
+    "Graft the Burning Heartwood" - a permanent burning cutting that walks for you; the soul roots
+    what you strike and slightly slows you as the price), and the hoard chest, now labelled
+    **"The Orchard of Hands"**. The names are our invention and are yours to veto.
 13. **The Mnemophage** - the Pools of Mnemosyne temple underground (Act 4 Judgment). Memory-
     drinking horror; shell-then-core; cooldown-reduction amulet + soul.
 14. **Ephialtes, the Waking Dread** - the Dread Halls terminal vault, back corner (Judgment stone
