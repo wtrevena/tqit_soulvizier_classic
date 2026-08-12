@@ -529,12 +529,15 @@ def obtainable_below_legendary(db, lk, ex, record, pools, memo=None, _stack=None
                       'here can prove it is Legendary-gated')
     mark = _prov[0]
     verdict = None
+    tables = ()
     if rl in pools['n']:
         verdict = (True, 'a NORMAL-tier chest pool reaches it')
     elif rl in pools['e']:
         verdict = (True, 'an EPIC-tier chest pool reaches it')
-    _monsters, tables = SCT.mi_monster_sources(db, lk, record)
-    if verdict is None:
+    else:
+        # Only walked when the pools did not already answer: this is a graph walk per
+        # record, and step 5's visibility test is the only other consumer.
+        _monsters, tables = SCT.mi_monster_sources(db, lk, record)
         bad = sorted(t for t in tables if table_tier(t) in ('n', 'e'))
         if bad:
             verdict = (True, 'named by %d non-Legendary-tier loot table(s), e.g. %s'
