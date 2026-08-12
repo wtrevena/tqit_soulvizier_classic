@@ -77,6 +77,18 @@ reconciling.
 
 ## (B) MOVEMENT — immobile because the offensive kit is dead references
 
+> 🚨 **SUPERSEDED IN PART (2026-08-11).** Will re-reported Dagon as frozen AFTER this fix shipped:
+> *"Dagon, lord of the poisoned deep is frozen like the maened thrown object guys were"*. The kit
+> diagnosis below is correct and the kit fix is kept, but it was **not** the freeze. The real cause
+> is the ANIMATION chain: `charAnimationTableName = records\creature\monster\d2custom\anm\
+> anm_dagon.dbr` resolves in neither the mod arz nor the base game (the same never-shipped
+> `d2custom` namespace this section correctly identifies for his SKILLS), and the 13 clips left on
+> his record are all **Hydra** clips on an **Ichthian** mesh with **no `unarmedWalkAnim` at all**.
+> The "It is NOT a movement/speed/mesh problem" verdict immediately below was reached from
+> `characterRunSpeed` and an AI/behaviour **field** diff - and `charAnimationTableName` is not a
+> behaviour field, so it was never compared. See **`docs/reports/dagon_frozen_rca.md`** and
+> `tools/patches/dagon_anim_rig.py`.
+
 **It is NOT a movement/speed/mesh problem.** Empirically:
 - `characterRunSpeed = 1.1` (higher than the mobile shaman's 0.8), `walkSpeed`/rotation inherited.
 - `handHitDamageMin/Max = 200/250` — a working natural melee attack exists.

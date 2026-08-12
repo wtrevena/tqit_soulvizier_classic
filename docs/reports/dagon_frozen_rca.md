@@ -1,5 +1,10 @@
 # DAGON FROZEN - RCA + FIX (the maenad class, second instance)
 
+> **STATUS: FIXED + GATED.** `tools/patches/dagon_anim_rig.py`, registered after `thrown_anim_rig`.
+> Dry-run verified with the REAL `apply`/`verify` against the shipped build83 (`44499f56`): PRE RED,
+> POST GREEN, idempotent, one record modified, kit and identity byte-unchanged. 12/12 negative tests
+> pass; 42/42 `.anm` assets resolve. Static gates only - the Ship lane owns the heavy build.
+
 > **Will (2026-08-11):** *"Dagon, lord of the poisoned deep is frozen like the maened thrown
 > object guys were"*
 >
@@ -187,40 +192,66 @@ consequences this lane cannot measure. Filed as `BL-DAGON-ACTORNAME-1`, not fixe
 
 ---
 
-## 6. THE GATE - a fail-loud playable-anim invariant for MONSTERS
+## 6. THE GATE - and the two weaker invariants that had to be discarded first
 
-`dagon_anim_rig.verify()` runs in the registry's verify pass and states the invariant over the
-**whole roster**, not over Dagon:
+Writing an honest gate for this class was the hard part, because **immobility is authored all over
+the base game**. Two natural statements of the invariant were implemented and *measured against the
+shipped build83* before the third survived:
 
-> **Every spawn-referenced `Class=Monster` record must resolve, on the union of its own record and
-> its `charAnimationTableName` (checked against the mod overlay AND the base game arz), an `.anm`
-> for `RunAnim`, `WalkAnim` and `AttackAnim1` in the stance it enters.**
+| candidate invariant | result on build83 |
+|---|---|
+| "bind Run/Walk/Attack1 for every stance you bind any clip for" | **1,399 violations** - mostly base monsters carrying a stray clip for a stance they never enter |
+| "bind Run/Walk/Attack1 for the stance you fight in" | **60 spawn-referenced violations, every one correct base-game design**: rooted plants (quilvine, nightblossom, deathvine, hellflower) that attack in place; `Class=Monster` props (siege towers, crystal shards, `talos_decoration`, `manticore_bones`); flying bosses with no walk clip (hydras, carrion birds); non-combat quest NPCs with no attack clip |
 
-- **HARD FAIL** when a violator is **spawn-referenced** (named by another record - the Dagon case).
-- **WARN** when it is inert (never spawned - the `am_raptor_thunderlizard_33` case), so a
-  pre-existing cut-content backlog can never block a build.
+A gate that cries wolf 60 times is not a gate. What separates Dagon from every one of those records
+is **not a missing clip - it is a dangling reference**. A rooted quilvine names `anm_quilvine`,
+which *loads* and deliberately binds no walk. Dagon names `d2custom\anm\anm_dagon`, which loads from
+nothing. Authored immobility resolves; a broken chain does not. So the shipped invariant is:
+
+> **Every `Class=Monster` record with a `mesh` that NAMES a `charAnimationTableName` resolving in
+> NEITHER the mod overlay NOR the base game arz must complete `RunAnim` + `WalkAnim` +
+> `AttackAnim1` for at least one stance ON ITS OWN RECORD.**
+
+A record that names *no* table is authored intent (hundreds of base props ship that way), not a
+dangling reference, and is out of scope.
+
+- **HARD FAIL** when the violator is **spawn-referenced** (named by another record - the Dagon case).
+- **WARN** when it is inert (the `am_raptor_thunderlizard_33` case), so a pre-existing cut-content
+  backlog can never block a build.
 - Base arz unavailable -> the DB-wide cross-check **degrades to WARN** with a message (build-safe,
-  the `validate_tags` precedent), while the **targeted Dagon invariant stays hard** - his table must
-  be `anm_ichthian`, all 16 unarmed slots must be bound, and **zero `Hydra\ANM` clips may remain on
-  an Ichthian-mesh record**.
+  the `validate_tags` precedent), while the **targeted Dagon invariant stays hard**: his table must
+  be `anm_ichthian`, all 17 unarmed slots must be bound and agree with the table, **zero `Hydra\ANM`
+  clips may remain on an Ichthian-mesh record**, and his b52 name tag + Tidal Strike primary must
+  survive (an animation module has no business changing either).
 
-This extends the soul-side "every soul must resolve" invariant to wild monsters, which is what the
-class was missing: `thrown_anim_rig` gated *thrown* stances only.
+The base-arz cross-check *is* the point: **"absent from the overlay -> the base game has it"** is
+the assumption that hid this record from the anim gate and, in b52, from `validate_tags`.
 
-**Negative tests** (`py tools/patches/dagon_anim_rig.py --negtest`) - the defect is re-planted and
-the gate must go RED:
+**Measured DB-wide on build83: exactly 2 findings** - Dagon (HARD, 23 pool referrers) and the inert
+raptor (WARN).
 
-| # | planted defect | expect |
-|---|---|---|
-| 1 | repoint the table back at `d2custom\anm\anm_dagon` | **RED** (the shipped bug) |
-| 2 | delete `unarmedWalkAnim` from the record, table dead | **RED** (the exact statue state) |
-| 3 | delete `unarmedRunAnim`, table dead | **RED** |
-| 4 | delete `unarmedAttackAnim1`, table dead | **RED** |
-| 5 | leave a `Hydra_*.anm` clip on the Ichthian-mesh record | **RED** (cross-rig clause) |
-| 6 | point the table at a `.msh` instead of a `.dbr` table | **RED** |
-| 7 | plant a NEW spawn-referenced monster on a nonexistent table with no record clips | **RED** (the invariant is roster-wide, not Dagon-shaped) |
-| 8 | drop `unarmedFidgetAnim1` (non-critical slot) | **stay GREEN** |
-| 9 | Skeletal Typhon untouched (dead table + complete record surface) | **stay GREEN** |
+**Negative tests** - `py tools/patches/dagon_anim_rig.py --negtest <arz>`, **12/12 PASS**:
+
+| # | planted defect | gate | expect |
+|---|---|---|---|
+| 1 | repoint the table back at `d2custom\anm\anm_dagon` | Dagon | **RED** (the shipped bug) |
+| 2 | lose `unarmedWalkAnim` from the record surface | Dagon | **RED** |
+| 3 | lose `unarmedRunAnim` | Dagon | **RED** |
+| 4 | lose `unarmedAttackAnim1` | Dagon | **RED** |
+| 5 | leave a `Hydra_*.anm` clip on the Ichthian-mesh record | Dagon | **RED** (cross-rig) |
+| 6 | point the table at a `.msh` instead of a table `.dbr` | Dagon | **RED** |
+| 7 | clobber the b52 Tidal Strike primary | Dagon | **RED** (identity guard) |
+| 8 | dead table AND no complete stance on the record - **the statue state reached with no knowledge of Dagon** | roster | **RED** |
+| 9 | promote the INERT frozen raptor into a live spawn pool | roster | **RED** (WARN escalates) |
+| 10 | drop `unarmedFidgetAnim1` (non-critical) | roster | **stay GREEN** |
+| 11 | base-game `skeletaltyphon` untouched (dead table + complete record) | roster | **stay GREEN** |
+| 12 | rooted quilvine (authored immobility, table RESOLVES) | roster | **stay GREEN** |
+
+Nothing leaked: `verify` is GREEN again after the full restore.
+
+**Assets: 42/42 resolve, 0 missing.** `tools/debug/probe_anm_asset_resolve.py` now covers the whole
+frozen class (`thrown_anim_rig` 31 clips + `dagon_anim_rig` 11), printing the exact inner archive
+path each one matched; all 11 Ichthian/JackalMan clips are in base `Creatures.arc`.
 
 ---
 

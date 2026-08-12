@@ -1,5 +1,79 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## LANE RECORD - DAGON FROZEN: the maenad freeze class, second instance (Will 2026-08-11, branch `fix/dagon-frozen`, module `tools/patches/dagon_anim_rig.py`, static gates only - the Ship lane owns the build)
+
+**Will, verbatim:** *"Dagon, lord of the poisoned deep is frozen like the maened thrown object guys
+were"*. He named the class correctly. Full RCA: **`docs/reports/dagon_frozen_rca.md`**.
+
+**ROOT CAUSE - the animation chain, not the kit.** `records\test\boss_dagon_66.dbr` names
+`charAnimationTableName = records\creature\monster\d2custom\anm\anm_dagon.dbr`, which resolves in
+**neither the mod arz nor the base game** - there are **0** `d2custom` records anywhere, the same
+never-shipped SV namespace that made his *skills* dead references in b52. The only surviving surface
+is the record's own 13 clips, **every one a `Creatures\Monster\HYDRA\ANM\Hydra_*.anm` on an
+`IchthianMage01` mesh**, and they do not include `unarmedWalkAnim`. He equips nothing, so `unarmed`
+is his only stance: no walk animation on either surface, so he stands. Inherited **verbatim from SV
+0.98i** (identical dead table, identical Hydra clips, identical missing Walk).
+
+**Why b52 missed it:** that RCA explicitly cleared the movement surface (*"It is NOT a
+movement/speed/mesh problem"*) from `characterRunSpeed` and an AI/behaviour **field** diff -
+`charAnimationTableName` is not a behaviour field. The b52 kit fix was correct and is kept; it was
+simply not the freeze. Same shape as the maenads, where `thrown_restore` fixed the equipment and
+they stayed frozen until `thrown_anim_rig` fixed the animation.
+
+**FIX** (animation fields only, one record, idempotent): repoint the table onto
+`records\creature\monster\ichthian\anm\anm_ichthian.dbr` - the table **43 of his 44 same-mesh
+siblings** already use, a clean `CharAnimationTable.tpl` binding 71 clips - and write the full
+in-rig unarmed stance (17 slots) on the record too, per `adfda67`'s both-surfaces law. **No clone
+and no shared-record edit**: unlike `thrown_anim_rig`, which had to *modify* its tables, this only
+*points at* one. Kit, name tag, speed, life, mesh, texture and soul all measured unchanged.
+
+**GATE** (`dagon_anim_rig.verify`) - extends the playable-anim invariant from thrown stances to
+**wild monsters**. Two weaker statements were implemented and measured first, and both cry wolf:
+"every stance you bind any clip for" -> **1,399** violations; "the stance you fight in" -> **60**
+spawn-referenced violations, *all correct base-game design* (rooted plants, `Class=Monster` props,
+flying bosses with no walk clip, non-combat NPCs). Immobility is authored everywhere, so a missing
+clip cannot be the signal. The shipped invariant is the **dangling reference**:
+
+> every `Class=Monster` with a mesh that NAMES a `charAnimationTableName` resolving in NEITHER the
+> mod overlay NOR the base game arz must complete Run+Walk+Attack1 for one stance on its own record.
+
+HARD FAIL when spawn-referenced, WARN when inert, and the base cross-check degrades to WARN (never
+blocks) with no base install - the `validate_tags` precedent. **That cross-check is the point:
+"absent from the overlay -> the base game has it" is the assumption that hid this record from the
+anim gate AND, in b52, from `validate_tags` - the same blind spot, twice, on one record.**
+
+**CLASS SWEEP** (all 4,610 `Class=Monster` records vs mod overlay AND base arz): 7 name a table that
+exists nowhere; under the union law **Dagon is the only live victim** (23 ichthian-pool referrers).
+
+| record | verdict |
+|---|---|
+| `records\test\boss_dagon_66` | **FROZEN - FIXED here** |
+| `records\test\am_raptor_thunderlizard_33` | structurally frozen (record binds only `staffWalkAnim`) but **INERT - 0 referrers**, never spawns -> `BL-DAGON-INERT-RAPTOR-1` |
+| `bm_gruesomebonescarab_22`, `outsider_hero_caster/melee/poison_46` | healthy - the record completes the stance; all inert anyway |
+| `records\xpack\...\skeletaltyphon` | healthy **and the control**: a base-game boss that ships a DEAD table in VANILLA and animates fine, proving a naive "dead table = fail" gate would red the base game |
+
+**PROOF (static only):** dry-run replay of the real `apply`/`verify` on the shipped build83
+`44499f56` - PRE **RED** (roster HARD=1 Dagon, WARN=1 raptor), POST **GREEN**, 1 record modified,
+13 Hydra clips -> **0**, walk bound, idempotent, kit unchanged. **12/12 negative tests PASS**
+(7 must-RED Dagon clauses incl. the shipped bug re-planted, 2 must-RED roster clauses incl. the
+inert raptor promoted into a live pool, 3 must-stay-GREEN incl. `skeletaltyphon` and a rooted
+quilvine). **Assets 42/42 resolve, 0 missing.** `py_compile` OK; `_check_registry` OK, 60 modules,
+order `a43cae974acb3622797a8d15db2f42e4098654e20bfdb2caa5c60ac8f0c0c061`.
+
+**NOT BUILT, NOT DEPLOYED, NO TAG TAKEN** in this lane.
+
+### Open items this lane filed (not fixed here)
+- **`BL-DAGON-ACTORNAME-1`** - `boss_dagon_66.ActorName = Greece_Creature_Monster_Harpy_HarpyCrag01`,
+  a **third** cross-rig leftover (42 of the 43 working same-mesh ichthians carry no `ActorName` at
+  all). Not the freeze, byte-identical in SV 0.98i, and rebinding an actor has sound/actor
+  consequences this lane could not measure. Low priority, cosmetic/audio only.
+- **`BL-DAGON-INERT-RAPTOR-1`** - `records\test\am_raptor_thunderlizard_33` is frozen by the same
+  mechanism (dead `anm_gojiru` table, one clip on the record) but is spawn-referenced by nothing, so
+  it never appears. The gate WARNs it every build. Fix it or delete it if it is ever promoted.
+- **`BL-DAGON-SOULTAG-1`** (carried from b52, still open) - `tagSVCSoulDagon` is defined twice with
+  different values (`'{^F}Dagon Soul'` and `'{^F}Soul of Dagon'`); first-wins picks one. Harmless,
+  worth reconciling.
+
 ## SHIP RECORD - BL-R181-DEBT-7: the ordinary uber orbs pay ARMOUR now, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-ship`)
 
 **Workshop item 3759792705 UPDATED and CONFIRMED.** SteamCMD: cached login OK (`Logging in user
