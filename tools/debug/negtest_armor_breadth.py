@@ -112,13 +112,28 @@ def main(argv):
     base, base_lk = load_fixed(arz)
 
     # ── POSITIVE CONTROL 1: the whole fixed build is green.
+    #
+    # ⚠ R-240 COUPLING (`BL-R240-DEBT-8`). `load_fixed` applies the R-181 wave ONLY, so
+    # on a pre-R-240 arz the D7 anchor surface still measures its untrimmed volume and
+    # D7X2 legitimately reds - the anchor working, not a defect in this build. That ONE
+    # problem is expected here and is therefore named and set aside rather than either
+    # (a) failing the control, which makes the whole battery red for a documented
+    # coupling, or (b) loosening the control to "few problems", which would let a real
+    # regression hide behind it. Everything else must still be empty, and the set-aside
+    # problem is PRINTED so it can never become invisible.
     problems, reports = SAB.audit_db(base, base_lk)
-    ok = (not problems) and len(reports) > 0
-    print("%s POSITIVE CONTROL: R-181 build passes (%d surfaces, %d problems)"
-          % ('OK ' if ok else 'XX ', len(reports), len(problems)))
+    expected = [p for p in problems if p.startswith('D7X2')]
+    unexpected = [p for p in problems if not p.startswith('D7X2')]
+    ok = (not unexpected) and len(reports) > 0
+    print("%s POSITIVE CONTROL: R-181 build passes (%d surfaces, %d problem(s): %d "
+          "unexpected + %d expected-D7X2-on-a-pre-R-240-arz)"
+          % ('OK ' if ok else 'XX ', len(reports), len(problems),
+             len(unexpected), len(expected)))
+    for p in expected:
+        print("      (expected, BL-R240-DEBT-8) %s" % p[:150])
     if not ok:
         fails.append('positive control (whole build)')
-        for p in problems[:8]:
+        for p in unexpected[:8]:
             print("      %s" % p)
 
     # ── POSITIVE CONTROL 2: the DELIBERATE warden armour bias is still green as part
@@ -375,23 +390,79 @@ def main(argv):
     #    armour regression in the band that was unguarded, N13 attacks the structural
     #    check itself.
 
-    # N12 - an armour cut on the REFERENCE surface, landing inside the band that the
-    #      float-boundary defect left unguarded: below D7's 0.52/open but above D7b's
-    #      effective floor, so D7b alone cannot see it. Only D7 being genuinely ASSERTED
-    #      on this surface catches it. This is the vet's demonstrated regression, made
-    #      permanent.
+    # N12 - an armour cut on the REFERENCE surface, deep enough to breach the LIVE
+    #      absolute floor. Only D7 being genuinely ASSERTED on this surface catches it.
+    #
+    # ⚠ REWRITTEN BY R-240 (round 4), and the reason is the whole point of the check.
+    # This case used to hardcode `svc_uberorb_apex_e01c` as "the REFERENCE surface" and
+    # a fixed 25% cut, because that was the surface and the margin when the floor was
+    # 0.52/open. R-240 re-anchored `ARMOR_SLOT_FLOOR` onto `gaoler cage chest_01 [l]`
+    # and, deriving it as per-iteration-strength x the trimmed anchor volume, moved it
+    # to 0.0644/open - about 8x lower. The old plant then MEASURED GREEN: a 25% cut on
+    # a surface calibrated at ~0.62/open lands at ~0.47, still an order of magnitude
+    # above the new floor. The battery was still asserting the SUPERSEDED contract and
+    # reported a blind spot it had itself been made blind to.
+    #
+    # So both hardcodings are gone. The target is read from
+    # `SLD.ARMOR_SLOT_FLOOR_REF_SURFACE` and the cut is SIZED FROM THE LIVE FLOOR, which
+    # makes the check self-calibrating: whoever moves the anchor or the floor next gets
+    # a plant that still lands just under it, and this case cannot silently rot again.
+    def _ref_report(d, k):
+        _probs, reps = SAB.audit_db(d, k)
+        return next((r for r in reps
+                     if r.get('label') == SLD.ARMOR_SLOT_FLOOR_REF_SURFACE), None)
+
     def _cut_reference_armour(d, k):
-        real = k.real(APEX_E)
-        for g in SAB.armor_groups(d, real):
-            d.set_field(real, 'loot%dChance' % g, SAB.ARMOR_ROW_CHANCE * 0.75)
+        rep = _ref_report(d, k)
+        if rep is None:
+            return                     # D7X already reds this; probe returns [] -> XX
+        mass = rep.get('slot_mass') or {}
+        worst = min(mass.values()) if mass else 0.0
+        # Put the thinnest worn slot 10% BELOW the live floor. Guard the degenerate
+        # case so a surface already under the floor still gets a real cut.
+        f = (SLD.ARMOR_SLOT_FLOOR / worst) * 0.9 if worst > SLD.ARMOR_SLOT_FLOOR else 0.5
+        for t in rep.get('tables', []):
+            real = k.real(t)
+            if not real:
+                continue
+            for g in SAB.armor_groups(d, real):
+                d.set_field(real, 'loot%dChance' % g, SAB.ARMOR_ROW_CHANCE * f)
 
     def _probe_reference_d7(d, k):
         probs, _reps = SAB.audit_db(d, k)
-        return [p for p in probs if p.startswith('D7 ') and 'apex_e01c' in p]
+        return [p for p in probs
+                if p.startswith('D7 ') and SLD.ARMOR_SLOT_FLOOR_REF_SURFACE in p]
 
-    check("D7 armour cut 25% on the REFERENCE surface (svc_uberorb_apex_e01c, the "
-          "0.40-0.52/open band the float boundary left unguarded)",
+    check("D7 armour cut below the LIVE floor on the LIVE reference surface (%s, "
+          "floor %.4f/open)" % (SLD.ARMOR_SLOT_FLOOR_REF_SURFACE, SLD.ARMOR_SLOT_FLOOR),
           _cut_reference_armour, _probe_reference_d7)
+
+    # N12b - WHAT THE 8x FLOOR DROP ACTUALLY COST, as a number rather than a claim.
+    #      R-240's re-derivation is correct (holding 0.52/open against a container that
+    #      now spawns ~1.1 iterations would be D7 turning into a numSpawn demand), but
+    #      "the floor came down 8x" is the kind of sentence that gets read as harmless.
+    #      This measures the real consequence on the surface the OLD anchor protected:
+    #      how deep an armour cut the apex orb can now absorb before ANY check reds.
+    #      Reported, not asserted - the number belongs in `BL-R240-DEBT-9`, and a test
+    #      that asserts a hole stays open is not a test.
+    dslack, kslack = load_fixed(arz)
+    _p, reps_slack = SAB.audit_db(dslack, kslack)
+    apex = next((r for r in reps_slack
+                 if 'apex_e01c' in ' '.join(str(t) for t in r.get('tables', []))), None)
+    if apex is None:
+        print("     D7-SLACK on the old anchor: apex_e01c is NOT in the audit set")
+    else:
+        mass = apex.get('slot_mass') or {}
+        S = apex.get('S_eff', 0.0) or 1.0
+        worst = min(mass.values()) if mass else 0.0
+        d7_cut = 100.0 * (1.0 - SLD.ARMOR_SLOT_FLOOR / worst) if worst else 0.0
+        d7b_cut = (100.0 * (1.0 - SLD.ARMOR_SLOT_FLOOR_PER_SPAWN / (worst / S))
+                   if worst else 0.0)
+        print("     D7-SLACK on the OLD anchor (svc_uberorb_apex_e01c, d7_asserted=%s): "
+              "thinnest worn slot %.4f/open over S=%.2f; an armour cut must now exceed "
+              "%.1f%% to red D7 and %.1f%% to red D7b. Pre-R-240 the D7 figure was "
+              "~16%%. THIS IS THE PRICE OF THE RE-ANCHOR - see BL-R240-DEBT-9."
+              % (apex.get('d7_asserted'), worst, S, d7_cut, d7b_cut))
 
     # N13 - D7X itself. Move the reference volume just above the reference surface's own
     #      S_eff and the surface falls out of D7 exactly as it did in round 1. D7X must

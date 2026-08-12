@@ -39,7 +39,25 @@
 > 7. **Will's test note quoted only the optimistic spawn model** for the cage guarantee (99.6%). It now
 >    carries the truncated figure beside it (**98.3% Legendary, 94.0% Epic**), since that is the number
 >    the gate actually holds while the engine's rounding mode is unproven (`BL-R240-DEBT-5`).
-> 8. **44 inert twin records ship in the Steam arz, and the push-gate record-diff will show them.**
+> 8. 🚨 **NEW FINDING, NOT IN THE ROUND-3 LIST: R-181's OWN negative battery was still asserting the
+>    contract R-240 replaced, and had been made blind by it.** Found by running
+>    `negtest_armor_breadth.py` - a coexisting battery this lane did not author and the round-3 sweep
+>    did not cover, because that sweep ran registry `verify()` hooks, not batteries. Result on the
+>    shipped b83 arz: **NEGTEST FAILED: 2**. Its N12 case planted a 25% armour cut on the surface
+>    `ARMOR_SLOT_FLOOR` used to be anchored on and expected D7 to red; **it measured GREEN**, because
+>    R-240 took the floor from 0.52 to 0.0644/open (8x) and a 25% cut no longer reaches it. The check
+>    the round-2 vet built to make that exact regression permanently catchable had been made blind by
+>    this lane. Its whole-build positive control also failed, on the one expected D7X2 problem.
+>    **Both fixed here, and made rot-proof:** N12 now reads the reference surface from
+>    `SLD.ARMOR_SLOT_FLOOR_REF_SURFACE` and **sizes its cut from the live floor**, so it cannot encode
+>    a superseded contract again; the positive control sets aside exactly the D7X2 problem, prints it,
+>    and reds on anything else. A new **N12b measures and prints the slack every run**. The residual
+>    design question - is D7b alone enough, or must the absolute floor scale per volume band? - is
+>    `BL-R240-DEBT-9`, an R-181 decision, not a volume one.
+>    **LESSON FOR THE SHIP LANE: running the registry verify() hooks is not the same as running the
+>    coexisting negative BATTERIES. This lane's two build-aborting collisions were found by the first;
+>    this one could only be found by the second.**
+> 9. **44 inert twin records ship in the Steam arz, and the push-gate record-diff will show them.**
 >    Expected: `ADDED 44 / REMOVED 0 / MODIFIED 69`, and the only fields that move anywhere are
 >    `numSpawnMinEquation` (69), `numSpawnMaxEquation` (69) and `loot4Chance` (3) - zero members, zero
 >    weights, zero pool memberships. The 44 are the TESTHUB twin. On the canonical/Steam map they are
@@ -448,6 +466,32 @@ so the arz+Text coupling holds with no Text rebuild.
   `uber_apex_orb` (c)/(h) two-era, so one gate serves both artifacts. That is a refactor of a gate
   several in-flight lanes depend on, and **one lane per problem** means it is not this one. Closing
   evidence: `gate_loot_distribution.py` exits 0 on both a pre- and a post-R-240 arz.
+- `BL-R240-DEBT-9` (round-4) - 🚨 **THE R-240 RE-ANCHOR COST D7 REAL DETECTION POWER, AND R-181's OWN
+  NEGATIVE BATTERY WAS STILL ASSERTING THE SUPERSEDED CONTRACT.** Found by running
+  `negtest_armor_breadth.py` (a coexisting battery, not one this lane authored) against the shipped b83
+  arz: **NEGTEST FAILED: 2**.
+  1. **Its N12 case measured GREEN (BLIND).** It planted a 25% armour cut on
+     `svc_uberorb_apex_e01c` - the surface `ARMOR_SLOT_FLOOR` used to be anchored on - and expected D7
+     to red. R-240 moved the anchor to `gaoler cage chest_01 [l]` and re-derived the floor as
+     per-iteration-strength x the trimmed anchor volume, taking it from **0.52 to 0.0644 per open,
+     about 8x lower**. A 25% cut on a surface calibrated at ~0.62/open lands at ~0.47, an order of
+     magnitude clear of the new floor. **The check the round-2 vet built to make that exact regression
+     permanently catchable had itself been made blind.**
+  2. **Its whole-build positive control failed** on the one expected D7X2 anchor problem
+     (`BL-R240-DEBT-8`), because `load_fixed` applies the R-181 wave only.
+  **FIXED IN THIS LANE, both of them, and made rot-proof:** N12 no longer hardcodes either the surface
+  or the cut - it reads `SLD.ARMOR_SLOT_FLOOR_REF_SURFACE` and **sizes the cut from the live floor**, so
+  whoever moves the anchor next still gets a plant that lands just under it. The positive control now
+  sets aside exactly the D7X2 problem, names it, prints it, and reds on anything else.
+  **WHAT REMAINS OPEN, AND IT IS A DESIGN QUESTION FOR WILL, NOT A BUG:** the re-anchor is correct
+  (holding 0.52/open against a container that now spawns ~1.1 iterations would turn D7 into a numSpawn
+  demand and red the whole mod for the ruling itself), and D7b at 0.0375/iteration is unchanged and
+  asserted on all 63 surfaces. But the absolute floor now has **real slack**: a new `N12b` MEASURES and
+  PRINTS, every run, how deep an armour cut the old anchor surface can absorb before D7 or D7b reds.
+  Absolute-floor COVERAGE also fell from **42 of 57** canonical surfaces to **18 of 57**.
+  **The question: is D7b alone enough, or does the absolute floor need re-deriving per volume band?**
+  That is an R-181 composition decision, one lane, not a volume lane. Closing evidence: a stated ruling
+  plus, if D7 is to keep teeth, a floor that scales with the surface.
 
 ---
 

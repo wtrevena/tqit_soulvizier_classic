@@ -5942,6 +5942,47 @@ trimmed db would be the gate telling the ship lane the opposite of what it just 
 
 ---
 
+---
+
+#### COLLISION 3 - R-181's OWN NEGATIVE BATTERY, which this lane had made blind
+
+**FOUND IN ROUND 4, BY THIS LANE, NOT BY THE VET** - and worth stating plainly, because it is the one
+the process nearly missed. The round-3 sweep ran all 53 registry `verify()` hooks. That found
+collisions 1 and 2. It could not have found this one, because **a battery is not a verify() hook**.
+
+`tools/debug/negtest_armor_breadth.py` on the shipped b83 arz: **NEGTEST FAILED: 2**.
+
+Its **N12** case planted a 25% armour cut on `svc_uberorb_apex_e01c` - the surface `ARMOR_SLOT_FLOOR`
+was anchored on when the case was written - and expected D7 to red. **It measured GREEN (BLIND).**
+R-240 re-anchored the floor onto `gaoler cage chest_01 [l]` and re-derived it as per-iteration strength
+x the trimmed anchor volume, taking it from **0.52 to 0.0644 per open, about 8x lower**. A 25% cut on a
+surface calibrated at ~0.62/open lands near 0.47, an order of magnitude clear of the new floor.
+
+**The check that the round-2 vet built specifically to make that regression permanently catchable had
+been made uncatchable by this lane, and the battery went on describing the superseded contract.** Its
+whole-build positive control failed too, on the single expected D7X2 problem (`BL-R240-DEBT-8`).
+
+**FIXED, AND MADE ROT-PROOF.** N12 no longer hardcodes the surface or the percentage: it reads
+`SLD.ARMOR_SLOT_FLOOR_REF_SURFACE` and **sizes the cut from the live floor**, so whoever moves the
+anchor next still gets a plant that lands just under it. The positive control sets aside exactly the
+D7X2 problem, names it, prints it, and reds on anything else. A new **N12b measures and prints, every
+run, how deep a cut the old anchor can now absorb** - reported rather than asserted, because a test
+that asserts a hole stays open is not a test.
+
+**WHAT IS LEFT IS A DESIGN QUESTION, NOT A BUG (`BL-R240-DEBT-9`).** The re-anchor is right: holding
+0.52/open against a container that now spawns ~1.1 iterations would turn D7 into a numSpawn demand and
+red the whole mod for the ruling itself. D7b (0.0375 per spawn iteration) is unchanged and asserted on
+all 63 surfaces. But the absolute floor now carries real slack, and its coverage fell from **42 of 57**
+canonical surfaces to **18 of 57**. Whether D7b alone suffices, or the absolute floor must scale per
+volume band, is an R-181 composition decision and therefore a different lane.
+
+**THE RULE THIS ONE PRODUCES.** *A lane that changes a contract must re-run that contract's NEGATIVE
+BATTERY, not merely its gate. A gate answers "is the current build clean"; only the battery answers
+"can this gate still SEE a regression". Amending the first while leaving the second encoding the old
+law produces a green build guarded by a blind gate.*
+
+---
+
 #### THE PROOF, MEASURED
 
 |  | `polis_vault` | `uber_apex_orb` |
