@@ -1,7 +1,9 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
 
-## BUILD87 GATE RECORD - R-243 lower soul drop rates (non-fixed 33->20, fixed-location boss 25->10); arz-ONLY - BUILT det-2x, ALL GATES GREEN on branch `fix/soul-rate-10-20` (off `main` e0cf0d7 = build86). READY FOR INTEGRATION + STEAM (MAIN SESSION runs the merge/deploy/upload).
+## BUILD87-DEV GATE RECORD - R-243 lower soul drop rates (non-fixed 33->20, fixed-location boss 25->10); arz-ONLY - BUILT det-2x, ALL GATES GREEN, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING (2026-08-12, `main` fast-forwarded `e0cf0d7` build86 -> `5395334` via `git merge --no-edit fix/soul-rate-10-20`, then followup `5b81ee4` + this gate-record commit).
+
+**INTEGRATED.** `main` was at `e0cf0d7` (build86) and the lane `fix/soul-rate-10-20` was **0 behind / 2 ahead** (merge-base == `e0cf0d7`), so `git merge --no-edit` **fast-forwarded** `main` to `5395334` (`1b8f279` R-243 engine change + `5395334` R-243 docs). Clean, no conflicts, working tree clean. A followup commit `5b81ee4` corrected three stale build-LOG strings (the monolith RELEASE-BUILD print + a comment + the flag-doc comment) that still hardcoded R-105's 33/25 - now derived from `SOUL_RATE_NONFIXED` / `SOUL_RATE_FIXED_BOSS`; **arz-neutral, PROVEN: an independent COLD build from the edited source reproduces the byte-identical BUILD87 arz `3c88e537`** (see det-2x below), so the arz-only ship is unchanged.
 
 **WILL, VERBATIM (2026-08-12):** "Lets lower the drop rate further, so for non-fixed location bosses the drop rate should be 20%, and for fixed location bosses the drop rate should be 10%."
 
@@ -26,6 +28,26 @@
 **GATE UPDATE:** `verify_soul_drop_rates.py` now reads both rates from `SOUL_RATE_NONFIXED` / `SOUL_RATE_FIXED_BOSS` (no literals in the assertions), the cosmetic klass labels are constant-derived, the spot-test EXPECT table uses the constants, and the honour-guard negative was corrected (a bare 10 no longer reds under R-243, so it plants the non-fixed rate). Negatives now cover "a fixed boss off 10", "a non-fixed off 20", and "a pin moved", all RED on a mutated build, GREEN on the correct one.
 
 **NOT PROVEN IN-GAME (`BL-R243-DEBT-1`):** database + gate proof only. Will's check: kill a non-fixed hero/uber and a fixed-location act boss several times each - the soul should now drop roughly 1 in 5 (non-fixed) / 1 in 10 (fixed boss). The four Toxeus champions still drop 100%, the Soul Gaoler / Charon / Tantalus base heads never drop (only their unbound/terminal forms), Charon 39/41/43 + Hades 54 unchanged. Fully quit TQ and restart Steam first.
+
+### SHIP-PREP (this session) - INTEGRATE + det-2x re-proof + DEV DEPLOY + PACKAGE
+
+**RE-PROVEN INDEPENDENTLY (not trusted from the lane).** After the merge, a fresh **det-2x**: run1 into the **work/ layout** with the FULL gate battery (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_NO_CACHE=1 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`) -> **exit 0, "Done."**, arz `3c88e537`; run2 into scratch (cold, from the post-`5b81ee4` source) -> arz `3c88e537`. **Byte-identical**, and the followup log-string fix is thereby proven arz-neutral (run2's log now reads "20% non-fixed, 10% fixed-location boss").
+
+**STANDALONE GATES (re-run on the built arz, all GREEN):**
+- `verify_soul_drop_rates.py --gate` -> **exit 0 PASS**; asserts 20 non-fixed / 10 fixed-boss (reads the constants), every HELD cohort untouched, **12/12 planted negatives RED + positive control GREEN**.
+- `record_diff` vs build86 `ffea3261` (census script) -> **ADDED 0 / REMOVED 0 / MODIFIED 888**; the ONLY changed field anywhere is `chanceToEquipFinger2`; move table exactly **33.0->20.0 x770 + 25.0->10.0 x118**; **all 16 pins byte-unchanged / absent from the diff** (4 champions @100, 3 heads @0, the 9 Charon/Hades forms held at 66/25/0); unbound terminals moved right (`um_polisgaoler_unbound_99` 25->10, `um_charonform2_ferryman_99` + `um_tantalus_unbound_99` 33->20). Record count 51,298 -> 51,298.
+- `run_contracts` (all 6 modules) -> **GATE PASS, 0 P0 / 0 P1 / 4510 P2** = the build86 baseline EXACTLY (balance 0 / map 6 / quests 2 / resources 4391 / souls 0 / summons 111, zero new).
+- `validate_tags` on the built arz + `Text.arc ce0efda4` -> **PASS** (383 mod tags present, 0 new; `tagSoulEpic`/`tagSoulLegendary` defined; 2 pre-existing base/SV WARN, same as build86).
+- `double_soul_rulings.verify` (in-build registry `[21/62]`) -> **OK**, Charon 39/41/43 + Hades 54 byte-identical to pre-apply.
+- canonical siblings byte-unchanged: `Levels.arc 6784cf0f` (canonical, NOT TESTHUB `7a7ca9ac`) / `Text.arc ce0efda4` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53`.
+
+**DEV DEPLOY (arz-ONLY, no restart).** `work/.../SoulvizierClassic.arz` (`3c88e537`) copied to `CustomMaps\SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` with **md5 source==dest = `3c88e537`** (the DEV arz was build86 `ffea3261` before), **while TQ.exe was NOT running** (nothing killed, Steam not restarted). **DEV `Resources\Levels.arc` stays the LOCAL-ONLY TESTHUB `7a7ca9ac`** (Will's play surface, untouched); DEV `Text.arc ce0efda4` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` re-hashed **byte-unchanged**. Only the DEV database arz changed.
+
+**PACKAGED (not uploaded).** `scripts/package_workshop.ps1`: **TESTHUB guard PASS** (packaged canonical `Levels.arc` MD5 `6784cf0f` != local-only TESTHUB `7a7ca9ac`), single `SoulvizierClassic` wrapper, **56 files / 1188.4 MB**, and **dist==work all 5 artifacts** (arz `3c88e537`, `Levels.arc 6784cf0f`, `Text.arc ce0efda4`, `Quests.arc 607ec99c`, `Creatures.arc 8c0d8d53`). Dist: `dist/workshop/content/SoulvizierClassic`.
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` refreshed to build86 `ffea3261` (restore -> build86); this artifact kept at `local/build87_run1.arz` = `3c88e537`.
+
+**STEAM SHIP + GitHub push are the MAIN SESSION's to run** (this lane is arz-only, built, gated GREEN, DEV-deployed, packaged; the coupled `Text.arc ce0efda4` is byte-unchanged so it re-uploads as-is). **READY FOR STEAM UPLOAD: BUILD87, arz `3c88e53715750be2aea9d05bc4e4fec9`, coupled `Text.arc ce0efda4` (byte-unchanged).**
 
 ## BUILD86-DEV GATE RECORD - R-242 uber-orb legendary/blue chance BY DIFFICULTY; Toxeus+Leinth excluded; `BL-R241-DEBT-1` CLOSED - BUILT, ALL GATES GREEN, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING, arz-ONLY (2026-08-12, `main` @ the `fix/orb-rates-by-difficulty` fast-forward merge, tip `c833d0a`)
 
