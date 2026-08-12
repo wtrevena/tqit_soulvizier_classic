@@ -248,7 +248,9 @@ run on. Only Will's play pass can confirm the animation on screen.
   clip, which is proven on `medusa01.msh` and still wrong here, and the gate goes RED;
 - all 17 unarmed slots bound on the record, agreeing with the table wherever the table binds them;
 - **every named special in his KIT owns a ref slot** - read from the skill records at gate time
-  (case-insensitively), so the invariant follows the kit rather than a hardcoded list;
+  (case-insensitively), so the invariant follows the kit rather than a hardcoded list. HARD for the
+  three names his b52 kit demands today (`TidalStrike`, `SuperBite`, `PoisonBomb`); WARN for a name
+  a later lane adds, because an unanswered name is cosmetic and must not block someone else's build;
 - his b52 identity survives (name tag + Tidal Strike primary).
 
 ### 6b. DB-wide (the roster clause)

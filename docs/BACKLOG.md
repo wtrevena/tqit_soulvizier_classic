@@ -59,7 +59,9 @@ the shipping game itself drives an `IchthianMage01` with** (the 54-record census
 replaced a hardcoded `\hydra\` blacklist, and negtest 5b plants a **Medusa** clip, proven on
 `medusa01.msh` and still wrong here, to prove the clause is not hydra-shaped); all 17 slots bound and
 agreeing with the table; **every named special in his KIT owns a ref slot**, read from the skill
-records at gate time so the invariant follows the kit; b52 identity intact.
+records at gate time so the invariant follows the kit (HARD for the three his b52 kit demands today,
+WARN for a name a later lane adds, since an unanswered name is cosmetic and must not block someone
+else's build); b52 identity intact.
 
 *DB-wide (roster):* every `Class=Monster` with a mesh that NAMES a `charAnimationTableName` resolving
 in NEITHER the mod overlay NOR the base game arz must complete Run+Walk+Attack1 for one stance on its

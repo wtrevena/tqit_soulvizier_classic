@@ -201,10 +201,19 @@ UNARMED_SPECIAL_REFS = {
 }
 
 # His kit's skill records, read at gate time so the invariant follows the KIT rather
-# than a hardcoded list: whatever `skillSpecialAnimationName` those records name must
-# own one of the four ref slots above.
+# than a hardcoded list: whatever `skillSpecialAnimationName` those records name is
+# checked against the four ref slots above.
 KIT_SKILL_FIELDS = ("specialAttackSkillName",) + tuple(
     "skillName%d" % i for i in range(1, 13))
+
+# The names his b52 kit demanded when this module was written (measured 2026-08-11:
+# ichthian_tidalstrike -> TidalStrike, hydra_superbite -> SuperBite,
+# nehebkau_poisongasbomb -> PoisonBomb; tidalorb and venomnova name none). Losing an
+# animation for one of THESE is the regression this module exists to prevent, so it is
+# HARD. A name that appears later, because another lane changed his kit, is a WARN: it
+# is worth knowing and it is not worth blocking a build over, since an unanswered name
+# degrades to the generic attack animation rather than freezing anything.
+KIT_NAMED_SPECIALS = ("TidalStrike", "SuperBite", "PoisonBomb")
 
 # The slots that decide whether a creature can MOVE and ATTACK. Identical to
 # thrown_anim_rig.CRITICAL_SLOTS - the same law, stated for every stance.
@@ -679,16 +688,25 @@ def _verify_special_refs(db, fields, on_record):
             demanded.setdefault(str(name).strip(), []).append(f)
 
     missing = sorted(n for n in demanded if n not in bound_refs)
-    if missing:
+    hard = [n for n in missing if n in KIT_NAMED_SPECIALS]
+    soft = [n for n in missing if n not in KIT_NAMED_SPECIALS]
+    if hard:
         raise SystemExit(
-            "dagon_anim_rig GATE: %d named special(s) in Dagon's kit have no ref slot, "
-            "so they play no animation of their own: %s. His refs are %s. Bind the name "
-            "in an unarmedSpecialAnimRef<N> whose unarmedSpecialAnim<N> is an in-rig "
-            "clip." % (len(missing),
+            "dagon_anim_rig GATE: %d named special(s) from Dagon's b52 kit have no ref "
+            "slot, so they play no animation of their own: %s. His refs are %s. Bind the "
+            "name in an unarmedSpecialAnimRef<N> whose unarmedSpecialAnim<N> is an in-rig "
+            "clip." % (len(hard),
                        ", ".join("%s (from %s)" % (n, ", ".join(demanded[n]))
-                                 for n in missing),
+                                 for n in hard),
                        ", ".join("%s=%s" % (s, r)
                                  for s, r in sorted(UNARMED_SPECIAL_REFS.items()))))
+    if soft:
+        print("  dagon_anim_rig GATE: WARN - Dagon's kit has grown %d named special(s) "
+              "this module did not wire an animation for: %s. They fall through to the "
+              "generic attack animation, which is cosmetic and never a freeze, so this "
+              "does not block. Whoever added them should take a ref slot."
+              % (len(soft), ", ".join("%s (from %s)" % (n, ", ".join(demanded[n]))
+                                      for n in soft)))
 
     if unresolved:
         print("  dagon_anim_rig GATE: WARN - %d skill slot(s) on Dagon name a record "
