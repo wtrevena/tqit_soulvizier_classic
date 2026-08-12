@@ -1637,8 +1637,11 @@ def verify(db, tags=None):
 
     if problems:
         raise SystemExit(
-            "[uber_apex_orb] R-72 + R-99 VERIFY FAILED (one apex calibre for the "
-            "WHOLE Toxeus roster and Leinth):\n  - " + "\n  - ".join(problems))
+            "[uber_apex_orb] R-72 + R-99 VERIFY FAILED, as amended by R-240 + R-241 "
+            "(one apex calibre for the WHOLE Toxeus roster and Leinth; since "
+            "2026-08-11 that shared calibre is the TRIMMED one, and the gate holds it "
+            "in both directions - see docs/WILL_RULINGS.md):\n  - "
+            + "\n  - ".join(problems))
     # The PASS line NAMES THE ERA. "all four calibre knobs >= her original chest" is
     # true only before R-240/R-241; printing it unconditionally on a trimmed db would
     # be the gate telling the ship lane the opposite of what it just proved.

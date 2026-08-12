@@ -5842,3 +5842,116 @@ deliver. Three corrections carry that:
 the admission that it happens on 54-61% of opens, which is more likely than not. Corrected in both
 places to the unit that actually moved: **at most one legendary per open**, count the pile, and judge
 the rate against the number in the debt rather than against a sentence that flattered the result.
+---
+
+### R-240/R-241 GATE COLLISIONS [2026-08-11] IMPLEMENTED - two pre-existing gates asserted the law these rulings REPLACE, and both would have aborted the build
+
+**THIS IS A LEDGER ACT, NOT A THRESHOLD EDIT.** A lane may not quietly delete another ruling's
+proof. Both collisions below were found by the round-3 independent vet, both were proven with a
+CONTROL (the same harness, the same code, two arz files: the shipped b83 `44499f56` untouched vs
+the same arz plus this lane's two waves), and both are recorded here BEFORE the gates were touched.
+
+Neither gate was relaxed. Both were re-expressed so that the thing they actually protect is still
+protected, against the number Will has now ordered instead of the number he has now overruled.
+
+---
+
+#### COLLISION 1 - `polis_vault.verify` T5: *"payout must never shrink"*
+
+**WHAT IT ASSERTED.** For all 18 Gaoler cage loot tables, that `numSpawnMin/MaxEquation` ends with
+the placed chest's shipped multiplier from `_PLACED_TIERED` (`01` -> `*2.4`/`*2.8`, `03` ->
+`*2.8`/`*3.2`), with the literal failure message **"payout must never shrink"**.
+
+**THE COLLISION.** R-240 rewrites exactly those two fields on exactly those tables. **36 T5
+problems -> `SystemExit("polis_vault gate FAILED")`.** Verify order does not save it: every
+`verify()` runs after every `apply()`, so `polis_vault` always sees the trimmed db.
+
+**WHY THE GATE IS NOT SIMPLY WRONG.** It was a correct reading of the law it was written under.
+Non-reduction was in force and nobody had authorised a volume cut. Will has now authorised exactly
+that cut, in these words:
+
+> "we probably need to trip the loot-volume trim, especially on the steam version where maybe from
+> the two chests, you get guaranteed 1 legendary item. on the testhub version we can spawn more that
+> is fine."
+
+So a gate whose failure message is "payout must never shrink" cannot also be the law that forbids
+shipping his ruling. **Deleting it would be worse than the collision** - T5 is the only thing
+standing between the cage and a silent starve.
+
+**THE AMENDMENT.** T5 now computes the expected multiplier through **R-240's own transform**
+(`svc_loot_volume.trimmed_multipliers`, the single implementation the trim itself writes with)
+instead of reading a b83 literal. **Two discrete values are accepted per field and no others** - the
+pre-R-240 shipped multiplier and the post-R-240 committed one - so it is still an exact-match
+ratchet, not a band. A new **T5b** reds a HALF-TRIMMED cage (some variants trimmed, some not), which
+neither the original check nor a single-era rewrite could catch.
+
+**WHY TWO ERAS AND NOT ONE.** Not convenience - two reasons, both load-bearing:
+1. The ship lane runs every coexisting gate against the **rollback artifact** as an anti-inert
+   control. A gate that only knows the post-R-240 value reds on the previous ship arz and the
+   control becomes noise (the same hazard the vet raised against `gate_loot_distribution`'s D7X2,
+   `BL-R240-DEBT-8`).
+2. A **partial** trim is a real defect that a single-era gate cannot see at all.
+
+---
+
+#### COLLISION 2 - `uber_apex_orb.verify`: R-72/R-99's no-nerf proof
+
+**WHAT IT ASSERTED.** R-72/R-99 (Will 2026-07-27) put the whole Toxeus roster **and Leinth** on ONE
+apex drop calibre, and the gate proves it by comparing the apex tables against Leinth's own frozen
+reference tables (`loottable_leinth_{29-31,49-51,63-65}`, deliberately never written per the
+retirement protocol): `*2.2`/`*2.4` and `loot4Chance` 100.0, reding on any reduction.
+
+**THE COLLISION.** R-240 trims the apex tables ~10x; R-241 demotes their `loot4Chance` 100.0 ->
+21.2. Both directions are exactly what the no-nerf proof exists to catch. **18 problems ->
+`SystemExit`.** The vet found this in check **(h)**; a **second, independent copy of the same law in
+check (c)** was behind it and would have aborted the build three lines later on the same three
+records. Amending only (h) would have been cosmetic.
+
+**THE SUPERSESSION, STATED PLAINLY.** R-241 supersedes **the absolute-floor half of R-72/R-99, and
+only that half.** The proof has two halves braided together:
+
+| half | what it says | status |
+|---|---|---|
+| **UNITY** | Leinth sits on the SAME tables as the roster; never singled out, never left behind | **SURVIVES WHOLE.** Will lowered the shared calibre for everyone *including her*, which is the opposite of singling her out. Now proved TWICE: her chest->table identity, plus one era across all three difficulties. |
+| **ABSOLUTE** | the calibre is never numerically below her frozen b96 numbers | **SUPERSEDED by R-241**, in Will's own words. |
+
+> "you made the orbs way too good... those dont need to have guaranteed legendary drops, they should
+> just have a chance to drop legendary items, but a low chance."
+
+An absolute floor pinned to `*2.2`/`*2.4` and `loot4Chance` 100.0 **is** the vending machine he is
+describing. It cannot also be the law that forbids fixing it.
+
+**WHAT WAS NOT SUPERSEDED, and is still proved against her originals:** gold
+(`goldGeneratorLevel`), the unique-share weights (`LEINTH_UNIQUE_WEIGHT`), the no-`/`-in-an-MP-equation
+law, and **every loot group chance except the ones R-241's census named for demotion**. A trim lane
+gets to lower the two things Will pointed at and nothing else.
+
+**THE OLD PROOF IS NOT DELETED.** `_no_nerf_problems` still runs **verbatim** at `apply()` time -
+R-240/R-241 are registered LAST, so at that moment the apex tables still carry the b96 calibre and
+her frozen tables are the correct comparand, and the migration the proof was written for is proved
+exactly as it always was. It also still runs verbatim in `verify()` on any pre-R-240 arz.
+
+**THE PASS LINE NAMES THE ERA.** Printing "all four calibre knobs >= her original chest" on a
+trimmed db would be the gate telling the ship lane the opposite of what it just proved.
+
+---
+
+#### THE PROOF, MEASURED
+
+|  | `polis_vault` | `uber_apex_orb` |
+|---|---|---|
+| shipped b83 `44499f56`, untouched | PASS | PASS |
+| same arz + this lane's two waves, BEFORE this amendment | **36 problems -> abort** | **18 problems -> abort** |
+| same arz + this lane's two waves, AFTER | PASS (era: R-240) | PASS (era: R-240) |
+
+**NEGATIVE BATTERY:** `py tools/debug/negtest_gate_amendments.py <arz>` - **12 plants, all RED**,
+covering every clause of both amended checks in both directions (a third multiplier; a silent
+starve; a re-inflation; a half-trimmed cage; an unparseable equation; a third calibre; the demoted
+row drifting back up; the demoted row cut further; a gold nerf; a non-demoted group chance below her
+floor; unity broken; an era mix). The battery also proves its own restore is clean, so a planted
+defect cannot leak into the next case and make the battery lie.
+
+**THE RULE THIS PRODUCES.** *When a lane's authorised change contradicts a standing gate, the gate is
+amended in the ledger with the superseding quote, the surviving half is re-proved rather than
+assumed, and the negative battery is re-earned clause by clause. A green build that was made green by
+deleting a proof is not a green build.*
