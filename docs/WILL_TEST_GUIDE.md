@@ -1,5 +1,72 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-240 + R-241 (2026-08-11): THE LOOT VOLUME TRIM - CHESTS AND ORBS BOTH COME DOWN ~10x
+> **NOT BUILT YET** (branch `fix/loot-volume-trim`; this note is written with the lane so the check is
+> ready when the build lands). arz-only - no map / quest / Text change on the canonical side.
+> **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is MEASURED
+> against the shipped `build83` arz, not estimated.
+>
+> **Your two asks, and what each one did:**
+>
+> **1. "from the two chests, you get guaranteed 1 legendary item" (R-240).**
+> The canonical Gaoler cage, both chests opened once, on Legendary difficulty: it paid **36.4**
+> legendary-grade pieces and now pays **3.8** (Normal 43.7 -> 3.8, Epic 28.2 -> 2.7). It still pays at
+> least one **99.6%** of the time on the optimistic reading, or **98.3%** if the engine truncates the
+> spawn count to a whole number (Epic: 96.9% vs **94.0%**) - we do not yet know which it does, so both
+> are gated and the pessimistic one is quoted alongside, because that is the number the gate actually
+> holds (`BL-R240-DEBT-5`). Either way the guarantee survives the cut. Honest note: the mechanical floor
+> is **2.74** per two-chest run, not 1.0 - six loot groups fire per spawn iteration and their chances
+> already sum past 280%, so "literally one" needs a composition change, not a volume one. That is
+> `BL-R240-DEBT-1`.
+>
+> **2. "you made the orbs way too good ... a chance to drop legendary items, but a low chance" (R-241).**
+> **The number you asked for first: THREE guaranteed-legendary rows in the whole mod** - one per
+> difficulty, all of them the same row on the three apex orb tables, and none of them a pure-legendary
+> row. **They are all gone now (zero).**
+> But the row count was not where the guarantee lived. Per ONE orb open on Legendary difficulty an orb
+> paid **3.7 to 8.4 legendary items** with a **98-99.99%** chance of at least one. It now pays
+> **0.70 to 0.85 - at most ONE legendary per open** - and the whole orb pays about **2 items** instead
+> of 9 to 29.
+>
+> **WHAT TO DO:**
+> - Kill a **Mystical Orb uber** a few times on Legendary and open the orbs. Expect roughly **two items**
+>   out of each, and **at most one of them legendary** - that is the half of your ruling that landed
+>   (8.4 legendary items per open became 0.85). Do NOT expect a legendary to feel rare yet: **a bit
+>   over half of opens still contain one**, which is the half that did not land. See the box below -
+>   it needs a decision from you, and the number there is the one to judge, not this bullet.
+> - Run the **Gaoler cage** (the two canonical chests). Expect a **handful** of pieces, not a vendor's
+>   stock, and still at least one legendary almost every run.
+> - Anything you can still get, you could get before: **no pool lost an item and no weight moved.** The
+>   spear variety, the armour parity and the class breadth from the last few builds are all intact - they
+>   just arrive less often. If some class of item has stopped appearing entirely, that is a real bug.
+>
+> **⚠️ THE ONE THING I DID NOT FULLY FIX, AND IT NEEDS YOUR ANSWER BEFORE THIS SHIPS
+> (`BL-R241-DEBT-1`).**
+> You asked for two things about the orbs and I only delivered one. **Delivered:** no guaranteed
+> legendary rows (3 -> 0) and 8.4 legendary items per open -> 0.85. **Not delivered:** "but a low
+> chance". The chance of seeing at least one legendary from an orb is still **54-61%** on Legendary
+> and **38-49%** on Epic. **That is more likely than not, so it is not a low chance, and I am not
+> pretending it is.**
+>
+> The reason: about **40% of everything a Legendary-tier orb can pay IS legendary-grade**, because the
+> last few builds deliberately weighted the unique weapon and armour pools that heavily to give you the
+> class variety you asked for. So if the orb pays two items, one of them is often legendary. The volume
+> lever is spent - the orbs are already at the floor where they would start coming up EMPTY - so
+> dropping the rate further means changing WHAT is in the pools rather than how much, which re-opens
+> the armour-parity work. That is a separate lane and your call:
+> **(A)** accept it - you get ONE legendary instead of EIGHT, and roughly every other orb has one, or
+> **(B)** I add an epic-grade sibling pool so an orb usually pays Epics with an occasional legendary.
+>
+> If you pick **(B)**, the ceiling the gate currently commits (`ORB_MAX_P_LEGENDARY` = 55%/68%) comes
+> down in the same commit as the fix. It is set where it is to lock in the 90% cut already made, **not
+> because 55-68% is a rate anyone chose.**
+>
+> **On the TESTHUB (DEV) side nothing gets poorer:** the four farm-duplicate cage chests are being moved
+> onto their own records that keep the OLD, rich volume, so DEV farming stays fast while the Steam build
+> trims. That needs the TESTHUB map rebuilt to take effect; until then the DEV cage trims with canonical
+> (under-pays rather than over-pays, which is the safe direction).
+
+
 > ## 🆕 R-211 (2026-08-11): ATLANTIS IS UNREACHABLE NOW, THE SHIP TOO (not just the portal page)
 > **✅ LIVE ON DEV as `build82` (arz `09a0f51d`).** arz-only (no map / quest / Text change).
 > **Fully quit TQ and restart Steam before testing** (standing rule).

@@ -1243,6 +1243,27 @@ B41_NEFERKHA_KEY  = 'levels/world/egypt/minidungeons/thebesopttomba.lvl'
 #  block below.)
 
 _B41_ROT = {'rot': Q_LEINTH_EXEMPLAR_ROT}
+
+
+def _hub_cage_rec(N):
+    r"""The TESTHUB-only cage-chest record for chest `N`, as placement bytes (R-240).
+
+    IMPORTED from `svc_loot_volume`, which is the single authority on the twin's record
+    names, rather than typed here. The whole point of R-240's split is that the four
+    TESTHUB duplicates must land on DIFFERENT records from the two canonical placements;
+    a typo here would silently put them back on the trimmed canonical pair and the DEV
+    farm would quietly lose its volume with nothing failing. `svc_loot_volume.problems`
+    V5 closes the loop from the other side by resolving both families against the built
+    db and requiring the twin to be strictly richer.
+
+    Imported lazily so this module keeps loading in a checkout where the db-side tooling
+    is not importable (map builds and db builds are separate entrypoints); a miss is
+    LOUD, because a silent fallback to the canonical record is the exact defect above.
+    """
+    import svc_loot_volume as _SLV
+    return _SLV.hub_cage_chest(N).encode('ascii')
+
+
 B41_SPECS = {
     # 1) POLIS DAEMONAI warden cage (Will's #1): {^r}Alkyoneus the Soul-Gaoler + a 6-body
     #    daemon-jailer horde (2 native Behemoth jailers + Limos + Melinoe + Gigantes
@@ -2985,11 +3006,32 @@ def build_hub_extra_specs():
         # (a shared one would be the only way to collide) - matches the base chest tuples' byte-shape.
         # B41_POLIS_KEY is defined module-level (line ~1233), collides with no other key in this dict
         # nor in HELOS_HUB_RETURN_SPECS, and is not R09_LVL_KEY, so it flows through the normal fold.
+        # ── R-240 SPLIT (Will 2026-08-11) ────────────────────────────────────────────
+        # The four duplicates used to name the SAME two records as the canonical pair,
+        # which is why they are listed here as `_hub_` records now. Will: "we probably
+        # need to trip the loot-volume trim, especially on the steam version ... on the
+        # testhub version we can spawn more that is fine." One arz serves BOTH map
+        # variants, so "canonical trims, TESTHUB stays rich" cannot be expressed by the
+        # map at all - it has to be expressed in the RECORDS. `loot_volume_trim` clones
+        # the whole cage chain to a `_hub` twin BEFORE trimming, so the twin carries the
+        # SHIPPED numSpawn (S=12.48/14.40, ~36 legendaries a run) while the canonical
+        # pair drops to S=1.31/1.51 (~3.8 a run).
+        # THE PATHS ARE IMPORTED, NEVER TYPED: `svc_loot_volume.hub_cage_chest` is the
+        # one authority, so the map side and the db side cannot drift apart and land the
+        # split on the wrong records - the single failure this whole lane exists to
+        # prevent. Its V5 check resolves both sides against the built db every run.
+        # STILL TESTHUB-ONLY BY CONSTRUCTION: this lives in build_hub_extra_specs(),
+        # folded into INJECT_SPECS only when SVC_TEST_HUB=1. B41_SPECS is untouched, so
+        # the canonical cage still places `svc_polisvault_chest_01/03` (polis_vault
+        # verify T5 stays GREEN) and `local/Levels_merged.arc` stays byte-identical.
+        # ⚠ THE TESTHUB Levels VARIANT MUST BE REBUILT for this to reach the game. Until
+        # it is, these four keep naming the canonical records and the DEV cage is trimmed
+        # like canonical - the safe direction (DEV under-pays, Steam never over-pays).
         B41_POLIS_KEY: [
-            (b'records\\drxitem\\container\\svc_polisvault_chest_01.dbr',           68.5, 3.6, 30.5, _B41_ROT),  # was chest_02 spot
-            (b'records\\drxitem\\container\\svc_polisvault_chest_03.dbr',           75.5, 3.6, 30.5, _B41_ROT),  # was chest_04 spot
-            (b'records\\drxitem\\container\\svc_polisvault_chest_01.dbr',           78.8, 3.6, 32.6, _B41_ROT),  # was chest_05 spot
-            (b'records\\drxitem\\container\\svc_polisvault_chest_03.dbr',           72.1, 3.6, 34.0, _B41_ROT),  # fresh mid-row centre
+            (_hub_cage_rec('01'),           68.5, 3.6, 30.5, _B41_ROT),  # was chest_02 spot
+            (_hub_cage_rec('03'),           75.5, 3.6, 30.5, _B41_ROT),  # was chest_04 spot
+            (_hub_cage_rec('01'),           78.8, 3.6, 32.6, _B41_ROT),  # was chest_05 spot
+            (_hub_cage_rec('03'),           72.1, 3.6, 34.0, _B41_ROT),  # fresh mid-row centre
         ],
     }
     # Helos-hub area RETURN NPCs (build37): append one distinct return record per new boss/warband

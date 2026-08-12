@@ -1,52 +1,42 @@
-[h1]build83 - the ordinary Mystical Orbs now pay armour, not just weapons[/h1]
+[h1]build84 - loot volume trimmed, and the orbs stop guaranteeing legendaries[/h1]
 
 A database-only update. No map, quest or text change, so an existing character is unaffected and no
 new game is needed.
 
-[h2]What was wrong[/h2]
-
-An earlier update taught every Mystical Orb to pay all six weapon classes, spear included. It widened
-only the WEAPON row. A second update gave the mod's own chests and the apex orb a matching ARMOUR row,
-but it decided which loot tables it owned by asking what folder they lived in, and fifteen orb tables
-live somewhere else.
-
-So nobody owned the armour on those fifteen, no audit looked at them, and both of the build's fail-loud
-loot checks stayed green for three releases while fifteen live drop tables quietly starved. The ordinary
-uber orbs, the level-banded ones most ubers drop, and Charon's orb were running between 3.4 and 8.5
-weapons for every armour piece, with the thinnest worn slot paying as little as 0.007 pieces per open.
-In practice that is a helm roughly once every 140 orbs.
-
 [h2]What changed[/h2]
 
-All fifteen now get the same armour treatment the apex orb has shipped with since build75:
+Two things Will asked for after playing build83.
 
-[list]
-[*]Weapons to armour moves from 3.41 to 8.47 down to 0.28 to 0.49, matching the apex orb exactly.
-[*]The thinnest worn slot moves from 0.007 to 0.041 per open up to 0.29 to 1.16 per open.
-[*]Every worn slot is covered: head, torso, arms, legs and shield.
-[*]Total items per orb open goes UP, not sideways: 7.93 to 9.24, 9.32 to 11.77, 13.68 to 15.83.
-[/list]
+[b]1. The canonical chests and orbs pay a run's worth of loot, not a vendor's stock.[/b]
+The two Polis Vault gaoler cage chests were dropping roughly 36 legendary-grade pieces between them on a
+single run. That is now trimmed hard across 69 canonical loot surfaces: the two-chest cage run stays under
+about 4 to 5 pieces on Normal and Legendary and around 3 on Epic, and it still guarantees at least one
+piece at the target grade on at least 95 percent of runs. The boss and guard hoards, the level-banded uber
+orbs and Charon's orb are trimmed the same way. Only the spawn count of each table moved; nothing was added
+to, or removed from, any loot pool.
 
-Nothing was reduced anywhere. Across the whole change, 165 values were raised, 15 members were added,
-and zero values were lowered or replaced. The orb pools also grew rather than shrank.
+[b]2. Mystical Orbs no longer guarantee a legendary.[/b]
+The three apex orb tables carried a reward row that fired on every open and could pay a legendary. That row
+is demoted from a 100 percent chance to the same 21.2 percent the rest of the orb family already uses. The
+worst orb now pays about 0.85 legendary items per open instead of 8.4, so a legendary out of an orb is a
+treat again rather than a certainty. A legendary is still possible at a real rate, so the orbs are not
+turned into empty boxes.
 
-[h2]The class of bug is gone, not just this one[/h2]
+[h2]The local testing farm is untouched[/h2]
 
-Ownership no longer depends on what folder a loot table sits in. The distribution check now derives the
-orb tables from the orb feature's own scope, and it enforces a single rule: every loot table any module
-writes must be inside the audited surface set. Two independent witnesses back it, and a missing witness
-is announced rather than quietly passing. A future feature cannot add a loot table that nobody audits.
+The trim applies to the shipped game only. The heavier local playtest chests keep their old volume through
+a separate copy that exists purely for testing and can never be reached in the shipped map.
 
 [h2]One honest note[/h2]
 
-On these fifteen surfaces the mix now reads armour-heavy, roughly 2 to 3.5 armour pieces per weapon.
-That is the exact ratio the apex orb has been shipping for several releases, so it is consistent rather
-than invented, but it is a real change in feel and worth knowing about before you open one.
+A legendary is now less than guaranteed but not yet genuinely rare: the best orbs still turn one up on
+roughly six opens in ten. Tightening that further changes the reward mix, so it is being left for a
+separate, deliberate decision rather than slipped into this update.
 
 [h2]Verification[/h2]
 
-Built twice from the committed source with byte-identical output. The change touches exactly 15 records
-out of 51,253 and nothing else in the database moved by one byte. Every existing gate still passes on
-the uploaded files, including the loot distribution, orb breadth, chest breadth, craft and thrown,
-relic tier and Immortal Throne campaign cap checks, and the contract suite reports the same count as the
-previous release, so this update adds zero new violations.
+Built twice from the committed source with byte-identical output. The change modifies 69 loot tables and
+adds 44 records used only by the local testing map. The shipped map, quests, text and creatures are
+byte-for-byte identical to build83. Every existing gate still passes, including loot distribution, orb and
+chest breadth, craft and thrown, relic tiers and the Immortal Throne campaign cap, and the contract suite
+adds zero new blocking issues over the previous release.
