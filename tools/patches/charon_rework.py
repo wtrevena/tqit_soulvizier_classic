@@ -1791,12 +1791,37 @@ def verify(db, tags):
     # ONE lowercase index for the whole gate. The naive per-call
     # `any(... for n in db.record_names())` fallback is O(51k) on every miss and
     # turns a gate into a minute of wall clock inside the build.
-    _names = {_n(n) for n in db.record_names()}
+    # `_byname` maps the lowercased name -> the ACTUAL stored key, so a reference
+    # can be read back off the record whatever case it was written in (see _canon).
+    _byname = {_n(n): n for n in db.record_names()}
+    _names = set(_byname)
 
     def resolves(path):
         if not isinstance(path, str) or not path.strip():
             return False
         return db.has_record(path) or _n(path) in _names
+
+    def _canon(path):
+        r"""Map a possibly-differently-cased record REFERENCE to its actual stored
+        key, so `db.get_fields(_canon(ref))` resolves exactly as the engine does.
+
+        `ArzDatabase` keys `_raw_records` case-SENSITIVELY, but the TQ engine
+        resolves record paths case-INSENSITIVELY and `write_arz` lowercases both the
+        record keys AND the inherited path VALUES. So a written+reloaded arz (and
+        the game) resolve every reference, while the FULL in-memory build does not:
+        a donor's inherited `skillName*` / `charAnimationTableName` VALUE is stored
+        in whatever case the upstream source used (e.g. `Records\XPack\...\
+        ANM_Ascacophus02.dbr`), and the referenced record's own key is lowercase, so
+        a raw `get_fields(value)` MISSES even though `resolves()` (normalized) says
+        present. That mismatch is invisible to an apply-onto-a-finished-arz harness
+        (already lowercased) and is exactly why `_effective` under-credited every
+        donor-inherited grant and the D19 mobility gate read the ascacophus/bogdweller/
+        junglecreep anim tables as binding NO locomotion clip - reds that contradict
+        the bytes that actually ship. Read the canonical key and the gate models the
+        game."""
+        if not isinstance(path, str):
+            return path
+        return _byname.get(_n(path), path)
 
     # ---- 1. THE PROXY CHAIN RESOLVES END TO END (the hard constraint) ------
     for proxy, pool, label in ((_PROXY, _POOL, 'canonical forecourt'),
@@ -2307,7 +2332,7 @@ def verify(db, tags):
                 lvl = int(float(lvl))
             except (TypeError, ValueError):
                 lvl = 1
-            mc = db.get_field_value(sk, 'skillManaCost') if resolves(sk) else None
+            mc = db.get_field_value(_canon(sk), 'skillManaCost') if resolves(sk) else None
             if isinstance(mc, list) and mc:
                 cost += float(mc[min(max(0, lvl - 1), len(mc) - 1)] or 0)
             elif isinstance(mc, (int, float)):
@@ -2349,7 +2374,7 @@ def verify(db, tags):
                 lvl = int(float(lvl))
             except (TypeError, ValueError):
                 lvl = 1
-            v = db.get_field_value(sk, field)
+            v = db.get_field_value(_canon(sk), field)
             if isinstance(v, list) and v:
                 v = v[min(max(0, lvl - 1), len(v) - 1)]
             if isinstance(v, (int, float)):
@@ -2675,7 +2700,7 @@ def verify(db, tags):
             problems.append("D19 MOBILITY: %s (%s) anim table %r does not resolve"
                             % (rec, label, a0))
             continue
-        _tf = db.get_fields(a0) or {}
+        _tf = db.get_fields(_canon(a0)) or {}
         _runs = {k.split('###')[0] for k, tf in _tf.items()
                  if k.split('###')[0].endswith('RunAnim')
                  and tf.values and str(tf.values[0]).strip()}
