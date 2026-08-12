@@ -5553,6 +5553,24 @@ Negative test N2d is the false-red guard that keeps it that way; N2c replants th
 proves arm 5 fires. Final: **42 of 42 craftables carry a Legendary-gated reagent under the sound
 rule.**
 
+**ROUND-2 GATE READINGS, measured on the build83 ship arz `44499f56` with the lane's own two
+idempotent writes applied (static gates only; Ship does the build):**
+
+| reading | round 1 | round 2 |
+|---|---|---|
+| negative tests | 10/10, no craft-path negative existed | **12/12**, incl. N2c (arm 5 fires) + N2d (no false red) |
+| craftables carrying a Legendary gate | 42/42 *claimed*, 39/42 in truth | **42/42, proved** |
+| thinnest craftable's gate count | 1 (Hati's was bogus) | **1, and every one of them sound** |
+| reagents provably Legendary-only | 41 of 92 | **45 of 92** (the widened `table_tier` promotes 4 that the `?`-tier quest tables had been hiding) |
+| distinct reagent sets / duplicate groups | 42 / 0 | **42 / 0** (unchanged) |
+| supra items droppable | N 0 / E 0 / L 4 | **N 0 / E 0 / L 4** (unchanged) |
+| Hati's gate | `e_da_crescentmoonofartemis` (Epic-craftable) | **`u_l_artemis'silverbow`** (drop-only, 19/19 L) |
+
+`svc_craft_thrown.audit_db` (the b81 C+G rules: thrown tier coverage, reagent completability, MI
+provenance) reports **0 problems** on the same database, so the b81-adjacent gates did not regress.
+`tools/patches/_check_registry.py` selfcheck OK, 60 modules, order hash
+`97684dfedee8e62e010d0b42db4ff3adb801e51c4094b30973f92d251802a829`.
+
 **KNOWN RESIDUAL, stated rather than laundered (new debt `BL-R231-DEBT-4`, P2):** an **EPIC** mod chest
 reaches the **LEGENDARY** arcane-formula tables on **15 of 16 Epic surfaces** - traced concretely as
 `svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table ->
