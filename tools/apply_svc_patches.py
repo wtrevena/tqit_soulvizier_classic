@@ -19681,21 +19681,26 @@ def run_registry_gates(db, tags, force_full_drops=True):
     _apply_aphiastas_finger2_zero(db)
 
     # Soul drop rate. ON (100%) by default so souls are easy to test in-game.
-    # The release build flips this to the tuned 66% (Hero/Quest) / 25% (Boss)
-    # rates via SVC_RELEASE_DROPS=1 (threaded here as force_full_drops=False).
+    # The release build flips this to the tuned ruled rates (R-243: 20% non-fixed
+    # / 10% fixed-location boss) via SVC_RELEASE_DROPS=1 (threaded here as
+    # force_full_drops=False).
     if force_full_drops:
         _force_100_pct_soul_drops(db)
         print("  TESTING BUILD: soul drops forced to 100% "
-              "(set SVC_RELEASE_DROPS=1 for tuned 66%/25% rates)")
+              "(unset SVC_TESTING_DROPS / set SVC_RELEASE_DROPS=1 for the tuned "
+              "release rates)")
     else:
-        # R-105/R-106/R-107 (Will 2026-07-29) SUPERSEDE the old 66/50/25 split.
-        # LAST WRITER in the release build: every hand-set rate anywhere upstream
-        # is normalized onto the ruled value here, through the ONE shared
-        # classifier (build_svc_database.ruled_soul_equip_rate).
+        # R-105/R-106/R-107 (Will 2026-07-29) SUPERSEDE the old 66/50/25 split;
+        # R-243 (Will 2026-08-12) lowered the two RATES to 20 non-fixed / 10
+        # fixed-location boss. LAST WRITER in the release build: every hand-set
+        # rate anywhere upstream is normalized onto the ruled value here, through
+        # the ONE shared classifier (build_svc_database.ruled_soul_equip_rate).
         _apply_soul_rate_policy(db)
-        print("  RELEASE BUILD: R-105/106/107 soul rates "
-              "(33% non-fixed, 25% fixed-location boss, 0% Common, "
-              "100% the four R-48 Toxeus champions)")
+        from build_svc_database import (SOUL_RATE_FIXED_BOSS as _SRFB,
+                                         SOUL_RATE_NONFIXED as _SRNF)
+        print("  RELEASE BUILD: R-105/106/107/243 soul rates "
+              f"({_SRNF:.0f}% non-fixed, {_SRFB:.0f}% fixed-location boss, "
+              "0% Common, 100% the four R-48 Toxeus champions)")
 
     # ── R-100 #11 (Will 2026-07-29): the XP-potion forge formulas ────────────
     # "there are forge formulas for experience potions that require souls from a

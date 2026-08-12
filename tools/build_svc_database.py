@@ -4585,8 +4585,8 @@ def main():
     # change the mode - so a typo can never ship the wrong drop rates):
     #   SVC_TESTING_DROPS=1   -> force 100% drops (testing).           [opt-in]
     #   SVC_RELEASE_DROPS=0   -> force 100% drops (testing).  (legacy inverse)
-    #   (unset / SVC_RELEASE_DROPS=1) -> the R-105/R-106/R-107 RELEASE rates
-    #                                    (33 non-fixed / 25 fixed boss / 0 Common
+    #   (unset / SVC_RELEASE_DROPS=1) -> the R-105/R-106/R-107/R-243 RELEASE rates
+    #                                    (20 non-fixed / 10 fixed boss / 0 Common
     #                                    / 100 the four R-48 champions). [default]
     # SVC_RELEASE_DROPS is kept for backward compatibility with existing scripts
     # and docs; SVC_TESTING_DROPS is the new, clearer way to ask for a test build.
