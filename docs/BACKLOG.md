@@ -12483,19 +12483,25 @@ stripped off the shroud skill; and every roster surface moved to an **SVC-owned 
 controller at `BuffSelfBehavior = WheneverPossible`.
 
 **STATIC GATES (this lane builds nothing - the ship lane does):**
-- `py tools/patches/enslaver_shroud.py --negtest` -> **24/24 plants caught** (12 of them the new
-  always-on / shape / rig class, including "the shared pet controller is edited in place" and "the
-  shroud is aimed at the demons' own mesh helper, absent from his rig").
+- `py tools/patches/enslaver_shroud.py --negtest` -> **30/30 plants caught** (18 of them the b104
+  always-on / shape / rig / mirror class, including "the shared pet controller is edited in place",
+  "the shroud is aimed at Smoke02 - a helper the DEMONS have and he does not", "the demons move their
+  shroud, so our pinned attach point goes stale" and "donor residue survives on the EffectEntity").
+- `py tools/patches/enslaver_shroud.py --selftest` -> **OK against the real archives.** Runs after
+  `--negtest` in the same process and CLEARS the test hooks first, so it cannot check the pinned values
+  against themselves.
 - `py tools/patches/_check_registry.py` -> **OK, 59 modules**, order hash
   `ba6fde285aad4fc60158fa368ae23cdab2a6087ac0860ca7c6e24e5c651aa4bb` (the misidentified
   `devourer_shroud` module is deleted, so 60 -> 59).
-- **ANTI-INERT:** `verify()` run against the live `build83` arz **FAILS with 11 problems** before the
+- **ANTI-INERT:** `verify()` run against the live `build83` arz **FAILS with 13 problems** before the
   fix and PASSES after it - the gate is measured in both directions, not asserted.
 - **APPLY HARNESS on the real shipped arz - blast radius 9 records, every one explained:** 3 ADDED
   (`svc_enslaver_shroud_fx`, `svc_alwayson_controller_skeleton_toxeus`,
   `svc_alwayson_controller_skelly_aggressive`), 6 MODIFIED - the pak (2 fields), the skill
-  (`FileDescription` only), and **exactly one field (`controller`) on each of the 4 roster surfaces**.
-  Nothing else in the DB is touched. A second `apply()` produces **0 record divergence** (idempotent).
+  (`FileDescription`, plus the `particleEffectAttachPoint1` residue DELETED), and **exactly one field
+  (`controller`) on each of the 4 roster surfaces**. Nothing else in the DB is touched. A second
+  `apply()` produces **0 record divergence** and `verify()` stays GREEN (idempotent).
+  The resulting `svc_enslaver_shroud_fx` is **exactly 4 fields**, equal to the demons' own record.
 - **SHARED-RECORD LAW, proven both ways:** `controller_skeleton_toxeus` (6 carriers incl. the Devourer)
   and `controller_skelly_aggressive` (**148** carriers) are **not in `_modified`** and still read
   `BuffSelfBehavior = WhenEnemyIsSeen` after `apply()`; and `verify()` FAILS if any record outside the

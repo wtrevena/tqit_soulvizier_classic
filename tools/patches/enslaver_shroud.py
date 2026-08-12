@@ -1268,9 +1268,23 @@ def _negtest():
             continue
         print("  negtest FAIL (missed): %s" % label)
         bad += 1
-    _reset()
+    # CLEAR, never _reset(): leaving the clean overrides in place would make a
+    # combined `--negtest --selftest` run check the pinned values against
+    # themselves and report a real-asset PASS it never performed. Test hooks must
+    # not survive the test - that is the same class of error as round 1's stub
+    # asserting the module's own premise.
+    _clear_overrides()
     print("negtest: %d/%d plants caught" % (len(plants) - bad, len(plants)))
     return 1 if bad else 0
+
+
+def _clear_overrides():
+    global _RIG_NAMES_OVERRIDE, _DEMON_FX_OVERRIDE
+    global _DEMON_ATTACH_OVERRIDE, _DEMON_FX_RECORD_OVERRIDE
+    _RIG_NAMES_OVERRIDE = None
+    _DEMON_FX_OVERRIDE = None
+    _DEMON_ATTACH_OVERRIDE = None
+    _DEMON_FX_RECORD_OVERRIDE = None
 
 
 # ── INSTRUMENT SELF-TEST (the round-1 failure mode, closed) ─────────────────
@@ -1284,6 +1298,7 @@ def _selftest():
     module's design rests on to still hold. Loud SKIP when the archives are not
     reachable - never a silent pass.
     """
+    _clear_overrides()          # this leg reads the REAL assets or nothing at all
     try:
         import mesh_assets
     except Exception as e:                                   # noqa: BLE001
