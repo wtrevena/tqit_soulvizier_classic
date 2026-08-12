@@ -185,8 +185,9 @@ UNARMED = {
 # The NAME-KEYED half of the special slots. The engine plays a skill's animation by
 # matching the skill record's `skillSpecialAnimationName` against these refs and playing
 # the paired `unarmedSpecialAnim<N>`; an unmatched name silently falls through to the
-# generic attack animation (1,377 of the base game's 2,125 named-anim monsters ship with
-# at least one unmatched name, so this degrades gracefully and is never a freeze).
+# generic attack animation (measured: 1,202 of the base game's 2,048 monsters whose kit
+# demands a named animation leave at least one demand unanswered on BOTH surfaces, so
+# this degrades gracefully and is never a freeze).
 # Dagon's four refs were Hydra leftovers - IceBreath / FireBreath / PoisonBreath /
 # SuperBite - and his kit demands TidalStrike, SuperBite and PoisonBomb, so only
 # SuperBite matched and his SIGNATURE MOVE had no animation of its own.
@@ -631,7 +632,7 @@ def _verify_special_refs(db, fields, on_record):
     the invariant, at the only granularity the engine actually offers: the skill record
     names a `skillSpecialAnimationName`, the creature answers with
     `unarmedSpecialAnimRef<N>`, and the paired `unarmedSpecialAnim<N>` is what plays.
-    An unmatched name is not a freeze (the base game ships 1,377 of them), but on THIS
+    An unmatched name is not a freeze (1,202 base-game monsters carry one), but on THIS
     record it silently cost Tidal Strike its animation, so here it is a hard failure.
     """
     for slot, want in UNARMED_SPECIAL_REFS.items():

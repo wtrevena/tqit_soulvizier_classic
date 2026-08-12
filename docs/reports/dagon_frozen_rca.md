@@ -154,9 +154,10 @@ matching the skill record's `skillSpecialAnimationName` against the creature's
 
 His four ref slots held `IceBreath / FireBreath / PoisonBreath / SuperBite` - Hydra leftovers again,
 of which exactly one matches his kit. **Tidal Strike therefore fell through to the generic attack
-animation.** This is not a freeze and never was a ship blocker (the base game itself ships 1,377 of
-its 2,125 named-anim monsters with at least one unmatched name, so the engine clearly degrades
-gracefully), but on the mod's own uber it is worth fixing, and `anm_ichthian` already answers the
+animation.** This is not a freeze and never was a ship blocker - measured across the base game,
+**1,202 of the 2,048** monsters whose kit demands a named animation have at least one demand that
+neither their record nor their `charAnimationTableName` answers (59%), so the engine clearly
+degrades gracefully, but on the mod's own uber it is worth fixing, and `anm_ichthian` already answers the
 name `TidalStrike` in its spear stance, so the rig has a designated clip for it.
 
 ---

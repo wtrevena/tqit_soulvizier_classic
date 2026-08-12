@@ -48,8 +48,9 @@ life, mesh, texture and soul all measured unchanged.
 SuperBite`) and his kit demands `TidalStrike`, `SuperBite`, `PoisonBomb`, so only SuperBite matched
 and **Tidal Strike - the WILL_DECISIONS signature move - fell through to the generic attack
 animation**. Ref2/Ref3 now name TidalStrike and PoisonBomb, paired with the clip `anm_ichthian`
-itself answers `TidalStrike` with and a cast clip. (Not a freeze: the base game ships 1,377 of its
-2,125 named-anim monsters with at least one unmatched name, so the engine degrades gracefully.)
+itself answers `TidalStrike` with and a cast clip. (Not a freeze: measured in the base game, **1,202 of the 2,048**
+monsters whose kit demands a named animation have at least one demand that neither their record
+nor their table answers, so the engine degrades gracefully.)
 
 **GATE - stated by what it actually closes.**
 
