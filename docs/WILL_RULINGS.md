@@ -5491,9 +5491,13 @@ Whisper, the craft-only supra; `svc_l_runbreaker` = the mod's own guaranteed dro
 Epic-classification spears exactly 2 sit outside the chest pools and both are purposed. The
 `\spear\default\` (**102** records, corrected from 101) and `\spear\old\` (39) records are base
 random-generation art and dev-era duplicates: **0 of the 141 carry an `itemLevel`**, which is what
-settles that they are not orphaned uniques. *(Round-2 correction: round 1 also wrote "no unique name
-tag". That holds for all 102 `default\` records and is **false for `old\` - all 39 DO carry an
-`itemNameTag`**. The conclusion stands on the `itemLevel` evidence; the name-tag half was wrong.)*
+settles that they are not orphaned uniques. *(Round-2 correction, re-measured independently on the
+same arz: `\spear\default\` = **102** records with `itemLevel` 0 and `itemNameTag` **0**;
+`\spear\old\` = 39 records with `itemLevel` 0 and `itemNameTag` **39**. Round 1 wrote "101" and "no
+unique name tag"; the count was off by one and the name-tag half is **false for `old\`**. The
+conclusion stands on the `itemLevel` evidence alone. Full class split for the record:
+`WeaponHunting_Spear` = 301 records, Common 129 / Epic 32 / Legendary 24 / Rare 14 / unclassified
+102, which matches the round-1 Legendary and Epic counts exactly.)*
 
 **ROUND-2 CORRECTION TO THE SPEAR COST ESTIMATE - Will was quoted a price our own shipped code
 disproves.** Round 1 concluded new spear supras "would have to be authored from scratch (new item
@@ -5505,9 +5509,22 @@ entirely**, reconstructed verbatim from the bundled dump `tools/patches/data/b66
 (verified: exactly the 3 keys `hati`, `swordfish`, `dijunspride`). So the donor pool is **not** limited
 to orphans already in this arz, and no art work is implied. The honest per-spear cost is **a result
 record cloned from a donor + one Text tag + a formula shell + the loot wiring the other 42 already
-have**. What remains true is that **no spear orphan exists inside this database**, so a base-game donor
-dump must be extended first. Registered as `BL-R231-DEBT-1`, and Will should rule on the corrected
-price, not the round-1 one.
+have**. What remains true is that **no spear orphan exists inside this database**.
+
+**AND THE BASE GAME WAS THEN CENSUSED TOO, WHICH ROUND 1 NEVER DID - THE ANSWER IS STILL NO.** The
+corrected cost only matters if a donor exists, and the b66 precedent said donors may live outside this
+arz, so the base game's own `database.arz` was measured directly: **440 `WeaponHunting_Spear` records,
+of which exactly ONE named Epic/Legendary record is referenced by nothing at all** -
+`testpoisonspear`, itemLevel 52, `itemNameTag` = **"BEST SPEAR EVER"**. That is a developer test
+asset, not shippable content, and it is the entire pool.
+
+**So round 1's ANSWER was right and only its REASONING was too narrow.** There are no orphaned spears
+to promote, in this database or in the base game, and the reason is structural rather than accidental:
+the axe case produced 14 orphans because `records\equipmentweapon\axe\` is a dead twin folder, and
+**spears have no such folder**. Any new craftable spear supra would therefore be genuinely new content
+(a donor-cloned result record + Text tag + formula shell + loot wiring, no art) built on a *live*
+base-game spear rather than a revived dead one, which is a different design act from what Will asked
+about and needs his explicit go-ahead. `BL-R231-DEBT-1` stays open on that narrowed question only.
 
 ### R-231 ROUND 2 [2026-08-11] - the vet caught LAW A failing on one of the four recipes Will named
 

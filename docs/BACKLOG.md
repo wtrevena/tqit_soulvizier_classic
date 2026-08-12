@@ -127,9 +127,15 @@ merge.
   cost per new spear supra is: **one result record cloned from a donor spear + one Text tag + one
   formula shell + the loot wiring the other 42 already have** - a small content lane with a Text.arc
   deploy coupling, still not a reagent edit, but nothing like "author from scratch with art".
-  What remains genuinely true: **no spear orphan exists inside this database**, so any new spear supra
-  needs a base-game donor dump extending `b66_orphan_donor_fields.json` first. Still needs Will's
-  go-ahead on scope, but on a corrected price.
+  **THE BASE GAME WAS THEN CENSUSED TOO (round 1 never did) AND THE ANSWER IS STILL NO.** Measured
+  directly on the base `database.arz`: **440 `WeaponHunting_Spear` records, exactly ONE named
+  Epic/Legendary record referenced by nothing** - `testpoisonspear`, lvl 52, `itemNameTag` =
+  **"BEST SPEAR EVER"**, a developer test asset. That is the whole pool. **Round 1's answer was right
+  and only its reasoning was too narrow**, and the reason is structural: the axe case yielded 14
+  orphans because `records\equipmentweapon\axe\` is a dead twin folder, and **spears have no such
+  folder**. Any new spear supra would be genuinely new content built on a *live* base-game spear
+  rather than a revived dead one - a different design act from the one Will asked about. This debt
+  stays open on that narrowed question only.
 - **`BL-R231-DEBT-2` (P3):** `m_vit_wand_01/02/03` (Reaver's Wand) are no longer reagents of anything.
   They stay members of the thrown tables and this is a note rather than a leak. **Round-2 correction to
   the reason:** round 1 said "rule C2 needs them there", and that is true of `m_vit_wand_01` ONLY -
