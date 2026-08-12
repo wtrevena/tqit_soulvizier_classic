@@ -26,10 +26,14 @@
 >    Shadow Marauders - it should be the same smoke.
 > 2. **The world boss.** Fight the Enslaver of Souls himself; same look, standing and moving.
 >
+> **It is literally their smoke, in their spot.** Not a lookalike: he now carries a copy of the demons'
+> own effect entry, field for field, hung on the **same attach point their model uses** - which his
+> skeleton turns out to have too, in the identical place. So standing side by side, he and a marauder
+> should be wearing the same thing.
+>
 > **WHAT TO WATCH FOR, honestly flagged:** nobody has seen this in game - your eye is the only test
-> that counts. Two specific things worth reporting: is the smoke **around his body** (we hung it at his
-> waist, because his skeleton does not have the attach point his demons' model uses), and is it **too
-> thick / always-on annoying** now that it never switches off. Either is a one-line change.
+> that counts. The one thing worth reporting: is it **too thick / always-on annoying** now that it never
+> switches off. That is a one-line change.
 >
 > **NOT CHANGED, on purpose - and one of them is a question for you:**
 > - The **Devourer of Blood** has **no shroud either** (his only effect is two small black-poison puffs

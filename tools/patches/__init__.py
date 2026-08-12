@@ -318,22 +318,30 @@ REGISTRY = [
                             # which is why it renders every frame and why two waves of field edits
                             # could not match it. champion_mesh (b102) then moved him onto the
                             # FX-free SkeletonGrayBlack01New.msh to kill the green, removing his
-                            # last always-on emitter. So b104: (a) a new EffectEntity
-                            # svc_enslaver_shroud_fx playing the demons' OWN
-                            # Effects\MonsterFX\ShadowStalker_Smoke01.pfx with the donor's WEAPON
-                            # boneList deleted; (b) the pak attaches it at Bone_Waist - a bone that
-                            # EXISTS on his rig - never the demons' own SpecialHit01, which does
-                            # not, and an FX on a missing attach point renders NOTHING silently;
-                            # (c) every roster surface moves to an SVC-OWNED CLONE of its
-                            # controller with BuffSelfBehavior=WheneverPossible, so the shroud is
-                            # ON out of combat (the shared originals drive the Devourer and 148
-                            # other pets and are NEVER edited). Provably visual-only: the gate
-                            # asserts the shroud is the ONLY Skill_BuffSelf* in either kit.
-                            # Gates: provenance DERIVED from the marauders' mesh binary, rig-attach
-                            # checked against each wearer's own mesh, A9 render resolution on the
-                            # .pfx (base-game Effects.arc), shared-record leak check, CRASH LAW.
+                            # last always-on emitter. So b104: (a) svc_enslaver_shroud_fx is a
+                            # FIELD-FOR-FIELD MIRROR of the demons' own base-game EffectEntity
+                            # (templateName/ActorName/Class/effectFile ->
+                            # Effects\MonsterFX\ShadowStalker_Smoke01.pfx); the donor is a shell
+                            # and is PRUNED to that set, weapon boneList and all; (b) the pak
+                            # attaches it at the demons' OWN SpecialHit01, which his rig DOES
+                            # declare, in a byte-identical block (origin (0,0,0), identity axes) -
+                            # round 1 refused it on a false measurement, see R-250's ROUND 2
+                            # correction; the missing-attach example is Smoke02, which the demons
+                            # have and he does not; (c) every roster surface moves to an SVC-OWNED
+                            # CLONE of its controller with BuffSelfBehavior=WheneverPossible, so
+                            # the shroud is ON out of combat (the shared originals drive the
+                            # Devourer and 148 other pets and are NEVER edited). Provably
+                            # visual-only: the gate asserts the shroud is the ONLY Skill_BuffSelf*
+                            # in either kit. Gates: provenance + attach point DERIVED from the
+                            # marauders' mesh binary, EffectEntity mirror derived from the base
+                            # .arz, rig-attach checked against each wearer's own mesh across BOTH
+                            # name tables (bone + AttachPoint, casefolded - see mesh_assets), A9
+                            # render resolution on the .pfx (base-game Effects.arc), donor-residue
+                            # check, shared-record leak check, CRASH LAW.
                             # Negative test: py tools/patches/enslaver_shroud.py --negtest
-                            # (24 plants, 12 of them the b104 always-on/shape/rig class)
+                            # (30 plants); --selftest re-measures the module's load-bearing rig
+                            # facts against the real archives (round 1's stub asserted a FALSE
+                            # premise and its rig plant certified the error instead of catching it)
     'toxeus_souls_100',     # b90 (Will 2026-07-27, R-48) + b98 (R-91): "increase the drop rate for
                             # the souls
                             # of toxeus the murderer, enslaver of souls and toxeus the murderer,
