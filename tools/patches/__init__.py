@@ -164,25 +164,40 @@ REGISTRY = [
                             # charAnimationTableName) and neither reads the other's fields. A WARN
                             # naming any THIRD module on those records is a real finding.
     'dagon_anim_rig',       # DAGON FROZEN (Will 2026-08-11: "Dagon, lord of the poisoned deep is
-                            # frozen like the maened thrown object guys were"). He named the class:
-                            # this is R-100 #15's freeze condition on a SECOND record. Dagon's
-                            # charAnimationTableName is records\creature\monster\d2custom\anm\
-                            # anm_dagon.dbr, which resolves in NEITHER the mod arz NOR the base
-                            # game (0 d2custom records exist anywhere - the same never-shipped SV
-                            # namespace that made his SKILLS dead in b52), and the 13 clips left on
-                            # his record are all Creatures\Monster\HYDRA\ANM\* on an ICHTHIAN mesh.
-                            # unarmedWalkAnim is unbound on BOTH surfaces and he equips nothing, so
-                            # unarmed is his only stance: statue. Repoints him at anm_ichthian (the
-                            # table 43 of his 44 same-mesh siblings use) and writes the full in-rig
-                            # unarmed stance on the record too, per adfda67's BOTH-surfaces law.
-                            # NO CLONE and NO SHARED-RECORD EDIT: unlike thrown_anim_rig, which had
-                            # to MODIFY its tables, this only POINTS AT one. Runs immediately after
+                            # frozen like the maened thrown object guys were"). Same class as
+                            # R-100 #15 - the freeze is on the ANIMATION surface and survives a
+                            # correct kit fix - but a different mechanism: the WRONG RIG with no
+                            # fallback. All 13 clips on records\test\boss_dagon_66.dbr are
+                            # Creatures\Monster\HYDRA\ANM\* clips inherited wholesale from
+                            # boss_hydra_66 (977 of their 1,043 shared fields are identical), and
+                            # they drive a 101-bone hydra skeleton on an IchthianMage01 mesh with
+                            # 30 bones and none of that hierarchy (8 of the clip's bones exist on
+                            # the mesh; his own rig's clips land 22 of 30). 54 base-game records
+                            # carry that mesh and NOT ONE pairs it with a Hydra clip. The only
+                            # surface that could have supplied in-rig clips,
+                            # charAnimationTableName = ...\d2custom\anm\anm_dagon.dbr, resolves in
+                            # NEITHER the mod arz NOR the base game (0 d2custom records exist
+                            # anywhere - the same never-shipped SV namespace that made his SKILLS
+                            # dead in b52). NOTE: the missing unarmedWalkAnim is NOT the cause -
+                            # boss_hydra_66 names no table at all, binds no walk clip in any
+                            # stance, and animates fine in the shipping game. Repoints him at
+                            # anm_ichthian (the table 43 of his 44 same-mesh siblings use), writes
+                            # the full in-rig unarmed stance on the record too per adfda67's
+                            # BOTH-surfaces law, and points his four name-keyed special refs at the
+                            # skills his kit actually casts (TidalStrike, his WILL_DECISIONS
+                            # signature move, previously had no animation of its own). NO CLONE and
+                            # NO SHARED-RECORD EDIT: unlike thrown_anim_rig, which had to MODIFY
+                            # its tables, this only POINTS AT one. Runs immediately after
                             # thrown_anim_rig - same failure class, and its DB-wide gate
                             # generalizes that module's thrown-only invariant to EVERY
                             # spawn-referenced monster, cross-checking the BASE arz instead of
                             # assuming "absent from the overlay -> the base game has it" (the
                             # assumption that hid this record from BOTH the anim gate and, in b52,
-                            # validate_tags). ANIMATION FIELDS ONLY on one record. The S4b collision
+                            # validate_tags). That DB-wide clause closes the DANGLING-TABLE half of
+                            # the class only; the cross-rig half is gated PER RECORD here and
+                            # registered as BL-DAGON-CROSSRIG-DEBT-1, with the three measurements
+                            # showing why no cheap DB-wide form of it survives contact with
+                            # build83. ANIMATION FIELDS ONLY on one record. The S4b collision
                             # WARN naming EXACTLY this module and `red_uber_orbs` on
                             # boss_dagon_66 is EXPECTED and benign: their field sets are disjoint
                             # (charAnimationTableName + 17 unarmed*Anim* here vs treasureProxyName

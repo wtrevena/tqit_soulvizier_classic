@@ -3,73 +3,132 @@
 ## LANE RECORD - DAGON FROZEN: the maenad freeze class, second instance (Will 2026-08-11, branch `fix/dagon-frozen`, module `tools/patches/dagon_anim_rig.py`, static gates only - the Ship lane owns the build)
 
 **Will, verbatim:** *"Dagon, lord of the poisoned deep is frozen like the maened thrown object guys
-were"*. He named the class correctly. Full RCA: **`docs/reports/dagon_frozen_rca.md`**.
+were"*. He named the class correctly: the freeze is on the ANIMATION surface and survives a correct
+kit fix. Full RCA with every measurement: **`docs/reports/dagon_frozen_rca.md`**.
 
-**ROOT CAUSE - the animation chain, not the kit.** `records\test\boss_dagon_66.dbr` names
-`charAnimationTableName = records\creature\monster\d2custom\anm\anm_dagon.dbr`, which resolves in
-**neither the mod arz nor the base game** - there are **0** `d2custom` records anywhere, the same
-never-shipped SV namespace that made his *skills* dead references in b52. The only surviving surface
-is the record's own 13 clips, **every one a `Creatures\Monster\HYDRA\ANM\Hydra_*.anm` on an
-`IchthianMage01` mesh**, and they do not include `unarmedWalkAnim`. He equips nothing, so `unarmed`
-is his only stance: no walk animation on either surface, so he stands. Inherited **verbatim from SV
-0.98i** (identical dead table, identical Hydra clips, identical missing Walk).
+**ROOT CAUSE - the WRONG RIG, with no fallback.** All 13 `.anm` clips on
+`records\test\boss_dagon_66.dbr` are `Creatures\Monster\HYDRA\ANM\*` clips, inherited wholesale from
+`records\creature\monster\questbosses\boss_hydra_66.dbr` (**977 of their 1,043 shared fields hold
+identical values; the 13 clips match by slot AND by value**). They drive a **101-bone hydra
+skeleton** on an **`IchthianMage01` mesh that has 30 bones and none of that hierarchy**: read out of
+`Creatures.arc`, **8** of the Hydra clip's bones exist on this mesh (8%), while his own rig's clips
+land 22 of 30 (73%) and the base game's own Hydra-on-Hydra pairing lands 69 of 101 (68%). In the DB,
+**54 base-game records carry this mesh** and drive it with ichthian / jackalman / satyr / neanderthal
+/ boarman / eurynomus clips; **not one pairs it with a Hydra clip**, and Dagon is the only record in
+build83 that does. The one surface that could have supplied in-rig clips,
+`charAnimationTableName = records\creature\monster\d2custom\anm\anm_dagon.dbr`, **resolves in neither
+the mod arz nor the base game** (0 `d2custom` records exist anywhere, the same never-shipped SV
+namespace that made his *skills* dead references in b52). Inherited verbatim from SV 0.98i.
+
+**CORRECTION, recorded on purpose:** this lane's first verdict blamed the missing `unarmedWalkAnim`
+(unbound on both surfaces) as the R-100 #15 freeze condition. **His own donor refutes it** -
+`boss_hydra_66` names NO animation table at all, binds NO walk clip in any stance, and animates
+perfectly in the shipping game. Missing-walk-plus-dead-table is not sufficient to freeze anything.
+The only thing SV changed when it made Dagon out of the Hydra was the mesh.
 
 **Why b52 missed it:** that RCA explicitly cleared the movement surface (*"It is NOT a
-movement/speed/mesh problem"*) from `characterRunSpeed` and an AI/behaviour **field** diff -
-`charAnimationTableName` is not a behaviour field. The b52 kit fix was correct and is kept; it was
-simply not the freeze. Same shape as the maenads, where `thrown_restore` fixed the equipment and
-they stayed frozen until `thrown_anim_rig` fixed the animation.
+movement/speed/mesh problem"*) from `characterRunSpeed` and an AI/behaviour **field** diff, and
+neither `charAnimationTableName` nor the clip slots are behaviour fields. The b52 kit fix was correct
+and is kept; it was simply not the freeze. Same shape as the maenads, where `thrown_restore` fixed
+the equipment and they stayed frozen until `thrown_anim_rig` fixed the animation.
 
-**FIX** (animation fields only, one record, idempotent): repoint the table onto
+**FIX** (animation fields only, ONE record, 21 fields, idempotent): repoint the table onto
 `records\creature\monster\ichthian\anm\anm_ichthian.dbr` - the table **43 of his 44 same-mesh
-siblings** already use, a clean `CharAnimationTable.tpl` binding 71 clips - and write the full
-in-rig unarmed stance (17 slots) on the record too, per `adfda67`'s both-surfaces law. **No clone
-and no shared-record edit**: unlike `thrown_anim_rig`, which had to *modify* its tables, this only
-*points at* one. Kit, name tag, speed, life, mesh, texture and soul all measured unchanged.
+siblings** already use, a clean `CharAnimationTable.tpl` binding 71 clips - and write the full in-rig
+unarmed stance (17 slots) on the record too, per `adfda67`'s both-surfaces law. Measured against that
+table: **12 of the 17 values are byte-identical to what it binds for the same slot, 0 differ, 5 are
+slots it does not bind** (`unarmedDieAnim1`, `unarmedLongIdleAnim`, `unarmedSpecialAnim2/3/4`, drawn
+from clips it binds elsewhere for this rig). **No clone and no shared-record edit**: unlike
+`thrown_anim_rig`, which had to *modify* its tables, this only *points at* one. Kit, name tag, speed,
+life, mesh, texture and soul all measured unchanged.
 
-**GATE** (`dagon_anim_rig.verify`) - extends the playable-anim invariant from thrown stances to
-**wild monsters**. Two weaker statements were implemented and measured first, and both cry wolf:
+**ALSO FIXED - his signature move had no animation.** The engine matches a skill's
+`skillSpecialAnimationName` to a `unarmedSpecialAnimRef<N>` and plays the paired
+`unarmedSpecialAnim<N>`. His four refs were Hydra leftovers (`IceBreath / FireBreath / PoisonBreath /
+SuperBite`) and his kit demands `TidalStrike`, `SuperBite`, `PoisonBomb`, so only SuperBite matched
+and **Tidal Strike - the WILL_DECISIONS signature move - fell through to the generic attack
+animation**. Ref2/Ref3 now name TidalStrike and PoisonBomb, paired with the clip `anm_ichthian`
+itself answers `TidalStrike` with and a cast clip. (Not a freeze: the base game ships 1,377 of its
+2,125 named-anim monsters with at least one unmatched name, so the engine degrades gracefully.)
+
+**GATE - stated by what it actually closes.**
+
+*Per record (hard, always):* his table must resolve; **every clip he binds must come from a family
+the shipping game itself drives an `IchthianMage01` with** (the 54-record census above - this
+replaced a hardcoded `\hydra\` blacklist, and negtest 5b plants a **Medusa** clip, proven on
+`medusa01.msh` and still wrong here, to prove the clause is not hydra-shaped); all 17 slots bound and
+agreeing with the table; **every named special in his KIT owns a ref slot**, read from the skill
+records at gate time so the invariant follows the kit; b52 identity intact.
+
+*DB-wide (roster):* every `Class=Monster` with a mesh that NAMES a `charAnimationTableName` resolving
+in NEITHER the mod overlay NOR the base game arz must complete Run+Walk+Attack1 for one stance on its
+own record. HARD when spawn-referenced, WARN when inert, degrades to WARN with no base install (the
+`validate_tags` precedent). Two weaker forms were implemented and measured first and both cry wolf:
 "every stance you bind any clip for" -> **1,399** violations; "the stance you fight in" -> **60**
 spawn-referenced violations, *all correct base-game design* (rooted plants, `Class=Monster` props,
-flying bosses with no walk clip, non-combat NPCs). Immobility is authored everywhere, so a missing
-clip cannot be the signal. The shipped invariant is the **dangling reference**:
+flying bosses, non-combat NPCs). Immobility is authored everywhere, so a missing clip cannot be the
+signal; a reference that resolves from NOTHING can.
 
-> every `Class=Monster` with a mesh that NAMES a `charAnimationTableName` resolving in NEITHER the
-> mod overlay NOR the base game arz must complete Run+Walk+Attack1 for one stance on its own record.
+> **SCOPE, SAID PLAINLY: the roster clause closes the DANGLING-TABLE half of the freeze class, not
+> the cross-rig half.** It would not catch a monster whose table resolves while its record overrides
+> the critical slots with wrong-skeleton clips, because record clips win per field. See
+> **`BL-DAGON-CROSSRIG-DEBT-1`** below.
 
-HARD FAIL when spawn-referenced, WARN when inert, and the base cross-check degrades to WARN (never
-blocks) with no base install - the `validate_tags` precedent. **That cross-check is the point:
-"absent from the overlay -> the base game has it" is the assumption that hid this record from the
-anim gate AND, in b52, from `validate_tags` - the same blind spot, twice, on one record.**
-
-**CLASS SWEEP** (all 4,610 `Class=Monster` records vs mod overlay AND base arz): 7 name a table that
-exists nowhere; under the union law **Dagon is the only live victim** (23 ichthian-pool referrers).
+**CLASS SWEEP** (mod overlay, which is what a build gate should scan): **7** records name a table
+that exists nowhere; under the union law **Dagon is the only live victim** (23 ichthian-pool
+referrers). The merged mod-plus-base view holds 7,112 `Class=Monster` records with a mesh and 8
+dead-table namers - the extra is base-only `...\test\soundtest\testsubject3` -> `anm_GorillaShaman`,
+which completes four stances on its own record. **The violation set is identical either way.**
 
 | record | verdict |
 |---|---|
 | `records\test\boss_dagon_66` | **FROZEN - FIXED here** |
 | `records\test\am_raptor_thunderlizard_33` | structurally frozen (record binds only `staffWalkAnim`) but **INERT - 0 referrers**, never spawns -> `BL-DAGON-INERT-RAPTOR-1` |
 | `bm_gruesomebonescarab_22`, `outsider_hero_caster/melee/poison_46` | healthy - the record completes the stance; all inert anyway |
-| `records\xpack\...\skeletaltyphon` | healthy **and the control**: a base-game boss that ships a DEAD table in VANILLA and animates fine, proving a naive "dead table = fail" gate would red the base game |
+| `records\xpack\...\skeletaltyphon` | healthy **and the control**: a base-game boss that ships a DEAD table in VANILLA and animates fine (on GiantTurtle clips its mesh is proven for), proving a naive "dead table = fail" gate would red the base game |
 
 **PROOF (static only):** dry-run replay of the real `apply`/`verify` on the shipped build83
-`44499f56` - PRE **RED** (roster HARD=1 Dagon, WARN=1 raptor), POST **GREEN**, 1 record modified,
-13 Hydra clips -> **0**, walk bound, idempotent, kit unchanged. **12/12 negative tests PASS**
-(7 must-RED Dagon clauses incl. the shipped bug re-planted, 2 must-RED roster clauses incl. the
-inert raptor promoted into a live pool, 3 must-stay-GREEN incl. `skeletaltyphon` and a rooted
-quilvine). **Assets 42/42 resolve, 0 missing.** `py_compile` OK; `_check_registry` OK, 60 modules,
-order `a43cae974acb3622797a8d15db2f42e4098654e20bfdb2caa5c60ac8f0c0c061`.
+`44499f56` - PRE **RED**, POST **GREEN**, **1** record modified, **21** fields written (all
+animation), 13 Hydra clips -> **0** (families now ichthian + jackalman only), walk bound, refs
+rewired, idempotent, kit/name/speed/life/mesh byte-unchanged. **15/15 negative tests PASS**, nothing
+leaked. **Assets 42/42 resolve.** `py_compile` OK; `_check_registry` OK, 60 modules, order
+`a43cae974acb3622797a8d15db2f42e4098654e20bfdb2caa5c60ac8f0c0c061`.
 
-**NOT BUILT, NOT DEPLOYED, NO TAG TAKEN** in this lane.
+**NOT BUILT, NOT DEPLOYED, NO TAG TAKEN** in this lane. **In-game confirmation that he now walks is
+Will's test pass**, not a static claim.
 
-### Open items this lane filed (not fixed here)
+### DEBT REGISTER - filed by this lane
+
+- **`BL-DAGON-CROSSRIG-DEBT-1` (the honest gap).** There is **no DB-wide gate for the cross-rig
+  mechanism**, only the per-record clause on Dagon. Three generalisations were implemented and
+  measured against build83, and all three cry wolf:
+  1. **bone overlap from the assets** - proven base-game pairs sit as low as **10%**
+     (`CryptWorm01.msh` <- `JackalMan_Walk.anm`, 21 records) and **18-24%** (`SepulchralWyrm01.msh`
+     <- `arachnos` clips, which the base game itself ships), overlapping Dagon's 8-10%. No threshold
+     separates them.
+  2. **cross-family screen** (mesh folder != clip folder) - **4,406** distinct (mesh, clip) pairs
+     across **274** family combos. Rig borrowing is endemic base-game design.
+  3. **base-game provenance** (the per-record rule, applied to everything) - **322** critical-slot
+     hits, dominated by inherited SV records that ship and play (naiad on maenad clips, mantid on
+     male clips, the maenad tables on `anims\*`).
+  The per-record clause in `dagon_anim_rig._verify_dagon` is the pattern to copy onto the next custom
+  monster: read the base-game census for THAT mesh, allowlist those families, fail on anything else.
+  Re-check DB-wide with the `p_rig*` probes named in the RCA.
+- **`BL-DAGON-DEADSKILLS-1`** - the new kit clause found **4 skill slots on Dagon that resolve
+  nowhere**: `skillName6 = records\xpack\skills\dream\pet\pcloudpet_petskill_pcloud.dbr` and
+  `skillName10/11/12 = Records\Game\D2GlobalProperties_{Normal01,Epic_Boss,Legendary_Boss}.dbr` (the
+  same never-shipped D2 namespace b52 cleaned out of his primary kit). Inert, pre-existing SV
+  residue, **WARNed every build** so a NEW name in that list reads as a regression. Not fixed here
+  because this module writes animation fields only, which is what keeps its field set disjoint from
+  `red_uber_orbs` on the same record.
 - **`BL-DAGON-ACTORNAME-1`** - `boss_dagon_66.ActorName = Greece_Creature_Monster_Harpy_HarpyCrag01`,
   a **third** cross-rig leftover (42 of the 43 working same-mesh ichthians carry no `ActorName` at
   all). Not the freeze, byte-identical in SV 0.98i, and rebinding an actor has sound/actor
   consequences this lane could not measure. Low priority, cosmetic/audio only.
-- **`BL-DAGON-INERT-RAPTOR-1`** - `records\test\am_raptor_thunderlizard_33` is frozen by the same
-  mechanism (dead `anm_gojiru` table, one clip on the record) but is spawn-referenced by nothing, so
-  it never appears. The gate WARNs it every build. Fix it or delete it if it is ever promoted.
+- **`BL-DAGON-INERT-RAPTOR-1`** - `records\test\am_raptor_thunderlizard_33` is frozen by the
+  dangling-table mechanism (dead `anm_gojiru` table, one clip on the record) but is spawn-referenced
+  by nothing, so it never appears. The gate WARNs it every build. Fix it or delete it if it is ever
+  promoted.
 - **`BL-DAGON-SOULTAG-1`** (carried from b52, still open) - `tagSVCSoulDagon` is defined twice with
   different values (`'{^F}Dagon Soul'` and `'{^F}Soul of Dagon'`); first-wins picks one. Harmless,
   worth reconciling.

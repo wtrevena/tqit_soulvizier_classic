@@ -80,13 +80,22 @@ reconciling.
 > 🚨 **SUPERSEDED IN PART (2026-08-11).** Will re-reported Dagon as frozen AFTER this fix shipped:
 > *"Dagon, lord of the poisoned deep is frozen like the maened thrown object guys were"*. The kit
 > diagnosis below is correct and the kit fix is kept, but it was **not** the freeze. The real cause
-> is the ANIMATION chain: `charAnimationTableName = records\creature\monster\d2custom\anm\
-> anm_dagon.dbr` resolves in neither the mod arz nor the base game (the same never-shipped
-> `d2custom` namespace this section correctly identifies for his SKILLS), and the 13 clips left on
-> his record are all **Hydra** clips on an **Ichthian** mesh with **no `unarmedWalkAnim` at all**.
-> The "It is NOT a movement/speed/mesh problem" verdict immediately below was reached from
-> `characterRunSpeed` and an AI/behaviour **field** diff - and `charAnimationTableName` is not a
-> behaviour field, so it was never compared. See **`docs/reports/dagon_frozen_rca.md`** and
+> is the ANIMATION chain, and specifically the **rig**: all 13 `.anm` clips on his record are
+> `Creatures\Monster\Hydra\ANM\*` clips, inherited wholesale from
+> `records\creature\monster\questbosses\boss_hydra_66.dbr` (977 of their 1,043 shared fields are
+> identical), driving a 101-bone hydra skeleton **on an `IchthianMage01` mesh that has 30 bones and
+> none of that hierarchy**. 54 base-game records carry that mesh and not one pairs it with a Hydra
+> clip. The one surface that could have supplied in-rig clips,
+> `charAnimationTableName = records\creature\monster\d2custom\anm\anm_dagon.dbr`, resolves in
+> neither the mod arz nor the base game - the same never-shipped `d2custom` namespace this section
+> correctly identifies for his SKILLS. Wrong rig, no fallback.
+>
+> The verdict immediately below - *"It is NOT a movement/speed/mesh problem"* - was reached from
+> `characterRunSpeed` and an AI/behaviour **field** diff, and neither `charAnimationTableName` nor
+> the clip slots are behaviour fields, so the surface that was actually broken was never compared.
+> (For the record, the first pass of the 2026-08-11 lane blamed the missing `unarmedWalkAnim` and
+> was also wrong: `boss_hydra_66` names no animation table at all, binds no walk clip in any stance,
+> and animates fine in the shipping game.) See **`docs/reports/dagon_frozen_rca.md`** and
 > `tools/patches/dagon_anim_rig.py`.
 
 **It is NOT a movement/speed/mesh problem.** Empirically:
