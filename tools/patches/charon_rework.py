@@ -1060,7 +1060,16 @@ def _n(s):
 
 def _one(db, rec, field):
     v = db.get_field_value(rec, field)
-    return v[0] if isinstance(v, list) else v
+    if isinstance(v, list):
+        # An EMPTY list is an absent value, NOT an indexable one. `v[0]` on `[]`
+        # raises IndexError - and that is not hypothetical: in a real full DB build
+        # the in-memory records carry empty-list fields (e.g. a stat field cleared
+        # to `[]` by an upstream pass) that the arz write+reload silently drops, so
+        # a standalone apply-onto-a-finished-arz harness never sees them. verify()'s
+        # SOUL BAND GATE walks ~2,450 peer souls through this helper, so one such
+        # peer aborts the whole build with an uncaught IndexError. Treat [] as None.
+        return v[0] if v else None
+    return v
 
 
 def _replace_record(db, donor, dest):
