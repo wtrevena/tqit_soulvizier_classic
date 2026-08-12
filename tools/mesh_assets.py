@@ -21,6 +21,39 @@ actually matter:
                               old clips drive, the champion T-poses. R-102's
                               fourth amendment names ANIMATION, not colour, as
                               the real risk in a mesh swap.
+  * `attach_points_of(mesh)`- the OTHER name table (see below).
+  * `rig_names_of(mesh)`    - both tables, which is what an attach-point check
+                              must ask against.
+
+TWO NAME TABLES, AND ASKING THE WRONG ONE IS A FALSE MEASUREMENT (b104 R-250).
+A `.msh` declares names in two structurally different places:
+
+  * the BONE table  - NUL-terminated ASCII inside the binary skeleton block
+    (`Bone_Waist\x00`), which `bones_of()` reads; and
+  * the ATTACHPOINT table - a CRLF *text* block near the tail:
+
+        AttachPoint
+        {
+            name   = "SpecialHit01"
+            origin = (0.000000, 0.000000, 0.000000)
+            ...
+        }
+
+    which contains NO NUL terminators at all, so every NUL-anchored scanner is
+    structurally blind to it and reports these names as ABSENT.
+
+`particleEffectAttachPoints` on a CharFxPak draws from BOTH namespaces, and in
+this database it draws overwhelmingly from the ATTACHPOINT one (measured on the
+build83 arz: 'L Hand' x21, 'R Hand' x20, 'SpecialHit03' x4, 'HeadEffect' x4,
+'EYE_LEFT'/'EYE_RIGHT'/'Lower Body'/'Eye'/'Prey_Effect' x3 each, 'Head'/'Target'
+x2 ... against exactly 5 rows using a raw `Bone_*`). A gate that resolves those
+values against the bone table alone therefore FALSE-FAILS the correct records
+and cannot see the failure it advertises - which is how a gate gets waived
+instead of fixed. Use `rig_names_of()`, never `bones_of()`, for that question.
+
+NAME LOOKUP IS CASE-INSENSITIVE in practice and callers must match that: the
+shipped DB addresses these tables as `Bone_spine01` (rig says `Bone_Spine01`)
+and `Specialhit03` (rig says `SpecialHit03`). Compare casefolded.
 
 ADDRESSING PITFALL, and it is the reason a naive prefix match returns zero rows:
 the FIRST path component of a TQ art reference is the ARCHIVE NAME, not a
@@ -45,6 +78,14 @@ _DEFAULT_GAME = r'C:\Program Files (x86)\Steam\steamapps\common\Titan Quest Anni
 # TQ rig bone names, plus the attach helpers the exporter emits alongside them.
 _BONE_RE = re.compile(rb'(?:Bone_[A-Za-z0-9_]+|Smoke\d+|Waist|Root|Scene_Root)\x00')
 _STR_RE = re.compile(rb'[ -~]{4,}')
+
+# The CRLF text tables. These carry no NUL terminators, which is precisely why a
+# NUL-anchored scanner cannot see them (see the module docstring).
+_ATTACH_BLOCK_RE = re.compile(rb'AttachPoint\s*\{(.*?)\}', re.S)
+_CREATE_ENTITY_RE = re.compile(rb'CreateEntity\s*\{(.*?)\}', re.S)
+_NAME_KV_RE = re.compile(rb'name\s*=\s*"([^"]*)"')
+_ATTACH_KV_RE = re.compile(rb'attach\s*=\s*"([^"]*)"')
+_ENTITY_KV_RE = re.compile(rb'entity\s*=\s*"([^"]*)"')
 
 # A mesh "carries embedded FX" iff its binary names an effect entity / particle.
 _FX_MARKERS = (b'createentity', b'.pfx')
@@ -187,6 +228,58 @@ def bones_of(data):
     return out
 
 
+def attach_points_of(data):
+    r"""Ordered, de-duplicated ATTACHPOINT helper names declared by a .msh blob.
+
+    These are the `AttachPoint { name = "X" ... }` text blocks, NOT bones. They
+    are the namespace `particleEffectAttachPoints` mostly draws from, and no
+    NUL-anchored scan can find them - see the module docstring.
+    """
+    out, seen = [], set()
+    for blk in _ATTACH_BLOCK_RE.findall(data):
+        m = _NAME_KV_RE.search(blk)
+        if not m:
+            continue
+        n = m.group(1).decode('ascii', 'replace')
+        if n and n not in seen:
+            seen.add(n)
+            out.append(n)
+    return out
+
+
+def rig_names_of(data):
+    r"""EVERY name an attach value may legally resolve to on this rig: the bone
+    table UNION the AttachPoint table.
+
+    This is the only correct input to an "is this attach point present on the
+    wearer's mesh?" gate. `bones_of()` alone answers a different question and
+    reports every AttachPoint name as missing (b104 R-250: that blind spot was
+    once measured, believed, and written into the rulings ledger as design law).
+    """
+    out, seen = [], set()
+    for n in list(bones_of(data)) + list(attach_points_of(data)):
+        if n.lower() not in seen:
+            seen.add(n.lower())
+            out.append(n)
+    return out
+
+
+def embedded_fx_attachments_of(data):
+    r"""[(attach_point, entity_ref)] for every `CreateEntity` block in a .msh.
+
+    `embedded_fx_of()` answers WHAT a mesh emits; this answers WHERE it hangs it.
+    Copying a mesh-embedded effect onto another creature faithfully needs both,
+    and both must be DERIVED from the binary rather than asserted in a comment.
+    """
+    out = []
+    for blk in _CREATE_ENTITY_RE.findall(data):
+        a = _ATTACH_KV_RE.search(blk)
+        e = _ENTITY_KV_RE.search(blk)
+        out.append((a.group(1).decode('ascii', 'replace') if a else None,
+                    e.group(1).decode('ascii', 'replace') if e else None))
+    return out
+
+
 def embedded_fx_of(data):
     """[effect references] compiled into a mesh blob. EMPTY == cannot emit FX.
 
@@ -215,10 +308,12 @@ def embedded_fx_of(data):
 
 
 def mesh_report(dbr_path, mod_resources=None):
-    """{'exists','size','bones','fx','arc'} for one mesh - the row a gate prints."""
+    """{'exists','size','bones','attach','fx','fx_at','arc'} - the row a gate prints."""
     data, arcp = read_asset(dbr_path, mod_resources)
     if not data:
-        return {'exists': False, 'size': 0, 'bones': [], 'fx': [],
-                'arc': str(arcp) if arcp else None}
+        return {'exists': False, 'size': 0, 'bones': [], 'attach': [], 'fx': [],
+                'fx_at': [], 'arc': str(arcp) if arcp else None}
     return {'exists': True, 'size': len(data), 'bones': bones_of(data),
-            'fx': embedded_fx_of(data), 'arc': str(arcp) if arcp else None}
+            'attach': attach_points_of(data), 'fx': embedded_fx_of(data),
+            'fx_at': embedded_fx_attachments_of(data),
+            'arc': str(arcp) if arcp else None}

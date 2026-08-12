@@ -39,7 +39,9 @@ was never in a field. It is compiled into their MESH:
                                                    ShadowStalker_Smoke.dbr" }
 
 A mesh renders every frame. That is why the marauders smoke constantly, standing
-still, out of combat - and why nothing the Enslaver had could match it:
+still, out of combat - and why nothing the Enslaver had could match it. Note the
+attach name in that block: it is the one we copy (section B below), and it is on
+his rig too.
 
   1. `charFxPakRunningNames` -> `drxshadowcloakrunning_fx_pak` renders ONLY while
      the character RUNS (R-95's finding). He is a caster who stands and casts.
@@ -63,28 +65,60 @@ b104 - THE FIX: THE DEMONS' OWN PARTICLE, ON A BODY BONE, ALWAYS ON
 Three legs, all on MONSTER-RECORD fields and skill records (CRASH LAW: never a
 `charFxPak*` on a SpawnPet skill - the build28 trap, asserted in verify()):
 
-  A. **THE ASSET.** `svc_enslaver_shroud_fx` (our own EffectEntity, cloned from
-     the shipped `drxshadowcloakrunning_fx` for structure) points at
-     `Effects\MonsterFX\ShadowStalker_Smoke01.pfx` - byte-for-byte the file the
-     demons' mesh plays - and its donor's weapon `boneList` is DELETED, so the
-     smoke is no longer nailed to his fists.
-     It is our own record rather than a direct reference to the base-game
-     `Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr` for one reason: a record
-     that lives only in the base `.arz` cannot be read, gated or diffed by this
-     build. The `.pfx` - the thing that renders - is identical either way, and
-     verify() proves that file ships (A9 render resolution) rather than assuming.
+  A. **THE ASSET.** `svc_enslaver_shroud_fx` is a FIELD-FOR-FIELD MIRROR of the
+     demons' own base-game EffectEntity `Records\Effects\MonsterFX\
+     ShadowStalker_Smoke.dbr`, which is exactly four fields:
 
-  B. **THE SHAPE.** `particleEffectAttachPoints = ['Bone_Waist']`.
-     ⚠️ We may NOT copy the demons' own attach name: `SpecialHit01` is a helper
-     that exists on `ShadowStalker.msh` and **does NOT exist on
-     `SkeletonGrayBlack01New.msh`** (measured in both mesh binaries), and an FX
-     aimed at a missing attach point silently renders NOTHING - the exact trap
-     R-95 wrote down and nobody had checked since. `Bone_Waist` IS present on his
-     rig (and on the demons'), it is where `RevenantPoison_FX` hung its aura on
-     his old mesh, and the base game ships body-wrap paks that attach at raw bone
-     names (`dmgabsolute_*charfxpak` -> `Bone_Spine02`, both shoulders). verify()
-     re-reads the wearer's mesh binary and FAILS if any attach point this pak
-     names is missing from that rig.
+         templateName = database\Templates\Effect.tpl
+         ActorName    = Effects_Fire_EarthPet_Core02
+         Class        = EffectEntity
+         effectFile   = Effects\MonsterFX\ShadowStalker_Smoke01.pfx
+
+     `drxshadowcloakrunning_fx` is used only as a record SHELL and then PRUNED to
+     that set: its `boneList = Bone_R_Weapon;Bone_L_Weapon` (the reason every
+     previous rendering came off his fists) and its `Anchored`/`emitterType`/
+     `localOrientFix` all go. Donor residue is not a neutral default - those three
+     came off a weapon-bone-attached effect and their behaviour on a body attach
+     point is unproven, so the honest move is to carry none of them. verify()
+     re-reads the demons' record out of the base `.arz` and FAILS if our field set
+     or any value drifts from theirs, so "the same one his demons have" is a
+     DERIVED claim about the whole record and not just about the `.pfx`.
+     It is our own record rather than a live reference to theirs so that the build
+     can read, gate and diff it, and so a future game patch cannot change what he
+     wears without this gate noticing.
+
+  B. **THE SHAPE.** `particleEffectAttachPoints = ['SpecialHit01']` - THE DEMONS'
+     OWN ATTACH POINT, derived from their mesh's `CreateEntity{attach=...}` block
+     rather than chosen. Measured in both binaries (b104 round 2, correcting a
+     false measurement round 1 recorded as law):
+
+       SkeletonGrayBlack01New.msh (his rig) AttachPoints: Head, HeadEffect,
+         L Hand, Prey_Effect, R Hand, SpecialHit01..04, Target, Upper Body
+       ShadowStalker.msh (the demons' rig): the SAME set plus `Smoke02`
+
+     `SpecialHit01` is present on BOTH, and its block is byte-identical on both
+     rigs - `origin = (0,0,0)` with identity axes, i.e. the model origin, a
+     ground-up body column. So the smoke hangs on him exactly where it hangs on
+     them. Round 1 excluded it on the claim that it "does not exist on
+     `SkeletonGrayBlack01New.msh`"; that claim came from a reader that scanned only
+     NUL-terminated strings, and AttachPoint names live in a CRLF text block with
+     no NUL in it. The instrument was structurally blind to the class of name it
+     was asked about. `tools/mesh_assets.rig_names_of()` now reads BOTH tables.
+
+     Namespace matters as much as spelling: `particleEffectAttachPoints` values in
+     this DB are overwhelmingly AttachPoint names ('L Hand' x21, 'R Hand' x20,
+     'SpecialHit03' x4, 'HeadEffect' x4, ...) against exactly 5 rows using a raw
+     `Bone_*`, and one of this mod's own shipped paks (`hemor_charfx`) already
+     attaches at `SpecialHit03` on a skeleton rig. `Bone_Waist` (round 1's choice)
+     is the thinly-precedented namespace, is an animated pelvis joint rather than
+     the model origin, and its stated justification - "where `RevenantPoison_FX`
+     hung its aura on his old mesh" - was also false: that mesh's block reads
+     `attach = "Waist"`, the ATTACHPOINT `Waist`, which his current rig does not
+     declare at all.
+
+     verify() re-reads the wearer's mesh binary and FAILS if any attach point this
+     pak names is missing from that rig, matching CASEFOLDED because the shipped
+     DB addresses these tables off-case (`Bone_spine01`, `Specialhit03`).
 
   C. **ALWAYS ON.** Every roster surface gets an SVC-OWNED CLONE of whatever
      controller it currently carries, with the single field `BuffSelfBehavior`
@@ -147,9 +181,19 @@ _NAME_TAGS = ('tagsvcmonsterenslaver', 'tagsvcmonsterenslaverpet')
 # "same one his demons have" claim fails loud instead of silently going stale.
 _DEMON_FX_REF = r'records\effects\monsterfx\shadowstalker_smoke.dbr'
 _DEMON_PFX = r'Effects\MonsterFX\ShadowStalker_Smoke01.pfx'
-# the demons' MESH attach helper - NAMED HERE ONLY TO BE REFUSED. It does not
-# exist on the Enslaver's rig; copying it would render nothing at all.
+# The demons' MESH attach helper, and the one we COPY: it is declared on the
+# Enslaver's rig too, with a byte-identical block (origin (0,0,0), identity axes).
+# Pinned so the build is deterministic without the game install; verify() DERIVES
+# it from the marauders' mesh binary and fails loud if the two ever disagree.
 _DEMON_MESH_ATTACH = 'SpecialHit01'
+# The demons' own EffectEntity, field for field (read out of the base-game .arz).
+# Our record is pruned to exactly this; verify() re-derives it and fails on drift.
+_DEMON_FX_FIELDS = (
+    ('templateName', r'database\Templates\Effect.tpl'),
+    ('ActorName', 'Effects_Fire_EarthPet_Core02'),
+    ('Class', 'EffectEntity'),
+    ('effectFile', _DEMON_PFX),
+)
 
 # the running channel both he and his demons already carry (kept, never removed)
 _SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx.dbr'
@@ -164,12 +208,16 @@ _SHROUD = r'records\skills\monster skills\buff_self\svc_enslaver_shroud.dbr'
 _SHROUD_PAK = r'records\skills\monster skills\buff_self\svc_enslaver_shroud_charfxpak.dbr'
 _SHROUD_FX = r'records\skills\monster skills\buff_self\svc_enslaver_shroud_fx.dbr'
 
-# ── SHAPE (b104) ────────────────────────────────────────────────────────────
-# A bone that EXISTS on his rig, and the one his old mesh hung its aura on.
-# Never `SpecialHit01` (missing from his rig -> silent nothing) and never
-# 'R Hand'/'L Hand' (the b98 round-4 defect: smoke off two fists).
-_ATTACH = ['Bone_Waist']
+# ── SHAPE (b104 round 2) ────────────────────────────────────────────────────
+# THE DEMONS' OWN ATTACH POINT. Measured present on his rig (and byte-identical
+# to theirs). Never 'R Hand'/'L Hand' (the b98 round-4 defect: smoke off two
+# fists), and never `Smoke02` - THAT is the helper the demons have and he does
+# not, so it is the one that would render nothing at all.
+_ATTACH = [_DEMON_MESH_ATTACH]
 _PARTICLE_COUNT = 1     # ONE body emitter, exactly like the demons' one CreateEntity
+# A name on the demons' rig that his rig does NOT declare. Kept as the concrete
+# example of the silent-nothing trap, and exercised as a negtest plant.
+_DEMON_ONLY_ATTACH = 'Smoke02'
 
 # ── ALWAYS ON (b104) ────────────────────────────────────────────────────────
 _BUFF_TRIGGER = 'WheneverPossible'
@@ -180,8 +228,10 @@ _CTRL_PREFIX = 'svc_alwayson_'
 # negative test cannot ship archives, so it injects the two answers instead. In a
 # real build both stay None and the gates read the real assets (or announce a
 # loud DOWNGRADE - never a silent pass).
-_RIG_NAMES_OVERRIDE = None      # {mesh_ref_lower: set(attach/bone names)}
+_RIG_NAMES_OVERRIDE = None      # {mesh_ref_lower: set(bone + AttachPoint names)}
 _DEMON_FX_OVERRIDE = None       # [entity refs embedded in the demons' mesh]
+_DEMON_ATTACH_OVERRIDE = None   # the attach name in the demons' CreateEntity
+_DEMON_FX_RECORD_OVERRIDE = None  # {field: value} of the demons' EffectEntity
 
 
 def _norm(p):
@@ -272,28 +322,114 @@ def _del_field(db, rec, name):
 # ── ASSET-LEVEL READERS (the layer four waves never looked at) ──────────────
 
 def _mesh_names(mesh_ref):
-    """(status, set(attach/bone helper names)) out of a mesh binary.
+    """(status, set(CASEFOLDED rig names)) out of a mesh binary: BOTH namespaces.
 
     status PASS / SKIP. SKIP means the archives are not reachable from this
     working tree; the caller ANNOUNCES that rather than counting it as a pass.
+
+    ⚠️ b104 round 2, and the reason this delegates instead of scanning: round 1
+    scanned `[A-Za-z][A-Za-z0-9_ ]{2,31}\\x00` here - NUL-terminated strings only.
+    Bone-table names are NUL-terminated; ATTACHPOINT names are not, they live in a
+    CRLF text block. So the reader could not see AttachPoint names AT ALL, and the
+    round reported `SpecialHit01` "does not exist on SkeletonGrayBlack01New.msh"
+    when it is declared there at byte 325003. A false measurement from a blind
+    instrument then became a bolded warning in `docs/WILL_RULINGS.md`, i.e. design
+    law for every future wave. `rig_names_of()` reads the bone table UNION the
+    AttachPoint table, which is the set an attach value may legally resolve to.
+
+    Casefolded because the shipped DB addresses these tables off-case
+    (`Bone_spine01` vs the rig's `Bone_Spine01`, `Specialhit03` vs `SpecialHit03`).
+    A case-sensitive gate would false-fail records that ship and work today, and a
+    gate that cries wolf gets waived instead of fixed.
     """
     if _RIG_NAMES_OVERRIDE is not None:
         got = _RIG_NAMES_OVERRIDE.get(_norm(mesh_ref))
-        return ('PASS', got) if got is not None else ('SKIP', set())
+        return ('PASS', {str(n).lower() for n in got}) if got is not None \
+            else ('SKIP', set())
     try:
-        import re
         import mesh_assets
         if not mesh_assets.arcs_available():
             return ('SKIP', set())
         data, _arc = mesh_assets.read_asset(mesh_ref)
         if not data:
             return ('SKIP', set())
-        names = set()
-        for m in re.finditer(rb'[A-Za-z][A-Za-z0-9_ ]{2,31}\x00', data):
-            names.add(m.group(0)[:-1].decode('ascii'))
-        return ('PASS', names)
+        return ('PASS', {n.lower() for n in mesh_assets.rig_names_of(data)})
     except Exception:                                        # noqa: BLE001
         return ('SKIP', set())
+
+
+def _demon_mesh_attach(db):
+    """(status, attach_point) the demons' OWN mesh hangs their shroud on.
+
+    The value we copy, derived from the binary rather than asserted. Round 1
+    hard-coded a belief about this name and got it backwards; a derived value
+    cannot go stale and cannot be wrong in a comment.
+    """
+    if _DEMON_ATTACH_OVERRIDE is not None:
+        return ('PASS', _DEMON_ATTACH_OVERRIDE)
+    mesh = _gv1(db, _MARAUDER, 'mesh')
+    if not mesh:
+        return ('FAIL', None)
+    try:
+        import mesh_assets
+        if not mesh_assets.arcs_available():
+            return ('SKIP', None)
+        data, _arc = mesh_assets.read_asset(str(mesh))
+        if not data:
+            return ('SKIP', None)
+        want = _DEMON_FX_REF.rsplit('\\', 1)[-1].lower()
+        for attach, entity in mesh_assets.embedded_fx_attachments_of(data):
+            if entity and str(entity).replace('/', '\\').rsplit('\\', 1)[-1].lower() == want:
+                return ('PASS', attach)
+        return ('PASS', None)
+    except Exception:                                        # noqa: BLE001
+        return ('SKIP', None)
+
+
+def _demon_fx_record(db):
+    """(status, {field: value}) for the demons' own EffectEntity.
+
+    It lives ONLY in the base-game `.arz` (it is not in the mod DB), so this reads
+    the game install directly. Cheap: the parser is lazy-decode, ~0.4s for 74,013
+    records. Used to prove our mirror really is a mirror, values included.
+    """
+    if _DEMON_FX_RECORD_OVERRIDE is not None:
+        return ('PASS', dict(_DEMON_FX_RECORD_OVERRIDE))
+    if db is not None and db.has_record(_DEMON_FX_REF):
+        src = db                                  # already layered in: prefer it
+    else:
+        try:
+            from pathlib import Path
+            import mesh_assets
+            from arz_patcher import ArzDatabase
+            p = Path(mesh_assets.game_dir()) / 'Database' / 'database.arz'
+            if not p.exists():
+                return ('SKIP', {})
+            src = _base_db_cached(ArzDatabase, p)
+        except Exception:                                    # noqa: BLE001
+            return ('SKIP', {})
+    ff = src.get_fields(_DEMON_FX_REF)
+    if ff is None:
+        return ('SKIP', {})
+    out = {}
+    for k, tf in ff.items():
+        vals = [str(v) for v in (tf.values or [])]
+        out[k.split('###')[0]] = vals[0] if len(vals) == 1 else vals
+    return ('PASS', out)
+
+
+_BASE_DB_CACHE = {}
+
+
+def _base_db_cached(cls, path):
+    key = str(path)
+    if key not in _BASE_DB_CACHE:
+        import contextlib
+        import io
+        # the loader prints a progress banner; a gate's output is not the place
+        with contextlib.redirect_stdout(io.StringIO()):
+            _BASE_DB_CACHE[key] = cls.from_arz(path)
+    return _BASE_DB_CACHE[key]
 
 
 def _demon_embedded_fx(db):
@@ -345,18 +481,28 @@ def pfx_resolution(pfx=_DEMON_PFX):
 # ── BUILD ───────────────────────────────────────────────────────────────────
 
 def _build_fx(db):
-    """Our own EffectEntity playing the demons' own .pfx, body-attachable."""
+    """A FIELD-FOR-FIELD MIRROR of the demons' own EffectEntity.
+
+    The donor is a record SHELL, not a design. Round 1 cloned it, deleted the one
+    field it knew was wrong (`boneList`) and shipped the rest - so `Anchored`,
+    `emitterType` and `localOrientFix` rode along from a WEAPON-BONE-attached
+    effect onto a body attach point, where their behaviour is unproven, while
+    `ActorName` (which the demons' record does carry) was absent. "Byte-for-byte
+    the demons' own particle" was then true of the `.pfx` and of nothing else.
+
+    So: prune to exactly the demons' field set, then write exactly their values.
+    verify() re-reads their record from the base `.arz` and fails on any drift.
+    """
     _require(db, _FX_DONOR)
     if not db.has_record(_SHROUD_FX):
         db.clone_record(_FX_DONOR, _SHROUD_FX)
-    db.set_field(_SHROUD_FX, 'effectFile', _DEMON_PFX)
-    # THE DONOR'S WEAPON BONES MUST GO. `drxshadowcloakrunning_fx` carries
-    # boneList = Bone_R_Weapon;Bone_L_Weapon, which is why every previous
-    # rendering of this shroud came off his fists instead of from around him.
-    _del_field(db, _SHROUD_FX, 'boneList')
-    db.set_field(_SHROUD_FX, 'FileDescription',
-                 'SVC Enslaver: the demons own ShadowStalker smoke, body-attached '
-                 '(visual only)')
+    want = dict(_DEMON_FX_FIELDS)
+    for k in list(db.get_fields(_SHROUD_FX) or {}):
+        base = k.split('###')[0]
+        if base not in want:
+            _del_field(db, _SHROUD_FX, base)
+    for f, v in _DEMON_FX_FIELDS:
+        db.set_field(_SHROUD_FX, f, v)
     db._modified.add(_SHROUD_FX)
 
 
@@ -382,6 +528,15 @@ def _build_skill(db):
     for f in ('skillWeaponTintRed', 'skillWeaponTintGreen', 'skillWeaponTintBlue'):
         if db.get_field_value(_SHROUD, f) is not None:
             db.set_field(_SHROUD, f, 0.0)
+    # `empusamerc_enchantment` residue: particleEffectAttachPoint1 = 'R Hand',
+    # with no particleEffectName1 beside it. Inert, and it is the b98 round-4
+    # "smoke off two fists" string sitting on the very record that fixes it - a
+    # future reader trips over it and re-derives the wrong design. Placement on
+    # this skill is the pak's job (`charFxPakSelfNames`) and nothing else's.
+    for k in list(db.get_fields(_SHROUD) or {}):
+        b = k.split('###')[0]
+        if b.startswith('particleEffect'):
+            _del_field(db, _SHROUD, b)
     db.set_field(_SHROUD, 'skillMaxLevel', 3)
     db.set_field(_SHROUD, 'FileDescription',
                  'SVC Enslaver: persistent black shadow shroud (visual only, no payload)')
@@ -507,10 +662,11 @@ def apply(db, tags):
         print("  shroud -> skillName%-2d  ctrl=%-58s %s%s"
               % (slot, ctrl.rsplit('\\', 1)[-1], rec,
                  '   (MONSTER)' if rec == _ENSLAVER else '   (PET TIER)'))
-    print("  %d surface(s): the demons' own %s on Bone_Waist, always on "
-          "(BuffSelfBehavior=%s on SVC-owned controller clones); NO skill dropped; "
-          "charFxPakRunningNames untouched everywhere."
-          % (len(shroud_roster(db)), _DEMON_PFX.rsplit('\\', 1)[-1], _BUFF_TRIGGER))
+    print("  %d surface(s): the demons' own %s at the demons' own attach point "
+          "%s, always on (BuffSelfBehavior=%s on SVC-owned controller clones); "
+          "NO skill dropped; charFxPakRunningNames untouched everywhere."
+          % (len(shroud_roster(db)), _DEMON_PFX.rsplit('\\', 1)[-1],
+             _ATTACH[0], _BUFF_TRIGGER))
     print("=== [enslaver_shroud] done (verify() runs post-finalization) ===\n")
     return tags
 
@@ -553,6 +709,15 @@ def verify(db, tags=None):
                 problems.append("shroud %s=%r (must stay the inert 0 NO-TINT default; "
                                 "the donor's purple tint would recolour his weapon)"
                                 % (f, t))
+        stray = sorted({k.split('###')[0] for k in (db.get_fields(_SHROUD) or {})
+                        if k.split('###')[0].startswith('particleEffect')})
+        if stray:
+            problems.append(
+                "DONOR RESIDUE: the shroud skill still carries %r from "
+                "`empusamerc_enchantment`. Placement on this skill belongs to the "
+                "pak named in charFxPakSelfNames and to nothing else; an orphan "
+                "'R Hand' attach on the record that FIXES the two-fists defect is "
+                "how a future reader re-derives the wrong design." % stray)
 
     # ── the EffectEntity: the demons' particle, off the weapon bones ────────
     if not db.has_record(_SHROUD_FX):
@@ -578,6 +743,46 @@ def verify(db, tags=None):
                 "body shroud must carry no boneList and be placed by the pak's "
                 "attach point." % (_SHROUD_FX, bl))
 
+        # ── MIRROR: the WHOLE record, not just the .pfx ────────────────────
+        ours = {k.split('###')[0]: (lambda v: v[0] if isinstance(v, list)
+                                    and len(v) == 1 else v)(
+                    [str(x) for x in (tf.values or [])])
+                for k, tf in (db.get_fields(_SHROUD_FX) or {}).items()}
+        st, theirs = _demon_fx_record(db)
+        if st == 'SKIP':
+            notes.append("DEMON EFFECTENTITY MIRROR DOWNGRADED (not a pass): the "
+                         "base-game .arz is not reachable, so %s could not be "
+                         "re-derived; the pinned field set was used instead"
+                         % _DEMON_FX_REF)
+            theirs = {f: v for f, v in _DEMON_FX_FIELDS}
+        elif not theirs:
+            problems.append("the demons' own EffectEntity %s could not be read, so "
+                            "the mirror claim cannot be checked" % _DEMON_FX_REF)
+        if theirs:
+            pinned = {f: v for f, v in _DEMON_FX_FIELDS}
+            if st == 'PASS' and {k: str(v) for k, v in theirs.items()} != pinned:
+                problems.append(
+                    "PROVENANCE DRIFT: the demons' own %s now reads %r but this "
+                    "module is pinned to %r. Re-derive rather than letting the "
+                    "mirror silently stop mirroring." % (_DEMON_FX_REF, theirs, pinned))
+            extra = sorted(set(ours) - set(theirs))
+            missing = sorted(set(theirs) - set(ours))
+            if extra or missing:
+                problems.append(
+                    "MIRROR: %s is not a field-for-field copy of the demons' own "
+                    "EffectEntity - extra=%r missing=%r. Round 1 shipped donor "
+                    "residue here (Anchored/emitterType/localOrientFix, all off a "
+                    "WEAPON-BONE-attached effect, unproven on a body attach point) "
+                    "and claimed 'byte-for-byte the demons' own particle' on the "
+                    "strength of the .pfx alone." % (_SHROUD_FX, extra, missing))
+            diff = {f: (ours.get(f), theirs[f]) for f in theirs
+                    if f in ours and _norm(ours[f]) != _norm(theirs[f])}
+            if diff:
+                problems.append(
+                    "MIRROR: %s disagrees with the demons' own record on %r "
+                    "(ours, theirs). Will asked for 'the same one that his demon "
+                    "summon guys have'." % (_SHROUD_FX, diff))
+
     # ── the pak: one body emitter, on a bone that exists on his rig ─────────
     if not db.has_record(_SHROUD_PAK):
         problems.append("shroud CharFxPak missing: %s" % _SHROUD_PAK)
@@ -595,11 +800,41 @@ def verify(db, tags=None):
         ap = _lst(db, _SHROUD_PAK, 'particleEffectAttachPoints')
         if ap != _ATTACH:
             problems.append(
-                "SHAPE: shroud pak particleEffectAttachPoints=%r, expected %r. "
-                "'R Hand'/'L Hand' is the b98 round-4 defect (smoke off two fists) "
-                "and %r is the demons' OWN mesh helper, which does not exist on his "
-                "rig and would render nothing at all."
-                % (ap, _ATTACH, _DEMON_MESH_ATTACH))
+                "SHAPE: shroud pak particleEffectAttachPoints=%r, expected %r - the "
+                "attach point the demons' OWN mesh hangs this smoke on, which his "
+                "rig declares too, with a byte-identical block. 'R Hand'/'L Hand' "
+                "is the b98 round-4 defect (smoke off two fists); %r is the helper "
+                "the demons have and he does NOT, so it would render nothing at all."
+                % (ap, _ATTACH, _DEMON_ONLY_ATTACH))
+
+    # ── THE ATTACH POINT IS THE DEMONS' OWN, DERIVED FROM THEIR MESH ────────
+    st, demon_attach = _demon_mesh_attach(db)
+    if st == 'FAIL':
+        problems.append("the marauders (%s) have no mesh, so the attach point we "
+                        "copy cannot be derived at all" % _MARAUDER)
+    elif st == 'SKIP':
+        notes.append("DEMON-ATTACH PARITY DOWNGRADED (not a pass): the .arc archives "
+                     "are not reachable, so the demons' own CreateEntity attach "
+                     "could not be re-derived; pinned %r was used" % _DEMON_MESH_ATTACH)
+    elif not demon_attach:
+        problems.append(
+            "the marauders' mesh embeds %s with no readable attach point, so 'the "
+            "same one that his demon summon guys have' cannot be matched by "
+            "placement." % _DEMON_FX_REF)
+    else:
+        if demon_attach.lower() != _DEMON_MESH_ATTACH.lower():
+            problems.append(
+                "PROVENANCE DRIFT: the demons hang their shroud at %r but this "
+                "module is pinned to %r. Re-derive; a pinned belief about this name "
+                "is exactly what round 1 got backwards."
+                % (demon_attach, _DEMON_MESH_ATTACH))
+        if [a.lower() for a in _lst(db, _SHROUD_PAK, 'particleEffectAttachPoints')] \
+                != [demon_attach.lower()]:
+            problems.append(
+                "SHAPE: the demons hang this smoke at %r; our pak attaches it at %r. "
+                "Same particle at a different place is a different shroud."
+                % (demon_attach,
+                   _lst(db, _SHROUD_PAK, 'particleEffectAttachPoints')))
 
     # ── PROVENANCE, DERIVED FROM THE DEMONS' MESH (not from a comment) ──────
     st, refs = _demon_embedded_fx(db)
@@ -723,15 +958,19 @@ def verify(db, tags=None):
                 notes.append("RIG ATTACH DOWNGRADED (not a pass) for %s: %s could "
                              "not be read" % (rec.rsplit('\\', 1)[-1], mesh))
             else:
+                # names is CASEFOLDED and spans BOTH namespaces (bone table +
+                # AttachPoint table). Round 1 resolved this against the bone table
+                # alone, which cannot see the names this field mostly uses.
                 missing = [a for a in _lst(db, _SHROUD_PAK, 'particleEffectAttachPoints')
-                           if a not in names]
+                           if a.lower() not in names]
                 if missing:
                     problems.append(
-                        "RIG ATTACH: %s wears %s, which has no %r. An FX aimed at an "
+                        "RIG ATTACH: %s wears %s, which declares no %r in either its "
+                        "bone table or its AttachPoint table. An FX aimed at an "
                         "attach point the mesh does not carry renders NOTHING, "
-                        "silently - the trap R-95 wrote down and no wave checked. "
-                        "(The demons' own %r is exactly such a name on this rig.)"
-                        % (rec, mesh, missing, _DEMON_MESH_ATTACH))
+                        "silently - the trap R-95 wrote down. (%r is exactly such a "
+                        "name here: the demons declare it, this rig does not.)"
+                        % (rec, mesh, missing, _DEMON_ONLY_ATTACH))
 
         # ── ADD, never take away: the running channel he shares with them ──
         run = _gv1(db, rec, 'charFxPakRunningNames')
@@ -779,22 +1018,37 @@ def verify(db, tags=None):
         for p in problems:
             print("  ENSLAVER-SHROUD OFFENDER: %s" % p)
         raise SystemExit("enslaver_shroud.verify FAILED: %d problem(s)" % len(problems))
-    print("  [enslaver_shroud].verify OK: the Enslaver of Souls wears the demons' own "
-          "%s on Bone_Waist - a bone his rig actually carries - fired by SVC-owned "
-          "controller clones at BuffSelfBehavior=%s so it is ON out of combat, "
-          "visual-only (no payload, no tint, and the shroud is the only self-buff in "
-          "either kit), on ALL %d surface(s): the monster AND every derived pet tier "
-          "(%d). Running FX untouched everywhere; no charFxPak on any SpawnPet skill. "
+    print("  [enslaver_shroud].verify OK: the Enslaver of Souls wears a field-for-field "
+          "mirror of the demons' own EffectEntity (%s) at %r - the demons' OWN attach "
+          "point, derived from their mesh and measured present on his rig in the same "
+          "byte-identical block - fired by SVC-owned controller clones at "
+          "BuffSelfBehavior=%s so it is ON out of combat, visual-only (no payload, no "
+          "tint, no donor residue, and the shroud is the only self-buff in either kit), "
+          "on ALL %d surface(s): the monster AND every derived pet tier (%d). Running "
+          "FX untouched everywhere; no charFxPak on any SpawnPet skill. "
           "WHAT IS STILL NOT CLAIMED: how it READS in game (BL-R250-DEBT-1)."
-          % (_DEMON_PFX.rsplit('\\', 1)[-1], _BUFF_TRIGGER, len(roster), len(tiers)))
+          % (_DEMON_PFX.rsplit('\\', 1)[-1], _ATTACH[0], _BUFF_TRIGGER,
+             len(roster), len(tiers)))
     return tags
 
 
 # ── NEGATIVE TEST ───────────────────────────────────────────────────────────
 
 def _negtest():
-    """py tools/patches/enslaver_shroud.py --negtest"""
-    global _RIG_NAMES_OVERRIDE, _DEMON_FX_OVERRIDE
+    r"""py tools/patches/enslaver_shroud.py --negtest
+
+    ⚠️ THE STUB'S RIG TABLE IS THE TEST'S OWN PREMISE, AND ROUND 1 PLANTED A FALSE
+    ONE. It injected `{SkeletonGrayBlack01New: {Bone_Waist, Bone_Spine02, ...}}`,
+    i.e. it asserted that his rig has no `SpecialHit01`, then "caught" a plant that
+    aimed the shroud there - certifying the module's own error instead of detecting
+    it. The 24/24 was real for the other 23 plants and circular for that one.
+
+    The table below is now the MEASURED content of both binaries, and `--selftest`
+    re-measures the two facts it rests on against the real archives, so the stub can
+    never again quietly disagree with the assets it stands in for.
+    """
+    global _RIG_NAMES_OVERRIDE, _DEMON_FX_OVERRIDE, _DEMON_ATTACH_OVERRIDE
+    global _DEMON_FX_RECORD_OVERRIDE
     from collections import OrderedDict
 
     class _TF(object):
@@ -827,9 +1081,16 @@ def _negtest():
 
     _MESH_M = r'Creatures\Monster\Skeleton\SkeletonGrayBlack01New.msh'
     _MESH_D = r'Creatures\Monster\ShadowStalker\ShadowStalker.msh'
-    _RIG = {_norm(_MESH_M): {'Bone_Waist', 'Bone_Spine02', 'Bone_Head',
-                             'Bone_R_Weapon', 'Bone_L_Weapon'},
-            _norm(_MESH_D): {'Bone_Waist', 'SpecialHit01'}}
+    # MEASURED, both binaries, both namespaces (`--selftest` re-checks these two
+    # rows against the real archives). The rigs carry the IDENTICAL SpecialHit0X
+    # set; the demons' ONLY extra helper is `Smoke02`.
+    _AP_COMMON = {'Head', 'HeadEffect', 'L Hand', 'Prey_Effect', 'R Hand',
+                  'SpecialHit01', 'SpecialHit02', 'SpecialHit03', 'SpecialHit04',
+                  'Target', 'Upper Body'}
+    _BONES = {'Bone_Root', 'Bone_Waist', 'Bone_Spine01', 'Bone_Spine02', 'Bone_Head',
+              'Bone_R_Weapon', 'Bone_L_Weapon'}
+    _RIG = {_norm(_MESH_M): _AP_COMMON | _BONES,
+            _norm(_MESH_D): _AP_COMMON | _BONES | {_DEMON_ONLY_ATTACH}}
     _PETS = [r'records\skills\soulskills\pets\toxeus_enslaver_%d.dbr' % i
              for i in (1, 2, 3)]
     _CTRL_M = r'records\controllers\monster\svc_alwayson_controller_skeleton_toxeus.dbr'
@@ -845,7 +1106,7 @@ def _negtest():
         db.d[_SHADOWCLOAK_FX] = {'Class': ['EffectEntity'],
                                  'effectFile': [r'DRXeffects\shadowcloakrunning.pfx'],
                                  'boneList': ['Bone_R_Weapon', 'Bone_L_Weapon']}
-        db.d[_SHROUD_FX] = {'Class': ['EffectEntity'], 'effectFile': [_DEMON_PFX]}
+        db.d[_SHROUD_FX] = {f: [v] for f, v in _DEMON_FX_FIELDS}
         db.d[_SHROUD_PAK] = {'particleEffectNames': [_SHROUD_FX] * _PARTICLE_COUNT,
                              'particleEffectAttachPoints': list(_ATTACH)}
         db.d[_SHROUD] = {'Class': ['Skill_BuffSelfToggled'],
@@ -891,11 +1152,30 @@ def _negtest():
                                       {'Class': ['Skill_BuffSelfDuration']}),
                      db.d[_ENSLAVER].__setitem__('skillName20',
                                                  [r'records\skills\x\rage.dbr']))),
-        ('the shroud is aimed at the demons OWN mesh helper, absent from his rig',
+        # ── b104 round 2: the attach-point class, planted on TRUE rigs ──────
+        ('the shroud is aimed at Smoke02 - a helper the DEMONS have and he does not',
          lambda db: db.d[_SHROUD_PAK].__setitem__('particleEffectAttachPoints',
-                                                  [_DEMON_MESH_ATTACH])),
+                                                  [_DEMON_ONLY_ATTACH])),
+        ('the shroud drifts off the demons OWN attach point (round 1s Bone_Waist)',
+         lambda db: db.d[_SHROUD_PAK].__setitem__('particleEffectAttachPoints',
+                                                  ['Bone_Waist'])),
+        ('the demons move their shroud, so our pinned attach point goes stale',
+         lambda db: _set_demon_attach('Smoke02')),
         ('the attach point is dropped, so placement is undefined',
          lambda db: db.d[_SHROUD_PAK].pop('particleEffectAttachPoints')),
+        # ── b104 round 2: the EffectEntity-mirror class ─────────────────────
+        ('donor residue survives on the EffectEntity (localOrientFix off a weapon FX)',
+         lambda db: db.d[_SHROUD_FX].__setitem__('localOrientFix', [1])),
+        ('the EffectEntity loses ActorName, which the demons record carries',
+         lambda db: db.d[_SHROUD_FX].pop('ActorName')),
+        ('the demons EffectEntity changes, so our pinned mirror goes stale',
+         lambda db: _set_demon_fx_record(
+             {'templateName': r'database\Templates\Effect.tpl',
+              'ActorName': 'Something_Else', 'Class': 'EffectEntity',
+              'effectFile': _DEMON_PFX})),
+        ('the b98 R Hand attach residue is left on the shroud skill',
+         lambda db: db.d[_SHROUD].__setitem__('particleEffectAttachPoint1',
+                                              ['R Hand'])),
         ('the b98 round-4 defect returns: smoke off two fists',
          lambda db: db.d[_SHROUD_PAK].__setitem__('particleEffectAttachPoints',
                                                   ['R Hand', 'L Hand'])),
@@ -950,9 +1230,27 @@ def _negtest():
         global _DEMON_FX_OVERRIDE
         _DEMON_FX_OVERRIDE = v
 
-    _RIG_NAMES_OVERRIDE = _RIG
-    _DEMON_FX_OVERRIDE = [r'Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr']
-    clean_fx = list(_DEMON_FX_OVERRIDE)
+    def _set_demon_attach(v):
+        global _DEMON_ATTACH_OVERRIDE
+        _DEMON_ATTACH_OVERRIDE = v
+
+    def _set_demon_fx_record(v):
+        global _DEMON_FX_RECORD_OVERRIDE
+        _DEMON_FX_RECORD_OVERRIDE = v
+
+    clean_fx = [r'Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr']
+    clean_attach = _DEMON_MESH_ATTACH
+    clean_rec = {f: v for f, v in _DEMON_FX_FIELDS}
+
+    def _reset():
+        global _RIG_NAMES_OVERRIDE, _DEMON_FX_OVERRIDE
+        global _DEMON_ATTACH_OVERRIDE, _DEMON_FX_RECORD_OVERRIDE
+        _RIG_NAMES_OVERRIDE = _RIG
+        _DEMON_FX_OVERRIDE = list(clean_fx)
+        _DEMON_ATTACH_OVERRIDE = clean_attach
+        _DEMON_FX_RECORD_OVERRIDE = dict(clean_rec)
+
+    _reset()
     try:
         verify(_base())
     except SystemExit as e:
@@ -960,7 +1258,7 @@ def _negtest():
         return 1
     bad = 0
     for label, plant in plants:
-        _DEMON_FX_OVERRIDE = list(clean_fx)
+        _reset()
         db = _base()
         plant(db)
         try:
@@ -970,11 +1268,108 @@ def _negtest():
             continue
         print("  negtest FAIL (missed): %s" % label)
         bad += 1
-    _DEMON_FX_OVERRIDE = list(clean_fx)
+    _reset()
     print("negtest: %d/%d plants caught" % (len(plants) - bad, len(plants)))
     return 1 if bad else 0
 
 
+# ── INSTRUMENT SELF-TEST (the round-1 failure mode, closed) ─────────────────
+
+def _selftest():
+    r"""py tools/patches/enslaver_shroud.py --selftest
+
+    A negative test can only ever be as true as the premise its stub asserts, and
+    round 1's stub asserted a false one. This checks the MEASUREMENT ITSELF against
+    the real archives: it re-reads both mesh binaries and requires the facts this
+    module's design rests on to still hold. Loud SKIP when the archives are not
+    reachable - never a silent pass.
+    """
+    try:
+        import mesh_assets
+    except Exception as e:                                   # noqa: BLE001
+        print("SELFTEST SKIP: mesh_assets unavailable (%s)" % e)
+        return 0
+    if not mesh_assets.arcs_available():
+        print("SELFTEST SKIP: no reachable .arc archives from this working tree")
+        return 0
+    m_his = r'Creatures\Monster\Skeleton\SkeletonGrayBlack01New.msh'
+    m_dem = r'Creatures\Monster\ShadowStalker\ShadowStalker.msh'
+    bad = []
+    rigs = {}
+    for ref in (m_his, m_dem):
+        data, arc = mesh_assets.read_asset(ref)
+        if not data:
+            print("SELFTEST SKIP: %s did not resolve" % ref)
+            return 0
+        rigs[ref] = {'names': {n.lower() for n in mesh_assets.rig_names_of(data)},
+                     'attach': mesh_assets.attach_points_of(data),
+                     'bones': mesh_assets.bones_of(data),
+                     'fx_at': mesh_assets.embedded_fx_attachments_of(data),
+                     'arc': arc}
+        print("  %-34s %d bone(s) + %d attach point(s)  %s"
+              % (ref.rsplit('\\', 1)[-1], len(rigs[ref]['bones']),
+                 len(rigs[ref]['attach']), rigs[ref]['attach']))
+
+    # 1. the instrument is not blind: the AttachPoint table must be non-empty and
+    #    must NOT be findable by a NUL-anchored scan (that is the whole bug).
+    if not rigs[m_his]['attach']:
+        bad.append("attach_points_of() found NO AttachPoint on %s - the reader is "
+                   "blind again and every RIG ATTACH result is meaningless" % m_his)
+    nul_only = {n.lower() for n in rigs[m_his]['bones']}
+    if _DEMON_MESH_ATTACH.lower() in nul_only:
+        bad.append("%r turned up in the BONE table, so this selftest no longer "
+                   "distinguishes the two namespaces" % _DEMON_MESH_ATTACH)
+
+    # 2. the load-bearing fact: the attach point we copy is on HIS rig.
+    if _DEMON_MESH_ATTACH.lower() not in rigs[m_his]['names']:
+        bad.append("%r is NOT on %s. That is round 1's claim, and if it is ever "
+                   "true again this module aims at nothing." % (_DEMON_MESH_ATTACH, m_his))
+
+    # 3. the counter-example must stay a counter-example.
+    if _DEMON_ONLY_ATTACH.lower() in rigs[m_his]['names']:
+        bad.append("%r is now on HIS rig too, so it is no longer the missing-attach "
+                   "example the gate and the negtest use" % _DEMON_ONLY_ATTACH)
+    if _DEMON_ONLY_ATTACH.lower() not in rigs[m_dem]['names']:
+        bad.append("%r is not on the DEMONS' rig either" % _DEMON_ONLY_ATTACH)
+
+    # 4. the demons really hang their shroud where we say they do.
+    want = _DEMON_FX_REF.rsplit('\\', 1)[-1].lower()
+    hung = [a for a, e in rigs[m_dem]['fx_at']
+            if e and str(e).replace('/', '\\').rsplit('\\', 1)[-1].lower() == want]
+    if [h.lower() for h in hung] != [_DEMON_MESH_ATTACH.lower()]:
+        bad.append("the demons hang %s at %r, not at the pinned %r"
+                   % (want, hung, _DEMON_MESH_ATTACH))
+
+    # 5. the pinned EffectEntity mirror still matches the base-game record.
+    st, theirs = _demon_fx_record(None)
+    if st != 'PASS' or not theirs:
+        print("  base-game .arz not reachable: EffectEntity mirror NOT re-checked")
+    else:
+        pinned = {f: v for f, v in _DEMON_FX_FIELDS}
+        if {k: str(v) for k, v in theirs.items()} != pinned:
+            bad.append("the demons' own %s now reads %r, pinned %r"
+                       % (_DEMON_FX_REF, theirs, pinned))
+        else:
+            print("  %s mirrors the base-game record exactly (%d fields)"
+                  % (_SHROUD_FX.rsplit('\\', 1)[-1], len(pinned)))
+
+    for b in bad:
+        print("  SELFTEST OFFENDER: %s" % b)
+    if bad:
+        print("selftest: FAILED (%d)" % len(bad))
+        return 1
+    print("selftest OK: %r is declared on BOTH rigs (the round-1 measurement was "
+          "false); %r is on the demons' rig ONLY and stays the silent-nothing "
+          "example; the demons hang %s at %r."
+          % (_DEMON_MESH_ATTACH, _DEMON_ONLY_ATTACH, want, _DEMON_MESH_ATTACH))
+    return 0
+
+
 if __name__ == '__main__':
     import sys
-    sys.exit(_negtest() if '--negtest' in sys.argv else 0)
+    rc = 0
+    if '--negtest' in sys.argv:
+        rc |= _negtest()
+    if '--selftest' in sys.argv:
+        rc |= _selftest()
+    sys.exit(rc)
