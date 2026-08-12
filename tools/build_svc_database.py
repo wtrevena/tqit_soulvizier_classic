@@ -1068,13 +1068,46 @@ def soul_drop_rate(record_name, classification, random_pool_members,
 # exactly this area, and the mummy priests classify Common despite a boss-ish
 # filename). It returns None for the cohorts Will has NOT ruled on, so a HELD
 # cohort can never be moved by accident.
+#
+# ── R-243 (Will 2026-08-12): LOWER THE RATES FURTHER. ────────────────────────
+# WILL, VERBATIM (R-243): "Lets lower the drop rate further, so for non-fixed
+# location bosses the drop rate should be 20%, and for fixed location bosses the
+# drop rate should be 10%." This SUPERSEDES the RATES half of R-105 only
+# (25 -> 10 fixed, 33 -> 20 non-fixed). Everything else about R-105/106/107 is
+# intact: 0% Common, 100% the four R-48 Toxeus champions, the 0% chain heads, and
+# the HELD Charon 39/41/43 + Hades 54 (double_soul_rulings byte-identity).
+#
+# ⚠️ WHY THE 25/33-SHIPPED RECORDS STILL GET RE-RATED WITHOUT TOUCHING
+# SOUL_RATE_RATIFIED_COHORTS. The release build regenerates every rate FROM
+# UPSTREAM each run (det-2x/3x from the SV source arz), so at policy time a
+# carrier's PRE-policy `current` is its wire/module value (25 boss / 50 random /
+# 66 placed / the SV 10/5/2 sub-tiers), NOT the 25/33 that R-105 SHIPPED. The
+# ratified-cohort branch only needs to catch the pre-policy 66/50; the SUB-25 and
+# fixed-boss records fall through to `soul_drop_rate()` rule 8, which re-rates by
+# CLASSIFICATION (non-fixed -> NONFIXED, fixed boss -> FIXED_BOSS) regardless of
+# the incoming value. That fallthrough IS "the equivalent source predicate" the
+# ruling asks for: 25 and 33 (and 10 and 5 and 2) are all recognized as source
+# values by class, not by a cohort literal. Adding 25/33 to
+# SOUL_RATE_RATIFIED_COHORTS would instead be WRONG here: `_apply_soul_rate_policy`
+# derives SOUL_RATE_COUNT_OVER_CLASS as {carriers in a ratified cohort AND
+# _soul_is_farmable_boss} and fails loud on drift; wire sets EVERY farmable act
+# boss to 25 pre-policy, so a 25 cohort would explode that derived set far past the
+# 8-member count-over-class pin and abort the build. The 25/33-shipped records are
+# instead PROVEN re-rated two ways: the gate re-derives idempotently from the
+# SHIPPED 10/20 values, and record_diff vs build86 shows every fixed boss 25->10
+# and every non-fixed 33->20. (dryrun_soul_rate_policy over the build86 arz shows
+# the same 25->10 / 33->20 move table directly.)
 # ─────────────────────────────────────────────────────────────────────────────
-SOUL_RATE_FIXED_BOSS = 25.0    # R-105: fixed-location bosses
-SOUL_RATE_NONFIXED = 33.0      # R-105: everything else that drops a soul
+SOUL_RATE_FIXED_BOSS = 10.0    # R-243 (was R-105 25.0): fixed-location bosses
+SOUL_RATE_NONFIXED = 20.0      # R-243 (was R-105 33.0): everything else that drops a soul
 SOUL_RATE_COMMON = 0.0         # R-106: Common (trash) never drops a soul
 SOUL_RATE_R48_CHAMPION = 100.0  # R-48/R-90/R-91: the four fought Toxeus champions
 
 # R-105 ratified BY COUNT: "move all 66% and 50% to 33%. That is 734 creatures."
+# These are the PRE-policy SOURCE cohorts the build carries forward from upstream
+# (placed ubers 66, roaming heroes 50); the ruled TARGET is SOUL_RATE_NONFIXED
+# (now 20 under R-243). Do NOT add the shipped 25/33 here - see the R-243 note
+# above (it would break the count-over-class drift guard).
 SOUL_RATE_RATIFIED_COHORTS = (66.0, 50.0)
 
 # R-48 / R-90 / R-91: the four fixed-spawn Toxeus champions stay at 100. Not a
@@ -1087,8 +1120,8 @@ SOUL_RATE_R48_RECORDS = frozenset({
 # Fixed-location bosses named INDIVIDUALLY by a ruling, which the roster-driven
 # classifier cannot see (a `um_*` Boss record makes _soul_is_farmable_boss return
 # False by design, and they sit in mod PLACED proxies).
-#   um_polisgaoler_unbound_99 - R-107: "take the unbound form 66% -> 25% under
-#       R-105's fixed-boss rate".
+#   um_polisgaoler_unbound_99 - R-107: the unbound form follows R-105's
+#       fixed-boss rate (66 -> 25 under R-105, now 25 -> 10 under R-243).
 SOUL_RATE_FIXED_BOSS_PINS = frozenset({'um_polisgaoler_unbound_99'})
 
 # ⚠️ THE HEADS OF THREE TWO-FORM UBER CHAINS. They stay at 0 - NOT a defect.
@@ -1182,28 +1215,29 @@ def ruled_soul_equip_rate(record_name, classification, current,
       1. the four R-48 Toxeus champions            -> 100
       2. R-107's explicit zero pin (base Gaoler)   -> 0
       3. R-106: Common classification              -> 0   (15 carriers today)
-      4. R-107/R-106 fixed-boss pins               -> 25
+      4. R-107/R-106 fixed-boss pins               -> 10  (R-243)
       5. R-106: Champion tier                      -> HELD (Will's open call,
          172 carriers at 0 + 7 with a fractional rate)
       6. unset classification                      -> HELD (never ruled)
       7. already 0 and not a named 0% defect       -> HELD (the 210 hero-class
          zeroes are a CONTENT lane: each needs a soul that suits the creature)
       8. anything still live                       -> soul_drop_rate() with the
-         ruled numbers: 25 fixed-location boss, else 33.
+         ruled numbers: 10 fixed-location boss, else 20 (R-243, was 25/33).
 
     NOTE on rule 8 vs the ratified count (BL-b102-DEBT-2, flagged for Will):
     R-105 ratified "all 66% and 50% -> 33%, that is 734 creatures" - a COUNT -
     but it ALSO says "25% for fixed location bosses". **TWELVE** of those 734 are
-    carriers `_soul_is_farmable_boss` calls fixed-location/25 (measured on the
+    carriers `_soul_is_farmable_boss` calls fixed-location (measured on the
     baseline arz, not guessed): `boss_charon_39/41/43` + `boss_hades_54` (which
     never move - rule 0 holds them under the older UNTOUCHED ruling) plus the
     EIGHT in `SOUL_RATE_COUNT_OVER_CLASS`: `boss_satyrshaman_55`,
     `boss_coldworm50`, `boss_dagon_66`, `q_leinth_47/49/50`, `murderbunny` and
-    `svc_um_hadesmarshal_80`. His COUNT wins for those eight, so they land on 33
-    with the rest of their cohort; every OTHER cohort (10%/5%/2%) goes through
-    the classifier, which is exactly what R-105's own table asked for (the 12
-    pharaoh honour guards -> 25, our non-fixed 5%/2% ubers -> 33). One line -
-    changing what SOUL_RATE_COUNT_OVER_CLASS returns - flips all eight.
+    `svc_um_hadesmarshal_80`. His COUNT wins for those eight, so they land on the
+    non-fixed rate (now 20 under R-243) with the rest of their cohort; every
+    OTHER cohort (10%/5%/2%) goes through the classifier, which is exactly what
+    R-105's own table asked for (the 12 pharaoh honour guards -> the fixed-boss
+    rate, our non-fixed 5%/2% ubers -> the non-fixed rate). One line - changing
+    what SOUL_RATE_COUNT_OVER_CLASS returns - flips all eight.
 
     ⚠️ THIS FUNCTION IS IDEMPOTENT AND MUST STAY THAT WAY. Rules 7 and 8 read
     `current`, so the gate re-derives every verdict from the value that SHIPPED,
@@ -1212,7 +1246,10 @@ def ruled_soul_equip_rate(record_name, classification, current,
     the gate and the applier will disagree - which is precisely how the
     count-vs-class set above was caught (8 LAST-WRITER mismatches on the first
     fully-gated build of this wave, every one of them a record the applier had
-    correctly moved 66 -> 33 and the gate then demanded at 25).
+    correctly moved 66 -> 33 and the gate then demanded at 25). Under R-243 the
+    SHIPPED values are 10/20, and feeding those back through this function
+    reproduces 10/20 (rule 8 by class; 10 and 20 are not in the 66/50 cohort and
+    are > 0), so the gate stays green on the shipped arz.
     """
     mb = _soul_record_basename(record_name)
     cls = str(classification or '').strip()

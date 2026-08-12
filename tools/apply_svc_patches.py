@@ -5449,8 +5449,11 @@ def _apply_soul_rate_policy(db):
         db._modified.add(rec)
         moved[(cur, target)] += 1
         changed += 1
-    print(f"  R-105/106/107 soul-rate policy: {changed} of {total} soul carriers "
-          f"re-rated (25 fixed boss / 33 non-fixed / 0 Common / 100 R-48)")
+    from build_svc_database import (SOUL_RATE_FIXED_BOSS as _SRFB,
+                                     SOUL_RATE_NONFIXED as _SRNF)
+    print(f"  R-105/106/107/243 soul-rate policy: {changed} of {total} soul "
+          f"carriers re-rated ({_SRFB:.0f} fixed boss / {_SRNF:.0f} non-fixed / "
+          f"0 Common / 100 R-48)")
     for (src, dst), n in sorted(moved.items(), key=lambda kv: -kv[1]):
         print(f"      {src:>6.2f}% -> {dst:>6.2f}%  : {n}")
     if held:
