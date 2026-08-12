@@ -1,7 +1,9 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
 
-## BUILD86 GATE RECORD - R-242 uber-orb legendary/blue chance BY DIFFICULTY; Toxeus+Leinth excluded; `BL-R241-DEBT-1` CLOSED - BUILT, ALL GATES GREEN, arz-ONLY (2026-08-12, branch `fix/orb-rates-by-difficulty` off `main` 41ea7e6 / build85)
+## BUILD86-DEV GATE RECORD - R-242 uber-orb legendary/blue chance BY DIFFICULTY; Toxeus+Leinth excluded; `BL-R241-DEBT-1` CLOSED - BUILT, ALL GATES GREEN, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING, arz-ONLY (2026-08-12, `main` @ the `fix/orb-rates-by-difficulty` fast-forward merge, tip `c833d0a`)
+
+**INTEGRATED.** `main` was at `41ea7e6` (build85) and the lane `fix/orb-rates-by-difficulty` was **0 behind / 2 ahead** (merge-base == `41ea7e6`), so `git merge --no-edit` **fast-forwarded** `main` to `c833d0a` (`47c6a22` R-242 engine change + `c833d0a` R-242 docs/ruling). Clean, no conflicts, working tree clean.
 
 **WILL, VERBATIM (2026-08-12), part 1:** "all the orbs that uber monsters drop should have a 50% chance of dropping a legendary item on epic, a 75% of dropping a legendary item on legendary, a 0% chance of dropping a legendary item on normal, but a 75% chance of dropping a blue item on normal (this is a sub legendary item...they show up blue)". **part 2:** "Note that Leinth and the toxeus variants keep their current higher / better orbs / better drop rates / more loot".
 
@@ -15,7 +17,7 @@
 
 | gate | result |
 |---|---|
-| det-2x byte identity | **PASS** - `ffea3261` == `ffea3261` (two independent COLD builds, `SVC_NO_CACHE=1`) |
+| det byte identity (det-3x) | **PASS** - `ffea3261` == `ffea3261` == `ffea3261` across THREE independent COLD builds (`SVC_NO_CACHE=1`, `PYTHONHASHSEED=0`). run1 into the **work/ layout** with `SVC_REQUIRE_GATES=1` ran the FULL gate battery GREEN, exit 0, "Done."; run2 + run3 into scratch reproduced the identical arz bytes (run2 exit 1 / run3 exit 0 differ ONLY on whether the location-only A9 render-chain + F2 summons gates hard-fail under `SVC_REQUIRE_GATES=1` when there is no `Resources/` beside a scratch output - B-GATE-HARDEN-1; those two gates ran GREEN in run1) |
 | `record_diff` vs build85 `5a6d63a9` | **ADDED 0 / REMOVED 0 / MODIFIED 15, ZERO unexplained** - exactly the 15 general orb tables, 4 field(s) each (`loot1/2/5/6 Chance`), 60 field moves, **all RAISES** (0 lowered). The 3 `svc_uberorb_apex_*` tables are ABSENT (byte-identical). Record count 51,298 -> 51,298 |
 | `gate_orb_legendary.py --baseline` on the built arz | **PASS** - 15 general in band (Normal 75.0%, Epic 50.0%, Legendary 75.0%); **apex byte-diff vs baseline = 0 differences on all 3 excluded tables**. Prints the `BL-R242-DEBT-1` inversion notice (apex 60.9% < general 75% on Legendary) - an announcement, not a failure |
 | `negtest_orb_legendary.py` | **PASS** - 6 planted defects + partition-drift guard RED (G1 both edges, G2 legendary-gear-on-normal, G3 apex-chance-breach, G3b shared-master leak, G5 empty-box, X0 roster drift), 3 positive controls GREEN (wave green, inversion notice fires, coexisting breadth/distribution/volume gates 0/0/0/0 on the same db) |
@@ -39,7 +41,15 @@ Proof the apex is unchanged: `record_diff` shows the 3 `svc_uberorb_apex_*` tabl
 - `BL-R242-DEBT-3` - **CHARON/AKREMON TREATED AS GENERAL (flag for Will).** `boss_charon_{n,e,l}01b` (terminal `um_charonform2_ferryman_99` = Akremon after build85) is neither Leinth nor a Toxeus variant, so by the literal ruling it is GENERAL and got 0/50/75. Its orb shares the apex-richer `loot4=21.2` (untouched by this wave). Flagged because Akremon is a marquee uber Will may want kept apex-tier.
 - `BL-R242-DEBT-4` - **No blue floor on Epic/Legendary orbs** (Will only specified Normal's 75% blue). Incidental Epic drops on Epic/Legendary orbs left as-is per the recon default.
 
-**STEAM SHIP + GitHub push are the MAIN SESSION's to run** (this lane is arz-only, built, gated GREEN; the coupled Text `ce0efda4` is byte-unchanged so it re-uploads as-is). Ship as **BUILD86**. Rollback (one step): `local/build85_run1.arz` = build85 `5a6d63a9`.
+### SHIP-PREP (this session) - DEV DEPLOY + PACKAGE
+
+**DEV DEPLOY (arz-ONLY, no restart).** `work/.../SoulvizierClassic.arz` (`ffea3261`) copied to `CustomMaps\SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` with **md5 source==dest = `ffea3261`** (the DEV arz was build85 `5a6d63a9` before), **while TQ.exe was NOT running** (nothing killed, Steam not restarted). **DEV `Resources\Levels.arc` stays the LOCAL-ONLY TESTHUB `7a7ca9ac`** (Will's play surface, untouched); DEV `Text.arc ce0efda4` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` re-hashed **byte-unchanged**. Only the DEV database arz changed.
+
+**PACKAGED (not uploaded).** `scripts/package_workshop.ps1`: **TESTHUB guard PASS** (packaged canonical `Levels.arc` MD5 `6784cf0f` != local-only TESTHUB `7a7ca9ac`), single `SoulvizierClassic` wrapper, **56 files / 1188.4 MB**, and **dist==work all 5 artifacts** (arz `ffea3261`, `Levels.arc 6784cf0f`, `Text.arc ce0efda4`, `Quests.arc 607ec99c`, `Creatures.arc 8c0d8d53`). Dist: `dist/workshop/content/SoulvizierClassic`.
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` refreshed to build85 `5a6d63a9` (restore -> build85); this artifact kept at `local/build86_run1.arz` = `ffea3261`; the named build85 anchor `local/build85_run1.arz` = `5a6d63a9` is unchanged.
+
+**STEAM SHIP + GitHub push are the MAIN SESSION's to run** (this lane is arz-only, built, gated GREEN, DEV-deployed, packaged; the coupled `Text.arc ce0efda4` is byte-unchanged so it re-uploads as-is). **READY FOR STEAM UPLOAD: BUILD86, arz `ffea32614b9719b933f589ef8abac2af`, coupled `Text.arc ce0efda4` (byte-unchanged).**
 
 ---
 
