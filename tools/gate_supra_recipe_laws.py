@@ -11,12 +11,16 @@ legtip)"
 
 WHAT IT ASSERTS (see tools/svc_supra_recipes.py for the measured causes):
   S1  every supra craftable names at least one reagent whose ONLY obtain paths are
-      Legendary-tier. "Legendary-only" is proved four ways, not asserted: the record is
+      Legendary-tier. "Legendary-only" is proved FIVE ways, not asserted: the record is
       itemClassification = Legendary (so R-100 #17 confines it to `_l` hosts), no Normal
       or Epic chest pool reaches it, a LEGENDARY chest pool DOES reach it (a reagent
-      nothing can pay is uncompletable, not gated), and no loot table in its upward
-      reference closure is a Normal- or Epic-tier table - which is the check that catches
-      a MONSTER paying it on a lower difficulty.
+      nothing can pay is uncompletable, not gated), no loot table in its upward reference
+      closure is a Normal- or Epic-tier table - which is the check that catches a MONSTER
+      paying it on a lower difficulty - and, arm 5, if anything in the game BUILDS the
+      reagent then every formula that does must itself be Legendary-tier-only. Arm 5 is
+      what separates "found in legendary" (Will's words) from "merely classified
+      Legendary": it is why Hati's gate is a drop-only bow and not a divine artifact you
+      can craft from an Epic arcane formula.
   S2  no two supra craftables name an identical reagent multiset. S2b additionally fails
       a craftable whose several formula records disagree about its own reagents.
   S3  every reagent the de-duplication introduced still resolves, is not one of the 13

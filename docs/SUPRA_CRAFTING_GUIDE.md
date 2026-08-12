@@ -40,10 +40,17 @@ and so do the general-guard hoards, the Mystical Orb chests and the blood-cave m
 **22 are Monster Infrequents** - the green items that only ever drop from one monster family. No
 chest in the game pays a green. Those are the ones you have to go and hunt.
 
-**3. None of the 42 is craftable at Epic any more.** Every recipe wants at least one reagent that
-only appears on **Legendary-tier** chests - that is Will's ruling A, and it now applies to the
-four thrown weapons (**Charon's Toll**, **Hati**, **Sanguine Orbit**, **The Last Word**) exactly
-as it always applied to the other 38. Epic is for banking, not for finishing.
+**3. None of the 42 is craftable at Epic any more.** Every recipe wants at least one reagent you can
+only get at **Legendary** - that is Will's ruling A, and it now applies to the four thrown weapons
+(**Charon's Toll**, **Hati**, **Sanguine Orbit**, **The Last Word**) exactly as it always applied to
+the other 38. Epic is for banking, not for finishing.
+
+For 40 of the 42 that gate is a **unique item only Legendary chests pay**. For the two artifact
+recipes (**Mortok's Skull**, **The All-Seeing Eye**) it is a **divine artifact whose arcane formula
+only appears on the Legendary act tables** - you can hold the reagent's recipe on Epic, but not the
+formula that makes it. Both shapes are checked against the database on every build, drop paths and
+craft paths alike; a reagent that merely *looks* Legendary no longer counts. (That check is new as of
+round 2, and it caught Hati's first gate being an artifact you can craft on Epic.)
 
 ## What to do on Epic right now
 
@@ -97,7 +104,7 @@ recipe actually wants.
 | 21 | **Staff of the Cosmos** | staff | any chest, **N/E/L** | Riddle of the Sphinx `chest L` | Shikigami `chest EL` | Staff of the Magi `green` |
 | 22 | **The Munderizer** | staff | any chest, **N/E/L** | Rod of the Ancients `chest EL` | Riddle of the Sphinx `chest L` | Staff of the Magi `green` |
 | 23 | **Charon's Toll** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Essence of Styx `chest L` | Perversion of the Bloodborn (`mi_vit_wand_01.dbr`) `chest N` |
-| 24 | **Hati** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Crescent Moon of Artemis `chest L` | Perversion of the Bloodborn (`mi_vit_wand_02.dbr`) `green` |
+| 24 | **Hati** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Artemis' Silver Bow `chest L` | Perversion of the Bloodborn (`mi_vit_wand_02.dbr`) `green` |
 | 25 | **Sanguine Orbit** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Blood of Ouranos `chest L` | Perversion of the Bloodborn (`mi_vit_wand_02.dbr`) `green` |
 | 26 | **The Last Word** | thrown weapon | any chest, **N/E/L** | Scepter of Eternal Love `chest EL` | Scepter of Thanatos `chest L` | Perversion of the Bloodborn (`mi_vit_wand_03.dbr`) `green` |
 | 27 | **Agathodaemon** | shield | any chest, **N/E/L** | Aionios `chest L` | Eidolon Shell `chest EL` | Exotic Carapace `green` |
@@ -114,7 +121,7 @@ recipe actually wants.
 | 38 | **Void Prism** | amulet | any chest, **N/E/L** | Aphrodite's Favor `chest L` | Blessing of the Gods `chest L` | Saphire Amulet `chest L` |
 | 39 | **Ananke's Ring** | ring | any chest, **N/E/L** | Star of Elysium `chest L` | Thoth's Mark `chest L` | Black Pearl Ring `chest L` |
 | 40 | **Band of the Elder Savage** | ring | any chest, **N/E/L** | Archimedes' Cogwheel `chest L` | Chiron's Loop `chest EL` | Heliotrope Jewel `chest L` |
-| 41 | **Mortok's Skull** | artifact | any chest, **N/E/L** | Thoth's Glory `chest L` | Ikon of Zeus `chest L` | Crescent Moon of Artemis `chest L` |
+| 41 | **Mortok's Skull** | artifact | any chest, **N/E/L** | Thoth's Glory `chest L` | Ikon of Zeus `chest L` | Crescent Moon of Artemis `chest L` + `Epic craft` |
 | 42 | **The All-Seeing Eye** | artifact | any chest, **N/E/L** | Marduk's Tablet of Destiny `chest L` | Golden Eye of Sun Wukong `chest L` | Demeter's Bounty `chest L` |
 
 ---
@@ -456,10 +463,12 @@ source, and what to do about it at your stage.
 
 **Reagents:**
 - **Scepter of Eternal Love** (lvl 65) - **CHEST-FARM (Epic + Legendary chests)**
-- **Crescent Moon of Artemis** (lvl 5) - **CHEST-FARM (Legendary chests only)** - the wolf is handed the moon he chases
+- **Artemis' Silver Bow** (lvl 65) - **CHEST-FARM (Legendary chests only, 19 of 19 surfaces)** - the wolf that hunts the moon takes the moon-huntress's own bow
 - **Perversion of the Bloodborn (`mi_vit_wand_02.dbr`)** (lvl 50) - **MONSTER-GREEN** - Blood Reaver of the Sanctuary / Blood Cult - Reaver; wherever that family spawns
 
-**Farm it along the way:** Crescent Moon of Artemis only drops from **Legendary-tier** chests, so the craft itself waits for Legendary (and Mortok's Skull wants one too, so bank two); Scepter of Eternal Love can already drop for you on Epic - bank it when one appears; the green Perversion of the Bloodborn never comes from a chest, so pick it up while you level.
+**Farm it along the way:** Artemis' Silver Bow only drops from **Legendary-tier** chests and nothing in the game builds it, so the craft itself waits for Legendary; Scepter of Eternal Love can already drop for you on Epic - bank it when one appears; the green Perversion of the Bloodborn never comes from a chest, so pick it up while you level.
+
+> **Changed 2026-08-11 (round 2).** Hati's middle reagent was briefly **Crescent Moon of Artemis**, which looked Legendary-only but is a divine artifact you can **craft on Epic** from its own Epic arcane formula - so it gated nothing and Hati stayed Epic-craftable. Artemis' Silver Bow is the same goddess with the opposite provenance: nothing in the game builds it, and only Legendary chests pay it.
 
 **It can also drop, on Legendary only.** The four supra thrown are the only supra items in the game that any chest pays, and since 2026-08-11 they pay on **Legendary chests only** (Will: "the last word should not be dropped in epic, only legendary"). Crafting is still by far the reliable route.
 
@@ -681,11 +690,11 @@ source, and what to do about it at your stage.
 **Formula:** drops from every mod chest and boss hoard on **all three difficulties** (2 formula records; tables `supra_special.dbr`).
 
 **Reagents:**
-- **Thoth's Glory** (lvl 5) - **CHEST-FARM (Legendary chests only)**
-- **Ikon of Zeus** (lvl 5) - **CHEST-FARM (Legendary chests only)**
-- **Crescent Moon of Artemis** (lvl 5) - **CHEST-FARM (Legendary chests only)**
+- **Thoth's Glory** (lvl 5) - **CHEST-FARM (Legendary chests only)** - or craft it, but only from its **Legendary** arcane formula
+- **Ikon of Zeus** (lvl 5) - **CHEST-FARM (Legendary chests only)** - same: the formula is Legendary-tier too
+- **Crescent Moon of Artemis** (lvl 5) - **CHEST-FARM (Legendary chests only)**, but it is **also craftable on EPIC** from `e_da_crescentmoonofartemis_formula`, which the Epic act tables pay
 
-**Farm it along the way:** Thoth's Glory, Ikon of Zeus, Crescent Moon of Artemis only drop from **Legendary-tier** chests, so the craft itself waits for Legendary.
+**Farm it along the way:** all three drop from **Legendary-tier** chests. Thoth's Glory and Ikon of Zeus are what actually gate this recipe - both are divine artifacts whose arcane formulas appear only on the **Legendary** act tables, so you cannot assemble Mortok's Skull before Legendary however early you find the Crescent Moon.
 
 ### The All-Seeing Eye
 *Legendary artifact, item level 65. carries a granted skill*

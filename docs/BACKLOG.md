@@ -139,8 +139,41 @@ merge.
   cost C2 only via `m_vit_wand_01`.
 - **`BL-R231-DEBT-3` (P2, LAUNCH-GATED):** NOT PROVEN IN-GAME. Everything above is a database and gate
   result. Will's check: on **Epic**, open mod chests and confirm no red-name thrown supra drops; at an
-  Enchanter, confirm The Last Word's middle reagent now reads **Scepter of Thanatos**; on
-  **Legendary**, confirm the supra thrown still drop.
+  Enchanter, confirm The Last Word's middle reagent now reads **Scepter of Thanatos** and **Hati's now
+  reads Artemis' Silver Bow**; on **Legendary**, confirm the supra thrown still drop.
+- **`BL-R231-DEBT-4` (P2, NEW in round 2, belongs to the chest-table owner not this lane):** an **EPIC
+  mod chest reaches the LEGENDARY arcane-formula tables on 15 of 16 Epic surfaces.** Traced concretely:
+  `svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table ->
+  l_da_thothsglory_formula`. So an Epic chest can pay a Legendary-tier divine-artifact formula. This is
+  a chest-WIRING tier-discipline defect (R-100 #17) that predates R-231 and affects every Legendary
+  item reachable that way, not just formulas. It is why `legendary_only` arm 5 reads a formula's
+  **direct** table holders rather than its upward closure - reading the closure would have redded all
+  four Legendary divine artifacts and both DRX artifact craftables on the strength of someone else's
+  bug. Fix it where it lives (the Epic chest/hoard wiring), then arm 5 can be tightened to the closure.
+
+### ROUND-2 CORRECTIONS (the vet caught LAW A failing on one of the four recipes Will named)
+- **HIGH, fixed:** Hati's round-1 gate `e_da_crescentmoonofartemis` passed S1 while gating nothing -
+  a divine artifact is **made**, not found, and its formula is paid by the four **EPIC**
+  `02_act*_arcaneformulae_table` records, so Hati stayed Epic-craftable inside its own fix. Now
+  **`u_l_artemis'silverbow`**: built by nothing, `u_l_` drop-only, **19/19 Legendary chest surfaces**,
+  reagent of nothing else. The four thrown gates stay four distinct item classes (amulet/**bow**/spear/mace).
+- **MEDIUM, fixed:** `legendary_only` gained **arm 5**, the craft-path check - arms 1-4 only ever asked
+  who PAYS an item, never who can BUILD it. `table_tier` widened to read the base game's spelled-out
+  convention (`xq04 - arcaneformulae_legendary`) so every table paying a formula can be classified.
+  Negatives **N2c** (replants the Hati defect, proves arm 5 fires) and **N2d** (false-red guard: the
+  four Legendary divine artifacts must still gate) added. **42 of 42 craftables are Legendary-gated
+  under the sound rule**, `artifact_mortoksskull` and `artifact_plus2` included and unedited.
+- **Doc corrections:** the "51 Epic surfaces" figure restated in all four places as **16 Epic chest
+  surfaces / 24 loot tables** (51 was the two-tier closure); the spear census's name-tag claim and
+  `\spear\default\` count corrected; `BL-R231-DEBT-1`'s cost estimate corrected against the b66
+  precedent; `BL-R231-DEBT-2`'s C2 justification corrected; the b81 thrown dict now states that its
+  slot-2 values are intent-and-assertion, not shipped values; Hati's formula tooltip reads **Mythic
+  Formula** like its 41 siblings.
+- **TWO THINGS NEEDING ONE WORD FROM WILL** (see `docs/WILL_RULINGS.md` R-231 round 2): (1) the four
+  supra thrown still drop on **Legendary** (N 0 / E 0 / L 4) - ratify or correct; (2) **LAW B is met at
+  the minimum** - 42/42 sets distinct, 0 duplicate groups, but de-duplicated recipes still share two of
+  three reagents (Will's own example, Aquimae / Crystal Tear of Nyx, still shares Plissken +
+  Deathweaver's Legtip). If "different" meant more than "not identical", the spread widens on request.
 
 ## SHIP RECORD - BL-R181-DEBT-7: the ordinary uber orbs pay ARMOUR now, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-ship`)
 
