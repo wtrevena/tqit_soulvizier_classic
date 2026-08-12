@@ -2358,6 +2358,7 @@ WITHOUT a fixed spawn, which those four are not.
 ---
 
 ## R-105 [2026-07-29] SOUL EQUIP/DROP RATE POLICY - 66% and 50% both go to 33%; the sub-25% cohorts need one more call
+> ⚠️ **RATES SUPERSEDED BY R-243 (2026-08-12):** the two NUMBERS below (33% non-fixed / 25% fixed-location boss) are lowered to **20% non-fixed / 10% fixed-location boss** by R-243 (at the end of this file). Everything else about R-105 - the classifier, the count-over-class tension, the 0%/100% pins, the HELD cohorts - is UNCHANGED. Read R-243 for the current rates.
 
 **WILL, VERBATIM:**
 
@@ -6916,3 +6917,23 @@ Also disclosed (intrinsic, not a defect): raising the gear rows raises total gea
 
 1. **Charon/Akremon is treated as GENERAL** (`boss_charon_{n,e,l}01b`, terminal `um_charonform2_ferryman_99` = Akremon after build85). It is neither Leinth nor a Toxeus variant, so by the literal ruling it is general and gets 0/50/75. Its orb currently shares the apex-richer loot4=21.2 (untouched by this wave). Flagged because Akremon is a marquee uber Will may want kept apex-tier.
 2. **No blue floor added on Epic/Legendary orbs** - Will only specified Normal's 75% blue. Incidental Epic drops left as-is.
+
+## R-243 [2026-08-12] IMPLEMENTED (branch `fix/soul-rate-10-20`) - lower the soul drop rates further. SUPERSEDES the RATES half of R-105.
+
+**WILL, VERBATIM:**
+
+> "Lets lower the drop rate further, so for non-fixed location bosses the drop rate should be 20%, and for fixed location bosses the drop rate should be 10%."
+
+**THE CHANGE (arz-only, ships as BUILD87):** in `tools/build_svc_database.py`, `SOUL_RATE_FIXED_BOSS` **25.0 -> 10.0** and `SOUL_RATE_NONFIXED` **33.0 -> 20.0**. This supersedes ONLY the two rate NUMBERS of R-105; the classifier `ruled_soul_equip_rate()`, the count-over-class tension set, and every pin are otherwise untouched.
+
+**PRESERVED BYTE-IDENTICAL (not a rate this ruling touches):**
+- `SOUL_RATE_COMMON = 0` - Common/trash never drops (R-106). Unchanged.
+- `SOUL_RATE_R48_CHAMPION = 100` - the four fought Toxeus champions (`um_toxeus_enslaver_99`, `um_bloodtoxeus_99`, `um_toxeus_hunt_99`, `um_toxeus_hunt_l_99`). Unchanged (R-48/R-90/R-91).
+- `SOUL_RATE_ZERO_PINS = 0` heads (`um_polisgaoler_99`, `um_charon_ferryman_99`, `um_tantalus_99`). Unchanged (R-107). Their UNBOUND terminals follow the new **fixed-boss 10%** (`um_polisgaoler_unbound_99` = 25 -> 10; the Charon/Tantalus terminals are non-fixed, 33 -> 20).
+- **HELD Charon 39/41/43 + Hades 54** (`SOUL_RATE_UNTOUCHABLE`, `BL-b102-DEBT-2`): Will's older explicit "untouched" outranks the sweep; `double_soul_rulings.verify` enforces byte-identity on all 8 monster records. NOT re-rated.
+
+**THE IMPLEMENTATION NUANCE, RESOLVED.** The ruling's note said "the sweep must recognize 25 and 33 as source cohorts (extend `SOUL_RATE_RATIFIED_COHORTS` to 25/33 OR the equivalent)." The equivalent is already in place and is the CORRECT mechanism here: the release build regenerates every rate FROM UPSTREAM each run (det-2x/3x from the SV source arz), so at policy time a carrier's pre-policy value is its wire/module value (25 boss / 50 random / 66 placed / the SV 10/5/2 sub-tiers), not the 25/33 that R-105 shipped. `ruled_soul_equip_rate` rule 8 (`soul_drop_rate()` fallthrough) re-rates by CLASSIFICATION regardless of the incoming value - non-fixed -> 20, fixed boss -> 10 - so 25 and 33 (and 10/5/2) are all recognized as source values by class, not by a cohort literal. Adding 25/33 to `SOUL_RATE_RATIFIED_COHORTS` would be WRONG: `_apply_soul_rate_policy` derives the count-over-class pin as {carrier in a ratified cohort AND `_soul_is_farmable_boss`} and fails loud on drift, and wire sets EVERY farmable act boss to 25 pre-policy - a 25 cohort would explode that derived set far past the 8-member pin and abort the build. The 25/33-shipped records ARE proven re-rated: `dryrun_soul_rate_policy` over the build86 arz shows the move table **33 -> 20 x770, 25 -> 10 x118** with every pin held, and record_diff vs build86 shows the same footprint.
+
+**CENSUS (dryrun over build86 `ffea3261`, gate-view / idempotent re-derivation):** 770 non-fixed carriers 33 -> 20, 118 fixed-location bosses 25 -> 10 (888 changed). HELD: 4 R-48 champions at 100, the 3 chain heads + 262 unset + 172 Champion + 28 hero-0 + Common at 0, and the 8 Charon/Hades UNTOUCHABLE at 66/25 (byte-identical). Named: `um_polisgaoler_unbound_99` 25 -> 10; `um_charonform2_ferryman_99` / `um_tantalus_unbound_99` 33 -> 20; `boss_satyrshaman_55` (count-over-class) 33 -> 20; `boss_charon_39/41/43` HELD.
+
+**GATE:** `tools/verify_soul_drop_rates.py` reads the two rates from the constants (no literals), so it asserts every fixed boss = `SOUL_RATE_FIXED_BOSS` (10) and every non-fixed = `SOUL_RATE_NONFIXED` (20), all pins intact, with planted negatives that RED if a fixed boss is off 10, a non-fixed off 20, or any pin moves (the honour-guard negative was corrected: it now plants the non-fixed rate, because planting a bare 10 would - correctly - no longer red under R-243).
