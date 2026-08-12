@@ -17176,7 +17176,9 @@ def _svc_verify_world_chests(db):
 _HAND_DESIGNED_SOUL_TAGS = frozenset({
     # build36 content wave hand-designed uber-boss souls.
     'tagSVCSoulTantalus',    # {^F}Soul of the Insatiable
-    'tagSVCSoulFerryman',    # {^F}Soul of the Unferried
+    'tagSVCSoulFerryman',    # {^F}Soul of the Grasping Root (R-231: the KEY is
+                             # frozen for save-compat, the string was rewritten;
+                             # 'Unferried' is the SUPERSEDED name)
     'tagSVCSoulMnemophage',  # {^F}Soul of the Mnemophage
     'tagSVCSoulWakingDread', # {^F}Soul of the Waking Dread
     # Pre-existing hand-designed evocative souls the fix-wave _SOUL_NAME_STANDARD

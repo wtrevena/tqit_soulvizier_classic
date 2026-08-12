@@ -70,6 +70,12 @@ Three beats, two bodies, the SAME proven `actorToSpawnOnDeath` link.
     the THORNS COME OUT: this lane moves the thorn coat onto the trigger record
     as `retaliationPierce`, so it is a phase-gated beat rather than a random cast
     (see CORRECTION 1). Precedent for the MECHANIC, corrected: see CORRECTION 7.
+    WHAT IT GRANTS, IN FULL, BECAUSE THE DONOR'S OWN NUMBERS ARE NOT OURS
+    (CORRECTION 14): retaliation pierce 180-260, an AUTHORED **+35% physical
+    damage**, and DELIBERATELY **zero damage absorption and zero life regen** -
+    the donor is `DefensiveMastery_Adrenaline` and ships 36% / 8-per-second at the
+    wired level, which would have been a wall under this lane's own claim of exact
+    Gaoler durability parity. Beat 2 costs the player TIME, never immunity.
 
   BEAT 3 - THE HEARTWOOD ABLAZE (phase 2, terminal, `emberoakmesh.msh`, PLANT,
     rs 1.45)

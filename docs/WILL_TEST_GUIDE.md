@@ -615,8 +615,10 @@ New build36 uber bosses (mainline Act 4, all with hoards/orbs/souls; also reacha
     same shrine, the same walk, an entirely different fight. A colossal black tree with every
     hand that ever reached for the Bough grown into it. TWO PHASES: phase 1 is **bleed-IMMUNE**
     (park the bleed spears), roots you in place, and grows a literal wall of quillvines between
-    you and it - the only monster in the mod that builds terrain. At 33% life the bark splits and
-    the thorns come out. Kill it and **Akremon, the Heartwood Ablaze** walks out of the trunk:
+    you and it - the only monster in the mod that builds terrain. At 33% life the bark splits, the
+    thorns come out and it starts hitting **35% harder** - deliberately no damage shield and no
+    self-heal, so it gets more dangerous without getting less killable. Kill it and **Akremon, the
+    Heartwood Ablaze** walks out of the trunk:
     faster, on fire, and **NOT bleed-immune** - the build you shelved gets the kill. Two
     **Handbriar** champions whip alongside.
     **35,000 on Epic across both forms, matched exactly to Alkyoneus the Soul-Gaoler** (the fight
