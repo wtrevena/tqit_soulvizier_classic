@@ -11188,8 +11188,18 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         # (Xeiwang's anm_skeleton01 - the build-gate caught 15 Maenad residues).
         n_stripped = _strip_foreign_anim_overrides(db, path, source)
         if n_stripped:
-            print(f"    {path.rsplit(chr(92), 1)[-1]}: stripped {n_stripped} foreign "
-                  f".anm overrides (source anm table now drives the body)")
+            # ACCURACY (charon_rework round 4): this strip is SOURCE-FAITHFUL by
+            # design - it removes only the overrides the SOURCE does not declare.
+            # The rows the source DOES declare are kept verbatim, and on some
+            # sources those still point at a foreign rig (e.g. an emberoak's
+            # `staffWalkAnim = ...\Neanderthal\ANM\Neanderthal_Run.anm`, and 16 of
+            # the 237 soulskill pets carry that same clip). Unreachable for an
+            # unarmed pet, but the old wording - "source anm table now drives the
+            # body" - claimed more than the function does, so say what it did.
+            print(f"    {path.rsplit(chr(92), 1)[-1]}: stripped {n_stripped} .anm "
+                  f"override(s) the source does not declare (those slots now fall "
+                  f"back to the source's own anm table; the source's OWN overrides "
+                  f"are kept verbatim)")
         sf = db.set_field
         if mesh: sf(path, 'mesh', str(mesh[0]))
         if tex: sf(path, 'baseTexture', str(tex[0]))

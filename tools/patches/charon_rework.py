@@ -339,6 +339,123 @@ a SUPERSEDED WRITER'S OUTPUT SURVIVING UNDER THE NEW WRITER'S AT A FROZEN PATH.
    ubers declare none at all, so the shipped shape (phase 1 normal01 + epic01;
    terminal none) sits inside the roster norm. Latent-trap fix, not a balance change.
 
+--------------------------------------------------------------------------------
+ROUND 4 - the vet found the numbers NOBODY AUTHORED. Every one of these is the
+same defect class: A DONOR'S OWN PAYLOAD RIDING ALONG UNDER A CLAIM THAT DID NOT
+MENTION IT. Round 3 fixed superseded WRITERS surviving; round 4 fixes INHERITED
+VALUES surviving. Both make a document say something the artifact does not.
+--------------------------------------------------------------------------------
+14. **BEAT 2 WAS SILENTLY A 36% DAMAGE SHIELD, AND THE VET ONLY CAUGHT TWO OF
+   THE THREE.** `svc_bough_splitting` was a VERBATIM clone of
+   `lowhealth_berserkerrage01` (ActorName `DefensiveMastery_Adrenaline`), wired at
+   `skillLevel 10`. MEASURED on the live arz, the donor carries THREE non-zero
+   level arrays, all of which the clone inherited and none of which appeared in
+   this module, in R-231, in the BACKLOG durability row or in `verify()`:
+
+     damageAbsorptionPercent  [10,12,15,18,22,24,26,29,32,**36**,38,...,65]
+     characterLifeRegen       [ 5, 5, 6, 6, 6, 7, 7, 7, 8, **8**, 8,...,11]
+     offensivePhysicalModifier[15,20,25,30,35,40,45,50,55,**60**,65,...,110]
+
+   Index 9 = the wired level 10. With `lifeMonitorPercent 33.0`,
+   `skillActiveDuration 12.0` and `skillCooldownTime 5.0` it re-fires every 5s, so
+   it is PERMANENTLY up for the whole last third of phase 1. That is 36% flat
+   damage absorption + 8/s regen + **60% physical damage**, on the one encounter
+   whose headline claim - repeated in this module, in R-231-E and in the BACKLOG
+   player-surface checklist - is "Epic total 35,000, matching the Gaoler's 35,000
+   EXACTLY". Phase 1's last 5,610 Epic HP actually cost ~56% more damage than that
+   number stated. The vet caught absorption and regen; the +60% physical was still
+   unmeasured after its report.
+   RESOLUTION - the record is already being surgically edited, so AUTHOR ALL
+   THREE instead of inheriting any of them, as FLAT 20-ROW ARRAYS so the wired
+   level cannot mis-index whatever it is set to:
+     * `damageAbsorptionPercent` -> 0.0. The durability claim is now true as
+       written; a boss that also shrugs off a third of the damage is a WALL, and
+       the order asked for a hard fight, not an unkillable one.
+     * `characterLifeRegen` -> 0.0. A boss healing during its own last third is
+       the "unkillable, then killable" shape the Gaoler RCA exists to avoid.
+     * `offensivePhysicalModifier` -> **35.0, KEPT AND STATED**. Beat 2 has to DO
+       something or it is a cosmetic bark-crack, and an enrage that hits harder is
+       the correct half of an Adrenaline donor to keep - it costs the player time,
+       not immunity. 35 is an authored number, not the donor's accidental 60, and
+       it is asserted by `verify()`, disclosed in R-231-G and carried in the
+       BACKLOG durability row so no future reader can call it undisclosed again.
+   The retaliation thorns (CORRECTION 1) are unchanged.
+
+15. **THE TERMINAL'S ORDINARY LOOT BAND REGRESSED A FULL ACT.** The re-clone from
+   `um_emberoak_42` (a DRX act-2/3 creature) replaced the encounter's Hades-tier
+   tables with the donor's own: Misc1 -> `n_03_unique_all` + an act-3
+   `materials\jungleroot`; Misc2 -> `03_*_misc` + jungleroot again; Misc3 ->
+   `relic_15-21/41-45/57-61` + `01/02/03_act2_arcaneformulae` + `03_*_misc`.
+   MEASURED against the peer band on the very reference boss this lane calibrates
+   durability against: `um_polisgaoler_unbound_99` runs `01/02/03_act4_relics` +
+   `01/02/03_act4_arcaneformulae`. **Phase 1 of this same encounter was already
+   correct** (`n_04_unique_all`, `04_*_misc`, act-4 relics + formulae - the
+   strongbark donor's own), so the two halves of one boss were banded a full act
+   apart and the LOW one was the form carrying the Golden Bough, the soul and the
+   orb. RESOLUTION: the terminal's Misc1/2/3 are retargeted onto the act-4 band by
+   NAMED CONSTANTS, and the two act-3 `jungleroot` crafting rows are muted (a
+   jungle root is not a thing that falls off a burning tree at the Styx). The
+   three GUARANTEED rewards were never affected and are unchanged.
+
+16. **PHASE 1 WENT FROM DROPPING NOTHING TO A 75/13/1.6 ROLL. NOW IT IS A
+   DECISION, NOT A SIDE EFFECT.** MEASURED: the shipped `um_charon_ferryman_99`
+   had NO Misc loot at all. The re-clone inherited `xhero_strongbark_44`'s full
+   table (Misc3 @75, Misc2 @13, Misc1 @1.6). That is defensible in isolation - the
+   other transform shells all drop, and this roll is byte-for-byte the Mnemophage
+   shell's shape - but it is an encounter-level loot INCREASE, on the exact
+   encounter behind Will's R-100 #10 complaint (which R-108 answered by cutting
+   three chests to one), shipping in the same window as b84 `fix/loot-volume-trim`.
+   RULED: **MUTED**, back to the shipped Charon shell's own shape. The encounter's
+   ordinary loot volume is therefore NOT raised by this wave in either direction
+   that a trim lane would have to re-trim, and the terminal - the reward-bearing
+   form, at the correct act-4 band per CORRECTION 15 - is where the payout lives.
+   `_ORM_MUTE_MISC` names the decision so it can be reversed in one line.
+   (Checked: no breadth module derives scope from a monster's `lootMisc*`
+   pointers - `orb_loot_breadth` keys on `treasureProxyName` and b84's
+   `svc_loot_volume` is container-scoped - so muting the CHANCE is sufficient and
+   nothing is orphaned.)
+
+17. **THE HANDBRIAR'S WHOLE ROTATION WAS BEETLE BILE.** `am_junglecreep_41`'s
+   native kit is one cast: `beetlebile_vomitbile` (Skill_AttackProjectileBurst,
+   chance 88, MediumRange, 5 poison projectiles). The donor was chosen for its RIG
+   and its D19 mobility (CORRECTION 9), never for its kit - but the escort ships
+   under docs calling it "a ground-hugging whipping vine ... maximum silhouette
+   contrast", and a ranged beetle-bile spitter is neither. RESOLUTION: the
+   declared slot and the cast both move to `quillvine_barb`
+   (Skill_AttackProjectile, physical + `offensivePierceRatioMin 50`, 7 live
+   carriers - and its carriers are `quillvine_01..06`, i.e. THE VERY BODIES the
+   boss's own `quillwards` wall and `hero_quillvines` retinue put on the field).
+   So the escorts now fire the same barb as the briar the boss grows, which is the
+   R-125 own-family bar satisfied at the ENCOUNTER level rather than the donor
+   level. Wired `[4, 5, 6]` per difficulty, inside the record's 6-entry array so
+   it cannot mis-index. HONEST: this is also a NERF in raw output - the shipped
+   escort's bile was 5 projectiles x 159/183/207 poison; this is one barb at
+   245/263/300 physical - which is the right direction for an add beside a boss
+   calibrated to the Gaoler.
+
+18. **THE SOUL PET LOST ITS DIFFICULTY ROWS, AND `_swap_scaler`'s OWN DISCIPLINE
+   WAS NOT APPLIED TO THE PETS IT WAS WRITTEN FOR.** CORRECTION 13 added
+   assert-the-incumbent to the two BOSS forms. MEASURED after apply(): the three
+   soul pets went `globalproperties_legendary01` -> `hero_scaling` at slot 12 and
+   LOST `globalproperties_normal01` / `_epic01` at slots 10/11, inherited from the
+   emberoak source through `_update_existing_fields`. Impact is nil by this
+   module's own CORRECTION 13 measurement (those rows carry only
+   `characterBaseAttackSpeedTag` plus UI bitmaps) and all three pet gates were
+   green - but a monster's `hero_scaling` on a player's permanent pet is residue,
+   and "we assert the incumbent now" was only half true. RESOLUTION:
+   `_restore_pet_difficulty_rows` asserts `hero_scaling` IS the incumbent, swaps
+   `globalproperties_normal01` in at that slot with the shipped `[1,0,0]` vector,
+   and re-adds `_epic01` `[0,1,0]` + `_legendary01` `[0,0,1]`. End state = the
+   SHIPPED pet shape, so this is a strict non-regression, and `verify()` proves it.
+   Also fixed, in the monolith and for every lane: `_build_boss_summon`'s log line
+   claimed the strip left "the source anm table now drives the body". It does not.
+   The strip is SOURCE-FAITHFUL by design - it removes only the overrides the
+   source does not declare - so the source's OWN weapon-row overrides survive, and
+   on this donor some of them point at a foreign rig (`staffWalkAnim =
+   Neanderthal_Run.anm` and ~50 siblings; unreachable at `loadout=None`, and
+   class-wide: 16 of the 237 soulskill pets carry the same clip). The line now
+   says what it did.
+
 ================================================================================
 CRASH-LAW COMPLIANCE, ITEMISED
 ================================================================================
@@ -476,6 +593,26 @@ _SK_HPSCALING = r'records\xpack\skills\bossskills\all_hpscaling_passive.dbr'
 _SK_CONVIMMUNE = r'records\skills\boss skills\boss_conversionimmunity.dbr'
 _SK_HEART_OF_OAK = r'records\skills\nature\drxheartofoak.dbr'              # Skill_BuffRadiusToggled
 _SK_PLAGUE = r'records\skills\nature\drxplague.dbr'                        # Skill_AttackBuff
+# CORRECTION 17 - the Handbriar's cast. Skill_AttackProjectile, physical +
+# `offensivePierceRatioMin 50`; its 7 live carriers are `quillvine_01..06`, i.e.
+# THE VERY BODIES the boss's own quillwards wall and hero_quillvines retinue put
+# on the field. `_DEAD_BRIAR_SKILL` is the donor's native beetle-bile burst it
+# replaces, named so verify() can prove it is gone rather than only that the barb
+# is present.
+_SK_QUILLBARB = r'records\xpack\skills\monsterskills\summoning\quillvine_barb.dbr'
+_DEAD_BRIAR_SKILL = (r'records\skills\monster skills\attack_projectile'
+                     r'\beetlebile_vomitbile.dbr')
+_BRIAR_BARB_LEVEL = [4, 5, 6]     # inside the record's SIX-entry array; cannot mis-index
+# CORRECTION 18 - the difficulty rows the soul pets are supposed to carry (the
+# SHIPPED pet shape, restored). `hero_scaling` is the incumbent they inherited
+# from the emberoak source and that a player's permanent pet has no business
+# carrying; the swap asserts it before overwriting, exactly as `_swap_scaler`
+# does on the two boss forms.
+_SK_HERO_SCALING_PET_INCUMBENT = _SK_HERO_SCALING
+_GP = r'records\skills\monster skills\globalproperties_%s01.dbr'
+_PET_DIFFICULTY_ROWS = ((_GP % 'normal', [1, 0, 0]),
+                        (_GP % 'epic', [0, 1, 0]),
+                        (_GP % 'legendary', [0, 0, 1]))
 
 # ── THE GRANTED SUMMON'S OWN PLAYER SURFACES (CORRECTION 12) ────────────────
 # The summon skill is the thing on the player's SKILL BAR every time they cast
@@ -573,6 +710,58 @@ _BRIAR_SCALE = 1.55
 # svc_obs_escort_bonehallow = 7671/9589/11507): two of these, not six.
 _BRIAR_LIFE = [5000.0, 7000.0, 9500.0]
 
+# ── BEAT 2's PAYLOAD, AUTHORED RATHER THAN INHERITED (CORRECTION 14) ─────────
+# `lowhealth_berserkerrage01` is `DefensiveMastery_Adrenaline` and carries THREE
+# non-zero level arrays. A verbatim clone wired at level 10 therefore shipped
+# 36% flat damage absorption + 8/s life regen + 60% physical damage for the whole
+# last third of phase 1, none of it stated anywhere - directly under this lane's
+# repeated claim of EXACT Gaoler durability parity. All three are now written as
+# FLAT 20-row arrays, so the value is level-index-proof and `verify()` can prove
+# every row rather than just the one the current wiring happens to read.
+_SPLIT_LEVEL = 10        # the wired skillLevel on phase 1 (donor skillMaxLevel 15)
+_SPLIT_ROWS = 20         # the donor's array length; keep the shape, author the value
+_SPLIT_ABSORB = 0.0      # was [10..65], idx9 = 36.0 -> a wall the claim did not mention
+_SPLIT_REGEN = 0.0       # was [5..11],  idx9 =  8.0 -> a boss healing in its own last third
+_SPLIT_PHYSMOD = 35.0    # was [15..110], idx9 = 60.0 -> KEPT, AUTHORED, DISCLOSED
+
+# ── ORDINARY LOOT: the ACT-4 BAND this encounter's tier actually uses ────────
+# CORRECTION 15. Measured peers at the same tier: `um_polisgaoler_unbound_99`
+# (the very boss this lane calibrates durability against) runs
+# `01/02/03_act4_relics` + `01/02/03_act4_arcaneformulae`, and PHASE 1 of this
+# encounter already ran `n_04_unique_all` + `04_*_misc` + act-4 relics/formulae
+# off the strongbark donor. Only the TERMINAL was a full act low, because the
+# emberoak donor is a DRX act-2/3 creature.
+_LT = r'records\item\loottables'
+_XLT = r'records\xpack\item\loottables'
+_ACT4_UNIQUE = [_LT + r'\raremisc\%s_04_unique_all.dbr' % t for t in ('n', 'e', 'l')]
+_ACT4_MISC = [_LT + r'\raremisc\mastertables\04_%s_misc.dbr' % t for t in ('n', 'e', 'l')]
+_ACT4_RELICS = [_XLT + r'\relics\0%d_act4_relics.dbr' % i for i in (1, 2, 3)]
+_ACT4_FORMULAE = [_XLT + r'\arcaneformulae\0%d_act4_arcaneformulae.dbr' % i
+                  for i in (1, 2, 3)]
+# The terminal donor's own act-2/3 rows, retargeted onto the band above.
+_BLOOM_LOOT_RETARGET = (('lootMisc1Item1', _ACT4_UNIQUE),
+                        ('lootMisc2Item3', _ACT4_MISC),
+                        ('lootMisc3Item1', _ACT4_RELICS),
+                        ('lootMisc3Item2', _ACT4_FORMULAE),
+                        ('lootMisc3Item3', _ACT4_MISC))
+# ...and the two act-3 crafting rows that are simply wrong at the Styx. A jungle
+# root does not fall off a burning tree in Hades; muted by WEIGHT, so nothing is
+# orphaned and the row can be restored in one line.
+_BLOOM_LOOT_MUTE_WEIGHTS = ('chanceToEquipMisc1Item5', 'chanceToEquipMisc2Item5')
+# Any table basename matching one of these is BELOW this encounter's band. The
+# gate reads the FINAL record, so a future donor swap that re-lowers the band
+# reds instead of shipping quietly.
+_UNDERBAND_TOKENS = ('_03_unique_all', '_02_unique_all', '_01_unique_all',
+                     '03_n_misc', '03_e_misc', '03_l_misc',
+                     '02_n_misc', '02_e_misc', '02_l_misc',
+                     '_act1_', '_act2_', '_act3_',
+                     'relic_15-21', 'relic_41-45', 'relic_57-61',
+                     'jungleroot')
+# CORRECTION 16, WILL-DECISION 7: the transform SHELL pays no ordinary Misc loot,
+# which is the shipped Charon shell's own shape. Flip to False to restore the
+# strongbark donor's 75/13/1.6 roll (Mnemophage-shell parity) in one line.
+_ORM_MUTE_MISC = True
+
 # `actorHeight` is a per-RIG constant, inherited, NEVER invented (R-126, measured
 # over 2,122 rigs). Ascacophus02 = 0.0 on all 4 live carriers; emberoakmesh.msh
 # and JungleCreep01.msh = 1.0. This module NEVER writes the field; verify() proves
@@ -600,9 +789,11 @@ _TAG_AMULET = 'tagSVCitmGoldenBough'            # UNCHANGED
 _TAG_AMULET_DESC = 'tagSVCitmGoldenBoughDESC'   # rewritten
 
 _REQUIRED_DONORS = (_D_ORM, _D_BLOOM, _D_BRIAR, _D_SPLIT)
-_REQUIRED_SKILLS = (_SK_EARTHBIND, _SK_QUILLWARDS, _SK_THORNYAURA, _SK_MEGABURST,
-                    _SK_NOVA, _SK_BOSS_SCALING, _SK_HPSCALING, _SK_CONVIMMUNE,
-                    _SK_HEART_OF_OAK, _SK_PLAGUE)
+_REQUIRED_SKILLS = ((_SK_EARTHBIND, _SK_QUILLWARDS, _SK_THORNYAURA, _SK_MEGABURST,
+                     _SK_NOVA, _SK_BOSS_SCALING, _SK_HPSCALING, _SK_CONVIMMUNE,
+                     _SK_HEART_OF_OAK, _SK_PLAGUE, _SK_QUILLBARB)
+                    + tuple(p for p, _lv in _PET_DIFFICULTY_ROWS))
+_REQUIRED_LOOT = tuple(_ACT4_UNIQUE + _ACT4_MISC + _ACT4_RELICS + _ACT4_FORMULAE)
 _REQUIRED_FX = (_FX_ORM_SPAWN, _FX_ORM_DEATH, _FX_BLOOM_SPAWN, _FX_BLOOM_DEATH)
 
 # Populated by apply(); read by verify() so the gate proves the ACTUAL writes.
@@ -694,6 +885,67 @@ def _swap_scaler(db, rec, slot=12):
     _sf(db, rec, field, _SK_BOSS_SCALING)
 
 
+def _swap_declared_skill(db, rec, incumbent, replacement, level, why):
+    r"""CORRECTION 17/18 - replace a DECLARED `skillName*` entry, ASSERTED.
+
+    The generalisation of `_swap_scaler`: find the slot that currently holds
+    `incumbent`, prove it is there, then write `replacement` + its level into that
+    exact slot. Never scans for a free slot and never overwrites blind, so a donor
+    swap that moved the kit reds loudly instead of destroying a live row with a
+    green gate. Returns the slot index.
+    """
+    for i in range(1, 25):
+        if _n(_one(db, rec, 'skillName%d' % i)) == _n(incumbent):
+            _sf(db, rec, 'skillName%d' % i, replacement)
+            _sf(db, rec, 'skillLevel%d' % i, level)
+            return i
+    have = sorted(_n(_one(db, rec, 'skillName%d' % i)) or ''
+                  for i in range(1, 25))
+    raise SystemExit(
+        "charon_rework: expected %s to declare %s so it could be replaced by %s "
+        "(%s), but no skillName slot carries it. Declared: %s. The donor's kit "
+        "moved - re-measure before writing anything into a slot."
+        % (rec, incumbent, replacement, why, [h for h in have if h]))
+
+
+def _flat(value, rows=_SPLIT_ROWS):
+    """A level array whose every row is the same authored number.
+
+    CORRECTION 14. The donor ships 20-row LEVEL ARRAYS; a clone wired at level N
+    silently inherits row N-1. Writing the same value into every row keeps the
+    record's shape (so nothing mis-indexes at any wired level, now or after a
+    future retune) while making the number this module's, not the donor's.
+    """
+    return [float(value)] * int(rows)
+
+
+def _restore_pet_difficulty_rows(db, pet):
+    r"""CORRECTION 18 - the SHIPPED pet shape, restored, incumbent asserted.
+
+    `_build_boss_summon` -> `_update_existing_fields` overwrites the Lyia
+    baseline's skill slots from the SOURCE monster, so the three soul pets took
+    the emberoak's `hero_scaling` at slot 12 and lost `globalproperties_normal01`
+    / `_epic01` at 10/11 - rows the SHIPPED oarsman pets carried. Gameplay impact
+    is nil (those rows hold only `characterBaseAttackSpeedTag` plus UI bitmaps,
+    CORRECTION 13), but a monster's hero scaler on a player's permanent pet is
+    residue, and `_swap_scaler`'s assert-the-incumbent discipline was written for
+    exactly this and never applied here.
+    """
+    _swap_declared_skill(db, pet, _SK_HERO_SCALING_PET_INCUMBENT,
+                         _PET_DIFFICULTY_ROWS[0][0], list(_PET_DIFFICULTY_ROWS[0][1]),
+                         "a player's permanent pet must not carry a monster's "
+                         "hero scaler; the shipped pets carried the three "
+                         "globalproperties difficulty rows here")
+    for path, lvl in _PET_DIFFICULTY_ROWS[1:]:
+        if any(_n(_one(db, pet, 'skillName%d' % i)) == _n(path) for i in range(1, 25)):
+            continue
+        if not _svc_add_skill(db, pet, path, list(lvl)):
+            raise SystemExit(
+                "charon_rework: no free skillName slot on the soul pet %s for the "
+                "difficulty row %s" % (pet, path))
+    _TOUCHED.add(_n(pet))
+
+
 def _strip_superseded_soul_stats(db, rec, keep):
     r"""CORRECTION 11 - the frozen-path retheme trap, and the fix.
 
@@ -760,6 +1012,7 @@ def apply(db, tags):
     _TOUCHED.clear()
 
     missing = [p for p in (_REQUIRED_DONORS + _REQUIRED_SKILLS + _REQUIRED_FX
+                           + _REQUIRED_LOOT
                            + (_ORM, _BLOOM, _BRIAR, _POOL, _PROXY,
                               _YARD_POOL, _YARD_PROXY, _ORB))
                if not db.has_record(p)]
@@ -783,6 +1036,16 @@ def apply(db, tags):
     # Scalars (level-independent) so the wired skillLevel cannot mis-index.
     _sf(db, _SPLIT, 'retaliationPierceMin', 180.0)
     _sf(db, _SPLIT, 'retaliationPierceMax', 260.0)
+    # CORRECTION 14: AUTHOR the donor's three inherited buff arrays instead of
+    # riding them. Verbatim, wired at level 10, this record was shipping 36% flat
+    # damage absorption + 8/s life regen + 60% physical damage for the entire last
+    # third of phase 1 - permanently up (cd 5.0 < duration 12.0) and stated
+    # NOWHERE, directly under this lane's claim of exact Gaoler durability parity.
+    # Flat 20-row arrays: the shape survives, the number becomes ours, and no
+    # future retune of `_SPLIT_LEVEL` can mis-index into a donor value again.
+    _sf(db, _SPLIT, 'damageAbsorptionPercent', _flat(_SPLIT_ABSORB))
+    _sf(db, _SPLIT, 'characterLifeRegen', _flat(_SPLIT_REGEN))
+    _sf(db, _SPLIT, 'offensivePhysicalModifier', _flat(_SPLIT_PHYSMOD))
 
     # ── BEAT 1: AKREMON, THE GRASPING ROOT (phase 1, the placed head) ───────
     _replace_record(db, _D_ORM, _ORM)
@@ -809,11 +1072,20 @@ def apply(db, tags):
     # SOUL-LEAK INVARIANT: the donor ships its OWN soul at 33% (R-42/R-106 class).
     _svc_clear_soul_loot(db, _ORM)
     _TOUCHED.add(_n(_ORM))
+    # CORRECTION 16 / WILL-DECISION 7: the transform SHELL pays no ordinary Misc
+    # loot. The shipped `um_charon_ferryman_99` had NONE; the strongbark re-clone
+    # inherited a 75 / 13 / 1.6 roll, which is an undisclosed encounter-level loot
+    # INCREASE on the exact encounter behind Will's R-100 #10 complaint, in the
+    # same window as b84's loot-volume TRIM lane. Muted by chance so nothing is
+    # orphaned (no breadth module derives scope from a monster's lootMisc rows).
+    if _ORM_MUTE_MISC:
+        for _slot in (1, 2, 3):
+            _sf(db, _ORM, 'chanceToEquipMisc%d' % _slot, 0.0)
     # hero -> boss scaling (in place; do NOT add a second scaler)
     _swap_scaler(db, _ORM)
     for _sk, _lvl in ((_SK_EARTHBIND, 8), (_SK_QUILLWARDS, 8),
                       (_SK_MEGABURST, 8), (_SK_HPSCALING, 1),
-                      (_SK_CONVIMMUNE, 1), (_SPLIT, 10)):
+                      (_SK_CONVIMMUNE, 1), (_SPLIT, _SPLIT_LEVEL)):
         if not _svc_add_skill(db, _ORM, _sk, _lvl):
             raise SystemExit("charon_rework: no free skillName slot on %s for %s"
                              % (_ORM, _sk))
@@ -856,6 +1128,22 @@ def apply(db, tags):
     _sf(db, _BLOOM, 'spawnEffect', _FX_BLOOM_SPAWN, S)
     _sf(db, _BLOOM, 'deathEffect', _FX_BLOOM_DEATH, S)
     _sf(db, _BLOOM, 'treasureProxyName', _ORB, S)          # CORRECTION 4 (hard gate)
+    # CORRECTION 15: the emberoak donor is a DRX ACT-2/3 creature, so the re-clone
+    # dropped this form - the one carrying the Golden Bough, the soul and the orb -
+    # a full act below its own phase 1 and below every Hades-tier peer. Retarget
+    # onto the act-4 band by named constant, and mute the two act-3 jungleroot
+    # crafting rows (a jungle root does not fall off a burning tree at the Styx).
+    for _fld, _tiers in _BLOOM_LOOT_RETARGET:
+        if db.get_field_value(_BLOOM, _fld) is None:
+            raise SystemExit(
+                "charon_rework: %s does not carry %s, so the act-4 retarget has "
+                "nothing to land on. The terminal donor's loot shape moved - "
+                "re-measure the band before shipping (CORRECTION 15)."
+                % (_BLOOM, _fld))
+        _sf(db, _BLOOM, _fld, list(_tiers))
+    for _fld in _BLOOM_LOOT_MUTE_WEIGHTS:
+        if db.get_field_value(_BLOOM, _fld) is not None:
+            _sf(db, _BLOOM, _fld, 0)
     _svc_clear_soul_loot(db, _BLOOM)                       # before _create_soul rewires
     _swap_scaler(db, _BLOOM)
     for _sk, _lvl in ((_SK_NOVA, 8), (_SK_THORNYAURA, 8),
@@ -899,6 +1187,19 @@ def apply(db, tags):
     _sf(db, _BRIAR, 'DisplayAsQuestItem', 0)
     if not _svc_add_skill(db, _BRIAR, _SK_HPSCALING, 1):
         raise SystemExit("charon_rework: no free skillName slot on %s" % _BRIAR)
+    # CORRECTION 17: the donor's ENTIRE rotation was one cast - `beetlebile_vomitbile`,
+    # a five-projectile POISON burst at MediumRange. The junglecreep was chosen for
+    # its rig and its D19 mobility, never for its kit, and a ranged beetle-bile
+    # spitter is not "a ground-hugging whipping vine". Swap the declared slot AND
+    # the cast onto `quillvine_barb`, whose seven live carriers are `quillvine_01..06`
+    # - literally the bodies the boss's own quillwards wall and hero_quillvines
+    # retinue put on the field. The escorts now fire the same barb as the briar the
+    # boss grows: the R-125 own-family bar satisfied at the ENCOUNTER level.
+    _swap_declared_skill(db, _BRIAR, _DEAD_BRIAR_SKILL, _SK_QUILLBARB,
+                         list(_BRIAR_BARB_LEVEL),
+                         'an escort of a grasping-root boss fires briar barbs, '
+                         'not beetle bile')
+    _cast(db, _BRIAR, '', _SK_QUILLBARB, 70.0, 'ShortRange', 4.0, 2.0)
 
     # ── uber_quest_markers (registry index 43) writes DisplayAsQuestItem on
     #    these records and its verify() RE-DERIVES on the final db. The re-clone
@@ -1045,6 +1346,14 @@ def apply(db, tags):
         dmg_max=[66.0, 110.0, 160.0], scale=1.4, loadout=None)
     for p in _PETS + [_SUMMON]:
         _TOUCHED.add(_n(p))
+    # CORRECTION 18: restore the SHIPPED pet shape. `_update_existing_fields`
+    # overwrote the Lyia baseline's skill slots from the emberoak SOURCE, so the
+    # pets took a monster's `hero_scaling` and lost the three globalproperties
+    # difficulty rows. Impact is nil (CORRECTION 13) but it is residue, and
+    # `_swap_scaler`'s assert-the-incumbent discipline was written for exactly
+    # this case and had never been applied to the pets.
+    for p in _PETS:
+        _restore_pet_difficulty_rows(db, p)
     # CORRECTION 12 - THE GRANTED SKILL'S OWN PLAYER SURFACES.
     # The ICON is fixed at the source of truth (`_SUMMON_SKILL_ICON` in the
     # monolith), so `_build_boss_summon` above already stamped the flame-ring
@@ -1092,13 +1401,17 @@ def apply(db, tags):
           "fan, splits at 33%%) -> THE HEARTWOOD ABLAZE [%s, rs %.2f] (Plant, DRX "
           "emberoak @%.1f, ring of flame + volcanic orb + petal ring, NOT "
           "bleed-immune, vitality res 40) + 2 Handbriar champions [%s, ascending, "
-          "rs %.2f]; Epic total %s vs the Gaoler's 35,000 (gaoler_variance_rca); "
-          "every body D19-mobile; proxy chain REUSED (no map rebuild); Golden "
-          "Bough Misc4 100%%, one hoard chest, soul re-identified; "
+          "rs %.2f, briar barbs not beetle bile]; Epic total %s vs the Gaoler's "
+          "35,000 (gaoler_variance_rca) and beat 2 grants NO absorption and NO "
+          "regen - only an authored +%.0f%% physical; every body D19-mobile; proxy "
+          "chain REUSED (no map rebuild); Golden Bough Misc4 100%%, one hoard "
+          "chest, soul re-identified; ordinary loot: terminal on the act-4 band, "
+          "shell MUTED to the shipped shell's shape; "
           "_SUMMON_IDENTITY_ALLOW['ferryman'] RETIRED; %d record(s) written."
           % (_ORM_LIFE, _ORM_SPEED, _ORM_SCALE, _BLOOM_LIFE, _BLOOM_SPEED,
              _BLOOM_SCALE, _BRIAR_LIFE, _BRIAR_SPEED,
-             f"{int(_ORM_LIFE[1] + _BLOOM_LIFE[1]):,}", len(_TOUCHED)))
+             f"{int(_ORM_LIFE[1] + _BLOOM_LIFE[1]):,}", _SPLIT_PHYSMOD,
+             len(_TOUCHED)))
 
 
 # ── verify: THE GATE (post-finalization, reads the FINAL assembled db) ──────
@@ -1298,6 +1611,155 @@ def verify(db, tags):
         if _n(_SK_HERO_SCALING) in _sks:
             problems.append("%s (%s) still carries hero_scaling ALONGSIDE "
                             "boss_scaling - two scalers stack" % (rec, label))
+
+    # ---- 2e. BEAT 2 CARRIES NO NUMBER THIS LANE DID NOT AUTHOR -------------
+    #
+    # CORRECTION 14. `svc_bough_splitting` clones `DefensiveMastery_Adrenaline`,
+    # which ships THREE non-zero 20-row level arrays. Wired verbatim at level 10 it
+    # was silently granting 36% flat damage absorption + 8/s life regen + 60%
+    # physical damage, permanently up (cd 5.0 < duration 12.0) for the whole last
+    # third of phase 1 - under this lane's own repeated claim of EXACT Gaoler
+    # durability parity. Every row of all three is asserted, not just the row the
+    # current wiring reads, so a future retune of `_SPLIT_LEVEL` cannot re-open it.
+    if resolves(_SPLIT):
+        for fld, want in (('damageAbsorptionPercent', _SPLIT_ABSORB),
+                          ('characterLifeRegen', _SPLIT_REGEN),
+                          ('offensivePhysicalModifier', _SPLIT_PHYSMOD)):
+            v = db.get_field_value(_SPLIT, fld)
+            v = v if isinstance(v, list) else ([] if v is None else [v])
+            try:
+                vals = [float(x or 0) for x in v]
+            except (TypeError, ValueError):
+                vals = []
+            if len(vals) < _SPLIT_LEVEL:
+                problems.append(
+                    "BEAT 2: %s %s has %d row(s) but the skill is wired at level "
+                    "%d - it would index past the end of its own array."
+                    % (_SPLIT, fld, len(vals), _SPLIT_LEVEL))
+            elif any(abs(x - want) > 1e-4 for x in vals):
+                problems.append(
+                    "BEAT 2 CARRIES AN UNAUTHORED DONOR BUFF: %s %s=%r, expected "
+                    "every row = %s. This record is a clone of "
+                    "lowhealth_berserkerrage01 (DefensiveMastery_Adrenaline); "
+                    "verbatim at level %d it grants 36%% flat damage absorption + "
+                    "8/s regen + 60%% physical damage for the whole last third of "
+                    "phase 1, which makes the Gaoler-parity durability claim in "
+                    "this module, in R-231 and in the BACKLOG measurably wrong. "
+                    "Author the value or state the real number - do not inherit it."
+                    % (_SPLIT, fld, vals[:12], want, _SPLIT_LEVEL))
+        got_lvl = None
+        for i in range(1, 25):
+            if _n(gv(_ORM, 'skillName%d' % i)) == _n(_SPLIT):
+                got_lvl = db.get_field_value(_ORM, 'skillLevel%d' % i)
+                got_lvl = got_lvl[0] if isinstance(got_lvl, list) else got_lvl
+                break
+        if got_lvl is None:
+            problems.append("%s does not declare the beat-2 trigger %s at all"
+                            % (_ORM, _SPLIT))
+        elif int(float(got_lvl)) != _SPLIT_LEVEL:
+            problems.append("%s wires %s at skillLevel %r, expected %d "
+                            "(_SPLIT_LEVEL - the gate above is sized to it)"
+                            % (_ORM, _SPLIT, got_lvl, _SPLIT_LEVEL))
+
+    # ---- 2f. ORDINARY LOOT: banded, and a decision rather than a side effect --
+    #
+    # CORRECTION 15/16. Two independent regressions, both invisible to every
+    # existing gate (b84's svc_loot_volume is container-scoped; orb_loot_breadth
+    # keys on treasureProxyName):
+    #   * the TERMINAL - the form carrying the Golden Bough, the soul and the orb -
+    #     inherited the DRX emberoak's ACT-2/3 tables, a full act below its own
+    #     phase 1 and below every Hades-tier peer including the Gaoler this lane
+    #     calibrates against;
+    #   * the SHELL went from dropping NOTHING to a 75/13/1.6 roll.
+    for _fld, _tiers in _BLOOM_LOOT_RETARGET:
+        got_t = db.get_field_value(_BLOOM, _fld)
+        got_t = got_t if isinstance(got_t, list) else ([got_t] if got_t else [])
+        if [_n(x) for x in got_t] != [_n(t) for t in _tiers]:
+            problems.append("TERMINAL LOOT BAND: %s %s=%r, expected the act-4 "
+                            "band %s" % (_BLOOM, _fld, got_t, _tiers))
+    for _rec, _lbl in ((_BLOOM, 'the terminal'), (_ORM, 'the shell')):
+        for i in range(1, 9):
+            for j in range(1, 9):
+                v = db.get_field_value(_rec, 'lootMisc%dItem%d' % (i, j))
+                for x in (v if isinstance(v, list) else [v]):
+                    if not isinstance(x, str) or not x.strip():
+                        continue
+                    b = _n(x).rsplit('\\', 1)[-1]
+                    hit = [t for t in _UNDERBAND_TOKENS if t in b]
+                    if hit and float(gv(_rec, 'chanceToEquipMisc%d' % i) or 0) > 0 \
+                            and float(gv(_rec, 'chanceToEquipMisc%dItem%d' % (i, j)) or 0) > 0:
+                        problems.append(
+                            "UNDER-BAND LOOT: %s (%s) lootMisc%dItem%d rolls %r, "
+                            "which is act-1/2/3 tier. This is a Hades-tier uber; "
+                            "its peers (incl. um_polisgaoler_unbound_99, the "
+                            "durability reference) run the act-4 band, and phase 1 "
+                            "of this same encounter already does. A donor swap "
+                            "must not silently re-lower it."
+                            % (_rec, _lbl, i, j, x))
+    if _ORM_MUTE_MISC:
+        for _slot in (1, 2, 3):
+            ch = float(gv(_ORM, 'chanceToEquipMisc%d' % _slot) or 0)
+            if ch > 0:
+                problems.append(
+                    "%s chanceToEquipMisc%d=%r but _ORM_MUTE_MISC is on. The "
+                    "shipped Charon shell dropped NO ordinary Misc loot; the "
+                    "strongbark re-clone inherits a 75/13/1.6 roll, which is an "
+                    "encounter-level loot INCREASE on the encounter behind Will's "
+                    "R-100 #10, shipping beside b84's loot-volume TRIM lane."
+                    % (_ORM, _slot, ch))
+
+    # ---- 2g. THE ESCORT LOOKS AND FIGHTS LIKE WHAT THE DOCS CALL IT ---------
+    #      CORRECTION 17: the junglecreep donor's entire rotation was one
+    #      five-projectile POISON burst (`beetlebile_vomitbile`) at MediumRange,
+    #      under docs describing "a ground-hugging whipping vine ... maximum
+    #      silhouette contrast". The donor was picked for its rig, not its kit.
+    _b_slots = {_n(gv(_BRIAR, 'skillName%d' % i)) for i in range(1, 25)}
+    _b_casts = {_n(gv(_BRIAR, 'specialAttack%sSkillName' % s))
+                for s in ('', '2', '3', '4', '5')}
+    if _n(_DEAD_BRIAR_SKILL) in (_b_slots | _b_casts):
+        problems.append(
+            "%s still carries the junglecreep donor's beetle-bile burst (%s). The "
+            "escort ships as a briar beside a grasping-root boss; a ranged "
+            "beetle-bile spitter is neither ground-hugging nor whipping, and the "
+            "docs say it is both." % (_BRIAR, _DEAD_BRIAR_SKILL))
+    if _n(_SK_QUILLBARB) not in _b_slots:
+        problems.append("%s does not DECLARE %s - the barb cannot fire from a "
+                        "cast slot alone" % (_BRIAR, _SK_QUILLBARB))
+    if _n(_SK_QUILLBARB) not in _b_casts:
+        problems.append("%s does not CAST %s - the escort would have no rotation "
+                        "at all" % (_BRIAR, _SK_QUILLBARB))
+
+    # ---- 2h. THE SOUL PETS KEEP THE SHIPPED DIFFICULTY-ROW SHAPE ------------
+    #      CORRECTION 18: `_build_boss_summon` -> `_update_existing_fields`
+    #      overwrote the Lyia baseline's slots from the emberoak SOURCE, so the
+    #      pets took a monster's `hero_scaling` and lost all three
+    #      `globalproperties_*01` rows the SHIPPED oarsman pets carried.
+    for p in _PETS:
+        if not resolves(p):
+            continue
+        rows = {}
+        for i in range(1, 25):
+            nm = _n(gv(p, 'skillName%d' % i))
+            if nm:
+                rows[nm] = db.get_field_value(p, 'skillLevel%d' % i)
+        if _n(_SK_HERO_SCALING) in rows:
+            problems.append(
+                "%s carries a MONSTER's hero_scaling. A player's permanent pet "
+                "inherited it from the emberoak source through "
+                "_update_existing_fields; the shipped pets carried "
+                "globalproperties_legendary01 in that slot." % p)
+        for path, want_lvl in _PET_DIFFICULTY_ROWS:
+            got_r = rows.get(_n(path))
+            if got_r is None:
+                problems.append(
+                    "%s lost the difficulty row %s that the SHIPPED oarsman pets "
+                    "carried (overwritten from the emberoak source)."
+                    % (p, path.rsplit('\\', 1)[-1]))
+                continue
+            got_r = got_r if isinstance(got_r, list) else [got_r]
+            if [int(float(x or 0)) for x in got_r[:3]] != list(want_lvl):
+                problems.append("%s %s level=%r, expected the shipped vector %s"
+                                % (p, path.rsplit('\\', 1)[-1], got_r, list(want_lvl)))
 
     # ---- 3. A9 RENDER CHAIN: no new art, no cross-rig swap -----------------
     for rec, donor, mesh in ((_ORM, _D_ORM, _MESH_ORM),
@@ -1699,7 +2161,12 @@ def verify(db, tags):
           "registration and it names the terminal's own donor; all 6 placed and "
           "summoned bodies D19-MOBILE on tables that bind unarmedRunAnim; no "
           "end-to-end vitality wall; no display-name collision with a live record "
-          "family; Epic durability inside the Gaoler-anchored band; every svc_* "
-          "Champion escort has strictly ascending life; 0 charon_* signature "
-          "skills and 0 shared cast rotation vs boss_charon_43 / "
-          "boss_charonform2_43)")
+          "family; Epic durability inside the Gaoler-anchored band AND beat 2 "
+          "carrying 0 inherited absorption / 0 regen with only an authored "
+          "physical modifier on every one of its 20 rows; ordinary loot banded - "
+          "0 act-1/2/3 tables reachable on either form, terminal on act-4, shell "
+          "muted; the escort fires briar barbs with 0 beetle-bile left; the 3 soul "
+          "pets carry the shipped globalproperties difficulty vectors and 0 "
+          "hero_scaling; every svc_* Champion escort has strictly ascending life; "
+          "0 charon_* signature skills and 0 shared cast rotation vs "
+          "boss_charon_43 / boss_charonform2_43)")
