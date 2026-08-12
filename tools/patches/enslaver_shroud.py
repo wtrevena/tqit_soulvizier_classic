@@ -744,10 +744,10 @@ def verify(db, tags=None):
                 "attach point." % (_SHROUD_FX, bl))
 
         # ── MIRROR: the WHOLE record, not just the .pfx ────────────────────
-        ours = {k.split('###')[0]: (lambda v: v[0] if isinstance(v, list)
-                                    and len(v) == 1 else v)(
-                    [str(x) for x in (tf.values or [])])
-                for k, tf in (db.get_fields(_SHROUD_FX) or {}).items()}
+        ours = {}
+        for k, tf in (db.get_fields(_SHROUD_FX) or {}).items():
+            vals = [str(x) for x in (tf.values or [])]
+            ours[k.split('###')[0]] = vals[0] if len(vals) == 1 else vals
         st, theirs = _demon_fx_record(db)
         if st == 'SKIP':
             notes.append("DEMON EFFECTENTITY MIRROR DOWNGRADED (not a pass): the "
