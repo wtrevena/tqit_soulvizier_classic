@@ -1,42 +1,28 @@
-[h1]build84 - loot volume trimmed, and the orbs stop guaranteeing legendaries[/h1]
+Build 85 - The Golden Bough Uber Reworked: Akremon, the Grasping Root
 
-A database-only update. No map, quest or text change, so an existing character is unaffected and no
-new game is needed.
+The uber at the Golden Bough forecourt is no longer a near-clone of the base-game
+Charon. The same shrine and the same walk now lead to an entirely new two-phase fight.
 
-[h2]What changed[/h2]
+Phase 1, Akremon the Grasping Root: a colossal black tree with every hand that ever
+reached for the Bough grown into it. It is BLEED-IMMUNE (park the bleed spears), roots
+you in place, and grows a living wall of quillvines between you and it - the only
+monster in the mod that builds terrain. At one third life the bark splits, the thorns
+come out, and it hits 35 percent harder, with no damage shield and no self-heal, so it
+gets more dangerous without getting less killable.
 
-Two things Will asked for after playing build83.
+Phase 2, Akremon the Heartwood Ablaze: the burning heartwood walks out of the trunk,
+faster, on fire, and NOT bleed-immune - the build you shelved gets the kill. Two
+Handbriar champions whip alongside.
 
-[b]1. The canonical chests and orbs pay a run's worth of loot, not a vendor's stock.[/b]
-The two Polis Vault gaoler cage chests were dropping roughly 36 legendary-grade pieces between them on a
-single run. That is now trimmed hard across 69 canonical loot surfaces: the two-chest cage run stays under
-about 4 to 5 pieces on Normal and Legendary and around 3 on Epic, and it still guarantees at least one
-piece at the target grade on at least 95 percent of runs. The boss and guard hoards, the level-banded uber
-orbs and Charon's orb are trimmed the same way. Only the spawn count of each table moved; nothing was added
-to, or removed from, any loot pool.
+The tree is weak to fire and cold; the thing that comes out of it resists fire. Both
+forms are resistant but not immune to stun, freeze and traps. Tuned to 35,000 life on
+Epic across both forms, matched to Alkyoneus the Soul-Gaoler: it should be hard, and it
+should die.
 
-[b]2. Mystical Orbs no longer guarantee a legendary.[/b]
-The three apex orb tables carried a reward row that fired on every open and could pay a legendary. That row
-is demoted from a 100 percent chance to the same 21.2 percent the rest of the orb family already uses. The
-worst orb now pays about 0.85 legendary items per open instead of 8.4, so a legendary out of an orb is a
-treat again rather than a certainty. A legendary is still possible at a real rate, so the orbs are not
-turned into empty boxes.
+Rewards are unchanged in kind: THE GOLDEN BOUGH amulet (guaranteed), the Soul of the
+Grasping Root (grants Graft the Burning Heartwood, a permanent burning cutting that
+fights for you and roots what you strike, for a little movement speed), the hoard chest
+now called The Orchard of Hands, and the boss orb.
 
-[h2]The local testing farm is untouched[/h2]
-
-The trim applies to the shipped game only. The heavier local playtest chests keep their old volume through
-a separate copy that exists purely for testing and can never be reached in the shipped map.
-
-[h2]One honest note[/h2]
-
-A legendary is now less than guaranteed but not yet genuinely rare: the best orbs still turn one up on
-roughly six opens in ten. Tightening that further changes the reward mix, so it is being left for a
-separate, deliberate decision rather than slipped into this update.
-
-[h2]Verification[/h2]
-
-Built twice from the committed source with byte-identical output. The change modifies 69 loot tables and
-adds 44 records used only by the local testing map. The shipped map, quests, text and creatures are
-byte-for-byte identical to build83. Every existing gate still passes, including loot distribution, orb and
-chest breadth, craft and thrown, relic tiers and the Immortal Throne campaign cap, and the contract suite
-adds zero new blocking issues over the previous release.
+Under the hood: database plus text only, no map change. Existing characters and saves
+are unaffected. Names are provisional and may change.
