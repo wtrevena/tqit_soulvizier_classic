@@ -1,70 +1,45 @@
-r"""orb_legendary_chance - the uber orbs stop guaranteeing legendaries (R-241).
+r"""orb_legendary_chance - uber-orb legendary/blue chance BY DIFFICULTY (R-242, Will
+2026-08-12). SUPERSEDES R-241's flat 21.2% apex demotion and CLOSES BL-R241-DEBT-1.
 
-WILL, VERBATIM (2026-08-11). This ruling SUPERSEDES the b79 "orbs stay generous
-relative to chests" precedent wherever the two collide, and it says so in
-`docs/WILL_RULINGS.md` rather than being resolved quietly here:
-  "you made the orbs way too good... those dont need to have guaranteed legendary
-   drops, they should just have a chance to drop legendary items, but a low chance."
-
-THE NUMBER HE ASKED FOR, MEASURED ON THE SHIPPED b83 ARZ `44499f56`
---------------------------------------------------------------------
-THREE guaranteed-legendary rows in the entire orb surface - ONE per difficulty - and
-all three are the same row on the same family: group 4 of `svc_uberorb_apex_{n,e,l}01c`
-at chance 100%, where its five sibling orb tables run the identical amulet/relic/ring
-row at 12.7% or 21.2%. None of the three is a PURE legendary row (0.44% / 5.25% / 6.28%
-legendary by weight). Full census: `py tools/gate_orb_legendary.py <arz> --census`.
-
-THE ROW COUNT WAS NOT WHERE THE GUARANTEE LIVED. Per ONE orb open on the shipped b83
-arz: Epic 2.58-6.29 legendary items (93.6-99.9% chance of at least one), Legendary
-3.74-8.43 (98.4-99.99%). Six independent loot groups over 5.06-10.58 spawn iterations
-produce a guarantee with no 100% row involved, which is why R-220's breadth gate,
-R-181's distribution gate and R-240's volume gate were all green while Will was looking
-at a vending machine.
+WILL, VERBATIM (2026-08-12)
+  part 1: "all the orbs that uber monsters drop should have a 50% chance of dropping a
+   legendary item on epic, a 75% of dropping a legendary item on legendary, a 0% chance
+   of dropping a legendary item on normal, but a 75% chance of dropping a blue item on
+   normal (this is a sub legendary item, idk what the name of this class of item is but
+   they show up blue)"
+  part 2: "Note that Leinth and the toxeus variants keep their current higher / better
+   orbs / better drop rates / more loot"
 
 WHAT THIS MODULE WRITES
-------------------------
-ONE field per guaranteed row: `loot{g}Chance`, on exactly the rows the census returns,
-demoted to the richest NON-guaranteed chance that same row already carries elsewhere in
-the orb family (21.2%, `boss_charon_*01b`'s value). The target is DERIVED from the
-shipped bytes and cross-checked against the value this contract was measured on, so a
-demotion can never silently land somewhere nobody chose. Three records, three fields.
+-----------------------
+On the 15 GENERAL uber-orb tables (uberorb_default_* + boss_charon_*01b): a UNIFORM
+loot1/2/5/6 chance, CALIBRATED per table so P(>=1 target-classification per open) hits
+Will's number for that difficulty - Epic(blue) 75% on Normal (with legendary GEAR held
+at 0 by the tier law), Legendary 50% on Epic, Legendary 75% on Legendary. Nothing else:
+loot3/loot4, every member, every weight and numSpawn are left verbatim, so breadth,
+distribution and the relic law survive and the variety still lands WHEN one rolls.
 
-Combined with R-240's volume trim (previous registry slot), one orb open now pays:
-  Normal 0.001-0.004 legendary | Epic 0.451-0.622 | Legendary 0.699-0.846
-i.e. AT MOST ONE LEGENDARY ITEM PER OPEN on Legendary difficulty, against 8.43 shipped -
-a 90% cut, with breadth and distribution untouched so the variety survives WHEN one rolls.
+On the 3 EXCLUDED apex tables (svc_uberorb_apex_{n,e,l}01c, the shared Toxeus + Leinth
+loot): the guaranteed relic row is demoted 100 -> 21.2 exactly as R-241 did, which is
+their build85 state - so they stay byte-identical to build85 (Will part 2). Letting that
+row revert to 100 would both change the bytes and re-arm a guaranteed legendary row.
 
-WHAT IT DELIBERATELY DOES NOT DO
----------------------------------
-P(at least one legendary) lands at 54-61% on Legendary, and that is not yet "a low
-chance". After the trim an orb pays ~2.06 items and ~40% of its Legendary-tier drop mass
-IS legendary-classified, because R-180/R-220 weighted `svc_unique_weapons_l01` /
-`svc_unique_armor_l01` at ~47-50% of the weapon and shield rows to buy the class breadth
-Will asked for in the same fortnight. Moving it further means scaling those rows'
-chances, which divides `svc_loot_distribution` D7b (worn-slot armour per SPAWN
-ITERATION, asserted on all 63 surfaces) by the same factor and reds armour parity on
-every orb - or scaling only the legendary-heavy rows, which moves D3/D4 and D6 instead.
-Either way it is a COMPOSITION decision inside R-180/R-181/R-220's scope, priced for
-Will as `BL-R241-DEBT-1` rather than taken by a rate lane. The ceilings this module
-gates on are set where the AUTHORISED levers actually reach, so the gate is a true
-ratchet and not an aspiration nothing enforces.
+WHY IT IS REGISTERED HERE - immediately AFTER `loot_volume_trim`:
+  1. `armor_loot_breadth` SKIPS the guaranteed row by design and runs far earlier, so it
+     must still see the apex group 4 at 100 or the armour sweep would rewrite a theme row.
+  2. The readings are measured against R-240's TRIMMED spawn volume, so the volume trim
+     must already have landed.
 
-WHY IT IS REGISTERED HERE - immediately AFTER `loot_volume_trim`, before the no-op
-`visuals`:
-  1. `armor_loot_breadth` SKIPS the guaranteed row by design (`is_guaranteed_group`,
-     the WARDEN-theme lesson). It runs far earlier, sees group 4 still at 100%, and
-     leaves it to the theme - exactly as intended. Demoting BEFORE it would hand that
-     row to the armour sweep and let a later pass rewrite a theme, which is the defect
-     `armor_groups`' docstring exists to prevent.
-  2. R-241's readings are measured against R-240's TRIMMED spawn volume, so the volume
-     trim must already have landed when this module's verify() reports numbers.
+HONEST RESIDUE (`BL-R242-DEBT-1`, awaiting Will's A/B call): freezing the excluded apex
+at build85 makes it WEAKER than the general orbs on Legendary legendary-chance (apex
+60.9% vs general 75%), an inversion of "keep their better orbs". This gate PRINTS it on
+every run and does NOT red on it - the apex's edge is now volume + richer loot4, and
+lifting it above the general target is a follow-up lane, Will's call.
 
-GATE: `verify()` below runs the whole R-241 contract (O1-O5) on the FINAL db, so a later
-module that re-inflates an orb row reds here and gets named. Standalone twin:
-`py tools/gate_orb_legendary.py <arz>` (`--census` for Will's number, `--calibrate` to
-re-derive every threshold, `--apply` on a pre-wave arz).
+GATE: `verify()` runs the whole R-242 contract on the FINAL db. Standalone twin:
+`py tools/gate_orb_legendary.py <arz>` (`--census`, `--calibrate`, `--apply`).
 Negatives: `py tools/debug/negtest_orb_legendary.py <arz>` - planted in BOTH directions,
-because a rate ruling has two ways to be wrong.
+because a rate-by-difficulty ruling has several ways to be wrong.
 """
 import sys
 from pathlib import Path
@@ -76,47 +51,72 @@ if str(_TOOLS) not in sys.path:
 import svc_loot_breadth as SLB
 import svc_orb_legendary as SOL
 
-MODULE_NAME = ("uber-orb legendary chance - an orb has a chance at a legendary, not a "
-               "guarantee (R-241)")
+MODULE_NAME = ("uber-orb legendary/blue chance by difficulty - general orbs 0/50/75, "
+               "Toxeus+Leinth excluded (R-242)")
 
-# The ONLY field this module may move, and only on an orb table. Everything else on a
-# loot table is that surface's identity: its members, its weights, its spawn volume,
-# its relic tier. Breadth and distribution must survive verbatim, so that WHEN a
-# legendary does roll, the variety b75-b83 shipped is still the thing that rolls.
-_ALLOWED_PREFIX = 'loot'
-_ALLOWED_SUFFIX = 'Chance'
+
+def _base_rows(required, who):
+    """The base-game Monster.tpl rows, via red_uber_orbs' cached loader. Never fatal here
+    (every record this module writes lives in the mod overlay), so a missing base arz
+    downgrades LOUDLY rather than silently narrowing the roster."""
+    try:
+        import red_uber_orbs as RUO
+    except ImportError as exc:                       # pragma: no cover - packaging
+        print("  [orb_legendary_chance] WARNING cannot import red_uber_orbs (%s); the "
+              "uber roster runs MOD-ONLY this build. No silent pass: this line IS the "
+              "downgrade." % exc)
+        return None
+    rows = RUO.load_base_rows(required=required, who=who)
+    if not rows:
+        print("  [orb_legendary_chance] WARNING base-game universe unavailable; the uber "
+              "roster runs MOD-ONLY this build. No silent pass: this line IS the downgrade.")
+    return rows
 
 
 def apply(db, tags):
     print("\n=== patches-registry: %s ===" % MODULE_NAME)
     lk = SLB.Lookup(db)
+    base_rows = _base_rows(required=False, who='orb_legendary_chance.apply()')
 
-    # The orb surface is derived ONCE and reused for the census, the wave and the
-    # calibration. Deriving it walks all 51k records looking for Monster templates, and
-    # this module needs it three times in a row; the scope is a function of the
-    # proxy -> pool -> chest -> table WIRING, which this module cannot touch (it writes
-    # one `loot{g}Chance` on a table already in the set), so reuse is sound rather than
-    # a shortcut. `verify()` deliberately re-derives on the FINAL db.
-    scope0 = SOL.orb_tables(db, lk)
+    scope0 = SOL.orb_tables(db, lk, base_rows)
     if not scope0:
         raise SystemExit(
-            "[orb_legendary_chance] SCOPE EMPTY: svc_orb_breadth derived no uber-orb "
-            "loot table. Demoting nothing while reporting success is exactly how "
-            "BL-R181-DEBT-7 shipped fifteen starving surfaces through two green gates.")
+            "[orb_legendary_chance] SCOPE EMPTY: svc_orb_breadth derived no uber-orb loot "
+            "table. Rating nothing while reporting success is exactly how BL-R181-DEBT-7 "
+            "shipped fifteen starving surfaces through two green gates.")
 
-    # ── 1. the census FIRST, in the build log, because Will asked for the number ──
-    SOL.census(db, lk, scope=scope0)
+    # ── 0. the partition cross-check FIRST: a rewired apex consumer must red here, not
+    #    silently move scope (ROSTER_PINNED discipline). ──────────────────────────────
+    px = SOL.partition_problems(db, lk, base_rows, scope0)
+    if px:
+        for p in px:
+            print("  ORB PARTITION OFFENDER: %s" % p)
+        raise SystemExit(
+            "[orb_legendary_chance] the derived Toxeus/Leinth exclusion set no longer "
+            "matches the pinned apex roster (%d finding(s)). A general orb was rewired "
+            "onto excluded loot, or a new apex table exists - decide deliberately." % len(px))
+
+    # ── 1. the partition in the build log ───────────────────────────────────────────
+    SOL.census(db, lk, base_rows, scope0)
 
     before = {real: {k.split('###')[0]: list(tf.values)
                      for k, tf in (db.get_fields(real) or {}).items()}
               for _k, (real, _t) in scope0.items()}
 
-    # ── 2. the wave ──────────────────────────────────────────────────────────
-    changed = SOL.apply_wave(db, lk, verbose=True, scope=scope0)
+    # ── 2. the wave ─────────────────────────────────────────────────────────────────
+    general_changes, apex_changes = SOL.apply_wave(db, lk, base_rows, verbose=True,
+                                                   scope=scope0)
     lk.refresh()
 
-    # ── 3. SCOPE PROOF: only a loot{g}Chance moved, and only on a demoted row ──
-    demoted = {(real, 'loot%dChance' % g) for (real, _t, g, _o, _n) in changed}
+    # ── 3. SCOPE PROOF: only a loot{g}Chance moved, and only on the intended rows -
+    #    general loot1/2/5/6, apex loot4. A member, weight, spawn eq or a stray row means
+    #    this lane is silently redoing R-180/R-181/R-220/R-240's work. ────────────────
+    allowed = set()
+    for (real, _t, moves) in general_changes:
+        for (g, _o, _n) in moves:
+            allowed.add((real, 'loot%dChance' % g))
+    for (real, _t, g, _o, _n) in apex_changes:
+        allowed.add((real, 'loot%dChance' % g))
     illegal = []
     for real, was in before.items():
         now = {k.split('###')[0]: list(tf.values)
@@ -125,44 +125,34 @@ def apply(db, tags):
         for field in sorted(set(was) | set(now)):
             if was.get(field, []) == now.get(field, []):
                 continue
-            ok = (field.startswith(_ALLOWED_PREFIX) and field.endswith(_ALLOWED_SUFFIX)
-                  and (real, field) in demoted)
+            ok = (field.startswith('loot') and field.endswith('Chance')
+                  and (real, field) in allowed)
             if not ok:
                 illegal.append('%s.%s %r -> %r'
                                % (base, field, was.get(field), now.get(field)))
     if illegal:
         raise SystemExit(
             "[orb_legendary_chance] SCOPE PROOF FAILED: %d field change(s) outside the "
-            "demoted guaranteed rows: %s. This module is allowed to change how OFTEN a "
-            "guaranteed orb row fires and nothing else - the moment it touches a member, "
-            "a weight, a spawn equation or a row the census did not name, it is silently "
-            "redoing R-180/R-181/R-220/R-240's work, and the gates that run after it "
-            "would be validating a different wave than the one anyone reviewed."
+            "calibrated general rows / demoted apex row: %s. This module is allowed to "
+            "change how OFTEN an orb gear row fires and nothing else."
             % (len(illegal), sorted(illegal)[:12]))
 
-    # ── 4. the numbers, in the build log, because the report IS the log ──────
-    SOL.calibrate(db, lk, scope=scope0)
-    print("  ORB LEGENDARY: scope proof PASS - %d orb table(s) watched, %d guaranteed "
-          "row(s) demoted, only their own loot{g}Chance moved."
-          % (len(before), len(changed)))
+    # ── 4. the numbers, in the build log ────────────────────────────────────────────
+    SOL.calibrate(db, lk, base_rows, scope0)
+    print("  ORB LEGENDARY: scope proof PASS - %d general table(s) calibrated, %d apex "
+          "row(s) frozen at build85, only loot{g}Chance moved."
+          % (len(general_changes), len(apex_changes)))
     print("=== orb_legendary_chance done ===\n")
 
 
 def verify(db, tags):
-    """The R-241 contract (O1-O5) on the FINAL db.
-
-    A verify() rather than an apply()-time gate for the R-240 reason: every other loot
-    module has already run by then, so what this measures is the legendary rate the
-    player actually gets - not the rate this module left behind a moment before
-    something else moved it.
-    """
+    """The R-242 contract on the FINAL db (a verify(), not an apply()-time gate, so it
+    measures the rate the player actually gets after every other loot module has run)."""
     lk = SLB.Lookup(db)
+    base_rows = _base_rows(required=False, who='orb_legendary_chance.verify()')
     report = {}
-    problems = SOL.problems(db, lk, report=report)
-    # Same standing notice the standalone audit prints, from the same function, before
-    # the verdict on either path: the build log is where the ship lane looks, so the
-    # undischarged half of the ruling has to be legible there too.
-    notice = SOL.undischarged_notice(report)
+    problems = SOL.problems(db, lk, base_rows, report=report)
+    notice = SOL.inversion_notice(db, lk, base_rows)
     if notice:
         print("  " + "!" * 74)
         for ln in notice.split("\n"):
@@ -172,14 +162,10 @@ def verify(db, tags):
         for p in problems[:16]:
             print("  ORB LEGENDARY OFFENDER: %s" % p)
         raise SystemExit(
-            "orb_legendary_chance gate FAILED: %d uber-orb legendary finding(s). Will "
-            "2026-08-11: \"those dont need to have guaranteed legendary drops, they "
-            "should just have a chance to drop legendary items, but a low chance.\" The "
-            "ruling has two sides and this gate holds both - an orb may not guarantee a "
-            "legendary, and it may not stop being able to pay one." % len(problems))
-    print("  orb_legendary_chance gate PASS: %s. Both mirrors hold: a legendary is "
-          "still possible on every Epic/Legendary orb (floors %s) and no orb has been "
-          "reduced to an empty box (floor %.2f items/open). Residual chance-half debt: "
-          "BL-R241-DEBT-1."
-          % (SOL.pass_line(report), SOL.ORB_MIN_P_LEGENDARY,
-             SOL.ORB_MIN_DROPS_PER_OPEN))
+            "orb_legendary_chance gate FAILED: %d uber-orb legendary/blue finding(s). "
+            "Will 2026-08-12: general orbs 0%% leg + 75%% blue on normal, 50%% leg on "
+            "epic, 75%% leg on legendary; Leinth + Toxeus kept byte-identical to build85."
+            % len(problems))
+    print("  orb_legendary_chance gate PASS: %s. Every general orb sits in its "
+          "per-difficulty band and every excluded apex is byte-frozen at build85; "
+          "residual inversion debt: BL-R242-DEBT-1." % SOL.pass_line(report))

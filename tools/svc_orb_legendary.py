@@ -1,98 +1,86 @@
-r"""svc_orb_legendary.py - THE UBER-ORB LEGENDARY CONTRACT (Will 2026-08-11, R-241).
+r"""svc_orb_legendary.py - THE UBER-ORB LEGENDARY/BLUE CONTRACT BY DIFFICULTY
+(Will 2026-08-12, R-242). This SUPERSEDES R-241's flat 21.2% apex demotion and
+CLOSES BL-R241-DEBT-1.
 
-WILL, VERBATIM (2026-08-11), and this ruling SUPERSEDES the b79 "orbs stay generous"
-precedent it collides with:
-  "you made the orbs way too good... those dont need to have guaranteed legendary
-   drops, they should just have a chance to drop legendary items, but a low chance."
+WILL, VERBATIM (2026-08-12), part 1
+-----------------------------------
+  "all the orbs that uber monsters drop should have a 50% chance of dropping a
+   legendary item on epic, a 75% of dropping a legendary item on legendary, a 0%
+   chance of dropping a legendary item on normal, but a 75% chance of dropping a
+   blue item on normal (this is a sub legendary item, idk what the name of this
+   class of item is but they show up blue)"
 
-WILL ASKED FOR THE NUMBER FIRST, SO HERE IT IS, MEASURED ON THE SHIPPED b83 ARZ
---------------------------------------------------------------------------------
-`44499f56`, 18 orb loot tables (15 ordinary + 3 apex), 6 per difficulty:
+WILL, VERBATIM (2026-08-12), part 2 (the exclusion)
+---------------------------------------------------
+  "Note that Leinth and the toxeus variants keep their current higher / better orbs
+   / better drop rates / more loot"
 
-  GUARANTEED ROWS (a loot group at chance == 100) CARRYING LEGENDARY MASS:
-      Normal     1     Epic     1     Legendary     1        3 in the whole surface
+WHAT "BLUE" IS, PROVEN FROM THE BYTES
+-------------------------------------
+"blue" = itemClassification Epic, the tier directly below Legendary (the standard TQ
+ladder Broken < Common < Magical < Rare < Epic < Legendary; Epic renders blue,
+Legendary purple/red, engine-baked). MEASURED on the build85 arz: on every NORMAL orb
+the four unique-gear rows resolve to Epic-classification records with ZERO legendary
+GEAR, and on the EPIC/LEGENDARY orbs those SAME rows resolve to Legendary. So "the blue
+item a Normal orb drops" IS the Epic-classification gear it pays, and raising "75% blue
+on normal" means raising the chance the Normal orb's Epic gear rows fire.
 
-  and all three are the SAME row on the SAME family: group 4 of
-  `svc_uberorb_apex_{n,e,l}01c`, the amulet/relic/ring/formula row, at chance 100.0
-  where its five sibling orb tables run the identical row at 12.7% or 21.2%. Its
-  legendary MASS is small (0.44% / 5.25% / 6.28% by weight), so ZERO of the three is a
-  pure-legendary row. The literal count Will asked for is therefore **one per tier,
-  three in total, none of them pure**.
+HOW THE TARGET IS REACHED - THE LOAD-BEARING CORRECTION TO THE RULING'S ASSUMPTION
+---------------------------------------------------------------------------------
+There is NO single "legendary row" whose chance is the legendary chance. The four
+unique-GEAR rows - loot1 (weapons), loot2 (torso/head), loot5 (legs/arms), loot6
+(shield) - each fire at their own loot{g}Chance and each pay a per-tier mix, so the
+legendary/blue output is EMERGENT across them over S spawn iterations. Setting loot4
+(amulet/relic/ring/formula) to 50% would yield ~2.5% legendary, not 50%; loot4 carries
+almost no legendary mass. So Will's "50% chance of dropping a legendary item" is read
+faithfully as the observable orb behaviour:
 
-THE ROW COUNT IS NOT WHERE THE GUARANTEE LIVED, AND THAT IS THE FINDING
-------------------------------------------------------------------------
-Reporting "3 rows, all nearly non-legendary" and stopping would have answered the
-question and missed the report. What Will actually hit is a guarantee made of VOLUME,
-not of a 100% row. On the shipped b83 arz, per ONE orb open:
+    P(at least one legendary item per orb open) = the target,
 
-  difficulty   E[legendary items]      P(at least one legendary)
-  Normal          0.003 .. 0.047          0.3% ..  4.6%
-  Epic            2.579 .. 6.291         93.6% .. 99.9%
-  Legendary       3.738 .. 8.432         98.4% .. 99.99%
+and the lever is a UNIFORM per-(table, difficulty) chance on the four gear rows
+loot1/2/5/6. Uniform because it preserves the weapon:armour:shield mass ratio (R-181
+D3/D4/D6 parity) and RAISING chances only strengthens the D7b armour-per-iteration
+floor, so the change is armour-parity-safe by construction and touches only
+loot{g}Chance - the exact field domain R-241's scope proof already permitted.
 
-An apex Legendary orb paid EIGHT AND A HALF legendary-grade items per open and had a
-99.99% chance of at least one. That is a guaranteed legendary drop in every sense a
-player means it, and no 100%-chance row was needed to produce it: six loot groups
-rolled independently on 10.58 spawn iterations.
+THE PARTITION - GENERAL vs EXCLUDED, DERIVED NOT TYPED
+------------------------------------------------------
+The 18 in-scope uber-orb loot tables (svc_orb_breadth's own derived scope) split:
+  * EXCLUDED (3): svc_uberorb_apex_{n,e,l}01c - the shared loot of the Toxeus roster
+    (genericbossorb_05: um_toxeus_21/99, um_bloodtoxeus_99, um_toxeus_enslaver_99,
+    um_toxeus_hunt_99/_l_99) AND Leinth (bosschest_leinth_0N). DERIVED: a table is
+    EXCLUDED iff every uber chain that reaches it has carriers that are ALL Toxeus (or
+    Leinth) records; cross-checked against the pinned apex set so a NEW apex consumer
+    reds instead of silently shrinking scope. These keep their build85 bytes verbatim
+    (Will part 2), which means the wave STILL demotes their guaranteed relic row 100 ->
+    21.2 exactly as R-241 did - that IS their build85 state, and letting it revert to
+    100 would both change the bytes and re-arm a guaranteed legendary row.
+  * GENERAL (15): the other per-difficulty records (uberorb_default_* and
+    boss_charon_*01b). These get the 0/50/75 legendary + 75 blue-on-normal treatment.
 
-WHAT THIS CONTRACT DOES, AND THE ONE THING IT DELIBERATELY DOES NOT
---------------------------------------------------------------------
-1. R-240's volume trim (same lane) takes every orb's spawn volume to the never-empty
-   floor: S 5.06/6.44/8.28/10.58 -> 1.125. That is what kills the volume guarantee.
-2. THIS module then discharges the literal half of the ruling: the three guaranteed
-   rows are DEMOTED to chance-based, at the richest NON-guaranteed chance the same row
-   already carries elsewhere in the orb family (21.2%, `boss_charon_*01b`'s value).
-   DERIVED from the shipped bytes, never typed, so the demotion cannot drift away from
-   the family it is supposed to rejoin, and the apex keeps its rank as the richest orb.
-   Will's ruling offers "chance-based OR non-legendary"; chance-based is the smaller
-   change, because making the row non-legendary means deleting `amulet_{tier}01` and
-   `finger_{tier}01` from it, which are the ONLY legendary amulet and ring an orb can
-   pay - breadth Will asked for in b75-b83, destroyed to satisfy a rate ruling.
+THE DIFFICULTY MECHANISM
+------------------------
+Each difficulty of each general orb is a physically SEPARATE FixedItemLoot record; the
+difficulty is selected UPSTREAM by the proxy's accessory1/accessoryEpic1/
+accessoryLegendary1 slot, so the row chances are set DIRECTLY on each of the 15 distinct
+records (the relic-tiering-approved pattern, NOT a container game-mode array).
 
-   Together those two land, per ONE orb open:
-
-     difficulty   E[legendary items]      P(at least one legendary)
-     Normal          0.001 .. 0.004          0.05% ..  0.35%
-     Epic            0.451 .. 0.622         38.2%  .. 49.0%
-     Legendary       0.699 .. 0.846         53.6%  .. 60.9%
-
-   The headline is the first column, and it is the one that answers the report:
-   **at most ONE legendary item per orb open on Legendary difficulty, against 8.43
-   shipped - a 90% cut.** An orb has stopped being a legendary vending machine and
-   become a boss reward that sometimes contains a legendary.
-
-3. WHAT IT DOES NOT DO, STATED PLAINLY RATHER THAN LEFT FOR A VET TO FIND. P(at least
-   one) lands at 54-61% on Legendary, and 60% IS NOT "A LOW CHANCE". The reason is
-   arithmetic, not laziness: after the trim an orb pays about 2.06 items per open, and
-   on the Legendary tier ~40% of ALL its drop mass is legendary-CLASSIFICATION, because
-   R-180/R-220 deliberately weighted `svc_unique_weapons_l01` and `svc_unique_armor_l01`
-   at ~47% of the weapon row and ~50% of the shield row to buy the CLASS BREADTH Will
-   asked for in the same fortnight. So if the orb pays anything at all, there is a good
-   chance the thing it pays is legendary.
-
-   The one lever that would move it further is scaling those rows' `loot{g}Chance`
-   down - and that is NOT the volume lever numSpawn is. `svc_loot_distribution` D7b
-   asserts worn-slot armour pieces PER SPAWN ITERATION (>= 0.0375) on all 63 surfaces;
-   a group-chance scale divides that reading by the same factor and reds armour parity
-   on every orb. Lowering only the legendary-heavy rows moves D3/D4 (weapon:armour) and
-   D6 (armour-slot share) instead. Either way the next step out of 60% is a COMPOSITION
-   decision inside R-180/R-181/R-220's scope, not a volume one, and this lane is
-   explicitly forbidden to take it quietly. It is priced for Will as
-   `BL-R241-DEBT-1`, with the ceilings below set where the authorised levers actually
-   reach so the gate is a true ratchet and not an aspiration nothing enforces.
-
-THE CONTRACT IS TWO-SIDED, BECAUSE A RATE RULING HAS TWO WAYS TO BE WRONG
--------------------------------------------------------------------------
-Will said "just a CHANCE to drop legendary items, but a LOW chance" - which is a
-ceiling AND a floor in one sentence. O2/O3 hold the ceiling; O4 holds the floor, so a
-future wave cannot satisfy this ruling by making legendary drops impossible. O5 is the
-same mirror one level out: an orb must still PAY, so the ceiling cannot be met by
-turning the orb into an empty box.
+THE HONEST RESIDUE, STATED NOT HIDDEN (`BL-R242-DEBT-1`)
+-------------------------------------------------------
+Freezing the excluded apex at its build85 numbers makes it WEAKER than the general orbs
+on Legendary legendary-chance: apex P(>=1 legendary) = 60.9%, general target = 75%. That
+is an inversion of Will's "keep their better orbs", and it is the literal instruction of
+this lane (byte-unchanged exclusion). The apex's remaining edge is volume (S 1.131 vs
+1.125) and its richer loot4 (21.2 vs 12.7 relics/jewelry/formulae). Whether to accept
+the inversion or bump the apex above the general target is Will's call, priced as
+BL-R242-DEBT-1; this gate PRINTS it on every run and does NOT red on it. Also disclosed:
+raising the gear rows raises total gear VOLUME per open (partially re-inflating R-240's
+trim, ~+45% gear on Legendary) - intrinsic to "more legendary chance" and the
+smallest-blast-radius lever.
 
 Shared by `tools/gate_orb_legendary.py` (standalone), the in-build gate
 `tools/patches/orb_legendary_chance.verify()` and
-`tools/debug/negtest_orb_legendary.py`, so the three can never disagree (the
-`gate_relic_difficulty_tiers` / R-240 precedent).
+`tools/debug/negtest_orb_legendary.py`, so the three can never disagree.
 """
 import sys
 from pathlib import Path
@@ -107,121 +95,98 @@ import svc_loot_volume as SLV
 import svc_orb_breadth as SOB
 
 LEGENDARY = 'Legendary'
+EPIC = 'Epic'
 TIERS = ('n', 'e', 'l')
 TIER_NAME = {'n': 'Normal', 'e': 'Epic', 'l': 'Legendary'}
 
-# ─────────────────────────────────────────────────────────────────────────────
-# THE CEILINGS. Every one is DERIVED from the measured post-wave reading plus a
-# stated margin, in the direction that makes the check fail - never rounded to a
-# number that reads well. The margins are the R-240 construction (V7/V7b), so the
-# two contracts in this lane can be compared line for line.
-#
-# O2 - E[legendary items per open]. THE HEADLINE. Measured worst after the wave:
-#   n 0.004 | e 0.622 | l 0.846. Ceilings below give 92% / 21% / 18% headroom, and
-#   the Legendary one is deliberately the round number ONE: "at most one legendary
-#   item per orb open" is the sentence this ruling is about, and a constant a
-#   player could state in words is worth more than a third decimal place.
-# ─────────────────────────────────────────────────────────────────────────────
-ORB_MAX_LEG_PER_OPEN = {'n': 0.05, 'e': 0.75, 'l': 1.00}
-
-# O3 - P(at least one legendary per open), the CHANCE half of Will's sentence.
-# Measured worst after the wave: n 0.0035 | e 0.4895 | l 0.6090. These are a
-# RATCHET at roughly 11% headroom, not a target: see the docstring's point 3 and
-# `BL-R241-DEBT-1`. They exist so the 90% cut can never be quietly given back.
-#
-# ⚠ PROVISIONAL, AND THE ROUND-3 VET WAS RIGHT TO SAY SO. 55% and 68% are a
-# RECORD OF WHAT THIS WAVE COULD REACH, NOT A RATE ANYONE CHOSE. Will's words
-# were "a low chance"; 55-68% is more likely than not, which is the opposite.
-# Writing the measurement into a committed ceiling is correct - it stops the cut
-# being given back - but a later reader must not mistake it for the design intent,
-# because the obvious misreading is "the contract says 68%, so 68% is fine".
-# It is not fine. It is undischarged, it is `BL-R241-DEBT-1`, and if Will rules
-# option (B) these two numbers come down IN THE SAME COMMIT as the fix.
-# `LOW_CHANCE_RULING_BAR` below makes the gate say that out loud on every run so
-# the qualification cannot rot inside a comment nobody opens.
-ORB_MAX_P_LEGENDARY = {'n': 0.02, 'e': 0.55, 'l': 0.68}
-
-# The bar this lane reads "a low chance" against: ONE OPEN IN FOUR. Nothing in
-# Will's sentence fixes a number, so this is not asserted as his - it is the
-# threshold at which this lane stops claiming his ruling is discharged, and it is
-# deliberately generous (25% is still a common event) so the notice fires only
-# when the gap is beyond argument. It does NOT red the gate: the remaining gap
-# needs a composition change that re-opens R-180/R-181/R-220 armour parity, which
-# is Will's A/B call and not something a gate may take. It prints, every run,
-# in the PASS line and the FAIL path both.
-LOW_CHANCE_RULING_BAR = 0.25
+# The equipment classes - a legendary item is GEAR iff its engine Class is one a player
+# wears or wields (the ItemArtifact / ItemArtifactFormula mercenary scrolls and arcane
+# formulae are NOT gear, and are the base-game leak that makes "0% legendary on Normal"
+# read 0.1-0.35% if you count everything). Sourced from svc_loot_distribution so the two
+# contracts mean the same thing by "gear".
+GEAR_CLASSES = frozenset(SLD.CLASS_TO_SLOT)
 
 # ─────────────────────────────────────────────────────────────────────────────
-# WHICH SPAWN MODEL EACH CHECK RUNS UNDER, AND WHY THERE IS NO CEILING TWIN
-#
-# R-240 introduced two readings of the spawn count because the engine's rounding
-# mode is unproven (`BL-R240-DEBT-5`): the CONTINUOUS mean S = (min+max)/2 and the
-# INTEGER-TRUNCATED S = (int(min)+int(max))/2. Its rule is "each check runs under
-# the model hardest on it", and that rule decides this file's shape too - but it
-# decides it ASYMMETRICALLY, which is worth stating because the first draft of this
-# module got it wrong in a way that shipped a dead check.
-#
-# `spawn_iterations_trunc <= spawn_iterations` ALWAYS, so:
-#   * E[legendary] and P(>=1) are both MONOTONE INCREASING in S, therefore the
-#     CONTINUOUS reading is the larger one, therefore it is the pessimistic side of
-#     a CEILING. O2 and O3 run on it, and a truncated ceiling twin could never fire
-#     while its continuous parent was green - it would be a check that cannot fail,
-#     which is worse than no check because it appears in the PASS line. The first
-#     draft had exactly that as "O3b"; it was removed once the monotonicity was
-#     written down instead of assumed, and the removal is recorded here rather than
-#     silently done.
-#   * The same monotonicity makes the TRUNCATED reading the pessimistic side of a
-#     FLOOR. So O4 runs on it, and prints the continuous reading beside it - the
-#     mirror of R-240's V7b, and for the identical reason.
-#
-# THE FLOORS - the reason this file is a contract and not a trim. "they should just
-# have A CHANCE to drop legendary items" is an instruction that legendary drops
-# remain POSSIBLE and non-trivial.
-#
-# O4 - measured on the TRUNCATED reading after the wave, thinnest orb of each tier
-# (the binding case for a floor): e 0.3479 | l 0.4942. Set at 0.15/0.25, so a wave
-# would have to more than HALVE the thinnest orb's legendary chance before this
-# reds - wide enough that honest retuning is not fought, tight enough that
-# "satisfy the ceiling by deleting the legendary" is impossible.
-# Normal is deliberately ABSENT: a Normal-difficulty orb legitimately measures
-# 0.05%-0.35% legendary, and inventing a floor there would be a number with no
-# ruling behind it.
+# THE TARGETS (Will's numbers) AND THE BANDS (design intent, +/-5pp per the recon).
+# The calibration aims each general table at the exact ruling number; the gate holds
+# the band around it. Normal's legendary target is GEAR-legendary = 0 (the tier law:
+# a Normal orb's gear rows carry zero Legendary gear), asserted as <= NORMAL_LEG_GEAR_MAX
+# so the base-game scroll/formula leak on loot4 cannot red a check about GEAR.
 # ─────────────────────────────────────────────────────────────────────────────
-ORB_MIN_P_LEGENDARY = {'e': 0.15, 'l': 0.25}
+TARGET_CLS = {'n': EPIC, 'e': LEGENDARY, 'l': LEGENDARY}   # the class each tier targets
+TARGET_P = {'n': 0.75, 'e': 0.50, 'l': 0.75}               # Will's per-difficulty numbers
+BAND_HALF = 0.05                                           # +/-5pp gate band
+NORMAL_LEG_GEAR_MAX = 0.01                                 # "0% legendary on normal" (GEAR)
 
-# O5 - and an orb must still be worth opening. Measured worst after the wave is
-# 2.056 items per open on every ordinary orb and 2.151 on the apex; the floor sits
-# at 1.50, which is 27% below the measured worst. This is what stops the ceilings
-# above from being satisfied the cheap way - by scaling an orb's group chances
-# until it is an empty box that technically never pays a legendary.
+# The four unique-GEAR rows the calibration moves, and NOTHING else. loot3 (potions) and
+# loot4 (amulet/relic/ring/formula) are left verbatim, so the relic law and the loot4
+# family value survive and the volume lever (numSpawn) is never touched.
+GEAR_ROWS = (1, 2, 5, 6)
+CHANCE_DECIMALS = 1          # write calibrated chances at one decimal (the 12.7/21.2 style)
+CHANCE_MAX = 100.0
+
+# An orb must still be worth opening - the mirror that stops a future retune from meeting
+# the bands the cheap way (an empty box technically pays no legendary). This wave RAISES
+# chances so it cannot trip this itself; it is a guard for the gate, negative-tested.
 ORB_MIN_DROPS_PER_OPEN = 1.50
 
-# The demotion target is DERIVED (see `family_chance`), but the shipped value is
-# recorded so a re-derivation that lands somewhere else is VISIBLE rather than
-# silently accepted. MEASURED on b83: group 4's richest non-guaranteed chance
-# across the 18 orb tables is 21.2 (`boss_charon_*01b`); the 12 `uberorb_default_*`
-# run the same row at 12.7.
+# ─────────────────────────────────────────────────────────────────────────────
+# THE EXCLUDED APEX - Leinth + Toxeus, kept byte-identical to build85 (Will part 2).
+# PINNED so the derived partition is cross-checked against a known roster: a new apex
+# consumer (a general orb rewired onto these tables, or a fourth apex table) makes the
+# derived set differ from the pin and reds, rather than silently changing scope.
+# The BYTE-UNCHANGED assertion is sufficient over just these fields because the wave's
+# ONLY field domain is per-table loot{g}Chance: members, weights and numSpawn on the apex
+# come from earlier modules identical to build85 and this wave never writes them, so
+# pinning the apex loot profile + numSpawn proves the whole record unchanged.
+# ─────────────────────────────────────────────────────────────────────────────
+APEX_PINNED = {
+    'n': r'records\item\loottables\svc\svc_uberorb_apex_n01c.dbr',
+    'e': r'records\item\loottables\svc\svc_uberorb_apex_e01c.dbr',
+    'l': r'records\item\loottables\svc\svc_uberorb_apex_l01c.dbr',
+}
+# The build85 bytes each apex table must still carry after the wave (MEASURED on
+# 5a6d63a9). loot4 = 21.2 is the R-241 family-demotion value, retained.
+APEX_EXPECTED_CHANCE = {1: 40.0, 2: 40.0, 3: 10.0, 4: 21.2, 5: 40.0, 6: 40.0}
+APEX_EXPECTED_NUMSPAWN = {
+    'n': ('(3+(1.6*numberOfPlayers))*0.2283', '(3+(1.6*numberOfPlayers))*0.2609'),
+    'e': ('(3+(1.6*numberOfPlayers))*0.2283', '(3+(1.6*numberOfPlayers))*0.2609'),
+    'l': ('(3+(1.6*numberOfPlayers))*0.231', '(3+(1.6*numberOfPlayers))*0.2609'),
+}
+CHANCE_TOL = 1e-4
+
+# The apex ORB OUTPUT each excluded table must still produce, MEASURED on build85
+# (5a6d63a9): P(>=1 blue/Epic) and P(>=1 legendary) per open. Pinning the chances alone
+# proves the apex TABLE is unchanged, but a shared unique master the apex READS (e.g.
+# svc_unique_weapons_l01, shared with the general orbs) could be retuned by a future
+# breadth/distribution lane and leak into the apex output while the apex table's own bytes
+# stay put. G3b freezes the apex behaviour too, so such a leak reds here (and, when a
+# baseline arz is passed, the reading is recomputed from it rather than trusting the pin).
+APEX_EXPECTED_READING = {
+    'n': {EPIC: 0.6897, LEGENDARY: 0.0011},
+    'e': {EPIC: 0.3478, LEGENDARY: 0.4895},
+    'l': {EPIC: 0.1768, LEGENDARY: 0.6090},
+}
+APEX_READING_TOL = 0.02      # 2pp - absorbs nothing this wave does, reds a real leak
+
+# The demotion target for the apex guaranteed relic row, DERIVED (family_chance) and
+# cross-checked against the value this contract was measured on (R-241's 21.2).
 FAMILY_CHANCE_EXPECTED = {4: 21.2}
 FAMILY_CHANCE_TOL = 1e-6
 
+# The predicate that puts a table in the EXCLUDED set: every carrier of every chain that
+# reaches it is a Toxeus variant or Leinth.
+_EXCLUDED_CARRIER_TOKENS = ('toxeus', 'leinth')
+
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SCOPE - the orb surface, DERIVED from `svc_orb_breadth`, never a typed list.
-# Same derivation R-220's own gate uses, so "the orbs" means exactly what the orb
-# breadth gate means by it and the two cannot drift apart (the BL-R181-DEBT-7
-# lesson: fifteen live surfaces starved because two waves disagreed about scope).
+# SCOPE + PARTITION
 # ─────────────────────────────────────────────────────────────────────────────
 def orb_tables(db, lk=None, base_rows=None, scope=None):
-    """{norm(table): (real, tier)} for every in-scope uber-orb loot table.
+    """{norm(table): (real, tier)} for every in-scope uber-orb loot table (all 18).
 
-    `scope` lets a caller pass an already-derived map. Deriving it costs a full 51k-record
-    scan (`SOB.uber_proxies` walks every record looking for Monster templates), and the
-    registry module needs the same map four times in one build - census, apply, calibrate,
-    verify. Reusing it across `apply_wave` is SAFE and not an optimisation shortcut: the
-    scope is a function of the proxy -> pool -> chest -> table WIRING, and this wave only
-    ever writes `loot{g}Chance` on a table that is already in it. Nothing here can add,
-    remove or repoint a link in that chain, so the set cannot move under the write. Any
-    module that COULD move it must re-derive - `verify()` does, on the final db.
+    DERIVED from svc_orb_breadth, never typed - same derivation R-220's own gate uses.
+    `scope` lets a caller pass an already-derived map (deriving costs a full 51k scan).
     """
     if scope is not None:
         return scope
@@ -230,13 +195,77 @@ def orb_tables(db, lk=None, base_rows=None, scope=None):
     return SOB.scope_tables(db, lk, base_rows, chains)
 
 
-def group_profile(d, dist, table):
-    """[(g, chance, legendary_share)] for every LIVE loot group of `table`.
+def _is_excluded_carrier(name):
+    n = SLB._n(name).lower()
+    return any(tok in n for tok in _EXCLUDED_CARRIER_TOKENS)
 
-    `legendary_share` is P(the item this group pays is legendary-CLASSIFIED), resolved
-    through the whole loot graph by `svc_loot_distribution.Distributor` - not guessed
-    from a pool's name. A group with no chance or no weighted member is not live and is
-    omitted, which is what makes "guaranteed row" mean a row that actually fires.
+
+def table_carriers(db, lk=None, base_rows=None, chains=None):
+    """{norm(table): [carrier record, ...]} - every uber carrier whose chain reaches the
+    table, aggregated over all difficulty slots. DERIVED from svc_orb_breadth.orb_chains.
+    """
+    lk = lk or SLB.Lookup(db)
+    chains = SOB.orb_chains(db, lk, base_rows) if chains is None else chains
+    out = {}
+    for (_proxy, _tier, _pool, _chest, table, carriers) in chains:
+        if not table:
+            continue
+        out.setdefault(SLB._n(table), []).extend(carriers)
+    return out
+
+
+def partition(db, lk=None, base_rows=None, scope=None, carriers=None):
+    """(general, excluded) each a {norm(table): (real, tier)} map.
+
+    EXCLUDED = every table whose chains' carriers are ALL Toxeus/Leinth. The derived
+    excluded set is cross-checked against APEX_PINNED by `partition_problems`; here it is
+    derived cleanly so the write side and the gate share one rule.
+    """
+    lk = lk or SLB.Lookup(db)
+    scope = orb_tables(db, lk, base_rows, scope)
+    carriers = table_carriers(db, lk, base_rows) if carriers is None else carriers
+    general, excluded = {}, {}
+    for k, (real, tier) in scope.items():
+        cars = carriers.get(k, [])
+        is_excl = bool(cars) and all(_is_excluded_carrier(c) for c in cars)
+        (excluded if is_excl else general)[k] = (real, tier)
+    return general, excluded
+
+
+def partition_problems(db, lk=None, base_rows=None, scope=None, carriers=None):
+    """The ROSTER_PINNED cross-check: the DERIVED excluded set must equal the pinned apex
+    set. A mismatch means either a new apex consumer appeared (a table wrongly excluded)
+    or a general table picked up a Toxeus/Leinth carrier (wrongly excluded) - either way a
+    human decision, not a silent scope change.
+    """
+    lk = lk or SLB.Lookup(db)
+    _general, excluded = partition(db, lk, base_rows, scope, carriers)
+    derived = {SLB._n(real) for (real, _t) in excluded.values()}
+    pinned = set()
+    for _tier, path in APEX_PINNED.items():
+        real = lk.real(path)
+        pinned.add(SLB._n(real) if real else SLB._n(path))
+    out = []
+    for extra in sorted(derived - pinned):
+        out.append("X0 DERIVED-EXCLUDED table %s is not in the pinned apex set. A general "
+                   "orb has been rewired onto Toxeus/Leinth loot, or a new apex table "
+                   "exists. Decide deliberately and update APEX_PINNED." % extra)
+    for missing in sorted(pinned - derived):
+        out.append("X0 PINNED apex table %s is no longer derived-excluded (its carriers "
+                   "are no longer all Toxeus/Leinth). The exclusion Will ruled has been "
+                   "broken, or the roster moved. Re-derive and update APEX_PINNED." % missing)
+    return out
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THE MODEL - per-classification, so the same code reads legendary AND blue(Epic)
+# ─────────────────────────────────────────────────────────────────────────────
+def group_profile(d, dist, table):
+    """[(g, chance, shares)] for every LIVE loot group of `table`, where `shares` is
+    {classification: P(the item this group pays is that classification)} resolved through
+    the whole loot graph. Legendary is additionally split into 'LegGear' / 'LegArtifact'
+    so a Normal orb's GEAR-legendary (the tier-law zero) is measurable apart from the
+    base-game scroll/formula leak.
     """
     f = d.fields(table)
     out = []
@@ -254,76 +283,111 @@ def group_profile(d, dist, table):
         tot = sum(w for _p, w in pairs)
         if chance <= 0 or tot <= 0:
             continue
-        leg = 0.0
+        shares = {}
         for p_, w in pairs:
             share = w / tot
             for it, q in dist.dist(p_).items():
-                if str(d.gv(it, 'itemClassification') or '') == LEGENDARY:
-                    leg += share * q
-        out.append((g, chance, leg))
+                cls = str(d.gv(it, 'itemClassification') or '')
+                shares[cls] = shares.get(cls, 0.0) + share * q
+                if cls == LEGENDARY:
+                    key = ('LegGear' if str(d.gv(it, 'Class') or '') in GEAR_CLASSES
+                           else 'LegArtifact')
+                    shares[key] = shares.get(key, 0.0) + share * q
+        out.append((g, chance, shares))
     return out
 
 
-def reading(d, dist, table):
-    """(drops, E[legendary], P(>=1 legendary), P(>=1 legendary | truncated S)).
+def _p_at_least_one(gs, S, key, override=None):
+    """P(>=1 item whose share-key is `key`) over S independent spawn iterations.
 
-    P is computed from the per-iteration miss probability raised to S, because the
-    groups roll INDEPENDENTLY on each spawn iteration - the same construction R-240's
-    `cage_run` uses, so "at least one" means the same thing in both contracts.
+    `override` = {group index: chance} temporarily replaces those groups' chances (used by
+    the calibration to vary the gear rows without re-resolving the loot graph - the shares
+    do not depend on chance).
     """
-    S = SLD.spawn_iterations(d, table)
-    St = SLV.spawn_iterations_trunc(d, table)
-    gs = group_profile(d, dist, table)
-    drops = S * sum(c for (_g, c, _s) in gs)
-    e_leg = S * sum(c * s for (_g, c, s) in gs)
     miss = 1.0
-    for (_g, c, s) in gs:
-        miss *= (1.0 - c * s)
-    return (drops, e_leg,
-            1.0 - miss ** max(S, 0.0),
-            1.0 - miss ** max(St, 0.0))
+    for (g, c, sh) in gs:
+        cc = override.get(g, c) if override else c
+        miss *= (1.0 - cc * sh.get(key, 0.0))
+    return 1.0 - miss ** max(S, 0.0)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# THE CENSUS - the number Will asked for, as a function so the gate, the module
-# and the negatives all report the SAME count from the SAME rule.
-# ─────────────────────────────────────────────────────────────────────────────
-def guaranteed_legendary_rows(db, lk=None, d=None, dist=None, base_rows=None,
-                              scope=None):
-    """[(real, tier, group, chance, legendary_share)] - every orb loot group that fires
-    on EVERY spawn iteration AND can pay a legendary.
+def reading(d, dist, table, gs=None, S=None):
+    """A dict of every reading the gate and calibration report for one table.
 
-    `chance >= 1.0` rather than `== 1.0`: a row at 120% is even more guaranteed, and a
-    contract that only recognised the exact literal would be blind to it.
+    Keys: drops, p_epic, p_leg, p_leg_gear, e_leg, S. All under the CONTINUOUS spawn
+    model (the pessimistic side of a two-sided band: P is monotone in S, so the larger
+    continuous reading is the conservative one for both edges of a band around a target).
     """
-    lk = lk or SLB.Lookup(db)
-    d = d or SLD.Db(db)
-    dist = dist or SLD.Distributor(d)
+    S = SLD.spawn_iterations(d, table) if S is None else S
+    gs = group_profile(d, dist, table) if gs is None else gs
+    drops = S * sum(c for (_g, c, _s) in gs)
+    e_leg = S * sum(c * sh.get(LEGENDARY, 0.0) for (_g, c, sh) in gs)
+    return {
+        'drops': drops,
+        'p_epic': _p_at_least_one(gs, S, EPIC),
+        'p_leg': _p_at_least_one(gs, S, LEGENDARY),
+        'p_leg_gear': _p_at_least_one(gs, S, 'LegGear'),
+        'p_leg_artifact': _p_at_least_one(gs, S, 'LegArtifact'),
+        'e_leg': e_leg,
+        'S': S,
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CALIBRATION (general tables) - solve the uniform gear-row chance that hits the target
+# ─────────────────────────────────────────────────────────────────────────────
+def calibrate_chance(d, dist, real, tier, gs=None, S=None):
+    """The uniform loot1/2/5/6 chance (percent, rounded to CHANCE_DECIMALS) that puts this
+    general table's P(>=1 target-classification) at Will's number for its difficulty.
+
+    DERIVED per table from its own bytes by bisection on the emergent model - not a typed
+    constant - so a content retune that shifts a table's per-tier mix moves the calibrated
+    chance with it. P is monotone increasing in the gear-row chance, so bisection is exact.
+    """
+    gs = group_profile(d, dist, real) if gs is None else gs
+    S = SLD.spawn_iterations(d, real) if S is None else S
+    cls, target = TARGET_CLS[tier], TARGET_P[tier]
+
+    def P(x_frac):
+        return _p_at_least_one(gs, S, cls, override={g: x_frac for g in GEAR_ROWS})
+
+    lo, hi = 0.0, CHANCE_MAX / 100.0
+    # If even a full 100% gear row cannot reach the target, return the max and let the
+    # band check red - a silent under-shoot would be the expensive kind of wrong.
+    if P(hi) < target:
+        return CHANCE_MAX
+    for _ in range(64):
+        mid = (lo + hi) / 2.0
+        if P(mid) < target:
+            lo = mid
+        else:
+            hi = mid
+    return round(((lo + hi) / 2.0) * 100.0, CHANCE_DECIMALS)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# THE APEX GUARANTEED-ROW DEMOTION (retained from R-241, for the EXCLUDED tables only)
+# ─────────────────────────────────────────────────────────────────────────────
+def guaranteed_legendary_rows(d, dist, tables):
+    """[(real, tier, group, chance, legendary_share)] - every loot group in `tables` that
+    fires on EVERY spawn iteration AND can pay a legendary. In a fresh build these are the
+    3 apex group-4 relic rows at chance 100; demoting them to the family value is what
+    keeps the apex byte-identical to build85 (Will part 2)."""
     out = []
-    for _k, (real, tier) in sorted(orb_tables(db, lk, base_rows, scope).items()):
-        for (g, chance, leg) in group_profile(d, dist, real):
-            if chance >= 1.0 and leg > 0.0:
-                out.append((real, tier, g, chance, leg))
+    for _k, (real, tier) in sorted(tables.items()):
+        for (g, chance, sh) in group_profile(d, dist, real):
+            if chance >= 1.0 and sh.get(LEGENDARY, 0.0) > 0.0:
+                out.append((real, tier, g, chance, sh.get(LEGENDARY, 0.0)))
     return out
 
 
-def family_chance(db, lk=None, d=None, dist=None, base_rows=None, scope=None):
+def family_chance(d, dist, tables):
     """{group index: the richest NON-guaranteed chance that row carries across the orb
-    family} - the demotion target, DERIVED from the shipped bytes.
-
-    Deriving rather than typing is the whole point. The three guaranteed rows are
-    group 4 of the apex tables, and group 4 exists on all 18 orb tables at 12.7% or
-    21.2%; taking the RICHEST of those rejoins the apex to its family while keeping it
-    the most generous orb in the mod, which is as much of the b79 "orbs stay generous"
-    precedent as Will's newer ruling leaves standing. A typed 21.2 would go stale the
-    first time anyone retuned `boss_charon_*01b`.
-    """
-    lk = lk or SLB.Lookup(db)
-    d = d or SLD.Db(db)
-    dist = dist or SLD.Distributor(d)
+    family} - the demotion target for the apex guaranteed row, DERIVED from the bytes.
+    Group 4 exists across the family at 12.7 / 21.2, so this returns 21.2 for group 4."""
     out = {}
-    for _k, (real, _tier) in sorted(orb_tables(db, lk, base_rows, scope).items()):
-        for (g, chance, _leg) in group_profile(d, dist, real):
+    for _k, (real, _tier) in sorted(tables.items()):
+        for (g, chance, _sh) in group_profile(d, dist, real):
             if chance < 1.0:
                 out[g] = max(out.get(g, 0.0), chance)
     return out
@@ -332,243 +396,277 @@ def family_chance(db, lk=None, d=None, dist=None, base_rows=None, scope=None):
 # ─────────────────────────────────────────────────────────────────────────────
 # THE WAVE (write side)
 # ─────────────────────────────────────────────────────────────────────────────
-def already_applied(db, lk=None, base_rows=None, scope=None):
-    """The rows this wave would still have to demote. Empty == already applied (or
-    never needed). Used as the apply-once guard, exactly like R-240's twin check:
-    the demotion IS idempotent - a second run finds nothing at chance 100 and writes
-    nothing - but saying so from a MEASUREMENT beats claiming it in a comment.
+def apply_wave(db, lk=None, base_rows=None, verbose=True, scope=None, carriers=None):
+    """Calibrate the 15 general orbs and demote the 3 apex guaranteed rows.
+
+    Returns (general_changes, apex_changes):
+      general_changes = [(real, tier, [(g, old, new), ...])]
+      apex_changes    = [(real, tier, group, old_chance, new_chance)]
     """
-    return guaranteed_legendary_rows(db, lk, base_rows=base_rows, scope=scope)
-
-
-def apply_wave(db, lk=None, verbose=True, base_rows=None, scope=None):
-    """Demote every guaranteed-legendary orb row to the family chance. Returns
-    [(real, tier, group, old_chance, new_chance)]."""
     lk = lk or SLB.Lookup(db)
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
-    rows = guaranteed_legendary_rows(db, lk, d, dist, base_rows, scope)
-    if not rows:
-        if verbose:
-            print("  ORB LEGENDARY: no guaranteed-legendary orb row present - nothing "
-                  "to demote (the wave is a no-op on an already-ruled database).")
-        return []
-    fam = family_chance(db, lk, d, dist, base_rows, scope)
-    changed = []
-    for (real, tier, g, chance, _leg) in rows:
+    general, excluded = partition(db, lk, base_rows, scope, carriers)
+
+    # ── the general orbs: uniform gear-row chance to the per-difficulty target ──
+    general_changes = []
+    for _k, (real, tier) in sorted(general.items(), key=lambda kv: (kv[1][1], kv[0])):
+        gs = group_profile(d, dist, real)
+        S = SLD.spawn_iterations(d, real)
+        x = calibrate_chance(d, dist, real, tier, gs, S)
+        moves = []
+        for g in GEAR_ROWS:
+            old = float(d.fields(real).get('loot%dChance' % g, [0.0])[0])
+            if abs(old - x) > CHANCE_TOL:
+                db.set_field(real, 'loot%dChance' % g, x)
+                moves.append((g, old, x))
+        if moves:
+            db._modified.add(real)
+            OWN.note_write(real, 'orb_legendary_chance')
+            general_changes.append((real, tier, moves))
+            if verbose:
+                print("    %-30s [%s] loot%s -> %.1f%% (P(%s) target %.0f%%)"
+                      % (SLB._n(real).rsplit('\\', 1)[-1], tier,
+                         '/'.join(str(g) for g in GEAR_ROWS), x,
+                         TARGET_CLS[tier], 100.0 * TARGET_P[tier]))
+
+    # ── the apex: demote the guaranteed relic row to the family value (byte == build85) ──
+    d.refresh()
+    dist = SLD.Distributor(d)
+    apex_changes = []
+    rows = guaranteed_legendary_rows(d, dist, excluded)
+    fam = family_chance(d, dist, orb_tables(db, lk, base_rows, scope))
+    for (real, tier, g, chance, leg) in rows:
         target = fam.get(g)
         if target is None:
             raise SystemExit(
-                "[svc_orb_legendary] group %d is at chance %.1f%% on %s and NO other orb "
-                "table carries that row at a non-guaranteed chance, so there is no family "
-                "value to demote it to. Deriving the target is what keeps this wave "
-                "honest; inventing one here would be a balance decision taken by a gate. "
-                "Give the row a non-guaranteed sibling, or make the target an explicit, "
-                "Will-ruled constant." % (g, 100.0 * chance, SLB._n(real)))
+                "[svc_orb_legendary] apex group %d is guaranteed on %s and no orb table "
+                "carries that row at a non-guaranteed chance - no family value to demote "
+                "to. Give the row a non-guaranteed sibling or make the target a Will-ruled "
+                "constant." % (g, SLB._n(real)))
         expected = FAMILY_CHANCE_EXPECTED.get(g)
         if expected is not None and abs(100.0 * target - expected) > FAMILY_CHANCE_TOL:
             raise SystemExit(
-                "[svc_orb_legendary] the DERIVED demotion target for group %d is %.4f%% "
-                "but this contract was written and measured against %.4f%%. The orb "
-                "family has been retuned under the ruling: re-measure "
-                "(py tools/gate_orb_legendary.py <arz> --census), re-derive the ceilings, "
-                "and update FAMILY_CHANCE_EXPECTED deliberately - do not let a demotion "
-                "silently land somewhere nobody chose."
+                "[svc_orb_legendary] the DERIVED apex demotion target for group %d is "
+                "%.4f%% but this contract was measured against %.4f%%. The orb family was "
+                "retuned: re-measure and update FAMILY_CHANCE_EXPECTED deliberately."
                 % (g, 100.0 * target, expected))
         db.set_field(real, 'loot%dChance' % g, 100.0 * target)
         db._modified.add(real)
         OWN.note_write(real, 'orb_legendary_chance')
-        changed.append((real, tier, g, chance, target))
+        apex_changes.append((real, tier, g, chance, target))
         if verbose:
-            print("    %-46s [%s] loot%dChance %.1f%% -> %.1f%% (guaranteed row "
-                  "carrying %.2f%% legendary mass, demoted to the family value)"
+            print("    %-30s [%s] loot%dChance %.1f%% -> %.1f%% (excluded apex, kept at "
+                  "its build85 family value)"
                   % (SLB._n(real).rsplit('\\', 1)[-1], tier, g,
-                     100.0 * chance, 100.0 * target, 100.0 * _leg))
-    return changed
+                     100.0 * chance, 100.0 * target))
+    return general_changes, apex_changes
+
+
+def already_applied(db, lk=None, base_rows=None, scope=None, carriers=None):
+    """The work this wave would still do. Empty == already applied (or never needed).
+
+    True when the general gear rows already sit at their calibrated value AND no apex
+    guaranteed row remains. Measured, not claimed - the apply-once guard idiom.
+    """
+    lk = lk or SLB.Lookup(db)
+    d = SLD.Db(db)
+    dist = SLD.Distributor(d)
+    general, excluded = partition(db, lk, base_rows, scope, carriers)
+    pending = []
+    for _k, (real, tier) in sorted(general.items()):
+        gs = group_profile(d, dist, real)
+        S = SLD.spawn_iterations(d, real)
+        x = calibrate_chance(d, dist, real, tier, gs, S)
+        for g in GEAR_ROWS:
+            old = float(d.fields(real).get('loot%dChance' % g, [0.0])[0])
+            if abs(old - x) > CHANCE_TOL:
+                pending.append((real, tier, g))
+                break
+    pending.extend(guaranteed_legendary_rows(d, dist, excluded))
+    return pending
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# THE CONTRACT
+# THE CONTRACT (audit side, shared by every gate)
 # ─────────────────────────────────────────────────────────────────────────────
-def problems(db, lk=None, report=None, base_rows=None, scope=None):
-    """R-241. Returns a list of problem strings, empty when clean."""
+def problems(db, lk=None, base_rows=None, report=None, scope=None, carriers=None):
+    """R-242. Returns a list of problem strings, empty when clean.
+
+    General (15): per-difficulty legendary/blue band, Normal GEAR-legendary <= 1%.
+    Excluded (3): byte-unchanged vs build85 (loot profile + numSpawn pinned).
+    Both:         the orb still pays (drops floor) - the empty-box mirror.
+    """
     lk = lk or SLB.Lookup(db)
     d = SLD.Db(db)
     dist = SLD.Distributor(d)
     out = []
-    scope = orb_tables(db, lk, base_rows, scope)
-    if not scope:
-        return ["O0 the orb surface derived EMPTY. R-241 measures nothing and would "
-                "report success - the BL-R181-DEBT-7 failure verbatim. Check "
+
+    scope_map = orb_tables(db, lk, base_rows, scope)
+    if not scope_map:
+        return ["O0 the orb surface derived EMPTY. R-242 measures nothing and would report "
+                "success - the BL-R181-DEBT-7 failure verbatim. Check "
                 "svc_orb_breadth.orb_chains against this database."]
 
-    # O1 - Will's literal ruling: ZERO guaranteed-legendary rows.
-    for (real, tier, g, chance, leg) in guaranteed_legendary_rows(db, lk, d, dist,
-                                                                 base_rows, scope):
-        out.append(
-            "O1 %s group %d fires on EVERY spawn iteration (chance %.1f%%) and pays "
-            "legendary %.1f%% of the time, so an open of this orb is a guaranteed roll "
-            "at a legendary item. Will 2026-08-11: \"those dont need to have guaranteed "
-            "legendary drops, they should just have a chance to drop legendary items, "
-            "but a low chance.\""
-            % (SLB._n(real), g, 100.0 * chance, 100.0 * leg))
+    out.extend(partition_problems(db, lk, base_rows, scope_map, carriers))
+    general, excluded = partition(db, lk, base_rows, scope_map, carriers)
 
-    worst_leg, worst_p, thinnest = (0.0, '-'), (0.0, '-'), (1e9, '-')
-    for _k, (real, tier) in sorted(scope.items()):
-        drops, e_leg, p1, p1t = reading(d, dist, real)
+    worst = {'n': (0.0, '-'), 'e': (0.0, '-'), 'l': (0.0, '-')}
+    for _k, (real, tier) in sorted(general.items()):
+        r = reading(d, dist, real)
         short = SLB._n(real).rsplit('\\', 1)[-1]
-        if e_leg > worst_leg[0]:
-            worst_leg = (e_leg, '%s [%s]' % (short, tier))
-        if p1 > worst_p[0]:
-            worst_p = (p1, '%s [%s]' % (short, tier))
-        if drops < thinnest[0]:
-            thinnest = (drops, '%s [%s]' % (short, tier))
+        cls = TARGET_CLS[tier]
+        p = r['p_epic'] if cls == EPIC else r['p_leg']
+        lo, hi = TARGET_P[tier] - BAND_HALF, TARGET_P[tier] + BAND_HALF
 
-        # O2 - the headline ceiling, in ITEMS, which is the unit Will's report is in.
-        if e_leg > ORB_MAX_LEG_PER_OPEN[tier]:
+        # G1 - the per-difficulty band (Will's number, +/-5pp)
+        if not (lo <= p <= hi):
             out.append(
-                "O2 %s pays %.3f legendary item(s) per open at difficulty %s (ceiling "
-                "%.2f). Will: \"you made the orbs way too good\" - the shipped b83 orb "
-                "paid up to 8.43 and this is the number that answers it."
-                % (SLB._n(real), e_leg, TIER_NAME[tier], ORB_MAX_LEG_PER_OPEN[tier]))
-        # O3 - the CHANCE ceiling, on both readings of the spawn count.
-        if p1 > ORB_MAX_P_LEGENDARY[tier]:
+                "G1 %s [%s] pays at least one %s item %.1f%% of opens (target %.0f%%, band "
+                "%.0f-%.0f%%). Will 2026-08-12: 50%% legendary on epic, 75%% on legendary, "
+                "0%% legendary + 75%% blue on normal."
+                % (SLB._n(real), TIER_NAME[tier], cls, 100.0 * p, 100.0 * TARGET_P[tier],
+                   100.0 * lo, 100.0 * hi))
+        # G2 - Normal must pay 0% legendary GEAR (the tier law; scroll/formula leak exempt)
+        if tier == 'n' and r['p_leg_gear'] > NORMAL_LEG_GEAR_MAX:
             out.append(
-                "O3 %s pays at least one legendary %.1f%% of the opens at difficulty %s "
-                "(ceiling %.1f%%). \"a chance to drop legendary items, but a low "
-                "chance\" is a CEILING, and this ratchet is what stops the 90%% cut "
-                "being quietly given back."
-                % (SLB._n(real), 100.0 * p1, TIER_NAME[tier],
-                   100.0 * ORB_MAX_P_LEGENDARY[tier]))
-        # O4 - the MIRROR. "just a CHANCE" means a chance that still exists. Measured
-        # on the INTEGER-TRUNCATED spawn count, which is the pessimistic side of a
-        # FLOOR (see the model block above); the continuous reading is printed beside
-        # it so a report says which model moved, not just that something did.
-        floor = ORB_MIN_P_LEGENDARY.get(tier)
-        if floor is not None and p1t < floor:
+                "G2 %s [Normal] pays legendary GEAR %.2f%% of opens (max %.0f%%). Will: "
+                "\"a 0%% chance of dropping a legendary item on normal\" - a Normal orb's "
+                "gear rows must stay Epic-classification (the base-game scroll/formula leak "
+                "on loot4 is exempt and measured separately)."
+                % (SLB._n(real), 100.0 * r['p_leg_gear'], 100.0 * NORMAL_LEG_GEAR_MAX))
+        # O5 - and the orb must still be worth opening (empty-box mirror)
+        if r['drops'] < ORB_MIN_DROPS_PER_OPEN:
             out.append(
-                "O4 %s pays at least one legendary only %.1f%% of the opens at "
-                "difficulty %s under INTEGER TRUNCATION of the spawn count (FLOOR "
-                "%.1f%%; the continuous reading is %.1f%%). Will asked for a LOW chance, "
-                "not for no chance - an uber orb that can no longer pay a legendary "
-                "satisfies every ceiling above by deleting the reward."
-                % (SLB._n(real), 100.0 * p1t, TIER_NAME[tier], 100.0 * floor,
-                   100.0 * p1))
-        # O5 - ... and the orb must still be worth opening at all.
-        if drops < ORB_MIN_DROPS_PER_OPEN:
+                "G5 %s pays only %.2f item(s) of ANY kind per open (floor %.2f). The cheap "
+                "way to meet a rate band is to make the orb an empty box; this check costs "
+                "more than it saves." % (SLB._n(real), r['drops'], ORB_MIN_DROPS_PER_OPEN))
+        if p > worst[tier][0]:
+            worst[tier] = (p, '%s [%s]' % (short, tier))
+
+    # G3 - the excluded apex, byte-unchanged vs build85 (its whole field domain here is
+    # loot{g}Chance + numSpawn; members/weights are never written by this wave).
+    for _k, (real, tier) in sorted(excluded.items()):
+        f = d.fields(real)
+        short = SLB._n(real).rsplit('\\', 1)[-1]
+        for g in range(1, 7):
+            got = float(f.get('loot%dChance' % g, [0.0])[0])
+            exp = APEX_EXPECTED_CHANCE[g]
+            if abs(got - exp) > CHANCE_TOL:
+                out.append(
+                    "G3 EXCLUDED apex %s loot%dChance = %.2f%%, expected the build85 value "
+                    "%.2f%%. Will 2026-08-12: \"Leinth and the toxeus variants keep their "
+                    "current ... orbs\" - these tables must stay byte-identical to build85."
+                    % (short, g, got, exp))
+        mn = str(SLB._sc(db.get_field_value(real, 'numSpawnMinEquation')) or '')
+        mx = str(SLB._sc(db.get_field_value(real, 'numSpawnMaxEquation')) or '')
+        emn, emx = APEX_EXPECTED_NUMSPAWN[tier]
+        if mn != emn or mx != emx:
             out.append(
-                "O5 %s pays only %.2f item(s) of ANY kind per open (FLOOR %.2f). The "
-                "cheap way to satisfy every ceiling above is to make the orb an empty "
-                "box; this is the check that costs more than it saves."
-                % (SLB._n(real), drops, ORB_MIN_DROPS_PER_OPEN))
+                "G3 EXCLUDED apex %s numSpawn = (%s, %s), expected build85 (%s, %s). The "
+                "excluded orbs keep their volume verbatim." % (short, mn, mx, emn, emx))
+        # G3b - and the apex OUTPUT is frozen too, so a shared-master retune cannot leak
+        # into the excluded orbs while their own bytes stay put.
+        r = reading(d, dist, real)
+        for cls in (EPIC, LEGENDARY):
+            got = r['p_epic'] if cls == EPIC else r['p_leg']
+            exp = APEX_EXPECTED_READING[tier][cls]
+            if abs(got - exp) > APEX_READING_TOL:
+                out.append(
+                    "G3b EXCLUDED apex %s pays %s %.2f%% of opens, expected the build85 "
+                    "value %.2f%% (tol %.0fpp). A shared unique master the apex reads has "
+                    "been retuned and leaked into the frozen Toxeus/Leinth loot; re-pin "
+                    "APEX_EXPECTED_READING only if Will intends the apex to change."
+                    % (short, cls, 100.0 * got, 100.0 * exp, 100.0 * APEX_READING_TOL))
 
     if report is not None:
-        report.update({'tables': len(scope), 'worst_leg_per_open': worst_leg,
-                       'worst_p': worst_p, 'thinnest_drops': thinnest,
-                       'guaranteed': len(guaranteed_legendary_rows(db, lk, d, dist,
-                                                                  base_rows, scope))})
+        report.update({
+            'general': len(general), 'excluded': len(excluded),
+            'tables': len(scope_map), 'worst': worst,
+        })
     return out
 
 
-def census(db, lk=None, base_rows=None, scope=None):
-    """Will's question, printed: how many guaranteed-legendary rows per orb tier."""
-    lk = lk or SLB.Lookup(db)
-    d = SLD.Db(db)
-    dist = SLD.Distributor(d)
-    scope = orb_tables(db, lk, base_rows, scope)
-    rows = guaranteed_legendary_rows(db, lk, d, dist, base_rows, scope)
-    print('\n=== R-241 GUARANTEED-LEGENDARY CENSUS (Will asked for this number) ===')
-    print('  %-11s %7s %10s   %s' % ('difficulty', 'tables', 'guar rows', 'which'))
-    for tier in TIERS:
-        mine = [r for r in rows if r[1] == tier]
-        n = sum(1 for _k, (_r, t) in scope.items() if t == tier)
-        # TWO decimals, deliberately: the Epic row measures 5.2504%, which one
-        # decimal renders as 5.3 while a truncating reader writes 5.2 - and the
-        # round-2 vet caught this file's own docstring and its sibling module
-        # disagreeing for exactly that reason. Two decimals is the precision the
-        # bytes actually support, and it makes the printed number and the prose
-        # around it the SAME number.
-        which = ', '.join('%s g%d @%.1f%% (%.2f%% legendary)'
-                          % (SLB._n(r[0]).rsplit('\\', 1)[-1], r[2],
-                             100.0 * r[3], 100.0 * r[4]) for r in mine) or '-'
-        print('  %-11s %7d %10d   %s' % (TIER_NAME[tier], n, len(mine), which))
-    print('  TOTAL guaranteed-legendary rows across the whole orb surface: %d'
-          % len(rows))
-
-
-def calibrate(db, lk=None, base_rows=None, scope=None):
-    """Every reading behind every constant above, so none of them is taste."""
-    lk = lk or SLB.Lookup(db)
-    d = SLD.Db(db)
-    dist = SLD.Distributor(d)
-    scope = orb_tables(db, lk, base_rows, scope)
-    census(db, lk, base_rows, scope)
-    print('\n=== R-241 ORB LEGENDARY CALIBRATION ===')
-    print('  %-4s %-34s %7s %8s %9s %9s %9s'
-          % ('tier', 'table', 'S', 'drops', 'E[leg]', 'P>=1', 'P>=1 tr'))
-    agg = {}
-    for _k, (real, tier) in sorted(scope.items(), key=lambda kv: (kv[1][1], kv[0])):
-        S = SLD.spawn_iterations(d, real)
-        drops, e_leg, p1, p1t = reading(d, dist, real)
-        print('  %-4s %-34s %7.3f %8.3f %9.3f %9.4f %9.4f'
-              % (tier, SLB._n(real).rsplit('\\', 1)[-1][:34], S, drops, e_leg, p1, p1t))
-        a = agg.setdefault(tier, [0.0, 0.0, 1e9, 1e9, 1e9])
-        a[0] = max(a[0], e_leg)          # O2, continuous - the ceiling's own model
-        a[1] = max(a[1], p1)             # O3, continuous - likewise
-        a[2] = min(a[2], p1t)            # O4, TRUNCATED  - the floor's own model
-        a[3] = min(a[3], p1)             # ... and its continuous twin, for contrast
-        a[4] = min(a[4], drops)          # O5
-    # Each column is printed under the model its own check runs on, so a reader can
-    # compare a number here directly against the constant that gates it.
-    print('  %-11s %12s %12s %14s %13s %10s'
-          % ('difficulty', 'O2 maxE[leg]', 'O3 maxP>=1', 'O4 minP>=1 tr',
-             '(cont twin)', 'O5 minDrops'))
-    for tier in TIERS:
-        if tier not in agg:
-            continue
-        a = agg[tier]
-        print('  %-11s %12.3f %12.4f %14.4f %13.4f %10.3f'
-              % (TIER_NAME[tier], a[0], a[1], a[2], a[3], a[4]))
-    print('  ceilings (CONTINUOUS S, the pessimistic side of a ceiling)  O2 %s | O3 %s'
-          % (ORB_MAX_LEG_PER_OPEN, ORB_MAX_P_LEGENDARY))
-    print('  floors   (TRUNCATED S for O4, the pessimistic side of a floor)  O4 %s | '
-          'O5 %.2f items/open' % (ORB_MIN_P_LEGENDARY, ORB_MIN_DROPS_PER_OPEN))
-
-
-def undischarged_notice(report):
-    """The standing notice that the CHANCE half of R-241 is not delivered, or None.
-
-    Returned rather than printed so every caller - the standalone audit, the in-build
-    `verify`, and the negative battery - shows the same words, and so a test can assert
-    the notice EXISTS while the gap does.  It is not a finding: `problems()` stays the
-    list of things a lane did wrong, and this is a thing Will has not yet ruled on.
+# ─────────────────────────────────────────────────────────────────────────────
+# THE STANDING NOTICE - the apex-vs-general inversion (BL-R242-DEBT-1)
+# ─────────────────────────────────────────────────────────────────────────────
+def inversion_notice(db, lk=None, base_rows=None, scope=None, carriers=None):
+    """The standing notice that the excluded apex is now WEAKER than the general orbs on
+    Legendary legendary-chance (an inversion of Will's 'keep their better orbs'), or None
+    if it does not hold. Printed on every run so the residue cannot rot in a comment; not
+    a finding (Will has not ruled the A/B call).
     """
-    worst, where = report.get('worst_p', (0.0, '-'))
-    if worst <= LOW_CHANCE_RULING_BAR:
+    lk = lk or SLB.Lookup(db)
+    d = SLD.Db(db)
+    dist = SLD.Distributor(d)
+    general, excluded = partition(db, lk, base_rows, scope, carriers)
+    gen_l = [reading(d, dist, real)['p_leg']
+             for _k, (real, t) in general.items() if t == 'l']
+    apex_l = [reading(d, dist, real)['p_leg']
+              for _k, (real, t) in excluded.items() if t == 'l']
+    if not gen_l or not apex_l:
+        return None
+    if max(apex_l) >= max(gen_l):
         return None
     return (
-        "R-241 CHANCE HALF NOT DISCHARGED (`BL-R241-DEBT-1`, awaiting Will's A/B call).\n"
-        "  Will asked for \"a chance to drop legendary items, but A LOW CHANCE\". The ITEM\n"
-        "  half landed: zero guaranteed rows and %.3f legendary items per open against 8.43\n"
-        "  shipped. The CHANCE half did not: the worst orb still pays at least one legendary\n"
-        "  %.1f%% of opens (%s), against a low-chance bar of %.0f%%.\n"
-        "  The volume lever is SPENT - the orbs sit at the never-empty spawn floor - so the\n"
-        "  remaining gap needs a POOL COMPOSITION change, which re-opens the R-180/R-181/R-220\n"
-        "  armour-parity and breadth work. That is Will's call, not a gate's, so this prints\n"
-        "  instead of redding. ORB_MAX_P_LEGENDARY is a ratchet holding the 90%% cut already\n"
-        "  made; it is NOT a rate anyone chose, and option (B) lowers it in the same commit."
-        % (report.get('worst_leg_per_open', (0.0, '-'))[0], 100.0 * worst, where,
-           100.0 * LOW_CHANCE_RULING_BAR))
+        "R-242 APEX-vs-GENERAL INVERSION (`BL-R242-DEBT-1`, awaiting Will's A/B call).\n"
+        "  The excluded Toxeus/Leinth apex is frozen at its build85 numbers, so on Legendary\n"
+        "  it now pays a legendary %.1f%% of opens against the general orbs' %.1f%% - the\n"
+        "  general orbs drop legendaries MORE OFTEN than the 'better' apex. The apex keeps a\n"
+        "  volume/loot4 edge only. This is the LITERAL byte-unchanged exclusion Will ruled\n"
+        "  (part 2). Option (B) - bump the apex Legendary/Epic chance above the general\n"
+        "  target - is a follow-up lane, and lowers this notice in the same commit."
+        % (100.0 * max(apex_l), 100.0 * max(gen_l)))
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# REPORTS (census / calibrate)
+# ─────────────────────────────────────────────────────────────────────────────
+def census(db, lk=None, base_rows=None, scope=None, carriers=None):
+    """The partition and each table's target, printed."""
+    lk = lk or SLB.Lookup(db)
+    general, excluded = partition(db, lk, base_rows, scope, carriers)
+    print('\n=== R-242 ORB PARTITION (general get 0/50/75; Toxeus+Leinth excluded) ===')
+    print('  GENERAL (%d) - 0%% leg + 75%% blue on normal, 50%% leg epic, 75%% leg legendary:'
+          % len(general))
+    for _k, (real, tier) in sorted(general.items(), key=lambda kv: (kv[1][1], kv[0])):
+        print('    [%s] %s' % (tier, SLB._n(real).rsplit('\\', 1)[-1]))
+    print('  EXCLUDED (%d) - Toxeus/Leinth apex, kept byte-identical to build85:'
+          % len(excluded))
+    for _k, (real, tier) in sorted(excluded.items(), key=lambda kv: (kv[1][1], kv[0])):
+        print('    [%s] %s' % (tier, SLB._n(real).rsplit('\\', 1)[-1]))
+
+
+def calibrate(db, lk=None, base_rows=None, scope=None, carriers=None):
+    """Every reading behind every band, so none of them is taste."""
+    lk = lk or SLB.Lookup(db)
+    d = SLD.Db(db)
+    dist = SLD.Distributor(d)
+    census(db, lk, base_rows, scope, carriers)
+    general, excluded = partition(db, lk, base_rows, scope, carriers)
+    print('\n=== R-242 ORB LEGENDARY/BLUE CALIBRATION ===')
+    print('  %-4s %-28s %6s %8s %8s %9s %9s %10s'
+          % ('tier', 'table', 'S', 'drops', 'P>=1 Ep', 'P>=1 Le', 'P>=1 LeG', 'target'))
+    for label, tables in (('GENERAL', general), ('EXCLUDED', excluded)):
+        print('  -- %s --' % label)
+        for _k, (real, tier) in sorted(tables.items(), key=lambda kv: (kv[1][1], kv[0])):
+            r = reading(d, dist, real)
+            tgt = ('%s %.0f%%' % (TARGET_CLS[tier], 100.0 * TARGET_P[tier])
+                   if label == 'GENERAL' else 'frozen b85')
+            print('  %-4s %-28s %6.3f %8.3f %8.4f %9.4f %10.5f %10s'
+                  % (tier, SLB._n(real).rsplit('\\', 1)[-1][:28], r['S'], r['drops'],
+                     r['p_epic'], r['p_leg'], r['p_leg_gear'], tgt))
+    print('  targets  Normal blue(Epic) %.0f%% + leg-GEAR<=%.0f%% | Epic leg %.0f%% | '
+          'Legendary leg %.0f%%  (band +/-%.0fpp)'
+          % (100.0 * TARGET_P['n'], 100.0 * NORMAL_LEG_GEAR_MAX, 100.0 * TARGET_P['e'],
+             100.0 * TARGET_P['l'], 100.0 * BAND_HALF))
 
 
 def pass_line(report):
-    return ("%d orb table(s), %d guaranteed-legendary row(s); worst %.3f legendary "
-            "item(s)/open on %s (ceiling %.2f), worst chance %.1f%% on %s, thinnest orb "
-            "still pays %.2f item(s)/open"
-            % (report.get('tables', 0), report.get('guaranteed', 0),
-               report.get('worst_leg_per_open', (0, '-'))[0],
-               report.get('worst_leg_per_open', (0, '-'))[1],
-               max(ORB_MAX_LEG_PER_OPEN.values()),
-               100.0 * report.get('worst_p', (0, '-'))[0],
-               report.get('worst_p', (0, '-'))[1],
-               report.get('thinnest_drops', (0, '-'))[0]))
+    w = report.get('worst', {})
+    return ("%d general orb(s) in band + %d excluded apex byte-frozen; worst-in-band "
+            "P(target): Normal %.1f%% (%s), Epic %.1f%% (%s), Legendary %.1f%% (%s)"
+            % (report.get('general', 0), report.get('excluded', 0),
+               100.0 * w.get('n', (0, '-'))[0], w.get('n', (0, '-'))[1],
+               100.0 * w.get('e', (0, '-'))[0], w.get('e', (0, '-'))[1],
+               100.0 * w.get('l', (0, '-'))[0], w.get('l', (0, '-'))[1]))
