@@ -416,8 +416,12 @@ def main(argv):
         rep = _ref_report(d, k)
         if rep is None:
             return                     # D7X already reds this; probe returns [] -> XX
+        # ARMOUR SLOTS ONLY. `slot_mass` carries weapon slots too, and D7's floor is an
+        # ARMOUR floor - sizing the cut off a weapon slot compares two different things
+        # and produces a nonsense factor (the first draft of this rewrite did exactly
+        # that and asked for a -25% cut).
         mass = rep.get('slot_mass') or {}
-        worst = min(mass.values()) if mass else 0.0
+        worst = min([mass.get(s, 0.0) for s in SLD.ARMOR_SLOTS] or [0.0])
         # Put the thinnest worn slot 10% BELOW the live floor. Guard the degenerate
         # case so a surface already under the floor still gets a real cut.
         f = (SLD.ARMOR_SLOT_FLOOR / worst) * 0.9 if worst > SLD.ARMOR_SLOT_FLOOR else 0.5
@@ -454,15 +458,22 @@ def main(argv):
     else:
         mass = apex.get('slot_mass') or {}
         S = apex.get('S_eff', 0.0) or 1.0
-        worst = min(mass.values()) if mass else 0.0
+        worst = min([mass.get(s, 0.0) for s in SLD.ARMOR_SLOTS] or [0.0])
         d7_cut = 100.0 * (1.0 - SLD.ARMOR_SLOT_FLOOR / worst) if worst else 0.0
         d7b_cut = (100.0 * (1.0 - SLD.ARMOR_SLOT_FLOOR_PER_SPAWN / (worst / S))
                    if worst else 0.0)
+        # The pre-R-240 comparison is DERIVED here, not quoted from memory: the old
+        # floor was the literal 0.52/open, so the cut it demanded on this same measured
+        # surface is 1 - 0.52/worst. Printing both from the same reading is what makes
+        # "the floor came down 8x" a number instead of a sentence.
+        old_cut = 100.0 * (1.0 - 0.52 / worst) if worst else 0.0
         print("     D7-SLACK on the OLD anchor (svc_uberorb_apex_e01c, d7_asserted=%s): "
-              "thinnest worn slot %.4f/open over S=%.2f; an armour cut must now exceed "
-              "%.1f%% to red D7 and %.1f%% to red D7b. Pre-R-240 the D7 figure was "
-              "~16%%. THIS IS THE PRICE OF THE RE-ANCHOR - see BL-R240-DEBT-9."
-              % (apex.get('d7_asserted'), worst, S, d7_cut, d7b_cut))
+              "thinnest ARMOUR slot %.4f/open over S=%.2f. An armour cut must now exceed "
+              "%.1f%% to red D7 (floor %.4f) and %.1f%% to red D7b (floor %.4f). Against "
+              "the pre-R-240 floor of 0.52/open the same surface demanded %.1f%%. THIS IS "
+              "THE PRICE OF THE RE-ANCHOR - see BL-R240-DEBT-9."
+              % (apex.get('d7_asserted'), worst, S, d7_cut, SLD.ARMOR_SLOT_FLOOR,
+                 d7b_cut, SLD.ARMOR_SLOT_FLOOR_PER_SPAWN, old_cut))
 
     # N13 - D7X itself. Move the reference volume just above the reference surface's own
     #      S_eff and the surface falls out of D7 exactly as it did in round 1. D7X must
