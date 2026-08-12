@@ -1,5 +1,94 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD84-DEV GATE RECORD - R-240 loot-volume trim + R-241 uber-orb legendary chance - BUILT, ALL GATES GREEN, DEPLOYED TO DEV; STEAM UPLOAD PENDING (2026-08-12, `main` @ the `fix/loot-volume-trim` fast-forward merge, tip `1a003a2`)
+
+**INTEGRATED.** `main` was at `7459e22` (build83) and the lane was 0 behind / 29 ahead, so
+`git merge --no-edit fix/loot-volume-trim` was a clean **fast-forward to `1a003a2`** - zero conflicts, no
+merge commit owed. No other TQ build was running (the only Python live was AWS MCP servers + an unrelated
+pipeline poller).
+
+**THE BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_NO_CACHE=1 SVC_RELEASE_DROPS=1
+SVC_REQUIRE_GATES=1`, into the work/ layout, **exit 0 "Done."** both runs; `local/build84_run1.log`,
+`local/build84_run2_det.log`).
+
+| artifact | md5 | bytes | vs `build83` (`44499f56`) |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`4bfea2e6fbffa1d80fa55d52807eb5c3`** | 55,580,179 (51,297 rec) | **CHANGED** (+17,359 B, **+44 rec**) |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**DETERMINISM: det-2x BYTE-IDENTICAL.** Two independent COLD builds (`SVC_NO_CACHE=1`) of the committed
+tree produced `4bfea2e6` both times (`cmp` byte-identical), 55,580,179 B.
+
+**arz-ONLY, and BOTH deploy couplings are SATISFIED rather than waived.** The wave authors **0 new tags**,
+so `validate_tags` PASSES against the EXISTING `Text.arc` (`a9fed7ba`) - all 382 referenced mod tags
+present, only the 2 pre-existing non-blocking monster-name WARNs. Nothing map-side moved. All four
+siblings were **md5-proven unchanged on disk after the build**. The staged map is the CANONICAL
+`6784cf0f`, never the local-only TESTHUB `7a7ca9ac`.
+
+**RECORD-DIFF vs the shipped `44499f56`: ADDED 44 / REMOVED 0 / MODIFIED 69, ZERO unexplained** (matches
+the vet's expected_record_diff exactly). The 44 ADDED are all TESTHUB-only twin records: 20 under
+`records\drxitem\container\svc_polisvault_hub_chest_*` (2 chest proxies `_01`/`_03` + 18 themed
+containers `_{01,03}_{n,e,l}{a,b,c}`), 6 hub pools `svc_polisvault_hub_pool_{01,03}_{n,e,l}`, and 18 loot
+tables `records\item\loottables\svc\polisvault_hub_{01,03}_{n,e,l}{a,b,c}`. The 69 MODIFIED are canonical
+loot surfaces (21 polisvault cage, 27 `svc_*hoard_loot_0N` boss/guard hoards, 3
+`loottable_hidden_bloodcave_0N` DRX donors, 3 `svc_uberorb_apex_{n,e,l}01c`, 3 `boss_charon_{n,e,l}01b`,
+3 `uberorb_default_{n,e,l}01c`, 9 `defaultloot` `uberorb_default_NN-NN` orbs). The ONLY changed fields
+anywhere are `numSpawnMinEquation` (69) + `numSpawnMaxEquation` (69) + `loot4Chance` (3). The 3
+`loot4Chance` changes are on `svc_uberorb_apex_{e,l,n}01c` (100.0 -> 21.2, R-241) and are a SUBSET of the
+69. Zero members, zero weights, zero group chances beyond those 3, zero pools, zero tags. **No hub twin
+appears in MODIFIED** (clone-then-trim proven: the twin kept the shipped numSpawn, only canonical trimmed).
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (whole fail-loud battery, `SVC_REQUIRE_GATES=1`), twice | **exit 0, "Done."** both runs |
+| det-2x byte identity | **PASS** - `4bfea2e6` == `4bfea2e6` (both cold, `SVC_NO_CACHE=1`) |
+| in-build `loot_volume_trim` (R-240) | **PASS** - 44 TESTHUB twins authored, 69 of 69 canonical tables trimmed; scope proof PASS (69 watched, only numSpawnMin/Max moved) |
+| in-build `orb_legendary_chance` (R-241) | **PASS** - 3 guaranteed-legendary rows demoted 100 -> 21.2; scope proof PASS (18 orb tables, only their own loot{g}Chance moved) |
+| `gate_loot_volume.py` on the built arz | **PASS** - 69 canonical + 18 TESTHUB twin; worst canonical 2.15 gear/open (cage runs under `{n:4.55, e:3.2, l:4.55}`), >= 95% target-grade continuous / >= 90% truncated; twin floors `{n:35, e:23, l:29}` |
+| `gate_orb_legendary.py` on the built arz | **PASS** - 18 tables, 0 guaranteed rows; worst 0.846 legendary/open (ceiling 1.00). Prints the `BL-R241-DEBT-1` chance-half notice (worst 60.9% P(>=1) vs 25% bar) and passes on the committed band - an announcement, not a failure |
+| coexisting R-210 `gate_dlc_act_ui_cap` (in-build) | **PASS** - `portal pages = ['Greece','Egypt','Orient','Hades']` |
+| coexisting R-211 `gate_atlantis_voyage_cap` (in-build) | **PASS** - `V5 resolvable Atlantis-transit routes = []` |
+| coexisting unlock-alignment (in-build) | **PASS** - 238 live buttons, 13/13 waivers |
+| `validate_tags` against the EXISTING `Text.arc` | **PASS** - 382/382 referenced mod tags present, 0 new tags; 2 pre-existing non-blocking monster-name WARNs |
+| `run_contracts`, all 6 modules, on the built arz | **GATE PASS - 0 P0 / 0 P1 / 4510 P2** |
+| `run_contracts` A/B: baseline `44499f56` under the identical config | **0 P0 / 0 P1 / 4492 P2** |
+| P2 delta characterised (4510 vs 4492 = +18) | all `C-RES-DBR-1`; the 18 new findings are one per themed twin container, an INERT `lockedSound -> sounds/soundpaks/decorations/lockedobjectpak.dbr` advisory the 21 canonical polisvault chests already carry in baseline. **Zero new P0/P1, zero new violation class.** |
+
+**DEPLOYED TO DEV** (`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `4bfea2e6`), copied with
+md5 **source == dest** verification **while TQ.exe was NOT running** - nothing killed, Steam not restarted,
+checked immediately before the copy. **1 of 62 DEV files changed, 0 added, 0 removed;** the whole folder
+was md5-inventoried before (`local/build84_dev_pre.md5`) and after (`local/build84_dev_post.md5`) and the
+other 61 are byte-identical.
+
+**PACKAGED (not uploaded).** `scripts/package_workshop.ps1`: **TESTHUB guard OK** (packaged Levels
+`6784CF0F` != TESTHUB `7A7CA9AC`), single `SoulvizierClassic` wrapper, 56 files / 1188.4 MB. dist==work
+all 5 artifacts PASS. Dist staging path: `dist/workshop/content/SoulvizierClassic`.
+
+**STEAM UPLOAD + GITHUB PUSH ARE THE MAIN SESSION'S TO RUN.** This lane did NOT run SteamCMD and did NOT
+push to a remote. **READY FOR STEAM UPLOAD: build84, arz `4bfea2e6fbffa1d80fa55d52807eb5c3`.**
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `44499f56` (the build83 arz this replaced)
+-> copy back over the DEV `Database/SoulvizierClassicDEV.arz`. This build's artifact at
+`local/build84_run1.arz`.
+
+**WHAT IS OWED / NOT PROVEN.**
+- **NOT PROVEN IN-GAME.** Will's DEV check: open the two Polis Vault gaoler cage chests + an uber's
+  Mystical Orb - a handful of good pieces, not a vendor's stock, and a legendary as an occasional treat.
+- **`BL-R241-DEBT-1` (OPEN, Will's A/B call):** the CHANCE half of R-241 is not discharged - the worst orb
+  still pays a legendary 60.9% of opens against a "low chance" bar of 25%. The volume lever is spent; the
+  remaining gap needs a POOL COMPOSITION change (option B), which re-opens R-180/R-181/R-220 breadth work
+  and is Will's decision, not a gate's. The R-241 gate ANNOUNCES this every run and passes on the band.
+- **`BL-R240-DEBT-1/5/7/8/9`** carry forward from the lane's R-240 GATE RECORD below (cage lands at a
+  handful not a literal 1; engine rounding-mode unproven; TESTHUB half inert until its map is rebuilt;
+  `gate_loot_distribution` reds on every PRE-R-240 artifact by design; the D7 absolute-floor rescale).
+- **Repo pytest modules NOT RUN** (pre-existing environment gap): the four `tools/` test modules need the
+  gitignored `reference_mods/SVAERA_customquest/Resources/Levels.arc` and error at COLLECTION regardless.
+
 > ## 🚨 ROUND-4 VET CORRECTIONS (2026-08-11, branch `fix/loot-volume-trim`) - THE BUILD WOULD HAVE ABORTED. READ FIRST.
 > The round-3 vet ran all 53 registry `verify()` hooks against the applied db and found **two that red on
 > db CONTENT** - meaning they fail identically in a real build, and `run_registry_verifies`' own docstring

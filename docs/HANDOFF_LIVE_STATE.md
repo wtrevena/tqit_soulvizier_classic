@@ -1,4 +1,53 @@
 # HANDOFF LIVE STATE
+> ## BUILD84 DEPLOYED TO DEV (2026-08-12) - R-240 loot-volume trim + R-241 uber-orb legendary chance; arz-ONLY; **STEAM UPLOAD PENDING (main session runs it)**
+> **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = work
+> `Database/SoulvizierClassic.arz` = `4bfea2e6fbffa1d80fa55d52807eb5c3`** (55,580,179 B, 51,297 records).
+> DEV copied with md5 source==dest verification **while TQ.exe was NOT running** (nothing killed, Steam
+> not restarted); **1 of 62 DEV files changed**, 0 added, 0 removed, the folder md5-inventoried before and
+> after and the other 61 byte-identical. det-2x **byte-IDENTICAL** across two independent COLD builds
+> (both `SVC_NO_CACHE=1`), `4bfea2e6` both times.
+> **NOT YET ON STEAM.** The lane is integrated (`main` fast-forwarded `7459e22` -> `1a003a2`), built,
+> gated GREEN and deployed to DEV; the Steam upload + GitHub push are the MAIN SESSION's to run.
+> Push-gate is pre-proven: dist==work all 5 artifacts PASS, TESTHUB guard PASS (packaged `6784cf0f`, NOT
+> the TESTHUB `7a7ca9ac`), single `SoulvizierClassic` wrapper, 56 files / 1188.4 MB.
+> - **What it is:** Will's two loot rulings of 2026-08-11. **R-240 (loot-volume trim):** the canonical
+>   chests and orbs pay a run's worth of gear, not a vendor's stock; the two-chest Polis cage that was
+>   paying ~36 Legendary-grade pieces a run now stays under `{n:4.55, e:3.2, l:4.55}` and still guarantees
+>   a target-grade piece at >= 95% of runs (>= 90% under integer truncation). The local-only **TESTHUB**
+>   farm keeps its rich volume via a cloned twin set (floors `{n:35, e:23, l:29}`), so one shared arz
+>   expresses "canonical trims, TESTHUB stays rich". **R-241 (uber-orb legendary chance):** no orb loot
+>   row is a guaranteed-legendary roll any more; the 3 apex tables' 100% row is demoted to the family
+>   value 21.2%, dropping worst-orb legendaries-per-open from 8.43 to 0.846 (ceiling 1.00).
+> - **arz-ONLY, both couplings SATISFIED not waived.** `Levels.arc 6784cf0f` (canonical) / `Text.arc
+>   a9fed7ba` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` md5-proven byte-unchanged. **0 new tags**
+>   authored, so `validate_tags` PASSES against the EXISTING `Text.arc` and no Text rebuild was needed.
+> - **Record-diff vs the shipped `44499f56`: ADDED 44 / REMOVED 0 / MODIFIED 69, ZERO unexplained.** The
+>   44 ADDED are all TESTHUB-only twin records (20 `svc_polisvault_hub_chest_*`, 6 `svc_polisvault_hub_pool_*`,
+>   18 `polisvault_hub_*` loot tables), unreachable on the canonical/Steam map by construction. The 69
+>   MODIFIED are canonical loot surfaces (21 polisvault cage, 27 `svc_*hoard_loot_0N`, 3 `bloodcave_0N`
+>   donors, 3 `svc_uberorb_apex_*`, 3 `boss_charon_*01b`, 12 `uberorb_default_*`); the ONLY fields that
+>   move anywhere are `numSpawnMinEquation` (69), `numSpawnMaxEquation` (69) and `loot4Chance` (3, the
+>   apex 100 -> 21.2). Zero members, zero weights, zero pools, zero tags; NO hub twin appears in MODIFIED
+>   (clone-then-trim proven).
+> - **Contracts: 0 P0 / 0 P1 / 4510 P2** on the built arz, and the baseline `44499f56` under the identical
+>   config gives **4492**. The +18 delta is entirely `C-RES-DBR-1`, one per themed twin container, an
+>   INERT `lockedSound -> sounds/soundpaks/decorations/lockedobjectpak.dbr` advisory the 21 canonical
+>   polisvault chests already carry in the baseline (P2, prov drx). **Zero new P0/P1, zero new violation
+>   class.** Every coexisting gate (R-210 DLC cap, R-211 Atlantis voyage cap, unlock-alignment,
+>   orb_armor_rows, armor_loot_breadth, loot_distribution, orb/chest breadth, craft/thrown, relic tiers)
+>   PASSES in-build under `SVC_REQUIRE_GATES=1`.
+> - **Gate records:** `docs/BACKLOG.md` -> BUILD84-DEV GATE RECORD + the lane R-240 / R-241 GATE RECORDs
+>   under it. Ruling: `docs/WILL_RULINGS.md` -> R-240 + R-241.
+> - **Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `44499f56` (the build83 arz this
+>   replaced); this artifact kept at `local/build84_run1.arz` = `4bfea2e6`.
+> - ⚠️ **NOT PROVEN IN-GAME.** Will's DEV check: open the two Polis Vault gaoler cage chests and an uber's
+>   Mystical Orb - they should pay a handful of good pieces, not a vendor's stock, and a legendary should
+>   be an occasional treat rather than a guarantee. `BL-R241-DEBT-1` is OPEN and honest: the worst orb
+>   still pays a legendary 60.9% of opens against a "low chance" bar of 25%; closing that gap is a POOL
+>   COMPOSITION call reserved for Will (option B), not a gate action, so the gate ANNOUNCES it and passes.
+>   Fully quit TQ and restart Steam first.
+
+
 > ## BUILD83 SHIPPED TO DEV **AND** STEAM (2026-08-11) - BL-R181-DEBT-7: the fifteen ordinary uber orbs pay armour at parity; arz-ONLY
 > **DEV `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = Steam
 > `Database/SoulvizierClassic.arz` = `44499f56ed52bc91219db64eb4de2f11`** (55,562,820 B, 51,253 records).
