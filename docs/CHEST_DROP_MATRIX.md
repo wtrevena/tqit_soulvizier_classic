@@ -730,6 +730,36 @@ coexisting gate still PASSES on the untrimmed arz** - `gate_chest_loot_breadth`,
 `gate_orb_loot_breadth`, `gate_craft_thrown_breadth` and `gate_chest_artifacts`, 0 findings each. So a
 lone D7X2 red on a pre-R-240 artifact is not a defect and should not be chased.
 
+**ROUND-4 (2026-08-11): the gate now says this in its own failure text**, so nobody has to already know
+it. `svc_loot_distribution` commits `ARMOR_SLOT_FLOOR_PRE_R240_REF_SPAWN = 12.480` for that one purpose;
+when D7X2 fires and the measured anchor matches the pre-trim volume, the message appends *"THIS IS THE
+EXPECTED READING ON A PRE-R-240 ARTIFACT (BL-R240-DEBT-8)"*. It is **not** a second accepted era - the
+floor stays anchored to the volume that ships. Note the red also reaches the **in-build**
+`armor_loot_breadth.verify`, which shares D7X2's implementation, so the standalone audit and the
+registry hook fail together on an untrimmed arz.
+
+### 8.8 Two coexisting gates asserted the law R-240/R-241 REPLACE, and both would have aborted the build
+
+Found by the round-3 vet by running all 53 registry `verify()` hooks against the applied db, and fixed
+in round 4. **Design record, with the superseding quotes and the half-by-half analysis:
+`docs/WILL_RULINGS.md` -> R-240/R-241 GATE COLLISIONS.** Summary:
+
+| gate | what it asserted | problems | resolution |
+|---|---|---|---|
+| `polis_vault.verify` **T5** | the shipped literal multiplier on all 18 cage tables, message *"payout must never shrink"* | **36 -> abort** | expected value now computed through `svc_loot_volume.trimmed_multipliers`; **two discrete committed values accepted, exact match**; new **T5b** reds a half-trimmed cage |
+| `uber_apex_orb.verify` **(c)** and **(h)** | apex calibre >= Leinth's frozen b96 tables, in **two independent copies** | **18 -> abort** | R-72/R-99's **unity** half survives whole and is now proved twice; only the **absolute-floor** half is superseded; gold, unique-share weights and the no-`/` MP law still proved against her originals |
+
+Both are two-era so the ship lane's anti-inert control against the rollback artifact keeps working.
+**Measured, same harness, two arz files:** shipped `44499f56` untouched -> both PASS; same arz + the two
+waves -> both PASS. Negative battery: `py tools/debug/negtest_gate_amendments.py <arz>` - **12 plants,
+all RED**, plus a proof that its own restore is clean.
+
+**FULL-SWEEP RESULT (all 53 hooks, both eras):** 0 modules red because of this lane. 7 red in **both**
+eras and are harness artifacts (the standalone harness passes an empty tags dict and no upstream cache;
+the real build supplies both): `leinth_wave`, `soul_identity`, `souls_quality`, `svaera_sets`,
+`toxeus_hunt_encounter`, `turtleshell_relics`, `uber_orphan_weapons`. Exactly 3 modules go from red to
+green across the wave: this lane's own two, plus `armor_loot_breadth` (that is `BL-R240-DEBT-8`).
+
 ---
 
 ## 9. HOW OFTEN AN UBER ORB PAYS A LEGENDARY (R-241, Will 2026-08-11)
