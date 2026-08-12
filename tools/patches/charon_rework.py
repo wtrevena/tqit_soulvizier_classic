@@ -729,6 +729,22 @@ _SPLIT_ROWS = 20         # the donor's array length; keep the shape, author the 
 _SPLIT_ABSORB = 0.0      # was [10..65], idx9 = 36.0 -> a wall the claim did not mention
 _SPLIT_REGEN = 0.0       # was [5..11],  idx9 =  8.0 -> a boss healing in its own last third
 _SPLIT_PHYSMOD = 35.0    # was [15..110], idx9 = 60.0 -> KEPT, AUTHORED, DISCLOSED
+# CORRECTION 19 (round-5 vet): round 4 authored all THREE of the donor's stat
+# arrays and left its FACE. The record still shipped the player Defense-mastery
+# Adrenaline buff aura (`Skill_Adrenaline_FX01` + `Buff07`) under a beat this
+# round is NAMED after - "the bark comes apart and the thorns come out". Same
+# donor-payload defect class as CORRECTION 14, on the visual dimension.
+# Repointed onto the FX of the mechanic the beat actually grants: retaliation
+# pierce = thorns. `Typhon_Thorn_CharFXPak` is the value `typhon_thornyaura`
+# already ships in all three of its own FX fields, and this module already wires
+# that skill onto the terminal - so the value is proven live in THIS build, and
+# it is base-resolved exactly like the Adrenaline value it replaces (neither is
+# present in the mod arz; measured). No new art asset, no new resolution class.
+# NOT a crash-law surface: `svc_bough_splitting` is Skill_PassiveOnLifeBuffSelf,
+# never a Skill_SpawnPet, and no monster record gains a charFxPak field.
+_SPLIT_FX = r'Records\Effects\Boss Effects\Typhon_Thorn_CharFXPak.dbr'
+_SPLIT_ACTOR_NAME = 'Akremon_TheSplitting'
+_DEAD_SPLIT_FX_TOKENS = ('adrenaline', 'buff07')   # the donor's identity, gated out
 
 # ── ORDINARY LOOT: the ACT-4 BAND this encounter's tier actually uses ────────
 # CORRECTION 15. Measured peers at the same tier: `um_polisgaoler_unbound_99`
@@ -767,6 +783,177 @@ _UNDERBAND_TOKENS = ('_03_unique_all', '_02_unique_all', '_01_unique_all',
 # which is the shipped Charon shell's own shape. Flip to False to restore the
 # strongbark donor's 75/13/1.6 roll (Mnemophage-shell parity) in one line.
 _ORM_MUTE_MISC = True
+# ── CORRECTION 20 (round-5 vet P1): THE OTHER HALF OF THE SAME MUTE ──────────
+# CORRECTION 16 measured and muted the SHELL and never looked at the TERMINAL,
+# and CORRECTION 15 re-banded the terminal's TABLES without touching its CHANCES,
+# which are the volume. MEASURED pre/post apply on the live build83 arz:
+#
+#   SHIPPED  um_charon_ferryman_99       chanceToEquipMisc1/2/3 = 0 / 0 / 0
+#   SHIPPED  um_charonform2_ferryman_99  chanceToEquipMisc1/2/3 = 0 / 0 / 0  (+Misc4 100 = the Bough)
+#   ROUND-4  um_charonform2_ferryman_99  chanceToEquipMisc1/2/3 = 1.6 / 100.0 / 75.0
+#
+# i.e. a GUARANTEED potion plus an act-4 misc roll every kill and a 75% relic /
+# formula roll, inherited verbatim from the `um_emberoak_42` re-clone, never
+# written or examined by this module - so the encounter's ordinary loot volume
+# went 0 -> 176.6 while R-231-G #3 stated in writing that it did not move, on
+# the exact promise the concurrent b84 `fix/loot-volume-trim` lane was handed.
+#
+# THE RULING (mute, not keep). 176.6 is defensible on peer parity - it is EXACTLY
+# um_ephialtes_99 / um_mnemophage_99 / um_helepolis_99, against a 53-boss roster
+# whose median is 4.5 - so this is not a correctness fix, it is a DECISION, and
+# it is recorded as one. Muted because: (a) the SHIPPED encounter paid exactly
+# zero, and this lane's whole discipline is zero balance drift so the vet's job
+# stays identity rather than numbers; (b) it keeps the written coordination
+# statement to b84 TRUE as issued instead of correcting a promise another
+# in-flight lane is relying on; (c) the encounter's payout is DESIGNED as the
+# guaranteed Golden Bough (Misc4 100%) + the dedicated hoard chest + the soul +
+# the boss orb, and ordinary Misc rolls were never part of it. Misc4 is NOT
+# touched. Flip to False to restore full donor parity in one line.
+_BLOOM_MUTE_MISC = True
+_MUTED_MISC_SLOTS = (1, 2, 3)          # Misc4 = the Golden Bough, never touched
+# The retinue's inherited faucet, DISCLOSED rather than claimed away (round-5 vet
+# P3). Phase 1 keeps `hero_quillvines` as its R-125 own-family retinue; MEASURED,
+# its six spawns `records\xpack\skills\monsterskills\summoning\pets\quillvine_01
+# ..06.dbr` each ship `dropItems 1` + `chanceToEquipMisc1 3.0` on the act-3 table
+# `01_act3_vinygrowth.dbr`. Those are SHARED BASE-GAME records used by the stock
+# ascacophus heroes, so mutating them is out of this lane's scope - but the claim
+# "this wave does not raise the encounter's ordinary loot volume" is only true of
+# the records this wave OWNS, and that is now how it is written. verify() reads
+# these six and asserts the disclosed number so the hole cannot widen unseen.
+_RETINUE_PETS = [r'records\xpack\skills\monsterskills\summoning\pets'
+                 r'\quillvine_0%d.dbr' % i for i in range(1, 7)]
+_RETINUE_PET_MISC1 = 3.0
+_RETINUE_PET_TABLE = 'vinygrowth'
+
+# ── MANA: the signature levers must not run dry (round-5 vet P2) ─────────────
+# MEASURED post-apply, round 4: phase 1 carried `characterMana 3000` and
+# `characterManaRegen 0.0`, both INHERITED from `xhero_strongbark_44` and never
+# written, against a wired rotation costing 312.0 (drx_earthbind 172.0 +
+# quillwards 140.0 at level 8; stumpstomp / hero_quillvines / razorquill_megaburst
+# are free). 3000 / 312 = ~9.6 cycles, after which BOTH of the fight's signature
+# levers are dead for the rest of the encounter and the headline claims ("ZERO
+# other uber fields a Skill_DefensiveWall", "you cannot kite this fight") degrade
+# to "for the first ten casts". The terminal was worse and the vet did not reach
+# it: mana 1177 / regen 5.0 against a 417.0 rotation = ~2.8 cycles.
+# ROSTER CONTEXT: 46 of 53 Boss ubers carry mana-costing casts and only 2 run
+# regen <= 0. The calibration reference `um_polisgaoler_99` is 3000 + 2.0 against
+# a 326 rotation; the Charon this replaces ran 8000 + 50.0.
+# THE RULE, not a guess: pool = the Gaoler's 3000 on both forms, and regen sized
+# so ONE full rotation is funded across the 20s cooldown that spaces it, i.e.
+# regen >= rotation_cost / _MANA_CYCLE_SECONDS. verify() recomputes the rotation
+# cost off the FINAL record at the FINAL wired levels and reds if a future skill
+# or level retune outruns the pool, so this number can never silently rot.
+# This is NOT a durability wall: mana regen adds zero effective HP, it only keeps
+# the boss casting the things that make it this boss, and both numbers stay far
+# under the shipped Charon's 8000 / 50.0.
+_MANA_CYCLE_SECONDS = 20.0        # both signature casts are skillCooldownTime 20.0
+_ORM_MANA = 3000.0                # the donor's own pool, = the Gaoler's
+_ORM_MANA_REGEN = 16.0            # funds 312.0 / 20s = 15.6
+_BLOOM_MANA = 3000.0              # raised from the inherited 1177 to phase-1 parity
+_BLOOM_MANA_REGEN = 21.0          # funds 417.0 / 20s = 20.85
+
+# ── THE CC / ELEMENTAL PROFILE, AUTHORED AND PINNED (round-5 vet P2) ─────────
+# Round 4 changed the whole crowd-control profile silently. MEASURED, record
+# block plus skill grants at the wired levels:
+#
+#   SHIPPED both forms  Stun 100  Freeze 100  Petrify 100  Trap 80  Cold 60 Fire 30
+#   ROUND-4 phase 1     Stun  50  Freeze   0  Petrify 150  Trap  0  Cold -30 Fire -30
+#   ROUND-4 terminal    Stun 300  Freeze   0  Petrify 100  Trap  0  Cold -30 Fire  70
+#
+# Two defects in one: freeze-lock became available on both forms where the
+# shipped encounter was immune, and the TERMINAL simultaneously inherited a hard
+# 300% STUN WALL off `hero_fire` on a wave whose CORRECTION 10 headline is
+# "NO WALLS" and whose round-4 thesis is "a donor's own payload riding along
+# under a claim that did not mention it". Nothing said so anywhere.
+#
+# THE FIX. (1) `hero_fire` is dropped from the terminal - it is a SHARED base
+# record so it is never mutated, it is swapped out of its declared slot for
+# `elementalresistance_10xlevel`, and the +40 fire it used to hand over is
+# authored on the record instead. (2) An explicit CC floor is authored on BOTH
+# forms so the profile is a decision, not a residue. (3) verify() recomputes the
+# EFFECTIVE value (record + every skill grant at its wired level) and asserts it
+# equals these targets, so the whole axis is pinned against any future donor,
+# skill or level change.
+# The values are deliberately RESISTANT, NOT IMMUNE: an uber that a Warfare
+# player can perma-stun is not a fight, and a 100 wall is the shipped Charon's
+# answer that this lane rejected. 75 / 60 / 60 leaves every CC build a real but
+# non-trivial opening.
+_CC_TARGET = {'defensiveStun': 75.0, 'defensiveFreeze': 60.0, 'defensiveTrap': 60.0}
+# DISCLOSED, deliberate, and gated to the same table: Petrify lands at 150 on
+# phase 1 and 100 on the terminal, entirely from `boss_conversionimmunity` (+100)
+# and `ascacophus_bleeddamageimmunity` (+50) - both roster-standard uber skills,
+# and conversion immunity is the thing that stops a player converting the boss.
+# That one axis IS a wall, it is inherited roster-wide rather than authored here,
+# and it is written down rather than discovered by the next vet.
+_PETRIFY_EFFECTIVE = {'_ORM': 150.0, '_BLOOM': 100.0}
+# ELEMENTAL, and the second half of the fight's build-swap shape. `racial_plant`
+# hands both forms -30 cold and -30 fire. On phase 1 that is left ALONE and
+# promoted from accident to design: the tree burns. On the terminal - which IS
+# the fire - the record carries enough to land at +70 after the racial. So the
+# player who brings fire to beat 1 has to bring something else to beat 3, which
+# is the same inversion the bleed immunity already does in the other direction.
+_ORM_FIRE_EFFECTIVE = -30.0       # record 0 + racial_plant -30. DELIBERATE weakness.
+_ORM_COLD_EFFECTIVE = -30.0
+_BLOOM_FIRE_RES = 100.0           # record 100 + racial -30 = +70 effective
+_BLOOM_FIRE_EFFECTIVE = 70.0
+_BLOOM_COLD_EFFECTIVE = -30.0
+# MEASURED declared paths on the donors (slot 13 on the emberoak, slot 15 on the
+# strongbark). The replacement is the strongbark's OWN elemental passive, so the
+# terminal gains a skill this encounter already fields on its other form rather
+# than an import: +10 elemental, no CC grant of any kind, Class Skill_Passive.
+_DEAD_BLOOM_SKILL_FIRE = (r'records\skills\monster skills\passive_buffs\resists'
+                          r'\hero_fire.dbr')
+_SK_ELEMRESIST = (r'records\xpack\skills\monsterskills\passive'
+                  r'\elementalresistance_10xlevel.dbr')
+_SK_RACIAL_PLANT = (r'records\skills\monster skills\passive_buffs\resists'
+                    r'\racial_plant.dbr')
+
+# ── SOUL STAT BANDS: every authored number proved against its own peers ──────
+# Round-5 vet P1, generalised. The reported defect was ONE field written with the
+# wrong NAME; measuring the whole authored block the way the fix demanded found
+# THREE numbers outside the live peer band, two of which nobody had reported.
+# Scope = the 2,453 records under `records\item\equipmentring\soul`.
+#
+#   characterRunSpeed          -8 / -6 / -5   band [0.00, 1.28], 2,158 carriers,
+#                                             ZERO negative. WRONG FIELD: this is
+#                                             the creature LOCOMOTION scalar. The
+#                                             item movement-percent field is
+#                                             `characterRunSpeedModifier` (2,224
+#                                             carriers, 155 negative, band
+#                                             [-28.00, 45.00]) - and
+#                                             `mnemophage_soul_{n,e,l}`, the mod's
+#                                             own hand-designed uber soul and this
+#                                             one's direct roster neighbour, ships
+#                                             EXACTLY -8 / -6 / -5 there. So the
+#                                             intended penalty did not exist AND a
+#                                             negative absolute run speed shipped
+#                                             on a permanently-equipped item.
+#   offensiveSlowPhysicalMin   22 / 31 / 40   band [0.00, 8.00] - 5x the live max,
+#                                             and only 3 of 2,095 carriers are
+#                                             even non-zero.
+#   offensiveSlowPhysicalDur.  3.0            band [0.00, 0.00] - EVERY one of the
+#                                             2,095 carriers ships 0.0. The field
+#                                             family is inert across the mod.
+#
+# So the "one weird stat" was writing into a dead field family at 5x its ceiling.
+# The field the mod ACTUALLY uses for snare-on-hit is `offensiveSlowRunSpeed*`:
+# 46 non-zero carriers, band [0.00, 79.00] with durations [0.00, 4.00], and the
+# top of that list is exactly the hand-designed souls (thebloatedone 79.0 / 4.0s,
+# meglograi 75.0 / 3.0s, camelbane 71.0 / 4.0s). That is literally "the ground
+# takes hold of whatever you strike", it is in the same company this soul belongs
+# in, and it is in band by construction.
+_SOUL_SNARE = 58.0                       # legendary tier; peers run to 79.0
+_SOUL_SNARE_DURATION = (2.0, 2.5, 3.0)   # peers use 2.0 - 4.0
+_SOUL_RUNSPEED_PENALTY = {'n': -8.0, 'e': -6.0, 'l': -5.0}   # = mnemophage_soul_*
+# The scope verify() measures the band over, and the fields it refuses to accept.
+_SOUL_PEER_ROOT = r'records\item\equipmentring\soul'
+# `characterRunSpeed` is the creature locomotion field; an ITEM must never carry
+# it. `offensiveSlowPhysical*` is the dead family above. Both are gated by NAME
+# so the class of defect cannot come back under a different number.
+_BANNED_SOUL_FIELDS = ('characterRunSpeed', 'offensiveSlowPhysicalMin',
+                       'offensiveSlowPhysicalMax',
+                       'offensiveSlowPhysicalDurationMin',
+                       'offensiveSlowPhysicalDurationMax')
 
 # `actorHeight` is a per-RIG constant, inherited, NEVER invented (R-126, measured
 # over 2,122 rigs). Ascacophus02 = 0.0 on all 4 live carriers; emberoakmesh.msh
@@ -1060,6 +1247,21 @@ def apply(db, tags):
     _sf(db, _SPLIT, 'damageAbsorptionPercent', _flat(_SPLIT_ABSORB))
     _sf(db, _SPLIT, 'characterLifeRegen', _flat(_SPLIT_REGEN))
     _sf(db, _SPLIT, 'offensivePhysicalModifier', _flat(_SPLIT_PHYSMOD))
+    # CORRECTION 19: ...and its FACE. Round 4 authored all three of the donor's
+    # stat arrays and left `Skill_Adrenaline_FX01` + `Buff07` in place, so the
+    # one beat this round is named after rendered the player Defence-mastery
+    # Adrenaline buff aura. Repointed onto the FX of the mechanic the beat
+    # actually grants - retaliation pierce, i.e. thorns.
+    _sf(db, _SPLIT, 'skillActivatedAuraName', _SPLIT_FX, S)
+    _sf(db, _SPLIT, 'targetFxPakName', _SPLIT_FX, S)
+    # ...and the internal label, which is the last thing on the record still
+    # reading `DefensiveMastery_Adrenaline`. Not a render path (the aura is named
+    # explicitly by the two fields above, and the repoint is proven by measuring
+    # the final record) and not player-facing, but it is the same donor identity
+    # and this codebase authors `ActorName` freely (`build_svc_database` writes it
+    # on NPCs; `validate_tags` lists it as a non-tag field), so there is no reason
+    # to leave it.
+    _sf(db, _SPLIT, 'ActorName', _SPLIT_ACTOR_NAME, S)
 
     # ── BEAT 1: AKREMON, THE GRASPING ROOT (phase 1, the placed head) ───────
     _replace_record(db, _D_ORM, _ORM)
@@ -1078,6 +1280,22 @@ def apply(db, tags):
     _sf(db, _ORM, 'defensivePierce', 50.0, F)
     _sf(db, _ORM, 'defensivePhysical', 30.0, F)
     _sf(db, _ORM, 'defensivePoison', 60.0, F)
+    # CORRECTION 22: the CC floor, AUTHORED. Round 4 changed this whole axis
+    # silently - freeze-lock became available where the shipped encounter was
+    # immune, because the donor simply carries none. Stun is written to 25 so
+    # that the donor's OWN `ascacophus_bleeddamageimmunity` (+50, measured) lands
+    # the effective value on the same 75 the terminal gets from its record alone.
+    # verify() asserts the EFFECTIVE number, so this arithmetic cannot drift.
+    _sf(db, _ORM, 'defensiveStun',
+        _CC_TARGET['defensiveStun'] - 50.0, F)             # +50 from the donor passive
+    _sf(db, _ORM, 'defensiveFreeze', _CC_TARGET['defensiveFreeze'], F)
+    _sf(db, _ORM, 'defensiveTrap', _CC_TARGET['defensiveTrap'], F)
+    # MANA (CORRECTION 23): written explicitly so the two signature levers cannot
+    # run dry. The donor's inherited 3000 / 0.0 funded ~9.6 cycles of a 312-cost
+    # rotation and then the snare and the wall were gone for the rest of the
+    # fight. Pool = the Gaoler's; regen funds one full rotation per 20s cooldown.
+    _sf(db, _ORM, 'characterMana', _ORM_MANA, F)
+    _sf(db, _ORM, 'characterManaRegen', _ORM_MANA_REGEN, F)
     _sf(db, _ORM, 'actorToSpawnOnDeath', _BLOOM, S)
     _sf(db, _ORM, 'spawnEffect', _FX_ORM_SPAWN, S)
     _sf(db, _ORM, 'deathEffect', _FX_ORM_DEATH, S)
@@ -1137,7 +1355,31 @@ def apply(db, tags):
     _sf(db, _BLOOM, 'defensiveLife', 40.0, F)
     _sf(db, _BLOOM, 'defensivePierce', 50.0, F)
     _sf(db, _BLOOM, 'defensivePhysical', 30.0, F)
-    _sf(db, _BLOOM, 'defensiveFire', 60.0, F)
+    # CORRECTION 22: 100 on the record, NOT 60, because `hero_fire` is being
+    # dropped below and its +40 has to come from somewhere deliberate. After
+    # `racial_plant`'s -30 this lands at the authored +70 effective. Phase 1 is
+    # left at its racial -30 ON PURPOSE: the tree burns, the fire does not, so
+    # the build that trivialises beat 1 has to be put down for beat 3 - the same
+    # inversion the bleed immunity runs in the other direction.
+    _sf(db, _BLOOM, 'defensiveFire', _BLOOM_FIRE_RES, F)
+    _sf(db, _BLOOM, 'defensiveStun', _CC_TARGET['defensiveStun'], F)
+    _sf(db, _BLOOM, 'defensiveFreeze', _CC_TARGET['defensiveFreeze'], F)
+    _sf(db, _BLOOM, 'defensiveTrap', _CC_TARGET['defensiveTrap'], F)
+    _sf(db, _BLOOM, 'characterMana', _BLOOM_MANA, F)
+    _sf(db, _BLOOM, 'characterManaRegen', _BLOOM_MANA_REGEN, F)
+    # CORRECTION 22, THE WALL NOBODY AUTHORED: the emberoak donor declares
+    # `hero_fire` at level 4, which grants `defensiveStun 300.0` as well as the
+    # +40 fire - a hard stun wall on the terminal, on a wave whose CORRECTION 10
+    # headline is "NO WALLS", inherited and undisclosed exactly like beat 2's
+    # 36% absorption was. `hero_fire` is a SHARED base record (Class Skill_Passive,
+    # other carriers across the roster) so it is never mutated; it is swapped out
+    # of its own declared slot for the strongbark's `elementalresistance_10xlevel`
+    # - the same passive this encounter already fields on phase 1, +10 elemental,
+    # and no crowd-control grant of any kind.
+    _swap_declared_skill(db, _BLOOM, _DEAD_BLOOM_SKILL_FIRE, _SK_ELEMRESIST, 1,
+                         'hero_fire hands the terminal a 300%% stun wall this '
+                         'lane never authored and its docs deny; the +40 fire it '
+                         'also gave is now written on the record')
     _sf(db, _BLOOM, 'actorToSpawnOnDeath', '', S)          # terminal
     _sf(db, _BLOOM, 'spawnEffect', _FX_BLOOM_SPAWN, S)
     _sf(db, _BLOOM, 'deathEffect', _FX_BLOOM_DEATH, S)
@@ -1158,6 +1400,16 @@ def apply(db, tags):
     for _fld in _BLOOM_LOOT_MUTE_WEIGHTS:
         if db.get_field_value(_BLOOM, _fld) is not None:
             _sf(db, _BLOOM, _fld, 0)
+    # CORRECTION 20: and now the CHANCES, which are the volume. The retarget
+    # above fixed which TABLES the terminal reads and never touched how often it
+    # reads them, so the encounter still went 0 -> 176.6 against a written
+    # promise that it did not move. Muted to the shipped encounter's exact zero.
+    # The act-4 retarget above is deliberately KEPT rather than deleted: it is
+    # what a future un-mute lands on, and it keeps `_UNDERBAND_TOKENS` meaningful.
+    # Misc4 - the guaranteed Golden Bough - is NOT in `_MUTED_MISC_SLOTS`.
+    if _BLOOM_MUTE_MISC:
+        for _slot in _MUTED_MISC_SLOTS:
+            _sf(db, _BLOOM, 'chanceToEquipMisc%d' % _slot, 0.0)
     _svc_clear_soul_loot(db, _BLOOM)                       # before _create_soul rewires
     _swap_scaler(db, _BLOOM)
     for _sk, _lvl in ((_SK_NOVA, 8), (_SK_THORNYAURA, 8),
@@ -1280,15 +1532,32 @@ def apply(db, tags):
             'offensivePierceMin': (F, r(48.0)), 'offensivePierceMax': (F, r(78.0)),
             'offensivePierceRatioMin': (F, r(18.0)),
             'retaliationPierceMin': (F, r(70.0)), 'retaliationPierceMax': (F, r(110.0)),
-            # THE ONE WEIRD STAT (CORRECTION 5): the boss's own signature as a
-            # player stat - the ground takes hold of whatever you strike.
-            # `offensiveSlowPhysical*` is the field 2,095 souls actually carry;
-            # `offensiveTrapMin` is carried by ZERO of them.
-            'offensiveSlowPhysicalMin': (F, r(40.0)),
-            'offensiveSlowPhysicalDurationMin': (F, 3.0),
-            # ...and the amgoz1 downside, in the Tantalus/Ephialtes tradition:
-            # the root takes a little hold of you as well.
-            'characterRunSpeed': (F, {'n': -8.0, 'e': -6.0, 'l': -5.0}[t]),
+            # THE ONE WEIRD STAT (CORRECTION 5, REWRITTEN BY CORRECTION 21): the
+            # boss's own signature as a player stat - the ground takes hold of
+            # whatever you strike. Round 3 reached for `offensiveSlowPhysical*`
+            # because 2,095 souls CARRY the field; measured this round, only 3 of
+            # them carry it NON-ZERO, its whole live band is [0.00, 8.00] against
+            # the 22/31/40 written here, and all 2,095 ship its DURATION at 0.0.
+            # Carrying a field is not using it. The family the mod actually
+            # snares with is `offensiveSlowRunSpeed*`: 46 non-zero carriers, band
+            # [0.00, 79.00] with durations [0.00, 4.00], led by the hand-designed
+            # souls this one belongs beside (thebloatedone 79.0/4.0s, meglograi
+            # 75.0/3.0s, camelbane 71.0/4.0s). Same intent, real field, in band.
+            'offensiveSlowRunSpeedMin': (F, r(_SOUL_SNARE)),
+            'offensiveSlowRunSpeedDurationMin': (
+                F, dict(zip('nel', _SOUL_SNARE_DURATION))[t]),
+            # ...and the amgoz1 downside: the root takes a little hold of you as
+            # well. CORRECTION 21: on `characterRunSpeedModifier`, the ITEM
+            # movement-percent field (2,224 soul carriers, 155 of them negative),
+            # NOT `characterRunSpeed`, which is the creature LOCOMOTION scalar
+            # whose entire live soul band is [0.00, 1.28] with ZERO negatives.
+            # Round 3 wrote the right three numbers into the wrong field, so the
+            # penalty asserted in the module header, in R-231 and in the test
+            # guide did not exist, and a negative absolute run speed shipped on a
+            # permanently-equipped item instead. These are `mnemophage_soul_*`'s
+            # exact values on the right field - the mod's own hand-designed uber
+            # soul and this one's direct roster neighbour, measured.
+            'characterRunSpeedModifier': (F, _SOUL_RUNSPEED_PENALTY[t]),
             'characterLife': (F, r(220.0)), 'characterLifeModifier': (F, r(15.0)),
             'characterDefensiveAbility': (F, r(80.0)),
             'defensiveBleeding': (F, r(35.0)),      # the wood's gift
@@ -1368,6 +1637,24 @@ def apply(db, tags):
     # this case and had never been applied to the pets.
     for p in _PETS:
         _restore_pet_difficulty_rows(db, p)
+    # CORRECTION 24 (round-5 vet P3): R-126 stopped at the three MONSTER records
+    # and never reached the three PETS the same wave rebuilds. `_build_boss_summon`
+    # writes mesh and baseTexture but not `actorHeight`, so the pets kept the Lyia
+    # baseline's 2.0 on `DRX\meshes\emberoakmesh.msh`, whose ONLY live carrier -
+    # the donor itself - ships 1.0. Not a regression (the shipped oarsmen were
+    # also 2.0, on CharonGhost.msh) and the impact is targeting / health-bar
+    # anchoring rather than render, but the invariant this module is proudest of
+    # had a blind spot on its own output. The value is READ OFF THE DONOR, never
+    # invented, which is precisely what R-126 requires; verify() now covers all
+    # six bodies instead of three.
+    _pet_h = _one(db, _D_BLOOM, 'actorHeight')
+    if _pet_h is None:
+        raise SystemExit(
+            "charon_rework: %s declares no actorHeight, so the soul pets have no "
+            "rig constant to inherit (R-126 forbids inventing one). The terminal "
+            "donor moved - re-measure before shipping." % _D_BLOOM)
+    for p in _PETS:
+        _sf(db, p, 'actorHeight', float(_pet_h), F)
     # CORRECTION 12 - THE GRANTED SKILL'S OWN PLAYER SURFACES.
     # The ICON is fixed at the source of truth (`_SUMMON_SKILL_ICON` in the
     # monolith), so `_build_boss_summon` above already stamped the flame-ring
