@@ -63,6 +63,16 @@ Three beats, two bodies, the SAME proven `actorToSpawnOnDeath` link.
       "keeps firing" must not be read as "sends things after you". Both pet
       families count toward the add-density reading owed under BL-BOUGH-DEBT-2.
 
+    * IT KEEPS CASTING (CORRECTION 23). Mana and regen are AUTHORED (3000 / 16.0),
+      sized so one full 312-cost rotation is funded across the 20s cooldown that
+      spaces it. Round 4 inherited `characterManaRegen 0.0` from the donor, which
+      made both headline levers above true for about ten casts and then false.
+    * AND IT BURNS (CORRECTION 22). `racial_plant` gives phase 1 -30 fire and -30
+      cold, and that is now the DESIGN rather than a donor residue: bring fire to
+      the tree and beat 1 melts, then beat 3 - which IS the fire - resists it at
+      +70 and you need something else. The same inversion the bleed immunity runs
+      in the other direction, on a second axis.
+
   BEAT 2 - THE SPLITTING (`svc_bough_splitting`)
     A clone of `lowhealth_berserkerrage01` (Skill_PassiveOnLifeBuffSelf,
     `lifeMonitorPercent 33.0`, `skillActiveDuration 12.0`, cd 5.0) - it fires
@@ -76,6 +86,11 @@ Three beats, two bodies, the SAME proven `actorToSpawnOnDeath` link.
     the donor is `DefensiveMastery_Adrenaline` and ships 36% / 8-per-second at the
     wired level, which would have been a wall under this lane's own claim of exact
     Gaoler durability parity. Beat 2 costs the player TIME, never immunity.
+    AND WHAT IT LOOKS LIKE (CORRECTION 19): thorns, via `Typhon_Thorn_CharFXPak` -
+    the FX of the exact mechanic it grants. Rounds 3 and 4 shipped the donor's
+    player Defence-mastery Adrenaline buff aura on the beat this lane named itself
+    after; authoring a donor's numbers and leaving its face is the same defect
+    half-fixed.
 
   BEAT 3 - THE HEARTWOOD ABLAZE (phase 2, terminal, `emberoakmesh.msh`, PLANT,
     rs 1.45)
@@ -170,11 +185,18 @@ CORRECTIONS TO THE RATIFIED SPEC - each one measured on the LIVE arz
 
 5. `offensiveTrapMin/Max` (the spec's "you start rooting what you hit") is carried
    by **ZERO** of the 2,095 soul records in the DB and by only 32 records DB-wide -
-   it is not part of the soul template's shape. The field that IS
-   (2,095 souls carry it) and that means the same thing is
-   `offensiveSlowPhysicalMin` + `offensiveSlowPhysicalDurationMin`. That ships
-   instead, with the amgoz1-tradition downside (negative `characterRunSpeed`,
-   2,158 souls carry the field) intact.
+   it is not part of the soul template's shape.
+   ⚠️ **ROUND 3'S REPLACEMENT WAS ALSO WRONG, TWICE OVER. SEE CORRECTION 21.**
+   It reached for `offensiveSlowPhysical*` on the reasoning that 2,095 souls CARRY
+   the field - but carrying a field is not using it: only **3** of those 2,095 are
+   non-zero, the whole live band is **[0.00, 8.00]** against the 22/31/40 written,
+   and **every one** of the 2,095 ships its DURATION at 0.0. And the downside went
+   onto `characterRunSpeed`, which is the CREATURE LOCOMOTION scalar (soul band
+   [0.00, 1.28], ZERO negatives), not the item movement-percent field - so the
+   penalty three documents asserted **did not exist**. What ships now:
+   `offensiveSlowRunSpeed*` (46 non-zero soul carriers, band [0.00, 79.00], led by
+   the hand-designed souls) and `characterRunSpeedModifier` (155 negative soul
+   carriers, and `mnemophage_soul_*` ships this soul's exact -8/-6/-5 there).
 
 5b. THE CENSUS TALLIES ARE RE-MEASURED, NOT COPIED. Round 2 re-ran the race
    census on the live artifact rather than trusting the spec: `um_*`/`svc_um_*`
@@ -461,6 +483,36 @@ VALUES surviving. Both make a document say something the artifact does not.
    Neanderthal_Run.anm` and ~50 siblings; unreachable at `loadout=None`, and
    class-wide: 16 of the 237 soulskill pets carry the same clip). The line now
    says what it did.
+
+--------------------------------------------------------------------------------
+ROUND 5 (R-231-H) - THE FIELDS AND THE PROFILE NOBODY MEASURED. Full detail lives
+at each site; this is the index. The round's lesson: the reported bug was "one
+field has the wrong name", and the honest fix for it was "prove every authored
+number against its own peers", which found two more defects nobody had reported.
+--------------------------------------------------------------------------------
+19. BEAT 2 STILL WORE ITS DONOR'S FACE. Round 4 authored all three of the donor's
+   stat arrays and left `Skill_Adrenaline_FX01` + `Buff07` + the
+   `DefensiveMastery_Adrenaline` label, so the one beat this lane NAMED itself
+   after rendered the player Defence-mastery buff aura. Repointed onto the FX of
+   the mechanic the beat actually grants. See `_SPLIT_FX`.
+20. THE TERMINAL'S ORDINARY LOOT VOLUME, the other half of CORRECTION 16's mute:
+   0 -> 176.6, under a written statement to a live sister lane that it had not
+   moved. Table banding and slot chance are two different measurements and this
+   lane needed both. See `_BLOOM_MUTE_MISC`.
+21. THE SOUL'S SNARE AND ITS DOWNSIDE WERE BOTH ON FIELDS THE MOD DOES NOT USE
+   THAT WAY - one inert family at 5x its live ceiling, one creature-locomotion
+   scalar on an item. See CORRECTION 5 above and `_SOUL_SNARE`.
+22. THE CC / ELEMENTAL PROFILE WAS PURE INHERITANCE, including a 300% stun WALL
+   on a wave whose CORRECTION 10 headline is NO WALLS. Authored and pinned to an
+   effective-value gate. Phase 1's -30 fire is promoted from accident to design.
+   See `_CC_TARGET`.
+23. MANA: both forms' signature levers ran dry mid-fight on inherited pools. Sized
+   by a stated rule and gated against a recomputed rotation cost. See `_ORM_MANA`.
+24. R-126 DID NOT COVER THE PETS THIS MODULE ITSELF REBUILDS. Now it does.
+25. AND THE ONE ROUND 5 CAUSED: muting the slot chances silently switched the
+   under-band TABLE gate off, because it keyed reachability on chance > 0. Caught
+   by a standing planted negative going GREEN. A fix that blinds a gate is not a
+   fix; see the `slot_live` note in verify() section 2f.
 
 ================================================================================
 CRASH-LAW COMPLIANCE, ITEMISED

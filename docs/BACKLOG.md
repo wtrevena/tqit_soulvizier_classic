@@ -242,8 +242,14 @@ reproduced and proved fixed rather than argued about.
    The 2.0 ask is now a 1.05x stretch on a rig that lives at 1.90, not the 1.33x the round-1
    hellflower would have needed.
 3. **Skin** - donor's own `Ascacophus01B` (safe). Alt behind `_ORM_SKIN_ALT` / `_ORM_USE_SKIN_ALT`.
-4. **Soul grant** - the root proc (`offensiveSlowPhysical*`) plus the amgoz1-tradition downside
-   (negative `characterRunSpeed`, -8/-6/-5%). *Recommend keep.*
+4. **Soul grant** - the root proc plus the amgoz1-tradition downside, **-8/-6/-5% movement**.
+   *Recommend keep.* 🔴 **CORRECTED R-231-H #1:** through rounds 3-4 the proc was on
+   `offensiveSlowPhysical*` (band [0.00, 8.00] against an authored 22/31/40, and a duration family
+   where all 2,095 carriers ship 0.0) and the downside on `characterRunSpeed` (the CREATURE
+   locomotion field, soul band [0.00, 1.28], zero negatives), so **the penalty did not exist**.
+   Now `offensiveSlowRunSpeedMin` + `offensiveSlowRunSpeedDurationMin` (the family 46 peer souls
+   actually snare with) and `characterRunSpeedModifier` (where `mnemophage_soul_*` ships this
+   soul's exact three numbers).
 
 7. **Speeds** (NEW, R-231-E #3) - 1.35 / 1.45 / 1.30, pet 1.0. Two of the three are exactly
    rig-proven. *Recommend keep; the alternative is the round-1 encounter, which could not move.*
@@ -262,6 +268,42 @@ reproduced and proved fixed rather than argued about.
    loot, exactly as the shipped Charon shell did. *Recommend keep while b84's loot-volume trim is in
    flight; flip the one constant for Mnemophage-shell parity (75/13/1.6) if Will wants both halves
    paying.*
+11. **Terminal loot** (NEW, R-231-H #2) - `_BLOOM_MUTE_MISC = True`. Round 4 muted only the shell
+   and the terminal shipped `1.6 / 100.0 / 75.0` = **176.6**, so the encounter went 0 -> 176.6
+   under a written statement that it had not moved. **This is a decision, not a correctness fix:**
+   176.6 is exact peer parity with `um_ephialtes_99` / `um_mnemophage_99` / `um_helepolis_99`
+   against a roster median of 4.5, so keeping it was arguable. Muted because the shipped encounter
+   paid zero on both forms, because it keeps the coordination statement issued to b84 true as
+   issued, and because the payout is designed as Bough + hoard + soul + orb. *Recommend keep;
+   `Misc4` (the guaranteed Bough) is excluded from the mute and gated separately.*
+12. **Mana** (NEW, R-231-H #3) - `3000 / 16.0` and `3000 / 21.0`, sized by the rule
+   `regen >= rotation_cost / 20s`. Round 4 inherited `0.0` regen on phase 1 against a 312.0
+   rotation, so the snare and the wall died ~9.6 casts in. *Recommend keep: it is not a durability
+   wall, it only keeps the boss casting the things that make it this boss.*
+13. **CC / elemental profile** (NEW, R-231-H #4) - effective **Stun 75 / Freeze 60 / Trap 60** on
+   both forms, phase 1 left at **-30 fire and -30 cold** on purpose, terminal at **+70 fire**.
+   Resistant, not immune, and the terminal's inherited **300% stun wall** (from `hero_fire`) is
+   gone. *Recommend keep; if Will finds either phase perma-lockable in play, the floor is three
+   constants.*
+
+* **`BL-BOUGH-DEBT-11` (P3, OPEN) - the retinue's act-3 faucet is INHERITED, disclosed, not owned.**
+  Phase 1 keeps `hero_quillvines` as its R-125 own-family retinue. Its six spawns
+  (`records\xpack\skills\monsterskills\summoning\pets\quillvine_01..06.dbr`) each ship
+  `dropItems 1` + `chanceToEquipMisc1 3.0` on the act-3 table `01_act3_vinygrowth.dbr` - so the
+  encounter does gain a small ordinary-loot source the shipped Charon never had, at up to 6 bodies
+  per cast. These are **shared base-game records** used by the stock ascacophus heroes, so this
+  lane does not mutate them; the honest claim is that this wave does not raise the ordinary loot
+  volume of the records it **owns**, and `verify()` now reads all six and pins the disclosed 3.0 so
+  the statement cannot go stale unseen. Close it by either accepting the inherited drop or giving
+  phase 1 a mod-authored retinue skill of its own.
+* **`BL-BOUGH-DEBT-12` (P3, OPEN) - beat 2's FX is base-resolved and unrendered-in-arz.**
+  `svc_bough_splitting` now points `skillActivatedAuraName` / `targetFxPakName` at
+  `Records\Effects\Boss Effects\Typhon_Thorn_CharFXPak.dbr`. That record is **not present in the
+  mod arz** (measured) - it resolves from the base game, exactly like the
+  `Skill_Adrenaline_FX01` it replaces, and `typhon_thornyaura` (which this module wires onto the
+  terminal) already ships the identical string in all three of its FX fields, so it is proven to
+  render in this build. What is **not** proven is what it looks like at 33% life on a 2.8-scale
+  Ascacophus02. **ONE LOOK CLOSES THIS:** fight phase 1 to 33% and watch the trunk.
 
 ## SHIP RECORD - BL-R181-DEBT-7: the ordinary uber orbs pay ARMOUR now, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-ship`)
 

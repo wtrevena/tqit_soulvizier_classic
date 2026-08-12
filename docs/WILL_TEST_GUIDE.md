@@ -621,13 +621,27 @@ New build36 uber bosses (mainline Act 4, all with hoards/orbs/souls; also reacha
     Heartwood Ablaze** walks out of the trunk:
     faster, on fire, and **NOT bleed-immune** - the build you shelved gets the kill. Two
     **Handbriar** champions whip alongside.
+    **THE SECOND SWAP, and please poke at it:** the tree is **weak to fire and cold (-30 each)**
+    and the thing that comes out of it **resists fire (+70)**. So burning phase 1 down should feel
+    great and then stop working, the same way the bleed spears do in reverse. Both forms are
+    **resistant but not immune** to stun/freeze/traps (75/60/60) - deliberately not the old
+    Charon's flat 100 immunity, so your control skills should land *sometimes*. If either phase
+    feels perma-lockable, or if the fire swap just reads as "phase 2 is annoying", say so.
     **35,000 on Epic across both forms, matched exactly to Alkyoneus the Soul-Gaoler** (the fight
     you beat on the second attempt) - so it should be hard, and it should die. Tell us if it is a
     wall; that is the number we most want checked.
     Drops **THE GOLDEN BOUGH** amulet (guaranteed), the **Soul of the Grasping Root** (grants
     "Graft the Burning Heartwood" - a permanent burning cutting that walks for you; the soul roots
-    what you strike and slightly slows you as the price), and the hoard chest, now labelled
-    **"The Orchard of Hands"**. The names are our invention and are yours to veto.
+    what you strike and costs you **8/6/5% movement speed** as the price), and the hoard chest,
+    now labelled **"The Orchard of Hands"**. The names are our invention and are yours to veto.
+    ⚠️ **Check the soul's tooltip specifically.** Through rounds 3 and 4 that movement penalty was
+    written into the wrong field and **did not exist** while three documents said it did; round 5
+    measured it against all 2,453 souls in the mod and moved it onto the field
+    `mnemophage_soul_*` uses. It should now read as a real movement penalty on the item. If the
+    tooltip shows nothing, the fix did not land.
+    The boss drops **no ordinary junk loot** on either form - that is deliberate (it matches what
+    the old Charon paid, and the payout is the Bough + the hoard + the soul + the orb). If that
+    feels stingy for an uber, say so and it flips back on in one line.
 13. **The Mnemophage** - the Pools of Mnemosyne temple underground (Act 4 Judgment). Memory-
     drinking horror; shell-then-core; cooldown-reduction amulet + soul.
 14. **Ephialtes, the Waking Dread** - the Dread Halls terminal vault, back corner (Judgment stone

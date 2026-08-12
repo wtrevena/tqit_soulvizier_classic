@@ -5942,11 +5942,21 @@ complaint (*"the uber monster soul of the unferried also had three chests"*, whi
 by cutting three chests to one), shipping in the same window as b84 `fix/loot-volume-trim`.
 
 **RULED: MUTED**, back to the shipped shell's own shape, behind `_ORM_MUTE_MISC` so it reverses in
-one line. This wave therefore does **not** raise the encounter's ordinary loot volume in any
-direction a trim lane would have to re-trim, and the terminal - now correctly banded per #2 - is
+one line. ~~This wave therefore does **not** raise the encounter's ordinary loot volume in any
+direction a trim lane would have to re-trim~~, and the terminal - now correctly banded per #2 - is
 where the payout lives. Verified: no breadth module derives scope from a monster's `lootMisc*`
 pointers (`orb_loot_breadth` keys on `treasureProxyName`; b84's `svc_loot_volume` is
 container-scoped), so muting the CHANCE orphans nothing.
+
+> 🔴 **THE STRUCK SENTENCE WAS FALSE WHEN WRITTEN. CORRECTED BY R-231-H #2 (round 5).** This round
+> measured the SHELL and never measured the TERMINAL. #2 above re-banded the terminal's *tables*
+> and never looked at its *chances*, which are the volume: it shipped
+> `chanceToEquipMisc1/2/3 = 1.6 / 100.0 / 75.0` inherited verbatim from the `um_emberoak_42`
+> re-clone, i.e. **the encounter went 0 -> 176.6**, a guaranteed potion every kill plus a 75%
+> relic/formula roll, in the same window as - and against a written statement issued to - the b84
+> trim lane. Round 5 muted the terminal too, so the sentence is now true of the shipped artifact;
+> it was not true of round 4's. Table banding and slot chance are two different measurements and
+> this lane needed both.
 
 #### 4. P2 - `docs/WILL_TEST_GUIDE.md` WAS NOT UPDATED, UNDER A CHECKLIST CLAIMING "NONE SILENTLY DEFERRED".
 
@@ -6000,9 +6010,181 @@ All against the live build83 arz (51,253 records), monolith stale-pet registrati
 | reading | result |
 |---|---|
 | `charon_rework.apply()` + `verify()` | GREEN |
-| `negtest_charon_rework.py` | **41 RED, 0 gate holes**, plus 2 apply-time asserts, every restoration proved GREEN |
+| `negtest_charon_rework.py` | ~~41 RED~~ **44 RED, 0 gate holes** (42 planted + 2 apply-time asserts), every restoration proved GREEN. *The "41" recorded here was stale - corrected by R-231-H #7, which re-ran the harness and counted `^neg(` in the round-4 commit (`bdcc411`) to confirm 42. On a lane whose whole discipline is that every recorded number is measured, an unmeasured one in the evidence table is the worst place for it.* |
 | post-apply field dump of all 5 fixes | absorption `[20 rows, all 0.0]`, regen `[20 rows, all 0.0]`, phys-mod `[20 rows, all 35.0]`; terminal Misc1/2/3 on the act-4 band with both jungleroot weights 0; shell `chanceToEquipMisc1/2/3 = [0,0,0]`; escort casts `quillvine_barb` with 0 beetle-bile; pets carry `[1,0,0]/[0,1,0]/[0,0,1]` and 0 `hero_scaling` |
 | durability, unchanged | `[13000,17000,22000]` + `[14000,18000,24000]` = **35,000 Epic**, and now that number is the whole story |
+
+**STILL NOT RUN, and still blocking the ship phase, not this lane:** the b44 landing/clearance
+gate, the full DB build, the COUPLED Text.arc build, `validate_tags`, `run_contracts`, det-2x and
+record-diff. All enumerated in `BL-BOUGH-DEBT-8`.
+
+**Names remain this lane's invention and ship as defaults flagged for Will veto** (R-231-B).
+
+---
+
+### R-231-H - ROUND-5 AMENDMENT [2026-08-11]. **THE FIELDS AND THE PROFILE NOBODY MEASURED.**
+
+Eight vet findings, all eight fixed. Every one was reproduced independently against the live
+build83 arz (51,253 records) **before** anything was edited, and measuring the first P1 the way its
+own fix demanded turned up **two more defects of the identical class that nobody had reported**.
+That is the round's lesson: the reported bug was "one field has the wrong name", and the honest fix
+for it was "prove every authored number against its own peers", which is a different and much
+larger job.
+
+#### 1. P1 - THE SOUL'S DOWNSIDE WAS ON THE WRONG FIELD, AND TWO MORE WERE OFF THE MAP
+
+`characterRunSpeed` is the **creature locomotion scalar**. Measured over the 2,453 peer souls under
+`records\item\equipmentring\soul`: 2,158 carriers, band **[0.00, 1.28]**, **zero negatives**. The
+**item** movement-percent field is `characterRunSpeedModifier`: 2,224 carriers, **155 negative**,
+band [-28.00, 45.00] - and `mnemophage_soul_{n,e,l}`, the mod's own hand-designed uber soul and
+this one's direct roster neighbour, ships **exactly -8.0 / -6.0 / -5.0** there. So round 3 wrote
+the right three numbers into the wrong field: the movement penalty asserted in the module header,
+in R-231-F and in `WILL_TEST_GUIDE.md` **did not exist**, and a negative absolute run speed shipped
+on a permanently-equipped item instead. Also refuted: the "Tantalus/Ephialtes tradition" cited as
+precedent - `tantalus_soul_*` carries **neither** field.
+
+Then, banding the whole authored block rather than the one reported field:
+
+| authored | value | live peer band | verdict |
+|---|---|---|---|
+| `characterRunSpeed` | -8 / -6 / -5 | [0.00, 1.28], 2,158 carriers, 0 negative | **wrong field** |
+| `offensiveSlowPhysicalMin` | 22 / 31.2 / 40 | [0.00, **8.00**], only **3 of 2,095** carriers non-zero | **5x the live ceiling** |
+| `offensiveSlowPhysicalDurationMin` | 3.0 | [0.00, **0.00**] - *every* one of 2,095 carriers ships 0.0 | **inert family** |
+
+Round 3 chose `offensiveSlowPhysical*` because 2,095 souls *carry* the field. **Carrying a field is
+not using it.** The family the mod actually snares with is `offensiveSlowRunSpeed*`: 46 non-zero
+carriers, band [0.00, 79.00] with durations [0.00, 4.00], and the top of that list is precisely the
+hand-designed souls this one belongs beside (`thebloatedone` 79.0/4.0s, `meglograi` 75.0/3.0s,
+`camelbane` 71.0/4.0s). **RULED:** the snare moves onto `offensiveSlowRunSpeedMin` +
+`offensiveSlowRunSpeedDurationMin` (58.0 legendary, 2.0/2.5/3.0s), the penalty moves onto
+`characterRunSpeedModifier`, and a new gate proves **every** authored soul stat is a field peers
+carry, at a value inside their measured band, with a name ban on both refuted families.
+
+#### 2. P1 - THE ENCOUNTER'S ORDINARY LOOT WENT 0 -> 176.6 WHILE R-231-G #3 SAID IT DID NOT
+
+See the correction box on R-231-G #3. **RULED: MUTED**, not kept, behind `_BLOOM_MUTE_MISC`.
+
+This is a **decision, not a correctness fix**, and it is recorded as one. 176.6 is defensible on
+peer parity - it is exactly `um_ephialtes_99` / `um_mnemophage_99` / `um_helepolis_99`, against a
+53-boss roster whose median is 4.5 - so keeping it would have been arguable. It is muted because
+(a) the shipped encounter paid exactly **zero** on both forms and this lane's stated discipline is
+zero balance drift, so the vet's job stays identity rather than numbers; (b) it keeps the written
+coordination statement issued to the in-flight b84 trim lane **true as issued**, which is worth
+more than 176.6 of Misc roll; and (c) the encounter's payout is *designed* as the guaranteed Golden
+Bough (Misc4 100%) + the dedicated hoard chest + the soul + the boss orb, and ordinary Misc rolls
+were never part of it. `Misc4` is deliberately **not** in `_MUTED_MISC_SLOTS`, and a gate asserts
+that the mute never eats the Bough. **Will can flip `_BLOOM_MUTE_MISC` to `False` in one line** if
+he wants roster parity instead.
+
+#### 3. P2 - BOTH FORMS' SIGNATURE LEVERS WERE MANA-GATED ON BODIES THAT DO NOT REGENERATE
+
+MEASURED post-apply: phase 1 carried `characterMana 3000` / `characterManaRegen 0.0`, both
+inherited from `xhero_strongbark_44` and never written, against a rotation costing **312.0** at the
+wired levels (`drx_earthbind` 172.0 + `quillwards` 140.0; stumpstomp, `hero_quillvines` and
+`razorquill_megaburst` are free). **3000 / 312 = ~9.6 cycles**, after which the snare and the wall
+- the two things the whole design rests on - are dead for the rest of the fight, and "ZERO other
+uber fields a `Skill_DefensiveWall`" plus "you cannot kite this fight" quietly become "for the
+first ten casts". **The vet flagged phase 1; the terminal was worse and nobody had reached it:**
+mana 1177 / regen 5.0 against a 417.0 rotation = ~2.8 cycles.
+
+Roster context: 46 of 53 Boss ubers carry mana-costing casts and only 2 run regen <= 0. The
+calibration reference `um_polisgaoler_99` is 3000 + 2.0 against a 326 rotation; the Charon this
+replaces ran 8000 + 50.0. **RULED:** pool = the Gaoler's 3000 on both forms; regen sized by a
+stated rule - `regen >= rotation_cost / 20s`, the cooldown that spaces the rotation - giving 16.0
+and 21.0. **This is not a durability wall:** mana regen adds zero effective HP and only keeps the
+boss casting the things that make it this boss, and both numbers sit far under the shipped Charon's.
+The gate **recomputes the rotation cost off the final record at final wired levels**, so a future
+skill or level retune that outruns the pool reds instead of shipping a boss that goes quiet.
+
+#### 4. P2 - THE WHOLE CC / ELEMENTAL PROFILE CHANGED SILENTLY, INCLUDING AN INHERITED 300% STUN WALL
+
+MEASURED, record block plus every skill grant at its wired level:
+
+| | Stun | Freeze | Petrify | Trap | Cold | Fire |
+|---|---|---|---|---|---|---|
+| SHIPPED, both forms | 100 | 100 | 100 | 80 | 60 | 30 |
+| ROUND 4, phase 1 | 50 | **0** | 150 | **0** | -30 | -30 |
+| ROUND 4, terminal | **300** | **0** | 100 | **0** | -30 | 70 |
+
+Two defects in one measurement: **freeze-lock became available on both forms** where the shipped
+encounter was immune, and the terminal simultaneously inherited a hard **300% stun wall** from
+`hero_fire` - on a wave whose CORRECTION 10 headline is *NO WALLS* and whose round-4 thesis is
+*"a donor's own payload riding along under a claim that did not mention it"*. Nothing in the
+module, in R-231 or in the BACKLOG mentioned any of it.
+
+**RULED.** `hero_fire` is a **shared base record**, so it is never mutated - it is swapped out of
+its own declared slot for the strongbark's `elementalresistance_10xlevel` (the same passive this
+encounter already fields on phase 1; +10 elemental, zero CC grant), and the +40 fire it used to
+hand over is authored on the record instead. An explicit CC floor is authored on both forms at
+**Stun 75 / Freeze 60 / Trap 60 effective** - deliberately **resistant, not immune**, because an
+uber a Warfare player can perma-stun is not a fight and a 100 wall is the shipped Charon's answer
+this lane rejected. The gate asserts the **effective** value (record + every grant at its wired
+level), so the axis is pinned against any future donor, skill or level change.
+
+**DISCLOSED rather than fixed, and gated to the disclosed number:** *Petrify* lands at 150 on phase
+1 and 100 on the terminal, entirely from roster-standard uber skills (`boss_conversionimmunity`
++100, which is what stops a player converting the boss, and the donor's bleed immunity +50). That
+axis genuinely **is** a wall; it is inherited roster-wide rather than authored here, and it is
+written down instead of left for the next vet.
+
+**PROMOTED FROM ACCIDENT TO DESIGN:** `racial_plant` hands both forms **-30 fire and -30 cold**. On
+phase 1 that is now *the point* - the tree burns - so the fire build that trivialises beat 1 has to
+be put down for beat 3, which is the same inversion the bleed immunity runs in the other direction.
+The terminal buys fire back to +70 on the record. Both numbers are asserted, not merely tolerated.
+
+#### 5. P3 - BEAT 2 STILL WORE ITS DONOR'S FACE
+
+`svc_bough_splitting` still shipped `skillActivatedAuraName = Skill_Adrenaline_FX01` +
+`targetFxPakName = Buff07` + `ActorName = DefensiveMastery_Adrenaline`. Round 4 authored all three
+of the donor's stat arrays and left its **visuals**, so the one beat this round is *named* after
+("the bark comes apart and the thorns come out") rendered the player Defence-mastery Adrenaline
+buff aura. Repointed onto `Typhon_Thorn_CharFXPak` - the FX of the mechanic the beat actually
+grants (retaliation pierce = thorns), and the exact value `typhon_thornyaura` already ships in all
+three of its own FX fields, a skill this module wires onto the terminal. Base-resolved exactly like
+the value it replaces (**both** measured absent from the mod arz), so no new resolution class and
+no new art asset. **Not a crash-law surface:** the record is `Skill_PassiveOnLifeBuffSelf`, never a
+`Skill_SpawnPet`, and no monster record gains a `charFxPak` field.
+
+#### 6. P3 - R-126 HAD A BLIND SPOT ON THIS MODULE'S OWN OUTPUT
+
+The three permanent soul pets are rebuilt by this wave onto `DRX\meshes\emberoakmesh.msh`, whose
+only live carrier ships `actorHeight 1.0`, and kept the Lyia baseline's **2.0** - because
+`_build_boss_summon` writes mesh and baseTexture but never `actorHeight`. Not a regression (the
+shipped oarsmen were 2.0 too, on CharonGhost.msh) and the impact is targeting / health-bar
+anchoring rather than render, but **the invariant this module is proudest of did not cover the
+bodies it builds**. Value read off the donor, never invented; the gate now covers all six bodies.
+
+#### 7. P3 - TWO DISCLOSURES CORRECTED
+
+* **The retinue's faucet.** Phase 1 keeps `hero_quillvines` as its R-125 own-family retinue. Its
+  six spawns (`...\summoning\pets\quillvine_01..06.dbr`) each ship `dropItems 1` +
+  `chanceToEquipMisc1 3.0` on the act-3 table `01_act3_vinygrowth.dbr`. These are **shared
+  base-game records** used by the stock ascacophus heroes, so this lane does not mutate them - but
+  "this wave does not raise the encounter's ordinary loot volume" is only true of the records it
+  **owns**, and that is now how it is written. A gate reads all six and pins the disclosed number.
+* **The negtest count.** See the correction on the R-231-G evidence table: 44, not 41.
+
+#### 8. THE ONE THIS ROUND CAUSED ITSELF, CAUGHT BY ITS OWN HARNESS
+
+Muting the terminal's slot chances (#2) **silently switched the existing under-band TABLE gate
+off**, because that gate required `chanceToEquipMisc{i} > 0` before it would consider a row
+reachable. The standing negative *"the act-3 jungleroot row un-muted at the Styx"* went **GREEN**.
+Measured, not reasoned about. The mute is a reversible decision behind a named constant, and the
+stated reason the act-4 retarget lives underneath it is that an un-mute has to land on the right
+band - so for the records this module mutes, the tables are now judged on their own merit and only
+the per-ITEM weight gates. **A fix that blinds a gate is not a fix**, and it took a planted
+negative to say so.
+
+#### 9. WHAT WAS RUN THIS ROUND (static only, per the lane's brief)
+
+All against the live build83 arz (51,253 records), monolith stale-pet registration SEEDED:
+
+| reading | result |
+|---|---|
+| `charon_rework.apply()` + `verify()` | **GREEN** (~40s wall including the full arz decode) |
+| `negtest_charon_rework.py` | **66 RED, 0 gate holes** (64 planted + 2 apply-time asserts), every restoration proved GREEN, harness complete |
+| post-apply field dump, all 8 fixes | soul `characterRunSpeedModifier = -8/-6/-5` with `characterRunSpeed` **absent**; snare on `offensiveSlowRunSpeedMin`; terminal `chanceToEquipMisc1/2/3 = [0,0,0]` with `Misc4 = 100.0`; mana `3000/16.0` and `3000/21.0`; effective Stun/Freeze/Trap = 75/60/60 both forms with `hero_fire` gone; split FX on the thorn pak; pets `actorHeight 1.0` |
+| durability, **unchanged** | `[13000,17000,22000]` + `[14000,18000,24000]` = **35,000 Epic** vs the Gaoler's 35,000 |
 
 **STILL NOT RUN, and still blocking the ship phase, not this lane:** the b44 landing/clearance
 gate, the full DB build, the COUPLED Text.arc build, `validate_tags`, `run_contracts`, det-2x and
