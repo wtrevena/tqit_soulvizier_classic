@@ -20,6 +20,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE / "patches"))
 from arc_patcher import ArcArchive  # noqa: E402
 import thrown_anim_rig  # noqa: E402
+import dagon_anim_rig  # noqa: E402
 
 
 def norm(s):
@@ -59,8 +60,15 @@ def main():
         mod_idx = index_dir(mod_res)
         print("  %d entries" % len(mod_idx))
 
-    wanted = thrown_anim_rig.referenced_anms()
-    print("\nthrown-stance .anm clips to resolve: %d" % len(wanted))
+    # The whole FROZEN class, both rigs: thrown_anim_rig's restored thrown stances
+    # (R-100 #15) and dagon_anim_rig's rebuilt ichthian unarmed stance. A fix that
+    # binds a clip the game does not ship is worth nothing, so both resolve here.
+    thrown = set(thrown_anim_rig.referenced_anms())
+    dagon = set(dagon_anim_rig.referenced_anms())
+    wanted = sorted(thrown | dagon)
+    print("\n.anm clips to resolve: %d (thrown_anim_rig %d + dagon_anim_rig %d, "
+          "%d shared)" % (len(wanted), len(thrown), len(dagon),
+                          len(thrown & dagon)))
     missing = []
     for a in sorted(wanted):
         # an .anm path in a DBR is arc-inner-relative WITHOUT the leading
@@ -82,8 +90,10 @@ def main():
         if hit:
             # print the EXACT inner path that matched, so an archive-name
             # stripping artifact can never masquerade as a resolution.
-            print("  OK   [%-4s %-16s] %-62s  <- inner %s"
-                  % (hit[0], hit[1], a, hit[2]))
+            who = "+".join(w for w, ok in (("thrown", a in thrown),
+                                           ("dagon", a in dagon)) if ok)
+            print("  OK   [%-4s %-16s] %-62s  (%s)  <- inner %s"
+                  % (hit[0], hit[1], a, who, hit[2]))
         else:
             missing.append(a)
             print("  MISS %s" % a)

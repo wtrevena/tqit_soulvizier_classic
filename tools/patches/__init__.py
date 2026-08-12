@@ -163,6 +163,28 @@ REGISTRY = [
                             # their field sets are disjoint (equip/loot/characterLife vs
                             # charAnimationTableName) and neither reads the other's fields. A WARN
                             # naming any THIRD module on those records is a real finding.
+    'dagon_anim_rig',       # DAGON FROZEN (Will 2026-08-11: "Dagon, lord of the poisoned deep is
+                            # frozen like the maened thrown object guys were"). He named the class:
+                            # this is R-100 #15's freeze condition on a SECOND record. Dagon's
+                            # charAnimationTableName is records\creature\monster\d2custom\anm\
+                            # anm_dagon.dbr, which resolves in NEITHER the mod arz NOR the base
+                            # game (0 d2custom records exist anywhere - the same never-shipped SV
+                            # namespace that made his SKILLS dead in b52), and the 13 clips left on
+                            # his record are all Creatures\Monster\HYDRA\ANM\* on an ICHTHIAN mesh.
+                            # unarmedWalkAnim is unbound on BOTH surfaces and he equips nothing, so
+                            # unarmed is his only stance: statue. Repoints him at anm_ichthian (the
+                            # table 43 of his 44 same-mesh siblings use) and writes the full in-rig
+                            # unarmed stance on the record too, per adfda67's BOTH-surfaces law.
+                            # NO CLONE and NO SHARED-RECORD EDIT: unlike thrown_anim_rig, which had
+                            # to MODIFY its tables, this only POINTS AT one. Runs immediately after
+                            # thrown_anim_rig - same failure class, and its DB-wide gate
+                            # generalizes that module's thrown-only invariant to EVERY
+                            # spawn-referenced monster, cross-checking the BASE arz instead of
+                            # assuming "absent from the overlay -> the base game has it" (the
+                            # assumption that hid this record from BOTH the anim gate and, in b52,
+                            # validate_tags). ANIMATION FIELDS ONLY on one record - disjoint from
+                            # every other module; a collision WARN naming any other module on
+                            # boss_dagon_66's anim fields is a real finding.
     'boss_skill_fix',       # build39: repair fought-boss skill-USAGE wiring (level-0 specials/
                             # auras/passives + Helepolis displaced turret). Runs LAST among content
                             # modules so it sees the FINAL boss records from every creating module
