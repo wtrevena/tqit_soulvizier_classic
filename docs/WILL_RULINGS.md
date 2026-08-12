@@ -5931,6 +5931,12 @@ R-240/R-241 are registered LAST, so at that moment the apex tables still carry t
 her frozen tables are the correct comparand, and the migration the proof was written for is proved
 exactly as it always was. It also still runs verbatim in `verify()` on any pre-R-240 arz.
 
+**THE ORDERING THAT MAKES THAT TRUE, MEASURED** (`patches.REGISTRY`, 61 slots): `polis_vault` **10**,
+`uber_apex_orb` **39**, `armor_loot_breadth` **55**, `loot_volume_trim` **59**,
+`orb_legendary_chance` **60**, `visuals` **61**. So both colliding modules `apply()` *before* the two
+trim modules - their apply-time guards are untouched - while **every `verify()` runs after every
+`apply()`**, which is precisely why the collision existed at verify time and only at verify time.
+
 **THE PASS LINE NAMES THE ERA.** Printing "all four calibre knobs >= her original chest" on a
 trimmed db would be the gate telling the ship lane the opposite of what it just proved.
 
