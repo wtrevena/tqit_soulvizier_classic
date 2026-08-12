@@ -350,21 +350,6 @@ def scan_frozen_monsters(db, base_names=None):
         tbl_cache[key] = res
         return res
 
-    # Which records are named by some OTHER record (i.e. can actually spawn).
-    spawn_referenced = set()
-    for name in db.record_names():
-        fields = db.get_fields(name)
-        if not fields:
-            continue
-        self_n = _norm(name)
-        for tf in fields.values():
-            v = tf.value
-            for vv in (v if isinstance(v, list) else [v]):
-                if isinstance(vv, str) and vv.lower().endswith(".dbr"):
-                    n = _norm(vv)
-                    if n != self_n:
-                        spawn_referenced.add(n)
-
     violations = []
     for name in db.record_names():
         fields = db.get_fields(name)
@@ -387,6 +372,39 @@ def scan_frozen_monsters(db, base_names=None):
                                "its animation table resolves NOWHERE and its own "
                                "record completes no stance (critical clips on the "
                                "record: %s)" % (", ".join(have) or "NONE")))
+
+    # Which of the (very few) violators are actually reachable in game?
+    #
+    # COST, MEASURED (not guessed - an earlier note in this spot blamed this scan for
+    # 47s and was WRONG): asking "does any OTHER record name this path" touches every
+    # value of every record, ~51k records. On the shipped build83 the WHOLE sweep,
+    # this scan included, costs 3.0s once the records are decoded - and the real build
+    # has already decoded all of them (apply_svc_patches' _RecordIndex.sync_blobs does
+    # one full pass), exactly as thrown_anim_rig records for its own sweep. The 47s a
+    # standalone run appears to spend here is the one-time DECODE of 51k records,
+    # which the build pays with or without this gate.
+    # It still runs ONLY when there is a violation, reads `tf.values` directly rather
+    # than the `.value` property, and stops as soon as every violator is proven
+    # reachable.
+    spawn_referenced = set()
+    if violations:
+        targets = {_norm(v[0]) for v in violations}
+        for name in db.record_names():
+            fields = db.get_fields(name)
+            if not fields:
+                continue
+            self_n = _norm(name)
+            for tf in fields.values():
+                for vv in tf.values:
+                    # `vv[-1:] in "rR"` is a one-index reject for the ~99.9% of
+                    # values that cannot be a .dbr path, and it is case-blind, so
+                    # no `.DBR` spelling can slip past the fast path.
+                    if type(vv) is str and vv[-1:] in ("r", "R"):
+                        n = _norm(vv)
+                        if n in targets and n != self_n:
+                            spawn_referenced.add(n)
+            if len(spawn_referenced) == len(targets):
+                break   # every violator already proven reachable
     return violations, spawn_referenced, base_available
 
 

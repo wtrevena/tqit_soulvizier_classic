@@ -182,9 +182,13 @@ REGISTRY = [
                             # spawn-referenced monster, cross-checking the BASE arz instead of
                             # assuming "absent from the overlay -> the base game has it" (the
                             # assumption that hid this record from BOTH the anim gate and, in b52,
-                            # validate_tags). ANIMATION FIELDS ONLY on one record - disjoint from
-                            # every other module; a collision WARN naming any other module on
-                            # boss_dagon_66's anim fields is a real finding.
+                            # validate_tags). ANIMATION FIELDS ONLY on one record. The S4b collision
+                            # WARN naming EXACTLY this module and `red_uber_orbs` on
+                            # boss_dagon_66 is EXPECTED and benign: their field sets are disjoint
+                            # (charAnimationTableName + 17 unarmed*Anim* here vs treasureProxyName
+                            # there, red_uber_orbs' rule (b) counting Dagon as an orb carrier) and
+                            # neither reads the other's fields. A WARN naming any THIRD module on
+                            # that record is a real finding.
     'boss_skill_fix',       # build39: repair fought-boss skill-USAGE wiring (level-0 specials/
                             # auras/passives + Helepolis displaced turret). Runs LAST among content
                             # modules so it sees the FINAL boss records from every creating module
