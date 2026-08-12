@@ -112,8 +112,18 @@ Three beats, two bodies, the SAME proven `actorToSpawnOnDeath` link.
     normal guys").
 
 ================================================================================
-HOW IT SHIPS: ARZ-ONLY, IN PLACE, AT THE FROZEN RECORD PATHS
+HOW IT SHIPS: NO MAP REBUILD, IN PLACE AT THE FROZEN RECORD PATHS - arz + a
+COUPLED Text.arc (NOT arz-only)
 ================================================================================
+"arz-only" here means NO Levels/Quests/map rebuild - the frozen proxy chain is
+reused and canonical `Levels.arc` stays byte-unchanged. It does NOT mean the
+Database ships alone: this module mints one new tag key (`tagSVCMonsterAkremonBlaze`,
+the terminal) and rewrites seven existing `tagSVC*` strings, and a NAME renders
+only if `Text.arc` is rebuilt from `uber_soul_tags.txt`. Shipped against the frozen
+`Text.arc` the terminal renders a RAW TAG and phase-1/escort/soul/summon keep the
+OLD Charon strings - so this lane ships arz + a COUPLED `Text.arc` (the standing
+"arz+Text ship together" rule), and `validate_tags` / C-RES-TAG-1 are the gates
+that prove the coupling landed. See the TAGS block below.
 HARD CONSTRAINT from the order: the Golden Bough forecourt placement and its
 spawn/proxy chain are REUSED. No map rebuild. `build_section_surgery.INJECT_SPECS`
 places `q_goldenbough_lone` and `svc_charon_chest` BY NAME, so those names are
@@ -573,7 +583,8 @@ from apply_svc_patches import (                       # noqa: E402
 )
 
 MODULE_NAME = ("Golden Bough uber rework (Will 2026-08-11): Charon out, "
-               "Akremon the Grasping Root in - arz-only, frozen proxy chain")
+               "Akremon the Grasping Root in - arz + coupled Text.arc, frozen "
+               "proxy chain (no map rebuild)")
 
 S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
 
@@ -1806,19 +1817,20 @@ def verify(db, tags):
         key, so `db.get_fields(_canon(ref))` resolves exactly as the engine does.
 
         `ArzDatabase` keys `_raw_records` case-SENSITIVELY, but the TQ engine
-        resolves record paths case-INSENSITIVELY and `write_arz` lowercases both the
-        record keys AND the inherited path VALUES. So a written+reloaded arz (and
-        the game) resolve every reference, while the FULL in-memory build does not:
-        a donor's inherited `skillName*` / `charAnimationTableName` VALUE is stored
-        in whatever case the upstream source used (e.g. `Records\XPack\...\
-        ANM_Ascacophus02.dbr`), and the referenced record's own key is lowercase, so
-        a raw `get_fields(value)` MISSES even though `resolves()` (normalized) says
-        present. That mismatch is invisible to an apply-onto-a-finished-arz harness
-        (already lowercased) and is exactly why `_effective` under-credited every
+        resolves record paths case-INSENSITIVELY. The referenced anim/skill records
+        are keyed LOWERCASE in the assembled db, while a donor's inherited
+        `skillName*` / `charAnimationTableName` VALUE is stored in whatever case the
+        upstream source used (e.g. `Records\XPack\...\ANM_Ascacophus02.dbr` - and
+        `write_arz` preserves field VALUE case, it only normalizes record KEYS). So a
+        raw `get_fields(value)` MISSES even though `resolves()` (normalized) says
+        present. The round-5 apply-onto-a-finished-arz harness never hit it because it
+        read the PRE-rework Charon records, whose inherited values were already
+        lowercase; the mismatch only appears on the fresh mixed-case clones a real
+        full build produces, which is exactly why `_effective` under-credited every
         donor-inherited grant and the D19 mobility gate read the ascacophus/bogdweller/
-        junglecreep anim tables as binding NO locomotion clip - reds that contradict
-        the bytes that actually ship. Read the canonical key and the gate models the
-        game."""
+        junglecreep anim tables as binding NO locomotion clip. The engine resolves
+        these anyway (case-insensitive), so the bytes ship correct - read the
+        canonical key and the gate models the game."""
         if not isinstance(path, str):
             return path
         return _byname.get(_n(path), path)

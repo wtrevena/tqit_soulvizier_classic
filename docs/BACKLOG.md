@@ -188,23 +188,32 @@ reproduced and proved fixed rather than argued about.
   hoard chain, world chest, limit and pool/proxy skeleton that the rework REUSES). It is wasted work
   and a trap for the next reader. Collapse it only together with `BL-BOUGH-DEBT-1`.
 
-* **`BL-BOUGH-DEBT-8` (P1, OPEN - SHIP-PHASE BLOCKER, not a code defect).** This lane ran
-  **static gates only**, per its brief ("static gates only - Ship builds"), and it creates a NEW
-  PLACED SURFACE: one scale-2.8 body plus two 1.55 Champions where one 1.7 body stood. Process
-  law #4 exists for exactly this case. **NONE of the following may be skipped before any deploy:**
-  1. **b44 landing/clearance gate on `q_goldenbough_lone`** - the encounter footprint grew.
-  2. **Full DB build + COUPLED `Text.arc` build.** The module mints one brand-new tag key
-     (`tagSVCMonsterAkremonBlaze`); arz + Text are a coupled deploy and `validate_tags` is the
-     fail-loud gate that proves it landed.
-  3. **`run_contracts`** against the baseline **0 P0 / 0 P1 / 4492 P2** - zero new violations.
-  4. **det-2x byte-identical** + **record-diff with zero unexplained entries.**
-  5. **The full `run_registry_gates` battery in a real build.** Round-2 vetting ran the four
-     registry-scoped pet/soul gates standalone (all GREEN), but the battery mutates and is only
-     meaningful end to end. Watch for the `summon-pet registry: SUPERSEDED` line (see DEBT-7).
-  6. **b86 integration watch.** b86 adds a C3 cross-family duplicate-display-name gate whose waiver
-     list explicitly bans anything under `svc_uber\`. `{^F}Soul of the Grasping Root` is unique
-     across the 726 distinct soul name tags in today's DB, so C3 should pass - but it must be
-     re-run on the MERGED tree, not on this branch alone.
+* **`BL-BOUGH-DEBT-8` (P1 -> mostly DISCHARGED, round 6 2026-08-12; see R-231-I).** This lane ran
+  **static gates only** through round 5; round 6 ran the real battery on `main`@f989a3b (build84)
+  with the lane merged. It creates a NEW PLACED SURFACE: one scale-2.8 body plus two 1.30 Champions
+  where one 1.7 body stood. Status of the six ship gates:
+  1. **b44 landing/clearance gate on `q_goldenbough_lone`** - **NOT RUN (and does not apply here):**
+     this is a MAP-build gate and the lane does NO map build - the frozen `q_goldenbough_lone`
+     placement is reused verbatim (canonical `Levels.arc` 6784cf0f byte-unchanged), so no NEW
+     landing to gate. The scale-2.8 phase-1 body at the same spawn point is a **Will playtest**
+     clearance check, not a build gate (the terminal is deliberately SMALLER at 2.0). Kept OPEN as
+     a playtest item only.
+  2. **Full DB build + COUPLED `Text.arc` build** - **RUN. GREEN.** Full build completes,
+     `charon_rework.verify: OK`; `Text.arc` rebuilt from `uber_soul_tags.txt` carries the minted
+     `tagSVCMonsterAkremonBlaze` + all 7 rewritten strings; `validate_tags` PASS on the fresh
+     manifest. **arz + Text are a COUPLED deploy - shipping arz-only renders the terminal as a RAW
+     TAG (C-RES-TAG-1 P1 against the frozen text).**
+  3. **`run_contracts`** - **RUN. 0 P0 / 0 P1 / 4510 P2 = the build84 baseline EXACTLY, zero new
+     violations** (C-RES-TAG-1 clean with the coupled Text; the baseline is now 4510, not 4492).
+  4. **det-2x + record-diff** - **RUN.** record-diff = ADDED 1 (`svc_bough_splitting`) + MODIFIED 14
+     = the 15-record lane footprint, zero unexplained, build84 loot records untouched. det-2x
+     byte-identity confirmed across two cold `SVC_NO_CACHE=1` builds.
+  5. **Full `run_registry_gates` battery in a real build** - **RUN. All GREEN** end to end (orb/chest/
+     armor breadth, loot distribution/volume, DLC + voyage caps, unlock alignment, ...); no
+     `summon-pet registry: SUPERSEDED` line for any family other than `charon_oarsman_*`.
+  6. **b86 integration watch** - **still OPEN:** build84 (current `main`) has no C3 gate; re-run the
+     C3 cross-family duplicate-display-name gate when b86 integrates. `{^F}Soul of the Grasping Root`
+     is unique across the soul name tags, so C3 is expected to pass.
 
 * **`BL-BOUGH-DEBT-9` (P2, OPEN) - the Maenad cast sound is a CLASS-WIDE residue on the boss
   summons.** `_build_boss_summon` clones `summon_lyia` and never writes `skillHitSound`, so every

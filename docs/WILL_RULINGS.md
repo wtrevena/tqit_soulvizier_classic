@@ -6193,6 +6193,62 @@ gate, the full DB build, the COUPLED Text.arc build, `validate_tags`, `run_contr
 record-diff. All enumerated in `BL-BOUGH-DEBT-8`.
 
 **Names remain this lane's invention and ship as defaults flagged for Will veto** (R-231-B).
+
+---
+
+### R-231-I - ROUND-6 AMENDMENT [2026-08-12]. THE SHIP GATES WERE RUN - and the lane was NOT arz-only. Ships as BUILD85.
+
+Rounds 1-5 ran static gates only (apply()+verify() on a finished arz). Round 6 ran the REAL
+ones on `main` fast-forwarded to build84 (`f989a3b`) with this lane merged: the full DB build
+from upstream, the COUPLED `Text.arc` build, `validate_tags`, `run_contracts`, det-2x and
+record-diff. Three things the static path had HIDDEN surfaced; all three are fixed at source.
+
+1. **THE FULL DB BUILD DID NOT COMPLETE (P0, FIXED).** `verify()`'s SOUL BAND GATE walks
+   ~2,450 peer souls through `_one()`, and in a real full IN-MEMORY build some peers carry an
+   empty-list stat field; `_one()` did `v[0]` on `[]` -> uncaught IndexError -> `run_registry_
+   verifies` aborted and NO arz was written. The arz write+reload drops empty-list fields, so the
+   round-5 apply-onto-a-finished-arz harness never saw it. REPRODUCED (an unfixed full build
+   crashed at `charon_rework.py:1063`, no arz landed). FIX: `_one()` treats `[]` as absent.
+
+2. **verify() RED WITH 9 PROBLEMS - and it was verify(), NOT the content (P0, FIXED).** With the
+   crash guarded, the CC/elemental/petrify/mobility gate failed: phase-1 effective stun 25 (vs 75),
+   fire/cold 0 (vs -30), terminal fire 100 (vs 70), petrify 100 (vs 150), and three D19 reds
+   claiming Ascacophus02/BogDweller/JungleCreep bind NO unarmedRunAnim. ALL nine are ONE bug and it
+   is not the authoring: `ArzDatabase` keys records case-SENSITIVELY, but a donor's inherited
+   `skillName*` / `charAnimationTableName` VALUE is stored in the upstream's own case (e.g.
+   `Records\XPack\...\ANM_Ascacophus02.dbr`) while the referenced record's key is lowercase.
+   `resolves()` matched case-INSENSITIVELY and said "present", but the follow-on `get_fields()/
+   get_field_value()` did a raw case-SENSITIVE lookup and MISSED - so every donor-inherited grant
+   read as zero and every anim table read as binding no locomotion clip. The engine resolves paths
+   case-INSENSITIVELY and `write_arz` lowercases keys, so the SHIPPED bytes and the game are
+   correct: MEASURED on the built arz, effective **Stun 75 / Freeze 60 / Trap 60**, phase-1
+   **fire/cold -30**, terminal **fire +70**, **petrify 150/100** - exactly WILL-DECISION 13 - and
+   all three placed bodies D19-mobile. FIX: `verify()` reads referenced records through a
+   `_canon()` resolver (lowercased name -> actual stored key). Zero shipped bytes change - a
+   read-only gate. Proven on the live arz: a mixed-case ref makes get_fields RunAnim `[]` and
+   defensiveStun `None`; through `_canon` they are `['unarmedRunAnim']` and `50.0`.
+
+3. **THE LANE IS NOT "arz-only" - it is arz + a COUPLED Text.arc, no map rebuild (FIXED).** The
+   module mints one tag key (`tagSVCMonsterAkremonBlaze`) and rewrites seven `tagSVC*` strings.
+   Shipped against the frozen `Text.arc` (a9fed7ba) the terminal renders a RAW TAG and phase-1/
+   escort/soul/summon keep the OLD Charon strings - **PROVEN**: `C-RES-TAG-1` reds **1 P1
+   (mod-owned tag absent)** against the frozen text, and `validate_tags` FALSE-PASSES because the
+   stale build84 manifest omits the minted key (finding 6). The names REQUIRE the coupled
+   `Text.arc` build the standing "arz+Text ship together" rule already mandates; "arz-only" only
+   ever meant "no Levels/Quests rebuild" (frozen proxy chain reused, canonical `Levels.arc`
+   6784cf0f byte-unchanged). The rewritten `tagSVC*` keys are absent from SV 0.98i's own Text_EN.arc,
+   so the uber-tag section is their sole definition and the rename lands cleanly (0 duplicate-tag
+   conflicts). With the coupled `Text.arc` built: all 7 rewritten/minted tags carry the new Akremon
+   strings, `validate_tags` PASSES honestly on the FRESH manifest, and `C-RES-TAG-1` is clean.
+
+**RESULT (build84 @ f989a3b + this lane):** full DB build COMPLETES; all registry verifies GREEN
+incl. `charon_rework.verify: OK`; coupled `Text.arc` built; `validate_tags` PASS (rebuilt) / demo-
+FAIL signal (frozen); `run_contracts` **0 P0 / 0 P1 / 4510 P2 = the build84 baseline exactly, ZERO
+new violations**; record-diff = **ADDED 1 (`svc_bough_splitting`) + MODIFIED 14 = the 15-record lane
+footprint, zero unexplained**, build84's loot records untouched. `BL-BOUGH-DEBT-8` items 2-5 are now
+RUN. Ships as **BUILD85** (next sequential after build84; the "b87" codename in old notes is a dev
+name). Two fixes committed on `feat/charon-rework`; the Steam upload + push are the MAIN SESSION's.
+
 > **NUMBERING NOTE (2026-08-11): these two rulings were R-230 and R-231 for most of their lane, and
 > moved here under this ledger's own precedent - the LIVE ruling keeps its number, the newcomer moves
 > to the next free slot.** Three branches had minted into the same range on the same day: `main` took
