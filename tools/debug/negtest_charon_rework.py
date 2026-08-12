@@ -338,6 +338,143 @@ neg('P3 a soul pet difficulty row has the wrong vector',
     lambda _p: db.set_field(CR._PETS[1], 'skillLevel12',
                             list(CR._PET_DIFFICULTY_ROWS[0][1])))
 
+# ══════════════════════════════════════════════════════════════════════════════
+# ROUND 5: one planted negative per fixed vet finding, so every claim this round
+# makes is a claim a gate can catch losing. The two P1s are covered three ways
+# each, because both were shipped GREEN by round 4's gates.
+# ══════════════════════════════════════════════════════════════════════════════
+_SOUL_L = CR._SOUL_TIERS[2]
+
+# ---- P1 (a): the soul's downside back on the CREATURE locomotion field -------
+neg('P1 soul carries characterRunSpeed (item!)',
+    lambda: (db.set_field(_SOUL_L, 'characterRunSpeed', -5.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: (db.get_fields(_SOUL_L).pop('characterRunSpeed', None),
+                db._modified.add(_SOUL_L)))
+# ---- P1 (b): the dead offensiveSlowPhysical family comes back ----------------
+neg('P1 soul back on offensiveSlowPhysical*',
+    lambda: (db.set_field(_SOUL_L, 'offensiveSlowPhysicalMin', 40.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: (db.get_fields(_SOUL_L).pop('offensiveSlowPhysicalMin', None),
+                db._modified.add(_SOUL_L)))
+# ---- P1 (c): a real field at a value no peer soul reaches --------------------
+neg('P1 an authored soul stat leaves its band',
+    lambda: (db.get_field_value(_SOUL_L, 'offensiveSlowRunSpeedMin'),
+             db.set_field(_SOUL_L, 'offensiveSlowRunSpeedMin', 900.0,
+                          CR.DATA_TYPE_FLOAT))[0],
+    lambda p: db.set_field(_SOUL_L, 'offensiveSlowRunSpeedMin', p,
+                           CR.DATA_TYPE_FLOAT))
+# ---- P1 (d): a stat field no other soul in the mod carries at all ------------
+neg('P1 a soul stat unknown to the roster',
+    lambda: (db.set_field(_SOUL_L, 'offensiveTrapMin', 30.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: (db.get_fields(_SOUL_L).pop('offensiveTrapMin', None),
+                db._modified.add(_SOUL_L)))
+
+# ---- P1 (e): the terminal's ordinary loot volume comes back ------------------
+neg('P1 terminal Misc1 un-muted (the 176.6)',
+    lambda: (db.set_field(CR._BLOOM, 'chanceToEquipMisc1', 1.6,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'chanceToEquipMisc1', 0.0,
+                            CR.DATA_TYPE_FLOAT))
+neg('P1 terminal guarantees a potion again',
+    lambda: (db.set_field(CR._BLOOM, 'chanceToEquipMisc2', 100.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'chanceToEquipMisc2', 0.0,
+                            CR.DATA_TYPE_FLOAT))
+neg('P1 the mute eats the Golden Bough too',
+    lambda: (db.set_field(CR._BLOOM, 'chanceToEquipMisc4', 0.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'chanceToEquipMisc4', 100.0,
+                            CR.DATA_TYPE_FLOAT))
+# ---- P3: the retinue disclosure goes stale under us --------------------------
+neg('P3 retinue faucet moves off its disclosed 3.0',
+    lambda: (db.get_field_value(CR._RETINUE_PETS[0], 'chanceToEquipMisc1'),
+             db.set_field(CR._RETINUE_PETS[0], 'chanceToEquipMisc1', 25.0,
+                          CR.DATA_TYPE_FLOAT))[0],
+    lambda p: db.set_field(CR._RETINUE_PETS[0], 'chanceToEquipMisc1', p,
+                           CR.DATA_TYPE_FLOAT))
+
+# ---- P2: mana -----------------------------------------------------------------
+neg('P2 phase 1 back to zero mana regen',
+    lambda: (db.set_field(CR._ORM, 'characterManaRegen', 0.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: db.set_field(CR._ORM, 'characterManaRegen', CR._ORM_MANA_REGEN,
+                            CR.DATA_TYPE_FLOAT))
+neg('P2 the terminal keeps the inherited 1177',
+    lambda: (db.set_field(CR._BLOOM, 'characterMana', 1177.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'characterMana', CR._BLOOM_MANA,
+                            CR.DATA_TYPE_FLOAT))
+# ...and the STARVATION half: the constants stay put, the ROTATION outgrows them.
+neg('P2 a retune outgrows the funded rotation',
+    lambda: (db.get_field_value(CR._ORM, 'skillLevel7'),
+             db.set_field(CR._ORM, 'skillLevel7', 20))[0],
+    lambda p: db.set_field(CR._ORM, 'skillLevel7', p))
+
+# ---- P2: the CC / elemental profile ------------------------------------------
+neg('P2 freeze-lock reopens on phase 1',
+    lambda: (db.set_field(CR._ORM, 'defensiveFreeze', 0.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: db.set_field(CR._ORM, 'defensiveFreeze',
+                            CR._CC_TARGET['defensiveFreeze'], CR.DATA_TYPE_FLOAT))
+neg('P2 the 300% stun wall comes back',
+    lambda: (db.get_field_value(CR._BLOOM, 'skillName13'),
+             db.set_field(CR._BLOOM, 'skillName13', CR._DEAD_BLOOM_SKILL_FIRE,
+                          CR.DATA_TYPE_STRING))[0],
+    lambda p: db.set_field(CR._BLOOM, 'skillName13', p, CR.DATA_TYPE_STRING))
+neg('P2 the terminal stops resisting its own fire',
+    lambda: (db.set_field(CR._BLOOM, 'defensiveFire', 60.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'defensiveFire', CR._BLOOM_FIRE_RES,
+                            CR.DATA_TYPE_FLOAT))
+neg('P2 phase 1 loses its deliberate fire weakness',
+    lambda: (db.set_field(CR._ORM, 'defensiveFire', 30.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: (db.get_fields(CR._ORM).pop('defensiveFire', None),
+                db._modified.add(CR._ORM)))
+neg('P2 the petrify disclosure goes stale',
+    lambda: (db.get_field_value(CR._ORM, 'skillName14'),
+             db.set_field(CR._ORM, 'skillName14', '', CR.DATA_TYPE_STRING))[0],
+    lambda p: db.set_field(CR._ORM, 'skillName14', p, CR.DATA_TYPE_STRING))
+
+# ---- P3: beat 2's face --------------------------------------------------------
+neg('P3 beat 2 wears Adrenaline again',
+    lambda: (db.set_field(CR._SPLIT, 'skillActivatedAuraName',
+                          r'Records\Effects\Combat\Skill_Adrenaline_FX01.dbr',
+                          CR.DATA_TYPE_STRING), None)[1],
+    lambda _p: db.set_field(CR._SPLIT, 'skillActivatedAuraName', CR._SPLIT_FX,
+                            CR.DATA_TYPE_STRING))
+neg('P3 beat 2 keeps the Buff07 target pak',
+    lambda: (db.set_field(CR._SPLIT, 'targetFxPakName',
+                          r'Records\Effects\Default\Buff07.dbr',
+                          CR.DATA_TYPE_STRING), None)[1],
+    lambda _p: db.set_field(CR._SPLIT, 'targetFxPakName', CR._SPLIT_FX,
+                            CR.DATA_TYPE_STRING))
+neg('P3 beat 2 FX points at an unrendered path',
+    lambda: (db.set_field(CR._SPLIT, 'skillActivatedAuraName',
+                          r'Records\Effects\Nature\NotAThing_FX99.dbr',
+                          CR.DATA_TYPE_STRING), None)[1],
+    lambda _p: db.set_field(CR._SPLIT, 'skillActivatedAuraName', CR._SPLIT_FX,
+                            CR.DATA_TYPE_STRING))
+neg('P3 beat 2 keeps the donor ActorName',
+    lambda: (db.set_field(CR._SPLIT, 'ActorName', 'DefensiveMastery_Adrenaline',
+                          CR.DATA_TYPE_STRING), None)[1],
+    lambda _p: db.set_field(CR._SPLIT, 'ActorName', CR._SPLIT_ACTOR_NAME,
+                            CR.DATA_TYPE_STRING))
+
+# ---- P3: R-126 on the pets ----------------------------------------------------
+neg('P3 a soul pet keeps the Lyia actorHeight 2.0',
+    lambda: (db.set_field(CR._PETS[0], 'actorHeight', 2.0,
+                          CR.DATA_TYPE_FLOAT), None)[1],
+    lambda _p: db.set_field(CR._PETS[0], 'actorHeight', 1.0, CR.DATA_TYPE_FLOAT))
+neg('P3 a soul pet drifts off the dropper rig',
+    lambda: (db.get_field_value(CR._PETS[1], 'mesh'),
+             db.set_field(CR._PETS[1], 'mesh',
+                          r'XPack\Creatures\Monster\CharonGhost\CharonGhost.msh',
+                          CR.DATA_TYPE_STRING))[0],
+    lambda p: db.set_field(CR._PETS[1], 'mesh', p, CR.DATA_TYPE_STRING))
+
 # ── APPLY-TIME assert (not a verify() gate): a declared-slot swap is never blind
 print("\n--- APPLY-TIME ASSERT: _swap_declared_skill refuses a missing incumbent ---")
 try:

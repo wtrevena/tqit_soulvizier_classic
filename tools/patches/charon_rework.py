@@ -1706,12 +1706,17 @@ def apply(db, tags):
           "35,000 (gaoler_variance_rca) and beat 2 grants NO absorption and NO "
           "regen - only an authored +%.0f%% physical; every body D19-mobile; proxy "
           "chain REUSED (no map rebuild); Golden Bough Misc4 100%%, one hoard "
-          "chest, soul re-identified; ordinary loot: terminal on the act-4 band, "
-          "shell MUTED to the shipped shell's shape; "
+          "chest, soul re-identified; ordinary Misc loot MUTED on BOTH forms to "
+          "the shipped encounter's exact zero (tables still banded act-4 under "
+          "the mute, so an un-mute lands right); mana authored %.0f/%.0f and "
+          "%.0f/%.0f so the snare and the wall cannot run dry; CC profile "
+          "authored (stun 75 / freeze 60 / trap 60 effective, and the terminal's "
+          "inherited 300%% stun wall is GONE); "
           "_SUMMON_IDENTITY_ALLOW['ferryman'] RETIRED; %d record(s) written."
           % (_ORM_LIFE, _ORM_SPEED, _ORM_SCALE, _BLOOM_LIFE, _BLOOM_SPEED,
              _BLOOM_SCALE, _BRIAR_LIFE, _BRIAR_SPEED,
              f"{int(_ORM_LIFE[1] + _BLOOM_LIFE[1]):,}", _SPLIT_PHYSMOD,
+             _ORM_MANA, _ORM_MANA_REGEN, _BLOOM_MANA, _BLOOM_MANA_REGEN,
              len(_TOUCHED)))
 
 
@@ -1864,6 +1869,97 @@ def verify(db, tags):
             problems.append("%s itemSkillName=%r, expected the reworked summon %s"
                             % (s, gv(s, 'itemSkillName'), _SUMMON))
 
+    # ---- 2b-ii. EVERY AUTHORED SOUL STAT IS A FIELD PEERS USE, AT A VALUE ---
+    #             PEERS REACH. (round-5 vet P1, generalised into a gate.)
+    #
+    # Round 3 wrote the soul's movement penalty into `characterRunSpeed` - the
+    # CREATURE LOCOMOTION scalar - instead of `characterRunSpeedModifier`, the
+    # item movement-percent field. Both halves were wrong: the -8/-6/-5 penalty
+    # documented in the module header, in R-231 and in WILL_TEST_GUIDE did not
+    # exist, and a NEGATIVE absolute run speed shipped on a permanently-equipped
+    # item whose live peer band is [0.00, 1.28] with zero negatives. No gate
+    # could see it, because nothing checked authored soul stats at all.
+    #
+    # This gate is deliberately the GENERAL form rather than a check for that one
+    # field, and that is not defensive writing: measuring the whole block the way
+    # the fix demanded found TWO MORE numbers of the same class that the vet had
+    # not reported (`offensiveSlowPhysicalMin` at 5x its live ceiling, and its
+    # duration in a family where all 2,095 carriers ship 0.0).
+    #
+    # THE RULE, both halves measured off the live DB, never hard-coded:
+    #   (a) a field this module writes on the soul must be a field the peer soul
+    #       roster actually CARRIES - so a plausible-looking name that the engine
+    #       ignores cannot ship;
+    #   (b) its value must sit inside the peer roster's live [min, max] for that
+    #       field - so a real field at an unreachable number cannot ship either.
+    # Plus a NAME ban for the two families already proven wrong, so the defect
+    # class cannot return under a different number.
+    _peers = [p for p in db.record_names()
+              if _n(p).startswith(_n(_SOUL_PEER_ROOT))]
+    _ours = {_n(s) for s in _SOUL_TIERS}
+    _peers = [p for p in _peers if _n(p) not in _ours]
+    if len(_peers) < 500:
+        problems.append(
+            "SOUL BAND GATE cannot run: only %d peer souls found under %s "
+            "(expected ~2,450). The soul namespace moved - re-measure the bands "
+            "before trusting any authored number." % (len(_peers), _SOUL_PEER_ROOT))
+    else:
+        _band = {}
+        for p in _peers:
+            ff = db.get_fields(p) or {}
+            for k in ff:
+                name = k.split('###')[0]
+                if not name.startswith(_DEAD_SOUL_STAT_PREFIXES):
+                    continue
+                v = gv(p, name)
+                try:
+                    v = float(v)
+                except (TypeError, ValueError):
+                    continue
+                lo, hi, n = _band.get(name, (v, v, 0))
+                _band[name] = (min(lo, v), max(hi, v), n + 1)
+        for s in _SOUL_TIERS:
+            if not resolves(s):
+                continue
+            for bad in _BANNED_SOUL_FIELDS:
+                if gv(s, bad) is not None:
+                    problems.append(
+                        "SOUL FIELD BAN: %s carries %s=%r. `characterRunSpeed` is "
+                        "the CREATURE locomotion field (2,158 soul carriers, band "
+                        "[0.00, 1.28], ZERO negative) and belongs on a monster, "
+                        "never an item - the item movement-percent field is "
+                        "`characterRunSpeedModifier`, where mnemophage_soul_* "
+                        "ships this soul's exact -8/-6/-5. `offensiveSlowPhysical*` "
+                        "is inert mod-wide: 3 of 2,095 carriers non-zero and every "
+                        "one of them ships duration 0.0. Use offensiveSlowRunSpeed*."
+                        % (s, bad, gv(s, bad)))
+            ff = db.get_fields(s) or {}
+            for k in ff:
+                name = k.split('###')[0]
+                if not name.startswith(_DEAD_SOUL_STAT_PREFIXES):
+                    continue
+                v = gv(s, name)
+                try:
+                    v = float(v)
+                except (TypeError, ValueError):
+                    continue
+                if name not in _band:
+                    problems.append(
+                        "SOUL STAT UNKNOWN TO THE ROSTER: %s writes %s=%r, a stat "
+                        "field NO other soul in the mod carries. Either it is a "
+                        "typo the engine will ignore, or it is a genuinely new "
+                        "surface that needs a gate of its own - both need a human."
+                        % (s, name, v))
+                    continue
+                lo, hi, n = _band[name]
+                if v < lo - 1e-6 or v > hi + 1e-6:
+                    problems.append(
+                        "SOUL STAT OUT OF BAND: %s writes %s=%s, outside the live "
+                        "peer band [%.2f, %.2f] measured over %d carrying souls. "
+                        "The reward the player keeps forever does not get to be "
+                        "the roster's outlier by accident."
+                        % (s, name, v, lo, hi, n))
+
     # ---- 2c. THE GRANTED SUMMON'S OWN PLAYER SURFACES (R-125 law #3) -------
     #
     # The summon skill sits on the player's SKILL BAR every cast. Round 2 shipped
@@ -1948,6 +2044,53 @@ def verify(db, tags):
                     "this module, in R-231 and in the BACKLOG measurably wrong. "
                     "Author the value or state the real number - do not inherit it."
                     % (_SPLIT, fld, vals[:12], want, _SPLIT_LEVEL))
+        # CORRECTION 19: ...and its FACE, which round 4 left behind while
+        # authoring all three of its numbers. The record still rendered
+        # `Skill_Adrenaline_FX01` + `Buff07` - the player Defence-mastery
+        # Adrenaline buff aura - on the one beat this round is NAMED after
+        # ("the bark comes apart and the thorns come out"). Same donor-payload
+        # defect class as the arrays above, on the visual dimension.
+        for fld in ('skillActivatedAuraName', 'targetFxPakName'):
+            got = _n(gv(_SPLIT, fld) or '')
+            hit = [t for t in _DEAD_SPLIT_FX_TOKENS if t in got]
+            if hit:
+                problems.append(
+                    "BEAT 2 WEARS ITS DONOR'S FACE: %s %s=%r contains %r. That is "
+                    "the player Defence-mastery Adrenaline buff aura; what this "
+                    "beat GRANTS is retaliation pierce, and what the docs promise "
+                    "is thorns. Repoint it - authoring a donor's numbers and "
+                    "leaving its FX is the same defect half-fixed."
+                    % (_SPLIT, fld, gv(_SPLIT, fld), hit))
+            elif got != _n(_SPLIT_FX):
+                problems.append("BEAT 2 FX: %s %s=%r, expected the authored %s"
+                                % (_SPLIT, fld, gv(_SPLIT, fld), _SPLIT_FX))
+        # ...and prove the FX value is a real one this build already renders,
+        # rather than a plausible path with a typo in it. `Typhon_Thorn_CharFXPak`
+        # is base-resolved (NOT present in the mod arz - measured, exactly like
+        # the Adrenaline value it replaces), so it cannot be resolved directly;
+        # what CAN be proven is that a live record in this very build references
+        # the identical string. `typhon_thornyaura` does, in all three of its own
+        # FX fields, and this module wires that skill onto the terminal.
+        _fx_refs = 0
+        for _sk in (_SK_THORNYAURA,):
+            for _f in ('skillActivatedAuraName', 'targetFxPakName',
+                       'charFxPakSelfNames'):
+                if _n(gv(_sk, _f) or '') == _n(_SPLIT_FX):
+                    _fx_refs += 1
+        if not _fx_refs:
+            problems.append(
+                "BEAT 2 FX UNPROVEN: nothing in this build references %r, so the "
+                "beat-2 aura is an unverified string. It was chosen precisely "
+                "because typhon_thornyaura - a skill this module wires onto the "
+                "terminal - already ships it; if that stopped being true, "
+                "re-measure before shipping an FX ref nothing else renders."
+                % _SPLIT_FX)
+        if _n(gv(_SPLIT, 'ActorName') or '') != _n(_SPLIT_ACTOR_NAME):
+            problems.append(
+                "BEAT 2 LABEL: %s ActorName=%r, expected %r. Not a render path, "
+                "but it is the last of the donor's identity on the record and "
+                "this codebase authors ActorName freely."
+                % (_SPLIT, gv(_SPLIT, 'ActorName'), _SPLIT_ACTOR_NAME))
         got_lvl = None
         for i in range(1, 25):
             if _n(gv(_ORM, 'skillName%d' % i)) == _n(_SPLIT):
@@ -1978,8 +2121,20 @@ def verify(db, tags):
         if [_n(x) for x in got_t] != [_n(t) for t in _tiers]:
             problems.append("TERMINAL LOOT BAND: %s %s=%r, expected the act-4 "
                             "band %s" % (_BLOOM, _fld, got_t, _tiers))
-    for _rec, _lbl in ((_BLOOM, 'the terminal'), (_ORM, 'the shell')):
+    # THE MUTE MUST NOT BLIND THIS GATE. Round 5 muted the slot CHANCES on both
+    # forms (CORRECTION 20), and a slot-chance>0 precondition would therefore
+    # switch the whole table-banding check off - which is measurably what
+    # happened: the standing negative "the act-3 jungleroot row un-muted at the
+    # Styx" went GREEN the moment the terminal's Misc1 chance hit 0.0. The mute
+    # is a REVERSIBLE DECISION behind a named constant, and the stated reason the
+    # act-4 retarget is kept underneath it is that an un-mute has to land on the
+    # right band. So for the records this module mutes, the tables are judged on
+    # their own merit; the per-ITEM weight still gates, because that is the
+    # mechanism `_BLOOM_LOOT_MUTE_WEIGHTS` uses to retire an individual row.
+    for _rec, _lbl, _muted in ((_BLOOM, 'the terminal', _BLOOM_MUTE_MISC),
+                               (_ORM, 'the shell', _ORM_MUTE_MISC)):
         for i in range(1, 9):
+            slot_live = _muted or float(gv(_rec, 'chanceToEquipMisc%d' % i) or 0) > 0
             for j in range(1, 9):
                 v = db.get_field_value(_rec, 'lootMisc%dItem%d' % (i, j))
                 for x in (v if isinstance(v, list) else [v]):
@@ -1987,7 +2142,7 @@ def verify(db, tags):
                         continue
                     b = _n(x).rsplit('\\', 1)[-1]
                     hit = [t for t in _UNDERBAND_TOKENS if t in b]
-                    if hit and float(gv(_rec, 'chanceToEquipMisc%d' % i) or 0) > 0 \
+                    if hit and slot_live \
                             and float(gv(_rec, 'chanceToEquipMisc%dItem%d' % (i, j)) or 0) > 0:
                         problems.append(
                             "UNDER-BAND LOOT: %s (%s) lootMisc%dItem%d rolls %r, "
@@ -1997,17 +2152,203 @@ def verify(db, tags):
                             "of this same encounter already does. A donor swap "
                             "must not silently re-lower it."
                             % (_rec, _lbl, i, j, x))
-    if _ORM_MUTE_MISC:
-        for _slot in (1, 2, 3):
-            ch = float(gv(_ORM, 'chanceToEquipMisc%d' % _slot) or 0)
+    # CORRECTION 20: the gate now reads CHANCES on BOTH forms, not just the
+    # shell's. Round 4 gated the shell's chances and the terminal's TABLES, and
+    # the terminal's chances - which are the actual volume - were the thing that
+    # moved: 0 -> 176.6, under a written statement that they had not. Table
+    # banding and slot chance are two different measurements and this lane needed
+    # both.
+    for _rec, _lbl, _on in ((_ORM, 'the shell', _ORM_MUTE_MISC),
+                            (_BLOOM, 'the terminal', _BLOOM_MUTE_MISC)):
+        if not _on:
+            continue
+        for _slot in _MUTED_MISC_SLOTS:
+            ch = float(gv(_rec, 'chanceToEquipMisc%d' % _slot) or 0)
             if ch > 0:
                 problems.append(
-                    "%s chanceToEquipMisc%d=%r but _ORM_MUTE_MISC is on. The "
-                    "shipped Charon shell dropped NO ordinary Misc loot; the "
-                    "strongbark re-clone inherits a 75/13/1.6 roll, which is an "
-                    "encounter-level loot INCREASE on the encounter behind Will's "
-                    "R-100 #10, shipping beside b84's loot-volume TRIM lane."
-                    % (_ORM, _slot, ch))
+                    "ORDINARY LOOT VOLUME: %s (%s) chanceToEquipMisc%d=%r but its "
+                    "mute constant is on. The SHIPPED encounter paid ZERO ordinary "
+                    "Misc on BOTH forms; the re-clones inherit 75/13/1.6 (shell) "
+                    "and 1.6/100/75 (terminal, = 176.6 and a GUARANTEED potion "
+                    "every kill). That is an encounter-level loot INCREASE on the "
+                    "encounter behind Will's R-100 #10, in the same window as "
+                    "b84's loot-volume TRIM lane and against this wave's own "
+                    "written coordination statement to it."
+                    % (_rec, _lbl, _slot, ch))
+    # ...and the guaranteed Bough is NOT what the mute is allowed to touch.
+    if float(gv(_BLOOM, 'chanceToEquipMisc4') or 0) != 100.0:
+        problems.append(
+            "REWARD 1 BROKEN BY THE MUTE: %s chanceToEquipMisc4=%r, expected 100.0. "
+            "Misc4 is the guaranteed Golden Bough and is deliberately NOT in "
+            "_MUTED_MISC_SLOTS." % (_BLOOM, gv(_BLOOM, 'chanceToEquipMisc4')))
+    # THE RETINUE'S INHERITED FAUCET - DISCLOSED AND PINNED, NOT CLAIMED AWAY.
+    # (round-5 vet P3.) Phase 1 keeps `hero_quillvines` as its R-125 own-family
+    # retinue. Its six spawns are SHARED BASE-GAME records - the stock ascacophus
+    # heroes field them too - so this lane does not mutate them, and the honest
+    # statement is "this wave does not raise the ordinary loot volume of the
+    # records it OWNS". What the gate can do is pin the inherited number so the
+    # disclosure cannot quietly go stale: `_UNDERBAND_TOKENS` above only ever
+    # reads the two monster records, which is why this hole existed.
+    for _p in _RETINUE_PETS:
+        if not resolves(_p):
+            problems.append(
+                "RETINUE DISCLOSURE: %s does not resolve, so the act-3 faucet "
+                "disclosed in R-231-G cannot be measured. hero_quillvines' spawn "
+                "list moved - re-measure before shipping the claim." % _p)
+            continue
+        got = float(gv(_p, 'chanceToEquipMisc1') or 0)
+        tbl = _n(gv(_p, 'lootMisc1Item1') or '')
+        if abs(got - _RETINUE_PET_MISC1) > 1e-6 or _RETINUE_PET_TABLE not in tbl:
+            problems.append(
+                "RETINUE DISCLOSURE STALE: %s ships chanceToEquipMisc1=%r on %r, "
+                "but this wave discloses %.1f on an %r table. These are shared "
+                "base-game records this lane deliberately does not mutate; if they "
+                "moved, the disclosure in R-231-G and BACKLOG must move with them."
+                % (_p, got, tbl, _RETINUE_PET_MISC1, _RETINUE_PET_TABLE))
+
+    # ---- 2f-ii. THE SIGNATURE LEVERS CAN AFFORD TO KEEP FIRING -------------
+    #
+    # (round-5 vet P2.) Phase 1 inherited `characterMana 3000` + `characterManaRegen
+    # 0.0` from the strongbark and nothing wrote either, against a rotation costing
+    # 312.0 at the wired levels (drx_earthbind 172.0 + quillwards 140.0). ~9.6
+    # cycles in, BOTH of the fight's signature levers are dead for good, and the
+    # wave's headline claims - "ZERO other uber fields a Skill_DefensiveWall", "you
+    # cannot kite this fight" - quietly become "for the first ten casts". The
+    # terminal was worse and the vet never reached it: 1177 mana / 5.0 regen
+    # against 417.0.
+    #
+    # The gate RECOMPUTES the rotation cost off the FINAL record at the FINAL
+    # wired levels rather than trusting the constants, so a future skill swap or
+    # level retune that outruns the pool reds instead of shipping a boss that goes
+    # quiet halfway through. Mana regen is not a durability wall: it adds zero
+    # effective HP and only keeps the boss casting the things that make it this
+    # boss (both numbers stay far under the shipped Charon's 8000 / 50.0).
+    for _rec, _lbl, _want_mana, _want_regen in (
+            (_ORM, 'phase 1', _ORM_MANA, _ORM_MANA_REGEN),
+            (_BLOOM, 'the terminal', _BLOOM_MANA, _BLOOM_MANA_REGEN)):
+        got_mana = float(gv(_rec, 'characterMana') or 0)
+        got_regen = float(gv(_rec, 'characterManaRegen') or 0)
+        if abs(got_mana - _want_mana) > 1e-4:
+            problems.append("MANA: %s (%s) characterMana=%r, expected the authored "
+                            "%s" % (_rec, _lbl, got_mana, _want_mana))
+        if abs(got_regen - _want_regen) > 1e-4:
+            problems.append("MANA: %s (%s) characterManaRegen=%r, expected the "
+                            "authored %s. Round 4 inherited 0.0 here and the two "
+                            "signature levers ran dry mid-fight."
+                            % (_rec, _lbl, got_regen, _want_regen))
+        cost = 0.0
+        for i in range(1, 25):
+            sk = _one(db, _rec, 'skillName%d' % i)
+            if not isinstance(sk, str) or not sk.strip():
+                continue
+            lvl = _one(db, _rec, 'skillLevel%d' % i)
+            try:
+                lvl = int(float(lvl))
+            except (TypeError, ValueError):
+                lvl = 1
+            mc = db.get_field_value(sk, 'skillManaCost') if resolves(sk) else None
+            if isinstance(mc, list) and mc:
+                cost += float(mc[min(max(0, lvl - 1), len(mc) - 1)] or 0)
+            elif isinstance(mc, (int, float)):
+                cost += float(mc)
+        funded = got_regen * _MANA_CYCLE_SECONDS
+        if cost > funded + 1e-4:
+            problems.append(
+                "MANA STARVATION: %s (%s) casts a rotation costing %.1f at its "
+                "wired levels, but %s regen over the %.0fs cooldown that spaces it "
+                "only funds %.1f. Its pool (%.0f) buys %.1f cycles and then the "
+                "signature levers are gone for the rest of the fight - which is "
+                "the exact defect round 4 shipped. Raise the regen or cut the "
+                "rotation; do not leave the claim standing without the mana."
+                % (_rec, _lbl, cost, got_regen, _MANA_CYCLE_SECONDS, funded,
+                   got_mana, (got_mana / cost) if cost else 0))
+
+    # ---- 2f-iii. THE CC / ELEMENTAL PROFILE IS AUTHORED, NOT INHERITED -----
+    #
+    # (round-5 vet P2.) Round 4 changed the entire crowd-control axis silently:
+    # freeze-lock became available on both forms where the shipped encounter was
+    # immune, and the TERMINAL inherited a hard `defensiveStun 300.0` off
+    # `hero_fire` - a wall, on a wave whose CORRECTION 10 headline is NO WALLS and
+    # whose round-4 thesis is "a donor's own payload riding along under a claim
+    # that did not mention it". Nothing in the module, R-231 or the BACKLOG said a
+    # word about any of it.
+    #
+    # The gate computes the EFFECTIVE value - record field plus every skill grant
+    # at its wired level, which is how the player actually meets it - and asserts
+    # the authored target. That pins the axis against a future donor swap, skill
+    # swap or level retune, and it is the measurement round 4 never made.
+    def _effective(rec, field):
+        tot = float(gv(rec, field) or 0)
+        for i in range(1, 25):
+            sk = _one(db, rec, 'skillName%d' % i)
+            if not isinstance(sk, str) or not sk.strip() or not resolves(sk):
+                continue
+            lvl = _one(db, rec, 'skillLevel%d' % i)
+            try:
+                lvl = int(float(lvl))
+            except (TypeError, ValueError):
+                lvl = 1
+            v = db.get_field_value(sk, field)
+            if isinstance(v, list) and v:
+                v = v[min(max(0, lvl - 1), len(v) - 1)]
+            if isinstance(v, (int, float)):
+                tot += float(v)
+        return tot
+
+    for _rec, _lbl in ((_ORM, 'phase 1'), (_BLOOM, 'the terminal')):
+        for _fld, _want in _CC_TARGET.items():
+            got = _effective(_rec, _fld)
+            if abs(got - _want) > 1e-4:
+                problems.append(
+                    "CC PROFILE: %s (%s) effective %s = %.1f (record + skill grants "
+                    "at wired level), expected the authored %.1f. The SHIPPED "
+                    "encounter ran Stun/Freeze/Petrify 100 + Trap 80; round 4 "
+                    "silently dropped Freeze and Trap to ZERO and let the terminal "
+                    "inherit a 300%% stun WALL off hero_fire. This axis is a "
+                    "decision now, and it is resistant rather than immune on "
+                    "purpose - an uber a Warfare player can perma-stun is not a "
+                    "fight, and a 100 wall is the answer this lane rejected."
+                    % (_rec, _lbl, _fld, got, _want))
+    if resolves(_DEAD_BLOOM_SKILL_FIRE):
+        for i in range(1, 25):
+            if _n(_one(db, _BLOOM, 'skillName%d' % i)) == _n(_DEAD_BLOOM_SKILL_FIRE):
+                problems.append(
+                    "STUN WALL BACK: %s still declares %s at slot %d. It grants "
+                    "defensiveStun 300.0 (measured at the donor's wired level 4) "
+                    "and this wave's docs say NO WALLS. It is a shared base record, "
+                    "so it is swapped out of the slot, never mutated."
+                    % (_BLOOM, _DEAD_BLOOM_SKILL_FIRE, i))
+    # The elemental shape, pinned to the same table. Phase 1's -30 fire is the
+    # DESIGN (the tree burns; the fire build that trivialises beat 1 has to be put
+    # down for beat 3), not an oversight - so it is asserted, not merely tolerated.
+    for _rec, _lbl, _fire, _cold in (
+            (_ORM, 'phase 1', _ORM_FIRE_EFFECTIVE, _ORM_COLD_EFFECTIVE),
+            (_BLOOM, 'the terminal', _BLOOM_FIRE_EFFECTIVE, _BLOOM_COLD_EFFECTIVE)):
+        for _fld, _want in (('defensiveFire', _fire), ('defensiveCold', _cold)):
+            got = _effective(_rec, _fld)
+            if abs(got - _want) > 1e-4:
+                problems.append(
+                    "ELEMENTAL PROFILE: %s (%s) effective %s = %.1f, expected %.1f. "
+                    "racial_plant hands both forms -30 fire and -30 cold; phase 1 "
+                    "keeps that ON PURPOSE and the terminal buys it back on the "
+                    "record. If this moved, the build-swap the fight is designed "
+                    "around moved with it."
+                    % (_rec, _lbl, _fld, got, _want))
+    # Petrify: DISCLOSED as the one axis that really is a wall, and gated to the
+    # disclosed number so it stays a known quantity. It comes entirely from
+    # roster-standard uber skills (boss_conversionimmunity +100, which is what
+    # stops a player converting the boss, and the donor's bleed immunity +50), not
+    # from anything this lane authored.
+    for _rec, _key, _lbl in ((_ORM, '_ORM', 'phase 1'),
+                             (_BLOOM, '_BLOOM', 'the terminal')):
+        got = _effective(_rec, 'defensivePetrify')
+        if abs(got - _PETRIFY_EFFECTIVE[_key]) > 1e-4:
+            problems.append(
+                "PETRIFY DISCLOSURE STALE: %s (%s) effective defensivePetrify = "
+                "%.1f, disclosed as %.1f. This one IS a wall and it is inherited "
+                "from roster-standard boss skills rather than authored here - which "
+                "is exactly why it is written down instead of left for the next vet."
+                % (_rec, _lbl, got, _PETRIFY_EFFECTIVE[_key]))
 
     # ---- 2g. THE ESCORT LOOKS AND FIGHTS LIKE WHAT THE DOCS CALL IT ---------
     #      CORRECTION 17: the junglecreep donor's entire rotation was one
@@ -2109,6 +2450,41 @@ def verify(db, tags):
             problems.append("R-126: %s actorHeight=%r, expected its donor's rig "
                             "constant %s (inherit, never write)"
                             % (rec, got_h, want_h))
+
+    # ---- 3b. R-126 REACHES THE PETS THIS WAVE ALSO REBUILDS -----------------
+    #
+    # (round-5 vet P3.) The gate above covers the three MONSTER records and
+    # stopped there, so the three permanent SOUL PETS - rebuilt by this same wave
+    # onto `DRX\meshes\emberoakmesh.msh` - kept the Lyia baseline's actorHeight
+    # 2.0 on a rig whose only live carrier ships 1.0. `_build_boss_summon` writes
+    # mesh and baseTexture and never touches actorHeight, so nothing was going to
+    # catch it. Not a regression (the shipped oarsmen were 2.0 too, on
+    # CharonGhost.msh) and the impact is targeting / health-bar anchoring rather
+    # than render - but the invariant this module is proudest of had a blind spot
+    # on its own output, which is worth more than the defect itself.
+    _pet_want = gv(_D_BLOOM, 'actorHeight')
+    if _pet_want is None:
+        problems.append(
+            "R-126: the terminal donor %s declares no actorHeight, so the soul "
+            "pets have no rig constant to inherit and this gate cannot run."
+            % _D_BLOOM)
+    else:
+        for p in _PETS:
+            if not resolves(p):
+                continue
+            if _n(gv(p, 'mesh')) != _n(_MESH_BLOOM):
+                problems.append("R-126: soul pet %s renders on %r, expected the "
+                                "dropper's own rig %s (the summon-identity gate "
+                                "goes green BECAUSE these match)"
+                                % (p, gv(p, 'mesh'), _MESH_BLOOM))
+            got = gv(p, 'actorHeight')
+            if got is None or abs(float(got) - float(_pet_want)) > 1e-4:
+                problems.append(
+                    "R-126: soul pet %s actorHeight=%r, expected its rig's live "
+                    "constant %s read off the donor %s. _build_boss_summon writes "
+                    "mesh and baseTexture but not actorHeight, so a rebuilt pet "
+                    "keeps the Lyia baseline's 2.0 unless this wave writes it."
+                    % (p, got, _pet_want, _D_BLOOM))
 
     # ---- 4. CRASH LAWS -----------------------------------------------------
     for rec in (_ORM, _BLOOM, _BRIAR):
@@ -2468,8 +2844,11 @@ def verify(db, tags):
           "life-leech/fear/%-current-life fields, fire+pierce present, no stale "
           "itemSkillAutoController; the granted summon wears the flame-ring glyph "
           "and its own family's cast sound, not Charon's drowned spirit and not "
-          "Lyia's Maenad; boss_scaling swapped in with hero_scaling gone; A9 clean "
-          "on 3 own-rig clones with "
+          "Lyia's Maenad; every authored soul stat is a field peers carry at a "
+          "value inside their live band, with 0 banned fields (characterRunSpeed "
+          "on an item, offensiveSlowPhysical*); boss_scaling swapped in with "
+          "hero_scaling gone; A9 clean on 3 own-rig clones PLUS the 3 rebuilt soul "
+          "pets, all six on their donor's rig constant with "
           "no invented actorHeight; 0 charFxPak, 0 dangling skill refs, permanent "
           "pets TTL-free; no 'ferryman' exemption; EXACTLY ONE summon-pet "
           "registration and it names the terminal's own donor; all 6 placed and "
@@ -2477,9 +2856,15 @@ def verify(db, tags):
           "end-to-end vitality wall; no display-name collision with a live record "
           "family; Epic durability inside the Gaoler-anchored band AND beat 2 "
           "carrying 0 inherited absorption / 0 regen with only an authored "
-          "physical modifier on every one of its 20 rows; ordinary loot banded - "
-          "0 act-1/2/3 tables reachable on either form, terminal on act-4, shell "
-          "muted; the escort fires briar barbs with 0 beetle-bile left; the 3 soul "
+          "physical modifier on every one of its 20 rows and its donor's Adrenaline "
+          "FX repointed onto thorns; ordinary loot banded AND volumed - "
+          "0 act-1/2/3 tables reachable on either form, terminal on act-4 under a "
+          "mute, Misc1/2/3 at 0.0 on BOTH forms with the Bough still at Misc4 "
+          "100.0, and the retinue's inherited act-3 faucet pinned to its disclosed "
+          "3.0; both forms' rotations funded by authored mana regen; the CC and "
+          "elemental profile equals its authored targets with the terminal's "
+          "inherited 300% stun wall gone; the escort fires briar barbs with 0 "
+          "beetle-bile left; the 3 soul "
           "pets carry the shipped globalproperties difficulty vectors and 0 "
           "hero_scaling; every svc_* Champion escort has strictly ascending life; "
           "0 charon_* signature skills and 0 shared cast rotation vs "
