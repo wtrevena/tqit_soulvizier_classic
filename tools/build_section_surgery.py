@@ -2809,7 +2809,15 @@ HELOS_HUB_RETURN_SPECS = [
     (DREAD_HOST_KEY,       (AREA_RETURN_EPHIALTES_DBR,  90.0,   3.0, 120.0)),   # ~2.8u off (88,122) stairs-up landing
     (EN_WARBAND_HOST_KEY,  (AREA_RETURN_WARBAND_DBR,    43.0,  10.0,  27.0)),   # ~4.2u off (40,24) demon-pack landing
     # b39 HUB v2: 5 NEW returns at the new door / order-(ii) landings.
-    (MAZE03_LVL_KEY,             (AREA_RETURN_UBER_DBR,      285.0,  1.0, 148.0)),   # ~2.8u off (283,150) Uber-door landing (maze03)
+    # UBER-LABYRINTH PROMOTION (Will 2026-08-13): svc_area_return_uber is PROMOTED from this
+    # TESTHUB-only return set to a CANONICAL Labyrinth-of-Knossos ENTRANCE (see the
+    # UBER_LABYRINTH_ENTRANCE fold below the PR-5 warden block). It is now placed once by the base
+    # INJECT_SPECS on BOTH map variants, so leaving it here would DOUBLE-place it on TESTHUB
+    # (merge_hub_into_inject_specs appends this over the base) - a warden-law violation
+    # (gate_traveler_responds G-WARDEN). Hence it is removed from this list, exactly the PR-5
+    # sparta precedent below. Its old TESTHUB spot (285,1,148) is also DEAD - Will hit it live:
+    # it stood "literally right behind the door" (1.4u off the secret-door south jamb, clearance
+    # 90/83/81% N/E/L), invisible and unclickable; the canonical fold places the corrected spot.
     # PR-5 (Will 2026-08-06): svc_area_return_sparta is PROMOTED from this TESTHUB-only return set to
     # a CANONICAL catacomb ENTRANCE (see the SPARTA_CATACOMB_ENTRANCE fold just below the DBR/host
     # constants). It is now placed once by the base INJECT_SPECS on BOTH map variants, so leaving it
@@ -2880,6 +2888,57 @@ assert CATACUBE_FLOORLAST_LVL_KEY not in INJECT_SPECS, \
     f'PR-5 catacomb-entrance host key collision with INJECT_SPECS: {CATACUBE_FLOORLAST_LVL_KEY}'
 INJECT_SPECS[CATACUBE_FLOORLAST_LVL_KEY] = [
     (WARDEN_SPARTA_DBR, 25.0, 1.0, 32.0),
+]
+
+# ── UBER-LABYRINTH CANONICAL ENTRANCE (Will 2026-08-13) ───────────────────────────────────────
+# Will decided: "put the Uber Dungeon entrance in the Labyrinth of Knossos on the STEAM build"
+# (promote the TESTHUB "Enter the Uber Dungeon" NPC to canonical, keep Almyros in Helos as a
+# second route), and THE GENERAL RULE, verbatim: "the only ones that should be testhub only are
+# the portals from Helos, all the other NPCs that actually take you to the areas need to be in
+# the steam build."
+#
+# AND the in-game placement bug he hit live on the old TESTHUB spot (verbatim): "the guy in the
+# minoan labarynth the traveler there is placed literally right behind the door after you kill
+# the minotaur and you cant even see him based on where he is placed and i cant click on him.
+# You need to move him farther along the pathway so the user can see him and click on him
+# instead of literally right behind the door where the user cant see or click on him."
+# => the old TESTHUB coord (285,1,148) is DISQUALIFIED: it hugged the secret door's SOUTH JAMB
+# (the (287-290, z=147) wall block, 1.4u away; clearance only 90/83/81% N/E/L at ext 3.0) so
+# the door frame occluded him from the camera and swallowed his click target.
+#
+# GEOMETRY (recon vs the 6784cf0f-reproducing canonical build, 2026-08-13): maze03 (Labyrinth
+# of Knossos, native SVAERA v0x0f, corner (-8076,0,-3943)). The Minotaur Lord fights at local
+# (307.1,149.5); the quest secret door q07_minotaursecretosdoor + DoorFrameSecretos01 stand at
+# (289,1,150) in the boss room's WEST wall; the player's onward path after the kill runs WEST
+# through that door into the treasure pocket (walkable x~277-286.6, z~147-154.4, all in the
+# navmesh MAIN component - same component as the boss fight, reachable only through the door).
+#
+# CORRECTED SPOT local (280.0, 1.0, 150.5) = world (-7796, 1, -3792.5), surveyed on the
+# 6784cf0f canonical map (survey_uberboss_spots --level maze03.lvl --base 72, ext 3.0):
+#   d=0.10u on-mesh, clr 100%/100%/100% (N/E/L), comp#1/2053366 (the main walkable component).
+#   - FARTHER ALONG the pathway: 9.0u past the door (was 4.3u), CENTERED in the pocket's open
+#     corridor space instead of hugging the south jamb.
+#   - standoff: door frame 9.0u; pocket south wall 3.9u; north wall 3.9u; west wall 3.4u;
+#     nothing else in the pocket (zero setdress/containers within the pocket, recon-proven).
+#   - the proven b62 travel landing (283,1,150) = world (-7793,1,-3793) stays THE landing for
+#     both inbound routes (svc_helos_trav_uber TESTHUB + svc_testhub_return_uber's primary
+#     return port): clr 100% all 3 tilesets, 3.04u standoff from the corrected NPC spot (the
+#     pr5 0.00u-overlap lesson: never land the player ON the NPC; >=3u is the established
+#     shipped class) and 6.03u from the door. Both quest DEST coords stay BYTE-UNCHANGED.
+# Same placement on BOTH map variants (base INJECT_SPECS; TESTHUB inherits) - Will hit the bug
+# on his own TESTHUB build, so canonical-only would leave his play surface broken.
+# MAZE03_LVL_KEY is a native SVAERA v0x0f host -> inject_into_0x05_v11 (base-72, the proven
+# A1/catacube path); flags=0, no 0x14 (talk NPC) -> the level's 0x0b navmesh is UNTOUCHED
+# (byte-identity proven by the wave's blob-diff). Quest coupling: build_quest_files gives this
+# NPC exactly ONE route, "Enter the Uber Dungeon" (tagSVCEnterUberDungeon -> on-mesh
+# (-2438,10,-2450) in crypt_floor1), and REMOVES its old "Helos (Return)" hub row - the
+# mislabeled route Will clicked. Collision-guarded (sole maze03 injection on BOTH variants;
+# the HELOS_HUB_RETURN_SPECS copy above was removed -> single placement = warden-law-safe).
+UBER_LABYRINTH_ENTRANCE_SPOT = (280.0, 1.0, 150.5)
+assert MAZE03_LVL_KEY not in INJECT_SPECS, \
+    f'uber-labyrinth entrance host key collision with INJECT_SPECS: {MAZE03_LVL_KEY}'
+INJECT_SPECS[MAZE03_LVL_KEY] = [
+    (AREA_RETURN_UBER_DBR,) + UBER_LABYRINTH_ENTRANCE_SPOT,
 ]
 
 

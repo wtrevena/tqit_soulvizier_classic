@@ -2528,6 +2528,21 @@ HELOS_HUB_TRAVEL = [
     # tail, the only trigger class in the rig never confirmed in-game). Its label tag and dest are
     # globally unique across all boat routes, so an earlier slot cannot steal or be stolen.
     (_HHUB + r'\svc_warden_sparta_crypt.dbr', (-5596, -2, -1410), 'tagSVCEnterSpartaCrypt'),
+    # UBER-LABYRINTH PROMOTION (Will 2026-08-13, verbatim): "the guy behind the door to the
+    # minotaur should take you to the uber dungeon, not back to helos and his message should not
+    # be 'return to helos' it should be 'travel to the uber dungeon' or something like that."
+    # svc_area_return_uber is now the CANONICAL Labyrinth-of-Knossos Uber entrance (placed once
+    # in maze03 by the base INJECT_SPECS, both map variants - see build_section_surgery
+    # UBER_LABYRINTH_ENTRANCE). His menu = EXACTLY ONE route: the b62 enter-offer
+    # tagSVCEnterUberDungeon ("Enter the Uber Dungeon") -> on-mesh (-2438,10,-2450) inside
+    # crypt_floor1 (Almyros's proven interior landing, 3.00u off the in-crypt return NPC).
+    # His old tagSVCAreaReturnToHelos "Helos (Return)" row - the mislabeled route Will clicked -
+    # is REMOVED from the RETURNS block below. This row replaces his enter-offer row (the
+    # enter-offer table is now empty), following the b63 warden precedent exactly: the route
+    # moves off the never-in-game-confirmed enter-offer tail slot into the proven hub block,
+    # right after the Warden. The way OUT of the Uber Dungeon stays svc_testhub_return_uber
+    # (in-crypt, primary port back to this door's landing) - untouched.
+    (_HHUB + r'\svc_area_return_uber.dbr', (-2438, 10, -2450), 'tagSVCEnterUberDungeon'),
     # (npc record, (world x, y, z), boat-menu label tag)  -- OUTBOUND (all placed in Helos)
     # KEEP: Garden/Secret/BossArena already land at their natural approach (merchant hub w/ rift +
     # return NPC / forest-cluster entry / arena forecourt 90u off the boss volume) - no boss to
@@ -2556,7 +2571,11 @@ HELOS_HUB_TRAVEL = [
     (_HHUB + r'\svc_area_return_mnemophage.dbr', (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
     (_HHUB + r'\svc_area_return_ephialtes.dbr',  (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
     (_HHUB + r'\svc_area_return_warband.dbr',    (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
-    (_HHUB + r'\svc_area_return_uber.dbr',       (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    # UBER-LABYRINTH PROMOTION (Will 2026-08-13): svc_area_return_uber's "Helos (Return)" row is
+    # REMOVED - Will clicked him in maze03 and got the mislabeled "return to helos" offer. He is
+    # now the canonical Labyrinth Uber ENTRANCE with exactly ONE route (the enter-offer row moved
+    # into the hub block above, right after the Warden - the b63 precedent). Re-adding
+    # tagSVCAreaReturnToHelos to him would violate Will's 2026-08-13 ruling - never do it.
     # PR-5 SPARTA POLISH (Will 2026-08-06): svc_area_return_sparta's "Helos (Return)" return entry
     # is REMOVED. The Sparta catacomb entrance is now the dedicated descend-only Warden clone
     # (svc_warden_sparta_crypt); the shared svc_area_return_sparta is retired from placement (kept
@@ -2726,16 +2745,23 @@ def _add_helos_traveler_hub_travel(data: bytes) -> bytes:
 # HELOS_HUB_TRAVEL. svc_area_return_uber qualifies (it owns tagSVCAreaReturnToHelos there); the
 # Warden did not, which is exactly how it ended up with a single never-verified trigger as its
 # whole menu. _assert_enter_offers_are_second_entries() below makes that a build-time law.
-TRAVELER_ENTER_OFFERS = [
-    (r'records\quests\svc_area_return_uber.dbr',   (-2438, 10, -2450), 'tagSVCEnterUberDungeon'),
-]
+# UBER-LABYRINTH PROMOTION (Will 2026-08-13): the Uber enter-offer - the LAST resident of this
+# table - moved into HELOS_HUB_TRAVEL (right after the Warden), the same b63 move that fixed the
+# mute Warden, because svc_area_return_uber is now a canonically PLACED entrance whose entire
+# menu is that one route (b63 law: a placed NPC may never be sole-sourced from this appended-last,
+# never-in-game-confirmed trigger class). The table + its generator machinery stay: a future
+# enter-offer (a SECOND menu entry on an NPC that already owns a hub route) belongs here.
+TRAVELER_ENTER_OFFERS = []
 
 # b63 SILENT-WARDEN FIX: count conservation. Moving a row BETWEEN these two tables must not add
-# or drop a trigger, a boat action or a route - the host step's trigger count and the shipped
-# boat-action count stay exactly what the deployed/Steam build has (step 1: 33 triggers, 39 boat
-# actions). Both generators bump the host step's trigger max by their own len(), so the sum is
-# what matters. Fails LOUD at import time if a future edit changes the total.
-_HUB_PLUS_ENTER_TRIGGERS = 26
+# or drop a trigger, a boat action or a route. Both generators bump the host step's trigger max
+# by their own len(), so the sum is what matters. Fails LOUD at import time if a future edit
+# changes the total.
+# UBER-LABYRINTH PROMOTION (Will 2026-08-13): 26 -> 25. This is a DELIBERATE route removal, per
+# Will verbatim ("...should take you to the uber dungeon, not back to helos"): svc_area_return_
+# uber's "Helos (Return)" route is dropped and his enter-offer row moved into the hub block, so
+# the host step goes 33 -> 32 triggers / 39 -> 38 boat actions vs the shipped 736cd50a build.
+_HUB_PLUS_ENTER_TRIGGERS = 25
 if len(HELOS_HUB_TRAVEL) + len(TRAVELER_ENTER_OFFERS) != _HUB_PLUS_ENTER_TRIGGERS:
     raise ValueError(
         f'b63 count conservation: HELOS_HUB_TRAVEL ({len(HELOS_HUB_TRAVEL)}) + '
@@ -3297,11 +3323,13 @@ def main():
     # returns), chained onto the same refire step. Keyed on the DISTINCT svc_helos_trav_* /
     # svc_area_return_* records only; INERT on canonical (no hub NPC placed there).
     patched_cm = _add_helos_traveler_hub_travel(patched_cm)
-    # TRAVELERS-INTO-AREAS b62 (Will 2026-07-14 final): 2 enter-offer triggers (Sparta Crypt +
-    # Uber Dungeon), chained onto the same refire step. Keyed on the ALREADY-PLACED
-    # svc_area_return_sparta / svc_area_return_uber only; INERT on canonical (neither is placed
-    # there). The paired return-to-origin destinations are wired inside _add_testhub_portal_travel
-    # above via TESTHUB_RETURN_DESTS_BY_NPC.
+    # TRAVELERS-INTO-AREAS b62 enter-offers. UBER-LABYRINTH PROMOTION (Will 2026-08-13): the
+    # table is now EMPTY - Sparta moved to the hub block in b63, Uber moved there this wave
+    # (svc_area_return_uber is now a canonically placed entrance; sole-sourcing a placed NPC
+    # from this appended-last trigger class is the b63 mute-warden bug). The generator stays
+    # wired (a no-op on an empty table) for any future second-menu-entry enter-offer. The
+    # return-to-origin destinations stay wired inside _add_testhub_portal_travel above via
+    # TESTHUB_RETURN_DESTS_BY_NPC.
     patched_cm = _add_traveler_enter_offers(patched_cm)
     arc.set_file(HELOS_PORTAL_HOST_QUEST, patched_cm)
     print(f'Q2: Helos portal-master {len(HELOS_PORTAL_DESTS)}-destination '
@@ -3313,8 +3341,8 @@ def main():
           f'({len(TESTHUB_RETURN_DESTS)} ports) boat-dialog appended to '
           f'{HELOS_PORTAL_HOST_QUEST}')
     print(f'Traveler enter-offers: {len(TRAVELER_ENTER_OFFERS)} enter-offer triggers appended to '
-          f'{HELOS_PORTAL_HOST_QUEST} (Sparta Crypt + Uber Dungeon); return-to-origin wired via '
-          f'TESTHUB_RETURN_DESTS_BY_NPC on svc_testhub_return_{{sparta,uber}}')
+          f'{HELOS_PORTAL_HOST_QUEST} (both moved into the hub block: Sparta b63, Uber 2026-08-13); '
+          f'return-to-origin wired via TESTHUB_RETURN_DESTS_BY_NPC on svc_testhub_return_{{sparta,uber}}')
 
     # Q4-3: chimera chest double-extension retarget (arz records renamed by
     # fix_chimera_chest_double_ext in build_svc_database.py, same wave).

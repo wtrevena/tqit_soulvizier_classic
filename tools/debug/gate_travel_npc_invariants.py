@@ -13,11 +13,13 @@ so it is valid without a 1.3GB map build. Pass a built .arc to also scan its liv
 
   T1 NO WALK-THROUGHS: zero walk-through portal records (portal_olympianarena1/2, map_portal_aura)
      placed in EITHER the canonical INJECT_SPECS or the TESTHUB merged specs.
-  T2 HELOS HUB: the 24 Helos-hub records (14 travelers + 10 returns) appear 0x in canonical and
+  T2 HELOS HUB: the 23 Helos-hub records (14 travelers + 9 returns) appear 0x in canonical and
      EXACTLY 1x in the TESTHUB build (WARDEN LAW: one boat-dialog record == one placement).
      (PR-5 SPARTA POLISH: svc_area_return_sparta is no longer a hub placement - the canonical
      Sparta catacomb entrance is the dedicated Warden clone, see T5c. It is kept in the arz
-     HELOS_HUB_RETURNS creation list as the clone donor, byte-unchanged, but placed nowhere.)
+     HELOS_HUB_RETURNS creation list as the clone donor, byte-unchanged, but placed nowhere.
+     UBER-LABYRINTH PROMOTION, Will 2026-08-13: svc_area_return_uber is no longer a hub
+     placement either - it is the CANONICAL Labyrinth-of-Knossos Uber entrance, see T5c.)
   T3 MASTERS RETIRED: BOTH split masters have 0 placements - svc_testhub_master_helos (superseded
      by the 11 travelers) AND svc_testhub_master_cave (b48 round 3: it was a mute ORPHAN - placed at
      the cave mouth with no boat trigger - now retired).
@@ -28,11 +30,16 @@ so it is valid without a 1.3GB map build. Pass a built .arc to also scan its liv
   T5 CROSS-FILE: map / quests / arz reference the SAME 24 hub records (arz minus the retired-but-
      kept donor svc_area_return_sparta) AND the SAME 5 per-area return records; every boat-menu
      label tag the quests use is minted or reused in the arz.
-  T5c ENTER-OFFERS + THE WARDEN (b62, PR-5 SPARTA POLISH, b63 SILENT-WARDEN):
-     - exactly 1 enter-offer (Uber), and it reuses the TESTHUB hub record svc_area_return_uber
-       (0 new placement). b63 LAW: an enter-offer may NEVER be an NPC's only route - it must be a
-       SECOND menu entry on an NPC that already owns a HELOS_HUB_TRAVEL route. Sole-sourcing one
-       is exactly how the Warden shipped mute to Steam on 2026-08-06.
+  T5c ENTER-OFFERS + THE WARDEN + THE UBER ENTRANCE (b62, PR-5, b63, 2026-08-13):
+     - ZERO enter-offers remain (Sparta moved to the hub block in b63; Uber on 2026-08-13 when
+       svc_area_return_uber became a placed canonical entrance). b63 LAW: an enter-offer may
+       NEVER be an NPC's only route - it must be a SECOND menu entry on an NPC that already owns
+       a HELOS_HUB_TRAVEL route. Sole-sourcing one is how the Warden shipped mute on 2026-08-06.
+     - the Uber entrance svc_area_return_uber is placed EXACTLY once canonically in maze03
+       (inherited by TESTHUB) and owns EXACTLY ONE route, tagSVCEnterUberDungeon ("Enter the
+       Uber Dungeon") -> crypt_floor1 - NEVER the shared "Helos (Return)" port (Will 2026-08-13:
+       "the guy behind the door to the minotaur should take you to the uber dungeon, not back to
+       helos").
      - the Warden svc_warden_sparta_crypt is placed EXACTLY once canonically (inherited by
        TESTHUB) at the catacomb; the shared donor svc_area_return_sparta is placed 0x (retired).
      - R-170 AMENDMENT (Will): the Warden owns EXACTLY ONE boat route, tagSVCEnterSpartaCrypt
@@ -104,12 +111,14 @@ def check_specs(fails):
     print(f'  T1 no-walk-throughs: canonical + TESTHUB place 0 of '
           f'{[n.decode() for n in WALKTHROUGH_NEEDLES]}')
 
-    # T2: the 24 hub records: 0 canonical, exactly 1 TESTHUB. (PR-5 SPARTA POLISH dropped
-    # svc_area_return_sparta from the hub placement roster - 14 plaza + 10 returns = 24.)
+    # T2: the 23 hub records: 0 canonical, exactly 1 TESTHUB. (PR-5 SPARTA POLISH dropped
+    # svc_area_return_sparta from the hub placement roster; the UBER-LABYRINTH PROMOTION
+    # (Will 2026-08-13) dropped svc_area_return_uber the same way - it is now a CANONICAL
+    # Labyrinth-of-Knossos entrance, checked in T5c. 14 plaza + 9 returns = 23.)
     hub_records = [s[0] for s in bss.HELOS_HUB_PLAZA_SPECS] + \
                   [sp[0] for _k, sp in bss.HELOS_HUB_RETURN_SPECS]
-    if len({_norm(r) for r in hub_records}) != 24:
-        fails.append(f'T2: expected 24 distinct hub records, got '
+    if len({_norm(r) for r in hub_records}) != 23:
+        fails.append(f'T2: expected 23 distinct hub records, got '
                      f'{len({_norm(r) for r in hub_records})}')
     for r in hub_records:
         nd = _norm(r)
@@ -119,7 +128,7 @@ def check_specs(fails):
             fails.append(f'T2: hub record {nd} present in CANONICAL ({c}x) - must be TESTHUB-only')
         if t != 1:
             fails.append(f'T2: hub record {nd} placed {t}x in TESTHUB (WARDEN LAW: exactly 1)')
-    print(f'  T2 helos-hub: 24 records, canonical=0 each, TESTHUB=1 each (warden law)')
+    print(f'  T2 helos-hub: 23 records, canonical=0 each, TESTHUB=1 each (warden law)')
 
     # T3: BOTH split masters retired (0 placements). b48 round 3 retires the cave master orphan.
     # NOTE: the cave master is placed via build_hub_extra_specs()[R09_LVL_KEY], which
@@ -170,8 +179,12 @@ def check_specs(fails):
     # CANONICAL placement, not one of the 24 TESTHUB-only hub records, so it is excluded from this
     # roster comparison and gets its own dedicated battery in T5c below.
     warden_q = _norm(asp.WARDEN_SPARTA_CRYPT_DBR)
+    # UBER-LABYRINTH PROMOTION (Will 2026-08-13): svc_area_return_uber, like the Warden, is now a
+    # CANONICAL placement with a HELOS_HUB_TRAVEL route - excluded from the TESTHUB-only hub
+    # roster comparison here and given its own dedicated battery in T5c below.
+    uber_q = _norm(bss.AREA_RETURN_UBER_DBR)
     map_recs = {_norm(r) for r in hub_records}
-    q_recs = {_norm(npc) for npc, _xyz, _tag in bqf.HELOS_HUB_TRAVEL} - {warden_q}
+    q_recs = {_norm(npc) for npc, _xyz, _tag in bqf.HELOS_HUB_TRAVEL} - {warden_q, uber_q}
     if map_recs != q_recs:
         fails.append(f'T5: map vs quests record mismatch: only-map={map_recs - q_recs}, '
                      f'only-quests={q_recs - map_recs}')
@@ -179,17 +192,21 @@ def check_specs(fails):
     # (it is the byte-unchanged clone donor for the Warden + retirement-protocol kept), but it is no
     # longer a hub PLACEMENT (map) or route (quests) - so exclude it from the arz-side roster to
     # match map==quests. Its dedicated successor svc_warden_sparta_crypt is checked in T5c.
+    # UBER-LABYRINTH PROMOTION: svc_area_return_uber likewise stays in the arz creation list but
+    # is a canonical placement now - excluded here, checked in T5c.
     _RETIRED_SPARTA = _norm(asp.AREA_RETURN_SPARTA_DONOR)
     arz_recs = ({_norm(r) for r, *_ in asp.HELOS_HUB_OUTBOUND} |
-                {_norm(r) for r in asp.HELOS_HUB_RETURNS}) - {_RETIRED_SPARTA}
+                {_norm(r) for r in asp.HELOS_HUB_RETURNS}) - {_RETIRED_SPARTA, uber_q}
     if map_recs != arz_recs:
         fails.append(f'T5: map vs arz record mismatch: only-map={map_recs - arz_recs}, '
                      f'only-arz={arz_recs - map_recs}')
     minted = {lt for _r, _nt, _tx, lt, ltx in asp.HELOS_HUB_OUTBOUND if ltx is not None}
     # b63: the Warden's descend label now arrives via HELOS_HUB_TRAVEL. It is minted in the arz by
     # the enter-offer tag creator (asp.TAG_ENTER_SPARTA_CRYPT), so it resolves either way.
+    # 2026-08-13: same for the Uber entrance label (asp.TAG_ENTER_UBER_DUNGEON).
     arz_labels = (minted | _REUSED_LABELS
-                  | {'tagSVCAreaReturnToHelos', asp.TAG_ENTER_SPARTA_CRYPT})
+                  | {'tagSVCAreaReturnToHelos', asp.TAG_ENTER_SPARTA_CRYPT,
+                     asp.TAG_ENTER_UBER_DUNGEON})
     q_labels = {t for _n, _x, t in bqf.HELOS_HUB_TRAVEL}
     missing = q_labels - arz_labels
     if missing:
@@ -211,24 +228,25 @@ def check_specs(fails):
         fails.append(f'T5b: unexpected per-area return port tags: {ret_ports}')
     print(f'  T5b per-area returns: arz==quests==map (5 records); ports {sorted(ret_ports)} resolve')
 
-    # T5c (b62 TRAVELERS-INTO-AREAS + PR-5 SPARTA POLISH): exactly 2 enter-offers, wired to exactly
-    # 4 minted label tags. Their record dispositions now DIFFER (they are no longer both TESTHUB-only
-    # hub records):
-    #   - Uber (svc_area_return_uber): reuses an existing TESTHUB hub record - 0 new placement.
+    # T5c (b62 TRAVELERS-INTO-AREAS + PR-5 SPARTA POLISH + b63 + UBER-LABYRINTH PROMOTION
+    # 2026-08-13): the enter-offer table is now EMPTY - both former residents moved into
+    # HELOS_HUB_TRAVEL (Sparta in b63, Uber this wave) because both are now canonically PLACED
+    # entrances and a placed NPC may never be sole-sourced from the appended-last enter-offer
+    # class. Dispositions:
     #   - Sparta (svc_warden_sparta_crypt = the dedicated "Warden of the Spartan Crypt" clone):
-    #     a NEW canonical record placed EXACTLY once at the catacomb (inherited by TESTHUB); the
-    #     shared donor svc_area_return_sparta it was cloned from is placed 0x (retired).
+    #     canonical x1 at the catacomb (inherited by TESTHUB); donor svc_area_return_sparta 0x.
+    #   - Uber (svc_area_return_uber): canonical x1 in maze03 (Labyrinth of Knossos, inherited
+    #     by TESTHUB), menu = EXACTLY ONE route tagSVCEnterUberDungeon ("Enter the Uber
+    #     Dungeon"), NEVER the shared "Helos (Return)" port (Will 2026-08-13, verbatim: "the guy
+    #     behind the door to the minotaur should take you to the uber dungeon, not back to
+    #     helos").
     enter_npcs = {_norm(npc) for npc, _xyz, _tag in bqf.TRAVELER_ENTER_OFFERS}
-    if len(enter_npcs) != 1:
-        fails.append(f'T5c: expected exactly 1 enter-offer NPC (Uber; b63 moved Sparta out), '
-                     f'got {len(enter_npcs)}: {enter_npcs}')
+    if len(enter_npcs) != 0:
+        fails.append(f'T5c: expected 0 enter-offer NPCs (Sparta moved to the hub block in b63, '
+                     f'Uber on 2026-08-13), got {len(enter_npcs)}: {enter_npcs}')
     warden = _norm(asp.WARDEN_SPARTA_CRYPT_DBR)
     uber_ret = _norm(bss.AREA_RETURN_UBER_DBR)
     retired_sparta = _norm(asp.AREA_RETURN_SPARTA_DONOR)
-    # Uber enter-offer NPC must be an existing TESTHUB hub record (0 new placement).
-    if uber_ret not in map_recs:
-        fails.append(f'T5c: Uber enter-offer NPC {uber_ret} is not in the 24-record hub set '
-                     f'(would be a NEW placement)')
     # b63 SILENT-WARDEN LAW: no enter-offer may be an NPC's ONLY route. This is the invariant whose
     # absence let the Warden ship mute; build_quest_files asserts it at import too.
     for npc in enter_npcs:
@@ -240,6 +258,31 @@ def check_specs(fails):
         fails.append(f'T5c: the Warden {warden} must NOT be an enter-offer - b63 moved its single '
                      f'descend route to HELOS_HUB_TRAVEL because being an enter-offer\'s sole '
                      f'owner is what made it mute in-game')
+    # ── UBER-LABYRINTH PROMOTION battery (Will 2026-08-13) ──
+    if uber_ret in enter_npcs:
+        fails.append(f'T5c: {uber_ret} must NOT be an enter-offer - its single route lives in '
+                     f'HELOS_HUB_TRAVEL now (the b63 pattern; it is a placed canonical entrance)')
+    if uber_ret in map_recs:
+        fails.append(f'T5c: the promoted Uber entrance {uber_ret} must NOT be in the TESTHUB-only '
+                     f'hub roster (it is a canonical placement)')
+    uc, ut = _count_in_specs(canonical, uber_ret), _count_in_specs(testhub, uber_ret)
+    if uc != 1 or ut != 1:
+        fails.append(f'T5c: Uber entrance {uber_ret} must be placed once canonically + once in '
+                     f'TESTHUB (inherited); got canonical={uc}, TESTHUB={ut}')
+    uber_rows = [(npc, xyz, tag) for npc, xyz, tag in bqf.HELOS_HUB_TRAVEL
+                 if _norm(npc) == uber_ret]
+    uber_tags = {t for _n, _x, t in uber_rows}
+    if len(uber_rows) != 1:
+        fails.append(f'T5c: the Uber entrance {uber_ret} must own EXACTLY ONE boat route '
+                     f'(Will 2026-08-13: travel to the Uber Dungeon, nothing else); it owns '
+                     f'{len(uber_rows)}: {sorted(uber_tags)}')
+    if uber_tags != {asp.TAG_ENTER_UBER_DUNGEON}:
+        fails.append(f'T5c: the Uber entrance\'s single route must be '
+                     f'{asp.TAG_ENTER_UBER_DUNGEON} ("Enter the Uber Dungeon"); '
+                     f'got {sorted(uber_tags)}')
+    if 'tagSVCAreaReturnToHelos' in uber_tags:
+        fails.append(f'T5c: the Uber entrance {uber_ret} carries the shared "Helos (Return)" '
+                     f'port - Will 2026-08-13 forbids it ("...not back to helos")')
     if warden in map_recs:
         fails.append(f'T5c: the Warden clone {warden} must NOT be in the TESTHUB-only hub roster '
                      f'(it is a canonical placement)')
@@ -278,8 +321,9 @@ def check_specs(fails):
     missing_enter = (enter_tags | origin_tags) - minted_enter - {'tagSVCTestHubToHelos'}
     if missing_enter:
         fails.append(f'T5c: enter-offer/return-to-origin tags not minted in arz: {missing_enter}')
-    print(f'  T5c enter-offers: 1 enter-offer (Uber, a SECOND entry on a hub record); Sparta = dedicated Warden '
-          f'clone (canonical x1, retired donor x0, descend-only); {len(minted_enter)} label tags resolve')
+    print(f'  T5c enter-offers: 0 enter-offers (both promoted into the hub block); Sparta = dedicated Warden '
+          f'clone (canonical x1, retired donor x0, descend-only); Uber = svc_area_return_uber (canonical x1 '
+          f'in maze03, single enter route, no Helos port); {len(minted_enter)} label tags resolve')
 
 
 def check_responds(fails):
