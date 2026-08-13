@@ -1,5 +1,42 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 build89 / R-170 SECOND FOLLOW-UP (2026-08-12): THE WARDEN OF THE SPARTAN CRYPT SHOULD TALK NOW - **TWO-PART CHECK, DO BOTH**
+> **`Quests.arc` ONLY** - no database, no map, no text change. Your character, your saves and every
+> item are untouched. **Fully quit TQ and restart Steam before testing** (standing rule) - a running
+> game keeps the old `Quests.arc` in memory and you would be testing the build you already have.
+>
+> **Background in one line:** when you clicked the Warden, nothing happened - no dialog box, nothing.
+> The earlier attempt (b63) moved WHICH quest slot he was registered in, which could never have
+> changed his behaviour. The real defect was his ACTION LIST: an NPC you TELEPORT INTO is never
+> "woken up", so the game draws him but he has no yellow icon and eats the click. Every remote
+> traveler now gets the same wake-up pair the working Leinth exit vortex has always carried, put in
+> FRONT of the travel offer.
+>
+> **PART 1 - THE FIX (this is the thing that was broken).**
+> Go to the **Sparta catacombs** and find the **Warden of the Spartan Crypt** standing by the
+> stairs-down (level `CataCube02_FloorLast`). **Click him.**
+> - ✅ **PASS:** a menu opens with the single option **"Descend into the Sparta Crypt"**, and taking
+>   it ports you into the crypt.
+> - ❌ **FAIL:** still nothing on click. Say so plainly - the next lever is a physical GridEntrance
+>   door (the same mechanism as the Knossos -> Uber Dungeon door), not another dialog tweak.
+> - Note: he is **descend-only, by your own ruling** - there is deliberately NO "Helos (Return)"
+>   option on him. One option is correct, not a bug.
+>
+> **PART 2 - THE REGRESSION CHECK (do not skip: the working ones were touched too).**
+> The 14 **Helos plaza travelers** already worked, and this build changed their triggers as well
+> (one uniform shape rather than two classes). So **click ONE plaza traveler in Helos and actually
+> take its route.**
+> - ✅ **PASS:** the menu opens exactly as before and it ports you where it always did.
+> - ❌ **FAIL:** if a traveler that used to work has gone quiet, or a menu lost/gained an option,
+>   that is a regression caused by this build - report it and it gets reverted, not patched over.
+> - Free bonus while you are out there: click any **return NPC** in an SV area (the "back to Helos"
+>   guy) - those are remote NPCs too and were mute for the same reason.
+>
+> **HONEST CAVEAT:** no remote traveler in this mod has ever been confirmed working in-game by
+> anyone, including the vortex the fix is copied from. The evidence is strong (upstream-authentic
+> mechanism, exact symptom match, a new gate that reproduces your bug against the currently-shipped
+> file), but **you are the proof**. `BL-b88-DEBT-1` / `BL-b88-DEBT-2`.
+
 > ## 🆕 R-240 + R-241 (2026-08-11): THE LOOT VOLUME TRIM - CHESTS AND ORBS BOTH COME DOWN ~10x
 > **NOT BUILT YET** (branch `fix/loot-volume-trim`; this note is written with the lane so the check is
 > ready when the build lands). arz-only - no map / quest / Text change on the canonical side.

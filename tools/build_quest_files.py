@@ -2237,6 +2237,86 @@ TESTHUB_AREA_RETURN_NPCS = [
 ]
 
 
+# ── WARDEN AWAKENING (Will 2026-08-12, b88): a REMOTE boat NPC needs ShowNpc + ──────────────
+#    UpdateNPCDialog("Dialog Needed") BEFORE its BoatDialog, or it renders and is UNCLICKABLE
+#
+# WILL'S BUG, VERBATIM (still broken on Steam after b63): "when I click on the guy who travels
+# you to the spartan crypt (warden of the spartan crypt) nothing happens, no dialog box comes
+# up, nothing."
+#
+# b63 pulled the wrong lever. It moved the Warden's route from the enter-offer tail slot into
+# the hub block - a REGISTRATION-ORDER change. A decode of the deployed Quests.arc (607ec99c)
+# proves the Warden's trigger is STILL `Condition_OnLevelLoad -> [Action_BoatDialog]` alone, so
+# nothing about its in-game behaviour could have changed. The action SET, not the slot, is the
+# defect.
+#
+# THE MECHANISM (DRX/SV-UPSTREAM-AUTHENTIC, not invented here). The one remote-level, teleport-
+# out NPC in the whole mod that WORKS is the Leinth exit vortex "Ioannes"
+# (records/drxmap/bloodcave/portals/vortexportal_exit.dbr, Class=Npc, in bossfight.lvl). Its
+# triggers - shipped that way in the UPSTREAM SV XPack bytes this repo ports byte-for-byte -
+# carry [OpenDoor,] ShowNpc + UpdateNPCDialog + BoatDialog. The engine rationale is spelled out
+# in build_svc_database._import_dialog_needed: the "Dialog Needed" DialogPak "makes NPCs
+# clickable when assigned via Action_UpdateNPCDialog. Without it, NPCs render but have no yellow
+# icon and can't be clicked." That is Will's symptom word for word.
+#
+# WHY THE PLAZA TRAVELERS GOT AWAY WITH BoatDialog ALONE: they are CO-RESIDENT with the trigger's
+# level load (they stand in StartingFarmland06D, the level whose OnLevelLoad fires the trigger),
+# so they are awakened by their own level's load. An NPC the player TELEPORTS INTO (the Warden in
+# CataCube02_FloorLast, every svc_area_return_*, every svc_testhub_return_*) is not, so it needs
+# the explicit awakening pair.
+#
+# SCOPE = UNIFORM, not remote-only. All three boat-trigger generators emit the pair, so the 14
+# co-resident plaza travelers are UPGRADED too rather than left as a second class. This is safe
+# and idempotent by the same reasoning b48/b94 already ship on: Action_ShowNpc on an already-
+# shown NPC is a no-op, and re-assigning the standard Dialog Needed pak to an NPC that already
+# has it is a no-op. One uniform shape is also what keeps the fail-loud deltas below simple
+# enough to actually catch a regression.
+#
+# BYTE SHAPE IS COPIED FROM THE VORTEX, INCLUDING THE ODD delayTime. The UpdateNPCDialog block
+# upstream carries delayTime == uint32 0x40000000, which is IEEE float 2.0 - a 2-second delay
+# before the dialog pak is assigned. It is preserved verbatim: this pair is the ONLY awakening
+# shape with in-repo, upstream-authentic provenance, and "normalizing" the delay to 0 would ship
+# an untested variant of the one thing known to work.
+#
+# ARTIFACT SCOPE: Quests.arc ONLY. No new quest is registered (every trigger is appended to the
+# already-registered sv_commonmechanics host step), no record is minted, no placement moves.
+# records\dialog\story\dialog needed.dbr is ALREADY in the shipped .arz (imported by
+# build_svc_database._import_dialog_needed; verified present in the deployed 3c88e537 arz), and
+# the deployed vortex references the identical literal and resolves - so the .arz and Levels.arc
+# stay byte-unchanged.
+NPC_AWAKEN_ACTION_CLASSES = ('Action_ShowNpc', 'Action_UpdateNPCDialog')
+# Upstream literal: uint32 0x40000000 == IEEE float 2.0. Copied from the deployed vortex
+# primary; do NOT "normalize" it to 0 (see the block comment above).
+_AWAKEN_DIALOG_DELAY = 1073741824
+
+
+def _npc_awaken_actions(npc: str) -> list:
+    """The two awakening actions a boat NPC needs to be CLICKABLE, in the byte-exact
+    shape DRX/SV ship on the Leinth exit vortex (decoded verbatim out of the deployed
+    Quests.arc 607ec99c: open_bloodcave_portal.qst step "Boss Room Crystal Gate").
+
+    Returned as raw parse-tree item tuples so callers can splice them straight in front
+    of their existing Action_BoatDialog item(s); the caller owns actionCount."""
+    return [
+        ('field', 'actionClassName', ('str', 'Action_ShowNpc')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'delayTime', ('int', 0)),
+            ('field', 'npc', ('str', npc)),
+            ('field', 'canReFire', ('int', 1)),
+            ('field', 'fadeTime', ('int', 0)),
+            ('field', 'fade', ('int', 0)),
+        ]),
+        ('field', 'actionClassName', ('str', 'Action_UpdateNPCDialog')),
+        ('block', [
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'delayTime', ('int', _AWAKEN_DIALOG_DELAY)),
+            ('field', 'npc', ('str', npc)),
+            ('field', 'dialogFile', ('str', DIALOG_NEEDED_DBR)),
+        ]),
+    ]
+
+
 def _add_testhub_portal_travel(data: bytes) -> bytes:
     """Append the TESTHUB per-area RETURN boat-dialog triggers (Model C) to the
     sv_commonmechanics refire step: one Condition_OnLevelLoad trigger per warden-split
@@ -2302,7 +2382,12 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
                 ('field', 'isQuestCritical', ('int', 1)),
             ]),
         ])
-        action_items = [('field', 'actionCount', ('int', len(dests)))]
+        # WARDEN AWAKENING (b88): every one of these 5 per-area returns stands in a level the
+        # player TELEPORTS INTO, so the NPC is not awakened by its own level's load. ShowNpc +
+        # UpdateNPCDialog("Dialog Needed") go FIRST, then the unchanged boat routes.
+        action_items = [('field', 'actionCount',
+                         ('int', len(NPC_AWAKEN_ACTION_CLASSES) + len(dests)))]
+        action_items.extend(_npc_awaken_actions(npc))
         for xyz, tag in dests:
             action_items.extend(_boatdialog(npc, xyz, tag))
         actions = ('block', action_items)
@@ -2368,12 +2453,22 @@ def _add_testhub_portal_travel(data: bytes) -> bytes:
     if _delta(TESTHUB_RETURN_NPC) != 0:
         raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: svc_testhub_return must NOT be '
                          f'referenced (b48 round 3: retired; warden-split into per-area records)')
+    # b88 WARDEN AWAKENING: each per-area return now appears once per awakening action
+    # (ShowNpc + UpdateNPCDialog) PLUS once per boat destination.
     for npc in TESTHUB_AREA_RETURN_NPCS:
         dests = TESTHUB_RETURN_DESTS_BY_NPC.get(npc, TESTHUB_RETURN_DESTS)
-        if _delta(npc) != len(dests):
+        want_npc = len(NPC_AWAKEN_ACTION_CLASSES) + len(dests)
+        if _delta(npc) != want_npc:
             raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: per-area return {npc} reference count '
-                             f'must increase by exactly {len(dests)} '
-                             f'(got {_delta(npc)})')
+                             f'must increase by exactly {want_npc} '
+                             f'(ShowNpc + UpdateNPCDialog + {len(dests)} BoatDialog; '
+                             f'got {_delta(npc)})')
+    if _delta(DIALOG_NEEDED_DBR) != len(TESTHUB_AREA_RETURN_NPCS):
+        raise ValueError(
+            f'{HELOS_PORTAL_HOST_QUEST}: the "Dialog Needed" DialogPak reference count must '
+            f'increase by exactly {len(TESTHUB_AREA_RETURN_NPCS)} (one Action_UpdateNPCDialog '
+            f'per per-area return trigger; got {_delta(DIALOG_NEEDED_DBR)}). Without that pak '
+            f'the NPC renders but cannot be clicked.')
     from collections import Counter
     want = Counter()
     for npc in TESTHUB_AREA_RETURN_NPCS:
@@ -2503,8 +2598,12 @@ def _add_helos_traveler_hub_travel(data: bytes) -> bytes:
                 ('field', 'isQuestCritical', ('int', 1)),
             ]),
         ])
+        # WARDEN AWAKENING (b88): ShowNpc + UpdateNPCDialog("Dialog Needed") FIRST, then the
+        # unchanged boat route. This is the generator that owns svc_warden_sparta_crypt (row 0)
+        # and every svc_area_return_* - all of them stand in levels the player teleports into.
         actions = ('block', [
-            ('field', 'actionCount', ('int', 1)),
+            ('field', 'actionCount', ('int', len(NPC_AWAKEN_ACTION_CLASSES) + 1)),
+        ] + _npc_awaken_actions(npc) + [
             ('field', 'actionClassName', ('str', 'Action_BoatDialog')),
             ('block', [
                 ('field', 'comments', ('int_or_empty', 0)),
@@ -2560,10 +2659,21 @@ def _add_helos_traveler_hub_travel(data: bytes) -> bytes:
         return low.count(nd) - low_in.count(nd)
     from collections import Counter
     npc_want = Counter(npc for npc, _xyz, _tag in HELOS_HUB_TRAVEL)
+    # b88 WARDEN AWAKENING: each hub trigger now carries the NPC 3x (ShowNpc +
+    # UpdateNPCDialog + the one BoatDialog), so an NPC with n rows gains 3n references.
     for npc, n in npc_want.items():
-        if _delta(npc) != n:
+        want_npc = n * (len(NPC_AWAKEN_ACTION_CLASSES) + 1)
+        if _delta(npc) != want_npc:
             raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: hub NPC {npc} reference count must '
-                             f'increase by exactly {n} (got {_delta(npc)})')
+                             f'increase by exactly {want_npc} '
+                             f'({n} x [ShowNpc + UpdateNPCDialog + BoatDialog]; '
+                             f'got {_delta(npc)})')
+    if _delta(DIALOG_NEEDED_DBR) != len(HELOS_HUB_TRAVEL):
+        raise ValueError(
+            f'{HELOS_PORTAL_HOST_QUEST}: the "Dialog Needed" DialogPak reference count must '
+            f'increase by exactly {len(HELOS_HUB_TRAVEL)} (one Action_UpdateNPCDialog per hub '
+            f'trigger; got {_delta(DIALOG_NEEDED_DBR)}). Without that pak the NPC renders but '
+            f'cannot be clicked - the Warden-of-the-Spartan-Crypt bug.')
     tag_want = Counter(tag for _npc, _xyz, tag in HELOS_HUB_TRAVEL)
     for tag, n in tag_want.items():
         if _delta(tag) != n:
@@ -2686,8 +2796,11 @@ def _add_traveler_enter_offers(data: bytes) -> bytes:
                 ('field', 'isQuestCritical', ('int', 1)),
             ]),
         ])
+        # WARDEN AWAKENING (b88): same uniform shape as the hub generator. The enter-offer
+        # NPCs stand INSIDE their sealed area (svc_area_return_uber @ Maze03), i.e. remote.
         actions = ('block', [
-            ('field', 'actionCount', ('int', 1)),
+            ('field', 'actionCount', ('int', len(NPC_AWAKEN_ACTION_CLASSES) + 1)),
+        ] + _npc_awaken_actions(npc) + [
             ('field', 'actionClassName', ('str', 'Action_BoatDialog')),
             ('block', [
                 ('field', 'comments', ('int_or_empty', 0)),
@@ -2743,10 +2856,20 @@ def _add_traveler_enter_offers(data: bytes) -> bytes:
         return low.count(nd) - low_in.count(nd)
     from collections import Counter
     npc_want = Counter(npc for npc, _xyz, _tag in TRAVELER_ENTER_OFFERS)
+    # b88 WARDEN AWAKENING: 3 references per enter-offer trigger (ShowNpc + UpdateNPCDialog
+    # + BoatDialog), on top of whatever HELOS_HUB_TRAVEL already gave the NPC.
     for npc, n in npc_want.items():
-        if _delta(npc) != n:
+        want_npc = n * (len(NPC_AWAKEN_ACTION_CLASSES) + 1)
+        if _delta(npc) != want_npc:
             raise ValueError(f'{HELOS_PORTAL_HOST_QUEST}: enter-offer NPC {npc} reference count '
-                             f'must increase by exactly {n} (got {_delta(npc)})')
+                             f'must increase by exactly {want_npc} '
+                             f'({n} x [ShowNpc + UpdateNPCDialog + BoatDialog]; '
+                             f'got {_delta(npc)})')
+    if _delta(DIALOG_NEEDED_DBR) != len(TRAVELER_ENTER_OFFERS):
+        raise ValueError(
+            f'{HELOS_PORTAL_HOST_QUEST}: the "Dialog Needed" DialogPak reference count must '
+            f'increase by exactly {len(TRAVELER_ENTER_OFFERS)} (one Action_UpdateNPCDialog per '
+            f'enter-offer trigger; got {_delta(DIALOG_NEEDED_DBR)})')
     tag_want = Counter(tag for _npc, _xyz, tag in TRAVELER_ENTER_OFFERS)
     for tag, n in tag_want.items():
         if _delta(tag) != n:
@@ -3232,6 +3355,23 @@ def main():
     # engine silently skips it (the four SV questlines were dead for four rebuilds because
     # their 44-byte ARC records left @16/@20/@24/@36 zero). Fail the build loud otherwise.
     _assert_quest_records_loadable(arc2)
+
+    # PERMANENT CONTRACT (b88 WARDEN AWAKENING): every SVC boat-dialog trigger in the WRITTEN
+    # arc must lead with Action_ShowNpc + Action_UpdateNPCDialog("Dialog Needed") on its own
+    # NPC. The per-generator _delta assertions above already guard each generator in isolation;
+    # this gates the FINAL bytes, so a later chained edit cannot quietly strip the pair back off
+    # and ship a rendered-but-unclickable traveler (Will's Warden bug, twice). Imported lazily -
+    # the gate imports this module for its NPC roster.
+    sys.path.insert(0, str(Path(__file__).parent / 'debug'))
+    import gate_boat_npc_awakening as _awaken_gate
+    _viols = _awaken_gate.check(arc2.get_file(HELOS_PORTAL_HOST_QUEST), verbose=False)
+    if _viols:
+        raise SystemExit(
+            'build_quest_files: BOAT-NPC AWAKENING CONTRACT FAILED on the written '
+            f'Quests.arc ({len(_viols)} violation(s)) - a traveler would render in the world '
+            'and open no dialog when clicked:\n  ' + '\n  '.join(_viols))
+    print(f'  boat-NPC awakening contract PASS: every SVC boat trigger leads with '
+          f'Action_ShowNpc + Action_UpdateNPCDialog({DIALOG_NEEDED_DBR})')
 
 
 if __name__ == '__main__':

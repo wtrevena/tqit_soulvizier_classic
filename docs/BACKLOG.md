@@ -1,5 +1,130 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD89-DEV GATE RECORD - R-170 SECOND FOLLOW-UP: THE WARDEN AWAKENING (remote boat NPCs get `Action_ShowNpc` + `Action_UpdateNPCDialog("Dialog Needed")` before `Action_BoatDialog`); **QUESTS.ARC-ONLY** - BUILT det-2x, ALL GATES GREEN incl. the NEW anti-inert `gate_boat_npc_awakening`, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING (2026-08-12, `main` fast-forwarded `e775f78` build88-ship -> `ce0ff12`, then this gate-record commit).
+
+**INTEGRATED (clean, then a clean fast-forward).** `main` was at `e775f78` (BUILD88 SHIPPED) and the lane `fix/warden-awakening` was cut from `8035da0` (build87), so the lane was **3 ahead / 4 behind**. Per the ship discipline the lane RE-MERGED current `main` first (`d8c1e70`, in the `wt-warden` worktree): `tools/build_quest_files.py` and `tools/debug/gate_boat_npc_awakening.py` do not intersect b88 at all (b88 touched the arz/Text patch modules), `docs/BACKLOG.md` **auto-merged** (both sides prepend at the top; result = BUILD88 record, then the b88 warden LANE RECORD, then BUILD87), and `docs/WILL_RULINGS.md` was the ONE conflict - both sides APPEND at the tail - resolved **structurally, zero content dropped**: the shipped **R-244** block is kept first (it is live on Steam), then a `---` separator, then the lane's **R-170 SECOND FOLLOW-UP** block. Then the vet MAJOR was discharged (`ce0ff12`, below) and `main` **fast-forwarded** `e775f78` -> `ce0ff12`. Working tree clean. Next sequential ship after build88 = **BUILD89**.
+
+**VET MAJOR HONORED (`ce0ff12`, part of the integration).** `docs/WILL_TEST_GUIDE.md` gains the **two-part** in-game check at the top: **PART 1** click the Warden of the Spartan Crypt by the stairs-down in `CataCube02_FloorLast` and take "Descend into the Sparta Crypt" (the fix), **PART 2** the REGRESSION check on the touched working class - the 14 co-resident Helos plaza travelers had their triggers changed too, so one of them must be clicked AND its route actually taken to prove nothing that worked broke. The guide also states the descend-only single option is correct (not a missing return), the honest caveat that no remote boat NPC has ever been in-game confirmed, and the full-quit + Steam-restart precondition.
+
+**WILL'S BUG, VERBATIM (STILL BROKEN ON STEAM after b63):** "when I click on the guy who travels you to the spartan crypt (warden of the spartan crypt) nothing happens, no dialog box comes up, nothing."
+
+**WHAT IT IS:** R-170 SECOND FOLLOW-UP. b63 pulled the wrong lever (it moved the route's REGISTRATION SLOT; the ACTION SET never moved, so no in-game behaviour could change). A boat NPC the player **teleports into** is never awakened, so it renders and eats the click; a **co-resident** NPC is awakened by its own level's load, which is why the 14 Helos plaza travelers worked and masked the defect. `tools/build_quest_files.py` now PREPENDS `Action_ShowNpc` + `Action_UpdateNPCDialog('Records\Dialog\Story\Dialog Needed.dbr')` ahead of the unchanged `Action_BoatDialog`(s) in all three SVC boat generators (`_add_helos_traveler_hub_travel`, `_add_testhub_portal_travel`, `_add_traveler_enter_offers`): **31 triggers upgraded, 30/30 SVC boat NPCs awakened**, uniform scope (the plaza travelers are upgraded too rather than left a second class). The shape is decoded VERBATIM from the upstream DRX/SV Leinth exit vortex (`vortexportal_exit.dbr`), including its `delayTime` float 2.0. `portal_master_helos` is the one deliberately-unchanged SVAERA-authored boat trigger (`BL-b88-DEBT-4`). Ruling: `docs/WILL_RULINGS.md` -> R-170 SECOND FOLLOW-UP.
+
+**THE ARTIFACT - `Quests.arc` ONLY.** work `Resources/Quests.arc` = **`736cd50a3540a010e2678520922e03ce`** (195,476 B, **+513 B** over the shipped `607ec99cbf5fd97135204ad465130722` / 194,963 B; kept at `local/build89_run1_quests.arc`). **arz `83a096636cf4b5f8c13a1b813cc674ba` / canonical `Levels.arc 6784cf0f` / `Text.arc 021cc138` / `Creatures.arc 8c0d8d53` md5-proven BYTE-UNCHANGED** (re-hashed before and after the build). No arz rebuild, no map rebuild, no Text rebuild, no new record, no new tag, no new QUESTS registration. `records\dialog\story\dialog needed.dbr` is already present in the shipped arz, so `Action_UpdateNPCDialog` resolves without an arz change. The Levels+Quests deploy coupling is satisfied trivially: Levels does not move.
+
+**BUILD-INPUT RESTORATION (residue of the b88 upstream-cache incident, fixed under the pre-authorized env-parity rule).** The MAIN checkout was missing two gitignored build inputs that `build_quest_files.py` needs and that the b88 restore (which covered the 10 md5-pinned `check_build_inputs` entries) did not include: `upstream/soulvizier_098i/Resources/XPack/Quests.arc` and `reference_mods/SVAERA_customquest/Resources/Quests.arc`. Both were restored from provably-correct sources - the SVAERA base **copied from the pristine Steam Workshop install** `475150/2076433374` (`b786666ccc7accf4b533adecc457ce81`, 194,578 B), and the SV 0.98i XPack quests from a worktree cache whose md5 **`a1b8020b20f41ca5b7e4af916bebf039`** (222,487 B) is IDENTICAL across four independent worktree copies. The inputs are then proven correct by the build itself: this checkout reproduces the `wt-warden` worktree's `736cd50a` **byte-for-byte**, which a different input could not do.
+
+| gate | result |
+|---|---|
+| det byte identity (det-2x) | **PASS** - `736cd50a3540a010e2678520922e03ce` (195,476 B) across two independent runs in the work/ layout (`PYTHONHASHSEED=0`), exit 0 both, and **byte-identical to the worktree's independently-produced arc** |
+| in-build contracts (written arc) | **PASS** - quest-record contract 107 `entry_type==3` records; **boat-NPC awakening contract PASS** (every SVC boat trigger leads with `Action_ShowNpc` + `Action_UpdateNPCDialog("Dialog Needed")`) |
+| NEW `tools/debug/gate_boat_npc_awakening.py` (A0-A6) on the new arc | **PASS** - 31 in-scope SVC boat triggers, 1 out-of-scope reported (`portal_master_helos`), **30/30 distinct NPCs awakened**, `svc_warden_sparta_crypt` at Hub 00 |
+| **ANTI-INERT** - same gate vs the SHIPPED/Steam `607ec99c` | **FAILS AS REQUIRED, exit 1** - 31 `A1` violations + `A6` naming all 30 SVC boat NPCs incl. `svc_warden_sparta_crypt`. The gate reproduces Will's bug as an artifact fact; it is not inert |
+| gate `--negtest` planted-defect suite | **PASS 5/5 RED + positive control GREEN** (`strip_pair` = the exact b63 shipped state, `wrong_pak`, `pair_after_boat`, `npc_mismatch`, `bad_count`) |
+| `gate_traveler_responds` | **PASS three ways** - `--specs`, `--specs --canonical`, and against the BUILT `Quests.arc` + canonical `Levels.arc`: **31 route owners / 39 routes / 6 placed boat NPCs UNCHANGED**; G-COLLISION / G-WARDEN / G-ORPHAN / G-DEST / G-SOLE-SOURCE / G-DIALOG-CHAIN all PASS |
+| QUESTS-registry window check | **PASS** - host `sv_commonmechanics.qst` at **index 96 of 255, IN-WINDOW** (== `QUEST_INSERT_ANCHOR`) |
+| `gate_travel_npc_invariants` (canonical + TESTHUB Levels) | **PASS** - T1-T6 green; 24 hub records canonical=0 / TESTHUB=1 each; 5 per-area returns x1; 1 enter-offer; Sparta = dedicated Warden clone, canonical x1, **descend-only**; 0 authored walk-throughs both maps |
+| `tools/contracts/tests_quests_negative.py` | **PASS 31/31 checks** |
+| `run_contracts --only quests` on the NEW arc | **PASS - 0 P0 / 0 P1 / 2 P2**, and the BASELINE `607ec99c` under the identical config also gives **0 P0 / 0 P1 / 2 P2** = **ZERO new violations** (the 2 P2 are the pre-existing `QST-TAG-PLACEHOLDER` pair on `open_bloodcave_portal.qst`) |
+| `validate_tags` (arz + `Text.arc 021cc138`) | **PASS** - all 383 referenced mod tags present, **0 new tags authored**, 2 pre-existing base/SV monster-name WARN (`tagNewMonster66`/`46`, non-blocking, = the build88 baseline) |
+| sibling artifacts byte-unchanged | **PASS** - arz `83a09663` / Levels `6784cf0f` / Text `021cc138` / Creatures `8c0d8d53` re-hashed identical after the quest build |
+
+**DEV:** targeted `Quests.arc`-only copy, **md5 source==dest** (`736cd50a`), **TQ.exe NOT running** (nothing killed, Steam not restarted). The DEV folder was md5-inventoried before and after: **1 of 62 files changed** (`Resources\Quests.arc` `607ec99c -> 736cd50a`), 0 added, 0 removed, the other 61 byte-identical. **DEV `Levels.arc` stays TESTHUB `7a7ca9ac`** (Will's play surface, untouched); DEV arz `83a09663` / Text `021cc138` / Creatures `8c0d8d53` byte-unchanged. NOTE: `Quests.arc` is variant-independent, so this ONE rebuild serves canonical (Steam) and TESTHUB (DEV) together.
+
+**PACKAGED (not uploaded):** TESTHUB guard **PASS** (packaged canonical `6784cf0f`, NOT the local-only TESTHUB `7a7ca9ac`), single `SoulvizierClassic` wrapper, 56 files / 1188.4 MB, **dist==work all 5** (arz `83a09663`, Levels `6784cf0f`, Text `021cc138`, **Quests `736cd50a`**, Creatures `8c0d8d53`). Dist: `dist/workshop/content/SoulvizierClassic`. **The Steam upload (item 3759792705) + GitHub push are the MAIN SESSION's to run. READY FOR STEAM UPLOAD: BUILD89, `Quests.arc` `736cd50a3540a010e2678520922e03ce` (Quests-only; arz + Text + Levels + Creatures unchanged from build88).**
+
+**Rollback (one step, uncoupled):** `local/DEV_quests_deployed_prev.arc` = build88 `607ec99cbf5fd97135204ad465130722` -> copy back over `SoulvizierClassicDEV\Resources\Quests.arc`. Nothing else moves, so there is no coupling to honour. This build's arc also kept at `local/build89_run1_quests.arc` = `736cd50a`; the build88 arc kept at `local/build88_quests_607ec99c.arc`.
+
+**OPEN DEBTS (carried from the lane, unchanged, and they are THIS ship's debts):**
+- **`BL-b88-DEBT-1` (P0, LAUNCH-GATED): NOT PROVEN IN-GAME.** Will's DEV check is the two-part one now written into `docs/WILL_TEST_GUIDE.md` (Warden click + one plaza-traveler regression run). Fully quit TQ + restart Steam first.
+- **`BL-b88-DEBT-2` (P1, honesty):** no remote boat NPC in this mod has a recorded in-game confirmation yet; the vortex exit that supplies the reference shape is itself playtest-pending (`BL-b94-DEBT-10`). Evidence-backed, NOT Will-confirmed. If the Warden is still mute the next lever is the **GridEntrance door** (the proven build24/25 Knossos-to-Uber mechanism), not another dialog tweak.
+- **`BL-b88-DEBT-3` (P2):** the 2-second inherited `UpdateNPCDialog` delay is unexamined; `_AWAKEN_DIALOG_DELAY` is a one-constant change that must be re-gated, not assumed.
+- **`BL-b88-DEBT-4` (P2):** `portal_master_helos` (Almyros) stays on `BoatDialog` alone - deliberate (co-resident and working), but he is now the only boat NPC on the old shape.
+- **`BL-b89-DEBT-1` (P3, tooling):** `tools/build_quest_files.py` hard-codes `upstream\soulvizier_098i\Resources\XPack\Quests.arc` and `reference_mods\SVAERA_customquest\Resources\Quests.arc` with NO `check_build_inputs` resolution and no md5 pin, which is why the b88 cache incident made this lane's build fail loud but unhelpfully. Fold both into `check_build_inputs` (env var + fallback chain + `EXPECTED_MD5` pin `a1b8020b...` / `b786666c...`).
+
+## BUILD88-DEV GATE RECORD - R-244 THE THREE SUPRA-CRAFT LAWS (LAW A per-recipe Legendary gate, LAW B 42 distinct reagent sets, LAW C no supra item below Legendary); arz + COUPLED Text.arc - BUILT det-2x, ALL GATES GREEN, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING (2026-08-12, `main` fast-forwarded `8035da0` build87 -> `e1c19c6` via `git merge --no-edit fix/supra-legendary-gate`, then this gate-record commit).
+
+**INTEGRATED (clean fast-forward).** `main` was at `8035da0` (BUILD87, arz `3c88e537`) and the lane `fix/supra-legendary-gate` was **0 behind / 12 ahead** - it had ALREADY re-merged shipped `main` (the merge commit `ecf56b4` reconciles the supra lane, cut from build84-dev `7459e22`, onto build84-87; the next commit `e1c19c6` renumbered the ruling `R-231 -> R-244` to clear the charon collision). So `git merge --no-edit` **fast-forwarded** `main` to `e1c19c6`. Clean, no conflicts, working tree clean. **The supra code is DISJOINT from the b84-87 loot rulings** (R-240 volume trim, R-241/R-242 orb rates, R-243 soul rates): the only file intersection is `tools/patches/__init__.py`, auto-merged as a REGISTRY UNION with every load-bearing order preserved - **`supra_recipe_laws` sits immediately AFTER `craft_thrown_breadth`** (which owns `svc_unique_thrown_e01` and authors the thrown tables) and BEFORE `loot_volume_trim` + `orb_legendary_chance`. No supra formula/thrown record is written by any of the b84-87 modules; the RECORD intersection is EMPTY.
+
+**WILL, VERBATIM (2026-08-11):** LAW A "ok for the four epic craftable reagent's, we need to change it so that one of the items needed to craft the formula needs to be found in legendary like the rest of the craftable supra recipes." LAW B "each craftable supra should have different requirements (we should not have two formulas that both require stymphalian, plisskey, and deathweavers legtip)." LAW C "the last word should not be dropped in epic, only legendary."
+
+**WHAT IT IS:** R-244 - **14 formula reagent repoints + 4 loot memberships, no new record, no formula/result change.** Ten LAW-B de-duplications (one `reagent1BaseName` each on the axe/mace/sword/bow duplicate groups) collapse the build83 arz's 5 duplicate groups over 15 of 42 craftables to **42 distinct reagent sets**; four LAW-A gates swap each thrown recipe's plain Common wand (`reagent2BaseName`) for a Legendary-only component; LAW C is carried by `svc_craft_thrown.THROWN_MEMBERS['e']` (the 4 supra thrown leave `svc_unique_thrown_e01` and stay on `svc_unique_thrown_l01`) so one module never writes another's record. Ruling: `docs/WILL_RULINGS.md` -> R-244. Guide: `docs/SUPRA_CRAFTING_GUIDE.md`.
+
+**COUPLED (arz + Text.arc, NOT arz-only).** The lane also fixes a b66 typo caught by the round-2 vet: `uber_orphan_weapons._FORMULA_TAGS['tagSVCRecipeHati']` **`'Arcane Formula - Hati' -> 'Mythic Formula - Hati'`** (every one of the 42 siblings reads "Mythic Formula"; Hati alone said "Arcane", the base game's ORDINARY-tier name). It is a **single `modstrings.txt` line**, tag NAME and all wiring untouched. Shipping the frozen `ce0efda4` Text would render Hati's formula with the wrong tier word, so the coupled Text is rebuilt: **`Text.arc` `ce0efda4 -> 021cc138`**, `validate_tags` PASS on the rebuilt pair (the coupling is PROVEN, not waived).
+
+**THE ARTIFACT:** work `SoulvizierClassic.arz` = **`83a096636cf4b5f8c13a1b813cc674ba`** (55,581,709 B, **14 B smaller** than build87 `3c88e537` 55,581,723 B - the LAW-C table compaction; kept at `local/build88_run1.arz`) + coupled `Text.arc` = **`021cc138c3d5405ece8bf6eefc786bf8`** (`local/build88_text_021cc138.arc`). Record count **51,298 -> 51,298**. Canonical `Levels.arc 6784cf0f` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` **md5-proven byte-unchanged** (no map/quest/creature rebuild).
+
+**RECORD-DIFF vs build87 `3c88e537`: ADDED 0 / REMOVED 0 / MODIFIED 16, ZERO unexplained.** **15 are the supra lane's own writes:** (a) **14 supra formula records**, one `reagentBaseName` each - 10 LAW-B de-dup on `reagent1` (`wep_sword`/`wep_axe`/`wep_club`/`wep_dagger`/`wep_bow` + `svc_axe_charybdis`/`svc_axe_erysichthon`/`svc_axe_furies`/`svc_axe_scylla`/`svc_mace_doomherald`) and 4 LAW-A thrown gate on `reagent2` (`charonstoll` -> `u_l_essenceofstyx`, `hati` -> `u_l_artemis'silverbow`, `sanguineorbit` -> `u_l_bloodofouranos`, `lastword` -> `u_l_scepterofthanatos`); (b) **`svc_unique_thrown_e01.dbr`** (14 fields) - the 4 supra thrown members removed and the table compacted (LAW C), `lootWeight5-8 -> 0`. **The 16th, `uberorb_default_e01c.dbr`** (`loot1/2/5/6Chance 41.599998 -> 41.700001`) is a **DETERMINISTIC in-band R-242 recalibration caused by LAW C** (removing the 4 supra thrown from the Epic thrown table shifts one pool, so the orb re-hits its 50% Epic-legendary target; the R-242 gate PASSES), **NOT a supra write**.
+
+| gate | result |
+|---|---|
+| det byte identity (det-2x) | **PASS** - `83a096636cf4b5f8c13a1b813cc674ba` == same across two independent COLD builds (`SVC_NO_CACHE=1`, `PYTHONHASHSEED=0`); run1 into the work/ layout ran the FULL gate battery GREEN under `SVC_REQUIRE_GATES=1`, **exit 0** (A9 render-chain, F2 summons-contract, A7 golden freeze, unlock-alignment, DLC-act cap, Atlantis voyage cap all green). run2 into scratch reproduced the byte-identical arz (its exit 1 is only the A9/F2 gates being unavailable outside the work/ layout, after the arz was already written). |
+| supra gate `tools/gate_supra_recipe_laws.py` (S1/S2/S3/S4) | **PASS** - 42 craftables (59 formula records), **42 distinct reagent sets, 0 duplicate groups**, **45 of 92** distinct reagents Legendary-only, thinnest craftable carries 1, **4 supra items loot-reachable and 0 below Legendary** |
+| negtest `tools/debug/negtest_supra_recipe_laws.py` | **PASS - 13/13 behave, exit 0** (N0 control GREEN; N1 replants the shipped defect -> S4 RED; N2/N2b/N2c/N2d/N2e the LAW-A craft-path family; N3 unhooked gate; N4 dup set; N5 formula disagreement; N6 dead-axe-twin; N7 non-thrown supra in a table -> S4b; N8 over-applies LAW C -> S4c) |
+| `run_contracts.py` (arz + coupled Text + canonical Levels/Quests/Creatures) | **PASS - 0 P0 / 0 P1 / 4510 P2** across 6 modules = the build87 baseline EXACTLY, zero new violation |
+| `validate_tags.py` (arz vs REBUILT `021cc138` Text) | **PASS** - every referenced + authoritative mod tag resolves; 2 pre-existing base/SV monster-name WARN (`tagNewMonster66`/`46`, non-blocking, = build87 baseline) |
+| canonical `Levels.arc` / `Quests.arc` / `Creatures.arc` | **byte-unchanged** `6784cf0f` / `607ec99c` / `8c0d8d53` |
+
+**DEV:** targeted COUPLED arz+Text copy, **md5 source==dest** (`83a09663` / `021cc138`), TQ.exe NOT running (nothing killed, Steam not restarted). **2 of 20 DEV files changed** (arz `3c88e537 -> 83a09663`, Text `ce0efda4 -> 021cc138`), the other 18 byte-identical. **DEV `Levels.arc` stays TESTHUB `7a7ca9ac`** (Will's play surface, untouched); DEV Quests/Creatures byte-unchanged.
+
+**PACKAGED (not uploaded):** TESTHUB guard **PASS** (packaged canonical `6784cf0f`, NOT the local-only TESTHUB `7a7ca9ac`), single `SoulvizierClassic` wrapper, 56 files / 1188.4 MB, **dist==work all 5** (arz `83a09663`, Levels `6784cf0f`, Text `021cc138`, Quests `607ec99c`, Creatures `8c0d8d53`). Dist: `dist/workshop/content/SoulvizierClassic`. **The Steam upload (item 3759792705) + GitHub push are the MAIN SESSION's to run. READY FOR STEAM UPLOAD: BUILD88, arz `83a096636cf4b5f8c13a1b813cc674ba` + coupled Text `021cc138c3d5405ece8bf6eefc786bf8`.**
+
+**Rollback (one step, COUPLED):** `local/DEV_arz_deployed_prev.arz` = build87 `3c88e537` + `local/DEV_text_deployed_prev.arc` = build87 `ce0efda4` -> restore BOTH together (arz+Text coupling).
+
+**OPEN DEBTS (surfaced, not silently done):**
+- **`BL-R244-DEBT-1` (P2, Will-facing):** Will asked about more orphaned spears made into supra formulas. Analysis stands: any new spear supra must be AUTHORED FROM SCRATCH (new item record cloned from a live base-game spear + new Text tag + ART); no free orphan spear exists to promote. Not a gate action.
+- **`BL-R244-DEBT-2` (P3):** `m_vit_wand_01/02/03` (Reaver's Wand) are no longer reagents of anything after the LAW-A swaps; harmless orphan, flagged for a later cleanup lane.
+- **`BL-R244-DEBT-3` (P2, LAUNCH-GATED): NOT PROVEN IN-GAME.** Everything above is a database + gate result. Will's DEV check: on **Epic**, open mod chests and confirm NO red-name thrown supra drops; craft Hati and confirm its recipe now **reads Artemis' Silver Bow**; on **Legendary**, confirm the four supra thrown still drop. Fully quit TQ + restart Steam first.
+- **`BL-R244-DEBT-4` (P2, belongs to the chest-table owner, not this lane):** an EPIC mod chest pays a LEGENDARY formula (`l_da_thothsglory_formula` et al) on 15 of 16 Epic surfaces - a chest-WIRING tier-discipline defect (R-100 #17) that predates R-244 and is orthogonal to it (the supra gate's `obtainable_below_legendary` recursion already accounts for it correctly).
+
+## LANE RECORD - b88 WARDEN AWAKENING: the Sparta Crypt Warden (and every remote boat NPC) is AWAKENED before it is offered (2026-08-12, branch `fix/warden-awakening`, base `8035da0` = build87 ship) - QUESTS.ARC BUILT det-2x + ALL GATES GREEN; NOT INTEGRATED, NOT DEPLOYED, NOT ON STEAM, NO TAG
+
+**WILL'S BUG, VERBATIM (STILL BROKEN ON STEAM after b63):** "when I click on the guy who travels you to the spartan crypt (warden of the spartan crypt) nothing happens, no dialog box comes up, nothing."
+
+**ROOT CAUSE, byte-proven against the deployed `Quests.arc 607ec99c`:** the Warden's trigger is `Condition_OnLevelLoad -> [Action_BoatDialog]` **alone**. b63 pulled the wrong lever - it moved the route from the enter-offer tail slot into the hub block (a REGISTRATION-ORDER change) and the action set never moved, so nothing about the in-game behaviour could change. A **remote-level** boat NPC (one the player teleports INTO, as opposed to a plaza traveler co-resident with the level whose load fires the trigger) is never awakened, so it renders and is **unclickable**. `build_svc_database._import_dialog_needed` states the engine rationale: the "Dialog Needed" DialogPak *"makes NPCs clickable when assigned via Action_UpdateNPCDialog. Without it, NPCs render but have no yellow icon and can't be clicked."* That is Will's symptom word for word.
+
+**THE FIX IS DRX/SV-UPSTREAM-AUTHENTIC, not invented here.** The Leinth exit vortex "Ioannes" (`vortexportal_exit.dbr`, remote `bossfight.lvl`, teleports the player out) carries `[OpenDoor,] ShowNpc + UpdateNPCDialog + BoatDialog` in the **upstream SV XPack bytes** this repo ports byte-for-byte, and the project already adopted the pattern twice (`cb372fe` `_promote_leinth_exit_fallbacks`, `d9f6647` `_add_leinth_exit_nokill_fallback`). The pair is now PREPENDED, ahead of the unchanged BoatDialog(s), in all three SVC boat generators - `_add_helos_traveler_hub_travel` (the Warden + every `svc_area_return_*`), `_add_testhub_portal_travel` (the 5 `svc_testhub_return_*`), `_add_traveler_enter_offers` (the uber enter-offer). **31 triggers upgraded.**
+
+**SCOPE IS UNIFORM, STATED PLAINLY:** the 14 co-resident plaza travelers are UPGRADED too, not left a second class. Safe + idempotent by the reasoning b48/b94 already ship on (ShowNpc on an already-shown NPC and re-assigning the standard pak are both no-ops). The SVAERA-authored `portal_master_helos` trigger (`_add_helos_portal_travel`) is the ONE boat trigger deliberately left UNCHANGED - out of this lane's named scope, co-resident in the Helos plaza, and reported-not-faulted by the new gate.
+
+**ARTIFACTS: `Quests.arc` ONLY.** No arz, no map, no Text, no new record, no new tag, no new QUESTS registration (every trigger still rides the already-registered `sv_commonmechanics` host step). `records\dialog\story\dialog needed.dbr` is ALREADY in the shipped arz `3c88e537` (verified present, alongside all 30 SVC boat NPC records), and the deployed vortex references the identical literal and resolves. Structural proof that no other artifact can move: **no arz/map/Text builder imports `build_quest_files`** (`build_svc_database`, `apply_svc_patches`, `build_section_surgery`, `svaera_plus_portals` reference it only inside comments; the only importers are four read-only `tools/debug` gates).
+
+**BUILD (det-2x byte-identical, `PYTHONHASHSEED=0`):**
+- Harness fidelity FIRST: the **UNPATCHED** code rebuilds the shipped arc EXACTLY - `607ec99cbf5fd97135204ad465130722`, 194,963 B. So the diff below is attributable to this change and nothing else.
+- Patched: **`736cd50a3540a010e2678520922e03ce`, 195,476 B (+513 B)**, identical across 3 independent runs (the 3rd with the in-build contract wired = byte-neutral).
+
+**DECODE PROOF (BEFORE vs AFTER, adversarial):** 107 -> 107 arc entries, `CHANGED = ['sv_commonmechanics.qst']` **and nothing else**; `open_bloodcave_portal.qst` (the reference vortex) byte-identical; host step 1 `max` 33 -> 33, triggers 33 -> 33, boat actions 39 -> 39, 367 steps unchanged. All **31 upgrades are a PURE PREPEND** of `[ShowNpc, UpdateNPCDialog]` onto the unchanged BEFORE action list - trigger headers, conditions and every BoatDialog payload (`npc/onOff/x/y/z/tag`) byte-identical, and both awakening blocks field-for-field equal to the vortex (including its odd `UpdateNPCDialog.delayTime` = uint32 `0x40000000` = IEEE float 2.0, preserved deliberately rather than "normalized" - it is the only awakening shape with upstream provenance).
+
+```
+WARDEN  'SVC: Helos Traveler Hub 00' (svc_warden_sparta_crypt, remote CataCube02_FloorLast)
+  BEFORE [Action_BoatDialog]
+  AFTER  [Action_ShowNpc, Action_UpdateNPCDialog, Action_BoatDialog]  dialog=Records\Dialog\Story\Dialog Needed.dbr
+RETURNS 'SVC: TESTHUB Return NPC (svc_testhub_return_{garden,secret,uber,sparta,bossarena}.dbr)'
+  BEFORE [Action_BoatDialog, Action_BoatDialog]
+  AFTER  [Action_ShowNpc, Action_UpdateNPCDialog, Action_BoatDialog, Action_BoatDialog]
+HUB+RET 'SVC: Helos Traveler Hub 01..24'  (14 plaza outbound + 10 svc_area_return_*)
+  BEFORE [Action_BoatDialog]        AFTER [Action_ShowNpc, Action_UpdateNPCDialog, Action_BoatDialog]
+OFFER   'SVC: Traveler Enter-Offer 00' (svc_area_return_uber)
+  BEFORE [Action_BoatDialog]        AFTER [Action_ShowNpc, Action_UpdateNPCDialog, Action_BoatDialog]
+UNCHANGED 'SVC: Helos Portal-Master - SV Area Travel' (portal_master_helos) = 3x Action_BoatDialog
+```
+
+**R-170 + ITS AMENDMENT PRESERVED EXACTLY:** the Warden still owns EXACTLY ONE route, `tagSVCEnterSpartaCrypt` ("Descend into the Sparta Crypt"), dest `(-5596,-2,-1410)`, **descend-only, no Helos-return port**. `_HUB_PLUS_ENTER_TRIGGERS = 26` conservation holds untouched.
+
+**GATES:** contracts `--only quests` on the new arc **0 P0 / 0 P1 / 2 P2**, and the BASELINE arc under the identical config also gives **0 P0 / 0 P1 / 2 P2** - **ZERO new violations** (the 2 P2 are the pre-existing `QST-TAG-PLACEHOLDER` pair on `open_bloodcave_portal.qst`). `tests_quests_negative` **31/31 PASS**. `gate_traveler_responds` PASS three ways (`--specs`, `--specs --canonical`, and against the built `Quests.arc` + canonical `Levels.arc` pair - 31 route owners / 39 routes UNCHANGED, host quest at QUESTS index 96 of 255, in-window). `gate_travel_npc_invariants` PASS. `negtest_warden_dialog` **10/10** PASS. `validate_tags` PASS (383 mod tags, **0 new**, the 2 documented pre-existing WARNs). In-build: quest-record contract PASS (107 records) + the new awakening contract PASS.
+
+**NEW PERMANENT GATE `tools/debug/gate_boat_npc_awakening.py` (A0-A6), wired into `build_quest_files.main()` against the WRITTEN arc.** Its NPC roster is DERIVED from `HELOS_HUB_TRAVEL` + `TESTHUB_AREA_RETURN_NPCS` + `TRAVELER_ENTER_OFFERS` at run time, so adding a traveler without the awakening pair reds it instead of shipping mute. **ANTI-INERT PROOF (the b82 discipline - reproduce the defect as an artifact fact first):** run against the DEPLOYED/Steam `607ec99c` it **EXITS 1** with 31 `A1` violations + `A6` naming all 30 SVC boat NPCs, `svc_warden_sparta_crypt` among them - i.e. it would have caught BOTH the 2026-08-06 and the 2026-08-10 regressions. Planted-defect suite `--negtest`: **5/5 caught** (`strip_pair` = the exact b63 shipped state, `wrong_pak`, `pair_after_boat`, `npc_mismatch`, `bad_count`) with the positive control green.
+
+**WHY THE SIX EXISTING TRAVEL INVARIANTS DID NOT CATCH THIS:** `G-COLLISION` / `G-WARDEN` / `G-ORPHAN` / `G-DEST` / `G-SOLE-SOURCE` / `G-DIALOG-CHAIN` all assert that a route EXISTS, is UNIQUE in its level, has a real destination and lives in an in-window quest. Every one of them is GREEN on the deployed bytes in which the Warden is mute. None looks at the ACTION SET, which is where the defect lives. That gap is now closed.
+
+**DEBT / OPEN:**
+- `BL-b88-DEBT-1` (P0, launch-gated) - **NOT PROVEN IN-GAME.** Will's check: fully quit TQ + restart Steam, then click the **Warden of the Spartan Crypt** by the stairs-down in `CataCube02_FloorLast`; the one-option "Descend into the Sparta Crypt" menu must open. Worth clicking an `svc_area_return_*` / `svc_testhub_return_*` in the same run.
+- `BL-b88-DEBT-2` (P1, honesty) - **no remote boat NPC in this mod has a recorded in-game confirmation yet.** The vortex exit that supplies the reference shape is itself playtest-pending (`BL-b94-DEBT-10`). This fix is evidence-backed (upstream-authentic + engine rationale + exact symptom match), **NOT Will-confirmed**. If the Warden is still mute the next lever is the **GridEntrance door** (the proven build24/25 Knossos-to-Uber mechanism), which the b63 ledger entry already named as the fallback.
+- `BL-b88-DEBT-3` (P2) - the 2-second `UpdateNPCDialog` delay is inherited from upstream, unexamined. If the awakening works but feels laggy on level entry, `_AWAKEN_DIALOG_DELAY` is a one-constant change that should be re-gated, not assumed.
+- `BL-b88-DEBT-4` (P2) - `portal_master_helos` (Almyros) was left on BoatDialog alone. He is co-resident and works, so this is deliberate, but he is now the only boat NPC on the old shape.
+
+**NOT INTEGRATED / NOT DEPLOYED / NOT ON STEAM / NO TAG.** The lane is a worktree only (`.claude/worktrees/wt-warden`, branch `fix/warden-awakening` off `8035da0`); the MAIN session ships serialized. The MAIN checkout's five artifacts were re-hashed at the end of this lane and are UNTOUCHED: `Quests.arc 607ec99c` / `Levels.arc 6784cf0f` / `Text.arc ce0efda4` / `Creatures.arc 8c0d8d53` / arz `3c88e537`. **DEPLOY NOTE: `Quests.arc` is variant-independent, so ONE rebuild fixes canonical (Steam) + TESTHUB together; the arz and map need no rebuild, and the Levels+Quests deploy coupling is satisfied trivially because Levels does not move.**
+
 
 ## BUILD87-DEV GATE RECORD - R-243 lower soul drop rates (non-fixed 33->20, fixed-location boss 25->10); arz-ONLY - BUILT det-2x, ALL GATES GREEN, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING (2026-08-12, `main` fast-forwarded `e0cf0d7` build86 -> `5395334` via `git merge --no-edit fix/soul-rate-10-20`, then followup `5b81ee4` + this gate-record commit).
 
@@ -1272,6 +1397,226 @@ Will's test pass**, not a static claim.
 - **`BL-DAGON-SOULTAG-1`** (carried from b52, still open) - `tagSVCSoulDagon` is defined twice with
   different values (`'{^F}Dagon Soul'` and `'{^F}Soul of Dagon'`); first-wins picks one. Harmless,
   worth reconciling.
+
+---
+
+## LANE RECORD - R-244 THE THREE SUPRA-CRAFT LAWS: every recipe is Legendary-gated, all 42 reagent sets are different, and no supra drops on Epic (2026-08-11, branch `fix/supra-legendary-gate`, module `tools/patches/supra_recipe_laws.py`)
+
+**STATIC GATES ONLY - this lane does not build.** Every number below is measured on the build83 SHIP
+arz `44499f56ed52bc91219db64eb4de2f11` (51,253 records), with this lane's two writes applied to an
+in-memory copy of it (`svc_craft_thrown.ensure_thrown_tables` + `svc_supra_recipes.apply_recipe_overrides`,
+both idempotent). Ship builds the arz and re-runs the battery.
+
+### WILL'S THREE RULINGS (verbatim in `docs/WILL_RULINGS.md` R-244)
+A "one of the items needed to craft the formula needs to be found in legendary like the rest";
+B "each craftable supra should have different requirements";
+C "the last word should not be dropped in epic, only legendary".
+
+### WHAT WAS WRONG, AND THE BEFORE/AFTER
+| law | offenders BEFORE | AFTER |
+|---|---|---|
+| **A** every recipe has a Legendary-only reagent | **4 of 42** (Charon's Toll, Hati, Sanguine Orbit, The Last Word - exactly the four Will named; the other 38 were already gated) | **0** - every craftable carries at least 1; **45 of 92** reagents are Legendary-only |
+| **B** no two recipes share a reagent set | **5 duplicate groups over 15 craftables** - a SIX-way axe group (Charybdis, Darkflame, Erysichthon, Phoenix Ascendant, Scylla, Wrath of the Furies), a three-way mace group (Omega, Sword Fish, Doomcaller's Maul), and the pairs {Aquimae, Crystal Tear of Nyx} (Will's own example), {Ripulsar, Shrike}, {Stormbringer, Ten Suns' Wrath}. 32 distinct sets | **0 duplicate groups, 42 distinct sets** |
+| **C** no supra item below Legendary | **4** - the supra thrown were members of `svc_unique_thrown_e01` as well as `_l01`; via `svc_unique_weapons_e01` that reached **all 16 Epic chest surfaces, through 24 loot tables** (every Epic mod chest, general's hoard, polis vault, the blood-cave mega chest, the Epic uber orb tables). Per tier: N 0 / **E 4** / L 4 | **N 0 / E 0 / L 4** |
+
+**THE LAST WORD HAS NO NAME TWIN.** Exactly one record in the database carries that name -
+`records\drxitem\supra\svc_wep_lastword.dbr`, `itemNameTag = tagSVCwpnLastWord`. Nothing to
+disambiguate; the record Will saw is the record that was on the Epic table. **0 monsters** pay any of
+the 42 supras, and the other 38 are named by no loot table at any band, so the b81 round-2 merge left
+no residue anywhere except this one table.
+
+### THE FIX: 14 formula fields + 4 loot memberships. No new record, no formula/result change.
+| law | write | where |
+|---|---|---|
+| A | 4 formulas, slot 2 (the plain Common wand) repointed | `svc_supra_recipes.RECIPE_OVERRIDES` |
+| B | 10 formulas, one slot each repointed | same table |
+| C | 4 memberships removed from `svc_unique_thrown_e01` | `svc_craft_thrown.THROWN_MEMBERS['e']` (the module that OWNS the table) |
+
+**LAW A's four picks** (thematic, four different item classes so the recipes do not funnel onto one
+farm surface, all Legendary-only, all on 19/19 legendary chest surfaces):
+Charon's Toll <- **Essence of Styx** (the toll is paid on the river he ferries) |
+Hati <- **Crescent Moon of Artemis** (the wolf is handed the moon he chases) |
+Sanguine Orbit <- **Blood of Ouranos** (sky-blood, still falling) |
+The Last Word <- **Scepter of Thanatos** (Death gets the last word).
+
+**LAW B's ten** keep the DRX-authored original of each group on its original reagents:
+Erysichthon's Undying Hunger <- Erysichthon's Hunger, Phoenix Ascendant <- Phoenix, Wrath of the
+Furies <- The Furies, Scylla Unbound <- Cerberus' Bite, Charybdis Unchained <- Acheron's Touch
+(Darkflame Devourer keeps Pyrophoric Lop); Sword Fish <- Kraken's Fist, The Doomcaller's Maul <- Horn
+of Tiamat (Omega keeps Sapros the Corrupter); Aquimae <- Pagos, Shrike <- Stymphalian Talon (Crystal
+Tear of Nyx and Ripulsar keep theirs); Ten Suns' Wrath <- Qin Warbow (Stormbringer keeps Khamsin).
+
+### THE COLLATERAL ANALYSIS THAT CHOSE PER-RECIPE OVER THE ONE-MOVE FIX
+The elegant LAW A fix was to promote the shared `u_vit_wand` (Scepter of Eternal Love) off the Epic
+thrown table: one membership, four recipes fixed, no formula edited. **It was built, measured, and
+rejected - it reds C1 on every Epic mod chest in the game.**
+
+* the monster half of the promotion analysis HOLDS and is kept: `u_vit_wand`'s four live carriers
+  (`d_reaver_40/41/42` + `svc_leinth_guard_reaver`) read three-element per-difficulty loot arrays
+  whose Normal and Epic entries DRX disabled with their own `x`-prefix convention, reaching the item
+  only through the LEGENDARY `03_m_wands` master. So the mod's own Epic table really was the only
+  sub-Legendary path;
+* **but** the entire `WeaponHunting_RangedOneHand` universe at `itemClassification = Legendary` is
+  **FIVE records** - `u_vit_wand` plus the four supra thrown. (The class splits Common 3 / Rare 3 /
+  Epic 3 / Legendary 5, and the three Epic ones are `records\item\formulaitems\*` craft RESULTS
+  that no loot table pays.) `SLB.TARGET_IC['e']` is **Legendary**, so C1 ("the thrown class is
+  payable at its own tier") can only ever be satisfied by one of those five. LAW C removes four of
+  them; promoting `u_vit_wand` removes the fifth. Authoring a new droppable Legendary thrown purely
+  to feed the gate is a new item class, not a smallest-correct change.
+
+So `u_vit_wand` STAYS at weight 100 on the Epic table as its C1 carrier, and slot 2 carries the gate.
+Cost: `m_vit_wand_01/02/03` stop being reagents. They are NOT orphaned - they are the Common thrown
+band that keeps C2 (thrown payable on Normal) satisfiable, and they remain on all three tables.
+
+**R-180/R-186 NON-REDUCTION IS SUPERSEDED FOR EXACTLY 4 MEMBERSHIPS AND NOTHING ELSE.** There is no
+additive way to make an item stop dropping. Every SURVIVOR gains: the Epic thrown table goes 155 ->
+115, so `u_vit_wand` rises 64.5% -> 87.0% of a thrown roll and each Common vit wand 3.2% -> 4.3%.
+`THROWN_MASTER_WEIGHT` is untouched, so how often thrown rolls at all does not move.
+`svc_unique_thrown_l01` is unchanged at 155, which is what makes LAW C a relocation and not a
+retirement - rule S4c reds if a later lane finishes the job Will did not ask for.
+
+### GATE RECORD (all static, all on the post-wave in-memory db)
+| gate | result |
+|---|---|
+| `SSR.audit_supra_laws` (S1/S2/S3/S4) | **PASS - 0 problems.** 42 craftables / 59 formulas, **42 distinct reagent sets, 0 duplicate groups**, **45 of 92** reagents Legendary-only, every craftable carries >= 1, **4 supra items loot-reachable and 0 below Legendary** |
+| `SCT.audit_db` (F1 formulas, G1/G3/G4 reagents, C1/C2 thrown) | **PASS - 0 problems.** 42/42 craftables formula-reachable on N, E and L; **92 reagents = 22 MI + 64 ordinary + 6 artifact** + **0 missing**; **71** reachable from Legendary chests; **thinnest non-MI spread 19 of 19** legendary surfaces (floor 10); **51 mod chest tables audited for thrown** |
+| `SLB.audit_db` (B1/B2/B3 chest breadth + C1/C2 per chest) | **PASS - 51 chest tables, 0 problems.** This is the gate that would have caught the rejected one-move fix |
+| `py tools/debug/negtest_supra_recipe_laws.py` | **PASS - 13/13 behave, exit 0.** N0 control GREEN; **N1 = the shipped defect replanted** (4 supra thrown back on the Epic table) reds S4; N2/N2b demote a LAW B / LAW A replacement onto an Epic table and red S1; **N2c** puts Hati's gate back on the Epic-craftable Crescent Moon (the craft arm fires); **N2d** is its false-red guard (the deep-gated divine artifacts must still count); **N2e** makes Thoth's Glory's own chain Epic-satisfiable **without touching a loot table** - round 2's rule could not see that plant, round 3's reds on it; N3 unhooks a gate reagent entirely (uncompletable is not gated); N4 plants a duplicate set; N5 makes two formulas of one craftable disagree; N6 points a reagent at its dead `records\equipmentweapon\axe\` twin; **N7** plants a non-thrown supra into a table (S4b); **N8** over-applies LAW C by stripping the Legendary table too (S4c) |
+| standalone `py tools/gate_supra_recipe_laws.py <build83 arz>` | **RED, as it must be** - 3 offenders on the unfixed baseline (S1 4 craftables, S2 5 groups, S4 4 items on E/L) |
+
+**A DEFECT THIS LANE FOUND IN ITS OWN IN-FLIGHT WORK, caught by rule S3:** the LAW B table pointed Ten
+Suns' Wrath at `u_e_zhurong'sfirebow`, which an **EPIC** chest pool reaches - it would have
+de-duplicated the recipe while adding no gate, and the module's own docstring claimed every
+replacement was Legendary-only. Corrected to `u_l_qinwarbow` (Legendary-only; Hou Yi's ten-suns myth
+is Chinese, so it is also the better amgoz1 pick).
+
+### RECORD INTERSECTION WITH THE THREE LANES AHEAD OF THIS SHIP
+b84 `fix/loot-volume-trim` writes chest/orb VOLUME records; b86 `fix/soul-rename-ratified` writes soul
+records; b87 `feat/charon-rework` writes the Golden Bough forecourt monster. **None writes a supra
+formula or a thrown table, so the record intersection is EMPTY.** Shared FILES: `tools/patches/__init__.py`
+(one REGISTRY line), `tools/svc_craft_thrown.py` (b81's module, one dict + its comment block),
+`docs/BACKLOG.md`, `docs/WILL_RULINGS.md`, `docs/SUPRA_CRAFTING_GUIDE.md`. Re-run
+`gate_craft_thrown_breadth`, `gate_chest_loot_breadth` and `gate_orb_loot_breadth` at ship, after the
+merge.
+
+### DEBT REGISTERED BY THIS LANE
+- **`BL-R244-DEBT-1` (P2, Will-facing):** Will asked "are there any other orphaned spears that we can
+  make craftable supra formulas for? there is only one craftable spear but there is a ton of swords
+  and other weapons of the different types". **The orphan pool is EMPTY, measured, not thin.** 0
+  Legendary-classification spears that nothing in the database names; **no dead twin folder for
+  spears at all** (`records\equipmentweapon\` holds ONE subfolder, `axe`, with 151 records - the
+  14-dead-axe case has no spear analogue); 22 of the 24 Legendary spears are chest-reachable and the
+  other 2 are purposed (`drxitem\supra\wep_spear` = Blood Whisper, the craft-only supra;
+  `svc_l_runbreaker` = the mod's own guaranteed drop); of 32 Epic-classification spears exactly 2 sit
+  outside the chest pools and both are purposed (`svc_e_runbreaker`, `f_e_leisimpaler`); the 101
+  `\spear\default\` and 39 `\spear\old\` records are base random-generation art and dev-era
+  duplicates: **0 of the 141 carry an `itemLevel`**, which is the evidence that settles it. (Round 2
+  correction, measured: `\spear\default\` holds **102** records, not 101, and while all 102 lack an
+  `itemNameTag`, **all 39 `\spear\old\` records DO have one** - the round-1 sentence "no itemLevel, no
+  unique name tag" was true of `default\` and false of `old\`. The conclusion is unchanged because it
+  rests on `itemLevel`, but the name-tag half was wrong and a later lane must not trust it.)
+  **ROUND-2 CORRECTION TO THE COST, and this is the part Will should re-read before ruling.** Round 1
+  told him new spear supras "must be AUTHORED FROM SCRATCH - new item records + new Text tags + ART".
+  **The art claim is disproved by our own shipped code.** `tools/patches/uber_orphan_weapons.py` (b66)
+  promoted 14 weapons to the supra tier and its docstring states every result "KEEPS its orphan's
+  mesh/skin/icon (**no new art** - Will's efficiency law)"; further, **3 of those 14 (Hati, Sword Fish,
+  Di Jun's Pride) were BASE-GAME-ONLY records not present in this mod's database at all**, and were
+  reconstructed verbatim from the bundled field dump `tools/patches/data/b66_orphan_donor_fields.json`
+  (verified: the file holds exactly the 3 keys `hati`, `swordfish`, `dijunspride`). So (a) the donor
+  pool is **not** limited to orphans already in this arz, and (b) no art work is implied. The honest
+  cost per new spear supra is: **one result record cloned from a donor spear + one Text tag + one
+  formula shell + the loot wiring the other 42 already have** - a small content lane with a Text.arc
+  deploy coupling, still not a reagent edit, but nothing like "author from scratch with art".
+  **THE BASE GAME WAS THEN CENSUSED TOO (round 1 never did) AND THE ANSWER IS STILL NO.** Measured
+  directly on the base `database.arz`: **440 `WeaponHunting_Spear` records, exactly ONE named
+  Epic/Legendary record referenced by nothing** - `testpoisonspear`, lvl 52, `itemNameTag` =
+  **"BEST SPEAR EVER"**, a developer test asset. That is the whole pool. **Round 1's answer was right
+  and only its reasoning was too narrow**, and the reason is structural: the axe case yielded 14
+  orphans because `records\equipmentweapon\axe\` is a dead twin folder, and **spears have no such
+  folder**. Any new spear supra would be genuinely new content built on a *live* base-game spear
+  rather than a revived dead one - a different design act from the one Will asked about. This debt
+  stays open on that narrowed question only.
+- **`BL-R244-DEBT-2` (P3):** `m_vit_wand_01/02/03` (Reaver's Wand) are no longer reagents of anything.
+  They stay members of the thrown tables and this is a note rather than a leak. **Round-2 correction to
+  the reason:** round 1 said "rule C2 needs them there", and that is true of `m_vit_wand_01` ONLY -
+  C2 is the Normal-tier rule and `THROWN_MEMBERS['n']` names just `mi_vit_wand_01` + `m_vit_wand_01`.
+  `m_vit_wand_02` and `m_vit_wand_03` sit on the e/l tables only, where C1 is carried by `u_vit_wand`,
+  so **no rule needs those two**. Harmless either way, but a later lane retiring the Common band would
+  cost C2 only via `m_vit_wand_01`.
+- **`BL-R244-DEBT-3` (P2, LAUNCH-GATED):** NOT PROVEN IN-GAME. Everything above is a database and gate
+  result. Will's check: on **Epic**, open mod chests and confirm no red-name thrown supra drops; at an
+  Enchanter, confirm The Last Word's middle reagent now reads **Scepter of Thanatos** and **Hati's now
+  reads Artemis' Silver Bow**; on **Legendary**, confirm the supra thrown still drop.
+- **`BL-R244-DEBT-4` (P2, NEW in round 2, belongs to the chest-table owner not this lane):** an **EPIC
+  mod chest reaches the LEGENDARY arcane-formula tables on 15 of 16 Epic surfaces.** Traced concretely:
+  `svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table ->
+  l_da_thothsglory_formula`. So an Epic chest can pay a Legendary-tier divine-artifact formula. This is
+  a chest-WIRING tier-discipline defect (R-100 #17) that predates R-244 and affects every Legendary
+  item reachable that way, not just formulas. Fix it where it lives (the Epic chest/hoard wiring).
+  **ROUND-3 UPDATE: the gate no longer depends on this being fixed, and no longer looks away from
+  it.** Round 2 read a formula's **direct** table holders precisely to avoid this defect redding the
+  four Legendary divine artifacts - which meant the gate's stated reason ("the formula is the gate")
+  was false on exactly those four. Round 3 accepts the measurement (an Epic chest DOES pay them) and
+  proves the gate one level deeper instead: those formulas consume `l_ga_doxakalo` /
+  `l_ga_elementalrage` / `l_ga_totemofthepolymath` and the Legendary relic
+  `03_act4_cunningofoddyseus`, none of which anything below Legendary pays. Fixing the wiring will
+  change nothing about S1's verdicts; it will only remove a lie from the chest tables.
+
+### ROUND-2 CORRECTIONS (the vet caught LAW A failing on one of the four recipes Will named)
+- **HIGH, fixed:** Hati's round-1 gate `e_da_crescentmoonofartemis` passed S1 while gating nothing -
+  a divine artifact is **made**, not found, and its formula is paid by the four **EPIC**
+  `02_act*_arcaneformulae_table` records, so Hati stayed Epic-craftable inside its own fix. Now
+  **`u_l_artemis'silverbow`**: built by nothing, `u_l_` drop-only, **19/19 Legendary chest surfaces**,
+  reagent of nothing else. The four thrown gates stay four distinct item classes (amulet/**bow**/spear/mace).
+- **MEDIUM, fixed:** `legendary_only` gained **arm 5**, the craft-path check - arms 1-4 only ever asked
+  who PAYS an item, never who can BUILD it. `table_tier` widened to read the base game's spelled-out
+  convention (`xq04 - arcaneformulae_legendary`) so every table paying a formula can be classified.
+  Negatives **N2c** (replants the Hati defect, proves arm 5 fires) and **N2d** (false-red guard: the
+  four Legendary divine artifacts must still gate) added. **42 of 42 craftables are Legendary-gated
+  under the sound rule**, `artifact_mortoksskull` and `artifact_plus2` included and unedited.
+- **Doc corrections:** the "51 Epic surfaces" figure restated in all four places as **16 Epic chest
+  surfaces / 24 loot tables** (51 was the two-tier closure); the spear census's name-tag claim and
+  `\spear\default\` count corrected; `BL-R244-DEBT-1`'s cost estimate corrected against the b66
+  precedent; `BL-R244-DEBT-2`'s C2 justification corrected; the b81 thrown dict now states that its
+  slot-2 values are intent-and-assertion, not shipped values; Hati's formula tooltip reads **Mythic
+  Formula** like its 41 siblings.
+### ROUND-3 CORRECTIONS (the vet falsified round 2's *reason* on round 2's own evidence)
+- **HIGH, fixed:** round 2's craft check read only the tier of the tables that NAME a formula, on the
+  theory that "the formula is the gate". Measured on the lane-applied db, that theory is false on the
+  exact four formulas round 2 cited as its PASS evidence: **an EPIC mod chest reaches
+  `l_da_thothsglory_formula` and its three siblings on 15 of 16 Epic surfaces** (`BL-R244-DEBT-4`).
+  The 42/42 outcome was right, the mechanism was not, and a future divine-artifact reagent with no
+  Legendary member deeper in its chain would have PASSED while being fully Epic-craftable - round 1's
+  hole class. `legendary_only` now delegates to **`obtainable_below_legendary`**, one recursive
+  question asked at every depth: can a player who never enters Legendary end up HOLDING this record,
+  by drop or by craft? Measured evidence decides (chest pools -> upward table closure -> the formula's
+  own reagent slots, per SLOT because a slot is a per-difficulty array); the base game's record-name
+  tier convention is consulted **only** where this overlay arz cannot measure at all (`n_la_amberflask`
+  resolves, sits in no pool at any tier and is named by no table in the mod's 51k records - reading
+  that silence as Legendary would have turned round 1's defect back into a PASS).
+  **Same 45-of-92 outcome, now proved:** Thoth's Glory gates on `l_ga_doxakalo` +
+  `03_act4_cunningofoddyseus`; Ikon of Zeus on `l_ga_elementalrage`; Marduk's Tablet and Golden Eye on
+  `l_ga_totemofthepolymath`; Crescent Moon still reds, and the walk now shows WHY (all three slots of
+  its Epic formula are Epic-payable) instead of asserting it from a file name.
+- **New negative `N2e`:** make Thoth's Glory's own craft chain Epic-satisfiable without touching a
+  single loot table. Round 2's rule cannot see that plant; round 3's reds on it. **13/13 negatives.**
+- **MEDIUM, fixed - doc totals:** the reagent counts on this board and in the player guide were
+  round-1 numbers the round-2 correction pass updated only in `WILL_RULINGS.md`. Measured and now
+  consistent everywhere: **92 distinct reagents, 45 Legendary-only, 72 chest-payable, 20 that no chest
+  pays** (which are exactly 20 of the 22 Monster Infrequents; the other two greens, **Animus** and
+  **Perversion of the Bloodborn** `mi_vit_wand_01`, do sit in a chest pool), 71 Legendary-chest
+  reachable, `SCT` split 22 MI + 64 ordinary + 6 artifact.
+- **LOW, fixed:** `WILL_RULINGS.md` R-244 said "10/10 negatives behave" in its body and "12/12" in its
+  round-2 delta table. Both are now **13/13**, measured.
+- **The player guide's Mortok's Skull / All-Seeing Eye passages** told players the arcane formula was
+  the gate. They now name the Legendary greater artifacts and the relic that actually gate, and say
+  plainly that an Epic chest can hand you the formula.
+
+- **TWO THINGS NEEDING ONE WORD FROM WILL** (see `docs/WILL_RULINGS.md` R-244 round 2): (1) the four
+  supra thrown still drop on **Legendary** (N 0 / E 0 / L 4) - ratify or correct; (2) **LAW B is met at
+  the minimum** - 42/42 sets distinct, 0 duplicate groups, but de-duplicated recipes still share two of
+  three reagents (Will's own example, Aquimae / Crystal Tear of Nyx, still shares Plissken +
+  Deathweaver's Legtip). If "different" meant more than "not identical", the spread widens on request.
 
 ---
 

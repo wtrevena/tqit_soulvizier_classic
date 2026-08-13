@@ -1,11 +1,17 @@
-BUILD87 - Soul drop rates lowered further
+BUILD 89 - Travel NPCs answer again (Warden of the Spartan Crypt fix)
 
-Non-fixed / roaming bosses now drop their soul 20 percent of the time (was 33 percent).
-Fixed-location bosses now drop their soul 10 percent of the time (was 25 percent).
+- FIXED: the Warden of the Spartan Crypt did nothing when clicked. No dialog box, no
+  travel option, nothing. He now opens his menu and takes you down into the crypt,
+  which was the only canonical way into that area.
+- The same defect affected every traveller you reach by teleporting in: the
+  return-to-Helos NPCs in the Soulvizier areas and the enter-offer travellers.
+  All 30 travel NPCs are fixed by the same change.
+- Cause: an NPC you arrive at by teleport was never woken up, so the game drew him
+  but he had no clickable state. Every travel NPC is now woken up before his travel
+  offer is presented, using the same method the working Leinth exit portal has always
+  used.
+- The Helos plaza travellers that already worked keep the exact same routes and
+  destinations. No route, no destination and no dialog option changed anywhere.
 
-Unchanged: the four Toxeus champions still drop at 100 percent; trash monsters never drop
-a soul; the Soul Gaoler, Charon and Tantalus base forms still never drop (only their
-unbound final forms do); and the Charon and Hades encounter souls are unchanged.
-
-Database-only update. 888 boss and hero records were re-rated; the map, quests and text are
-unchanged, so existing characters and saves are unaffected.
+Quest data only. No database, map or text change: your characters, saves and items
+are untouched. Fully quit the game and restart Steam to pick up the update.
