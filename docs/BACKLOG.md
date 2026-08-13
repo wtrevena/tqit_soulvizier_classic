@@ -2,6 +2,68 @@
 
 ## LANE RECORD - R-245 UBER-LABYRINTH ENTRANCE (branch `fix/uber-labyrinth-entrance`, 2026-08-13; Levels+Quests coupled wave, arz/Text/Creatures byte-unchanged; BUILT + GATED in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
 
+### R2 ADDENDUM (same lane, same day) - R6 FORENSIC HYGIENE (wf_46ee9772 verified findings) FOLDED IN; FINAL ARTIFACT MD5s SUPERSEDE THE ONES BELOW
+
+**THE THREE R6 FIXES (the UX traps behind Will's scrambled-teleport session; all routes were
+byte-correct):**
+1. **PLAZA DE-CROWDING (Levels/TESTHUB only):** the 14 `svc_helos_trav_*` clones spanned ~15x5u
+   with pairwise gaps down to 1.66u (uber/bossarena) - Will clicked uber meaning sparta. NEW
+   `HELOS_HUB_PLAZA_SPECS` court layout: **min pairwise 4.10u**, >=3.16u from every clickable
+   quest NPC, all on-mesh comp#1 (11/14 at >=85% worst-tileset clearance; 4 documented CHECKs
+   at 72-79% - uber/bossarena/tantalus/obsidian - talk-NPC class, 75% devourer-return precedent).
+   Wings: west arc = the 4 established-area entrances, east column = warband/devourer/vashkarr,
+   north pair = dorus/tantalus, west yard = charon/ephialtes/obsidian, gate side = mnemophage,
+   front-east = bossarena. NO per-traveler visual distinction applied (no in-game-confirmed
+   distinct meshes/tints exist for these clones in our arcs) - **debt `BL-R245-DEBT-7`** below.
+2. **RETURN-LANDING HYGIENE (Quests):** the shared Helos-return dest `(-5980,1,909)` dropped the
+   player 1.12u from `trav_secret` INSIDE the cluster (the rebound trap). NEW shared landing
+   **`(-5974,1,911)`** = plaza-local (74,183): clr 100%x3, comp#1, **>=6.69u from every traveler
+   (TESTHUB) and >=6.96u from every clickable (canonical, Almyros nearest)** - and 6.96u in FRONT
+   of Almyros = the R5 "beside the entrance NPC" pattern for Garden/Secret. Applied to all 16
+   rows (TESTHUB_RETURN_DESTS + 2 BY_NPC secondaries + 9 HELOS_HUB_TRAVEL area-returns + the
+   garden/secret/bossarena shared rows), COUPLED to the plaza re-layout (never move one side
+   without re-surveying the other).
+3. **UBER LANDING OFF THE PORTAL PROP (Quests; was live on Steam too):** `(-2438,10,-2450)` sat
+   0.09u from the placed `portal_olympianarena2` prop. NEW **`(-2438,10,-2457)`** = crypt local
+   (140,225): portal prop 6.94u, in-crypt return NPC 4.00u dead ahead, urns >=5.7u, no
+   monster/proxy within 13u, clr 100%x3 comp#1. Same literal on BOTH routes in
+   (`HELOS_PORTAL_DESTS` Almyros + the promoted `HELOS_HUB_TRAVEL` uber entrance row).
+
+**FINAL ARTIFACTS + PROOFS (r2; commands in the lane worktree, `PYTHONHASHSEED=0
+SVC_RELEASE_DROPS=1`, scratch `SVC_OUT_DIR`):**
+- CANONICAL `Levels_merged.arc` = **`8b90214fae0edad73c01de3e9ab74f6b`** - BYTE-IDENTICAL to the
+  r1 build below (the R6 Levels change is TESTHUB-only; determinism re-proven by exact rebuild).
+  All r1 canonical proofs (maze03-only diff vs live 6784cf0f, navmesh identity, census) carry.
+- TESTHUB `Levels_merged_TESTHUB.arc` = **`d3acd2da4c168cb61eb1603a343acecd`** (supersedes
+  c338c2f6). Blob-diff vs r1 TESTHUB: **1 level changed (startingfarmland06d), exactly the 14
+  traveler instances moved (14 REMOVED old coords / 14 ADDED at the new spec coords), 0
+  navmesh(0x0b) changes**; every new spot + the landing PT-probed on THIS arc (d<=0.32u, comp#1).
+- `Quests.arc` = **`a585d7938f26d5340926582e8ad57c14`** (supersedes 4ad49ae4). Per-entry diff vs
+  shipped `736cd50a`: **110/110 entries, CHANGED = [sv_commonmechanics.qst] ONLY; 39 -> 38 boat
+  routes** = the R4 uber Helos-return removal + EXACTLY the 16 landing-literal updates above
+  (route-level decode: 17 removed / 16 added pairs, all accounted; all other routes
+  byte-identical). In-build quest-record + boat-NPC-awakening contracts PASS.
+- GATES (all vs the FINAL artifacts): `gate_traveler_responds` PASS (--specs, --specs
+  --canonical, and --quests+--levels vs the new pair); `gate_boat_npc_awakening` PASS 30/30;
+  `gate_travel_npc_invariants` PASS incl. T6 scans of BOTH new arcs; `gate_landing_clearance
+  --wiring v1` PASS 25/25 vs canonical (sep margin +2.00u) AND vs TESTHUB (142 pairs, margin
+  +1.83u = the established ~2.8u in-area return-beside-landing class); contracts `--only
+  map,quests` **0 P0 / 0 P1 / 8 P2 = the build90 baseline exactly**.
+- R5 STANDOFF EXCEPTIONS (documented, not silently waived): maze03 labyrinth-door landing keeps
+  its single-clickable 3.04u standoff (9.6x7.4u pocket, no cluster; the brief's own "3u-ish"
+  class); crypt landing 4.00u from its single return NPC; the 9 in-area `svc_area_return_*` NPCs
+  keep their established ~2.8u beside-the-inbound-landing standoffs (see-the-return-on-arrival
+  design, G-NPC-LANDING-SEP floor 1.0u). The >=6u rule is applied where the trap existed - the
+  Helos plaza cluster - on BOTH map variants.
+- **DEPLOY NOTE (R-240):** DEV's currently-deployed TESTHUB Levels predates the R-240 cage-split
+  placements (TESTHUB-only cage chests, `build_section_surgery` R-240 SPLIT); this lane's fresh
+  TESTHUB d3acd2da includes them - deploying it to DEV also delivers R-240's TESTHUB half.
+- **NEW DEBT `BL-R245-DEBT-7` (P3):** per-traveler visual distinction in the plaza (distinct
+  proven meshes/tints) - tooltips are the only differentiator today; do NOT invent unverified art.
+- **NEW DEBT `BL-R245-DEBT-8` (P3):** 4 plaza spots are 72-79% worst-tileset clearance CHECKs
+  (uber 86/79/74, bossarena 86/82/79, tantalus 85/80/77, obsidian 79/75/72) - in-game eyeball
+  during the walk test; nudge candidates pre-surveyed in the lane scratch if any looks wedged.
+
 **WILL'S THREE DECISIONS (2026-08-13; all five verbatim quotes in `docs/WILL_RULINGS.md` R-245):**
 promote the TESTHUB "Enter the Uber Dungeon" NPC to a CANONICAL Labyrinth-of-Knossos entrance
 (Almyros in Helos stays as the second route); the general rule "the only ones that should be

@@ -28,6 +28,22 @@
 > maze03 0x05 +1 instance; its navmesh byte-identical; the NPC's single route + awakening decoded in
 > the built Quests.arc; landing-clearance + traveler-responds + travel-invariants + contracts all
 > green) but NOT walked in-game by the implementer.
+>
+> ### 🆕 SAME WAVE (2026-08-13, R6 forensic hygiene - fixes the scrambled-teleport session):
+> 1. **Uber Dungeon arrival moved off the portal prop.** Both routes into the Uber Dungeon (Almyros
+>    AND the labyrinth traveler) now land you ~7u south of the alcove portal prop, in the open
+>    chamber, **4u in front of the in-crypt return traveler** - you no longer materialize ON the
+>    portal statue. Check: enter via either route -> you stand in the open with the return traveler
+>    clearly clickable ahead.
+> 2. **Helos plaza de-crowded (your TESTHUB map).** The 14 plaza travelers were 1.66u-apart twins;
+>    now EVERY pair is >=4.1u apart, arranged around a central **landing court**: west arc =
+>    Garden/Secret/Sparta/Uber (the 4 area entrances), east column = Warband/Devourer/Vashkarr,
+>    north pair = Dorus/Tantalus, west yard (through the wall gap, by the villagers) =
+>    Charon/Ephialtes/Obsidian, gate side = Mnemophage, front-east = Boss Arena. Hover tooltips
+>    name each one. Check: click the Uber traveler - you should never grab Sparta by accident.
+> 3. **Every "Helos (Return)" now lands you center-plaza, clear of ALL clickables** (>=6.3u from
+>    every traveler/NPC, ~7u in front of Almyros) - no more arrival mis-clicks bouncing you to the
+>    catacombs. Check: take any return -> you arrive on empty plaza ground facing Almyros.
 
 > ## 🆕 build89 / R-170 SECOND FOLLOW-UP (2026-08-12): THE WARDEN OF THE SPARTAN CRYPT SHOULD TALK NOW - **TWO-PART CHECK, DO BOTH**
 > **`Quests.arc` ONLY** - no database, no map, no text change. Your character, your saves and every

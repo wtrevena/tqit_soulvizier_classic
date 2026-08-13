@@ -7377,3 +7377,15 @@ remaining lever is the GridEntrance door (build24/25 Knossos-to-Uber mechanism).
 
 **DO NOT REGRESS:** never re-add `tagSVCAreaReturnToHelos` to `svc_area_return_uber`; never move
 him back against the door; never drop the maze03 placement from canonical.
+
+**R-245 ADDENDUM (same lane, 2026-08-13, R6 forensic hygiene - wf_46ee9772 verified; NOT a new
+Will quote, recorded here because it amends two literals stated above):** the enter route's
+crypt landing moved `(-2438,10,-2450)` -> **`(-2438,10,-2457)`** (the old spot was 0.09u ON the
+placed `portal_olympianarena2` prop; the new one is 6.94u clear, 4.00u in front of the in-crypt
+return NPC, clr 100%x3) - BOTH routes in (Almyros + the labyrinth entrance) share the new
+literal. And the shared Helos plaza return landing moved `(-5980,1,909)` -> **`(-5974,1,911)`**
+(the old spot was 1.12u from a plaza traveler INSIDE the clickable cluster - the rebound trap;
+the new one is >=6.69u from every traveler and >=6.96u from every clickable on both map
+variants, 6.96u in FRONT of Almyros, satisfying part 5's "beside the entrance NPC" for
+Garden/Secret), with the 14 TESTHUB plaza travelers re-laid to >=4.10u pairwise around it.
+Full proofs + debts: BACKLOG "R2 ADDENDUM" under LANE RECORD R-245.
