@@ -586,6 +586,25 @@ REGISTRY = [
                             # reds the build) and closed over actorToSpawnOnDeath. Every other
                             # Toxeus variant (Enslaver, both Endless Hunt forms) stays MARKED -
                             # Will asked for those explicitly.
+    'r247_boss_forms',      # R-247 rulings 3/5a/6 (Will 2026-08-13): Lethaeus core becomes the
+                            # ESCALATION (scale 3.1 / life 16-28k / hand 300-330, kit intact);
+                            # the Endless Hunt becomes an Undead GIANT SKELETON
+                            # (SkeletonRumorBoss.msh + NewSkeleton_White + anm_skeleton01, all
+                            # inline foreign-rig .anm rows cleared - the b98 demon body was the
+                            # b98 design, superseded by R-247.5a); his soul finally SUMMONS him
+                            # (pets toxeus_hunt_1/2/3 via _build_boss_summon from the FIXED
+                            # skeleton Hunt + summon_toxeus_hunt granted at tier 1/2/3);
+                            # enslaver/blood/hunt tier ladders raised (x1.5 epic / x1.75
+                            # legendary) + per-tier display names; +all-skills 1/2/3 law on the
+                            # family souls (+EoAT 3); the EoAT formula goes Legendary-classified
+                            # (visibility - the 100% drop wiring was measured CORRECT).
+                            # ORDER IS LOAD-BEARING, both sides: AFTER devourer_kit (it builds
+                            # the huntsman pack + hunt summon this identity pairs with; also
+                            # after every enslaver/blood pet writer so the tier retune reads
+                            # final values) and BEFORE toxeus_hunt_endless (um_toxeus_hunt_l_99
+                            # is a build-time clone of the base, so the Legendary variant
+                            # inherits the skeleton identity and the one-field-diff invariant
+                            # stays green; the module SystemExits if the clone already exists).
     'toxeus_hunt_endless',  # b98 (Will 2026-07-28, R-90): "yeah lets have the endless pursuit only
                             # be on legendary". Pursuit is a CONTROLLER property and both
                             # MaxPursuitDistance and PursuitTime are declared class="variable" in
