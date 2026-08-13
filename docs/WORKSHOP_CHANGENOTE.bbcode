@@ -1,17 +1,25 @@
-BUILD 89 - Travel NPCs answer again (Warden of the Spartan Crypt fix)
+BUILD 90 - Dagon, Lord of the Poisoned Deep no longer stands frozen
 
-- FIXED: the Warden of the Spartan Crypt did nothing when clicked. No dialog box, no
-  travel option, nothing. He now opens his menu and takes you down into the crypt,
-  which was the only canonical way into that area.
-- The same defect affected every traveller you reach by teleporting in: the
-  return-to-Helos NPCs in the Soulvizier areas and the enter-offer travellers.
-  All 30 travel NPCs are fixed by the same change.
-- Cause: an NPC you arrive at by teleport was never woken up, so the game drew him
-  but he had no clickable state. Every travel NPC is now woken up before his travel
-  offer is presented, using the same method the working Leinth exit portal has always
-  used.
-- The Helos plaza travellers that already worked keep the exact same routes and
-  destinations. No route, no destination and no dialog option changed anywhere.
+- FIXED: Dagon, Lord of the Poisoned Deep stood frozen in place. He now walks, runs,
+  attacks, staggers, dies and casts Tidal Strike, his signature move, with an
+  animation of his own for the first time.
+- This bug dates all the way back to the original Soulvizier. Dagon was built out of
+  the Hydra, and every one of his animation clips was left pointing at the Hydra
+  skeleton, which has 101 bones. His actual body is a deep-one mage with 30 bones and
+  none of that structure, so not one of those clips could drive it. The animation
+  table his record named was a leftover that has never existed in any release of the
+  mod or of the base game, so there was no fallback either. He is now bound to his own
+  rig, the one the base game uses for 43 of his 44 same-body relatives.
+- Also fixed: three of his special-move slots were still labelled with Hydra breath
+  attacks, so the game went looking for the wrong animation when he cast. They now
+  name the skills he actually uses.
+- NEW PERMANENT GATE: every build from here on checks that no monster that can spawn
+  ships with an animation chain that resolves from nothing, and that Dagon in
+  particular only ever binds clips from a rig his body can play. A monster can no
+  longer ship with animations that cannot drive it. The same freeze class already
+  took the maenad thrown-weapon fighters in an earlier build.
+- Nothing else about Dagon changed: same fight, same skills, same soul, same drop
+  chance, same mystical orb.
 
-Quest data only. No database, map or text change: your characters, saves and items
-are untouched. Fully quit the game and restart Steam to pick up the update.
+Database only. No map, quest or text change: your characters, saves and items are
+untouched. Fully quit the game and restart Steam to pick up the update.
