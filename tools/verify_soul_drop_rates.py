@@ -1,12 +1,14 @@
 """
 LAST-WRITER verification gate for the soul equip/drop RATE POLICY.
 
-CURRENT LAW: R-105 / R-106 / R-107 (Will, 2026-07-29) - 33% for every non-fixed
-carrier, 25% for fixed-location bosses, 0% for Common (trash), 100% for the four
-fought Toxeus champions (R-48/R-90/R-91). This SUPERSEDES the 66/50/25 split the
-gate was originally written for (Will 2026-07-14), which is why the historical
-notes below still speak in 66/50 terms - they document WHY the gate is shaped
-this way (LAST-WRITER, not a replay), not what the rates are.
+CURRENT LAW: R-243 (Will, 2026-08-12) SUPERSEDES the RATES of R-105 - 20% for
+every non-fixed carrier, 10% for fixed-location bosses (was 33/25 under R-105),
+0% for Common (trash), 100% for the four fought Toxeus champions (R-48/R-90/R-91).
+Everything else of R-105 / R-106 / R-107 (Will, 2026-07-29) stands. The gate reads
+the two rates from build_svc_database.SOUL_RATE_NONFIXED / SOUL_RATE_FIXED_BOSS,
+so it follows the constants and this docstring is the only place the numbers are
+named. The historical notes below still speak in 66/50 terms - they document WHY
+the gate is shaped this way (LAST-WRITER, not a replay), not what the rates are.
 
 The gate has two independent halves:
   1. PER-RECORD: the value actually in the arz must equal
@@ -14,10 +16,12 @@ The gate has two independent halves:
      for every record it rules, and must be UNCHANGED for every record it HOLDS.
   2. WHOLE-COHORT (`_check_cohorts`): the shape of the shipped distribution vs
      the rulings' own counts - no Common above 0, the 66/50 cohorts empty,
-     exactly the four champions at 100, the named fixed-boss pins at 25, the
-     base Gaoler at 0, all 12 pharaoh honour guards at 25, no stray unruled
-     rate, and the HELD set still exactly the tiers Will has not ruled on.
-     Seven planted negatives prove half 2 reds, plus a positive control.
+     exactly the four champions at 100, the named fixed-boss pins at the
+     fixed-boss rate (10), the base Gaoler at 0, all 12 pharaoh honour guards at
+     the fixed-boss rate (10), no stray unruled rate, and the HELD set still
+     exactly the tiers Will has not ruled on. Planted negatives prove half 2
+     reds (a fixed boss off 10, a non-fixed off 20, a pin moved), plus a
+     positive control.
 
 --- historical context (why this gate is LAST-WRITER) ---
 
@@ -60,9 +64,11 @@ import apply_svc_patches as asp
 
 DEFAULT_ARZ = HERE.parent / 'work' / 'SoulvizierClassic' / 'Database' / 'SoulvizierClassic.arz'
 
-# R-105/R-106/R-107 (Will 2026-07-29) SUPERSEDED the 50/66/25 split this gate was
-# born for: every non-fixed carrier is 33, fixed-location bosses stay 25, Common
-# is 0, the four R-48 Toxeus champions stay 100. The gate now asks
+# R-243 (Will 2026-08-12) lowered the R-105 rates to 20 non-fixed / 10 fixed-boss
+# (R-105/R-106/R-107, Will 2026-07-29, had SUPERSEDED the 50/66/25 split this gate
+# was born for): every non-fixed carrier is SOUL_RATE_NONFIXED, fixed-location
+# bosses are SOUL_RATE_FIXED_BOSS, Common is 0, the four R-48 Toxeus champions stay
+# 100. The gate reads those two constants (never a literal) and asks
 # build_svc_database.ruled_soul_equip_rate() - the ONE shared classifier - what
 # each record SHOULD be, and additionally asserts the whole-cohort invariants
 # (below) that a per-record check is structurally blind to.
@@ -151,16 +157,21 @@ def _gather(db):
                                           random_members, placed_members)
         held = ruled is None
         expected = cur if held else ruled
+        # Cosmetic labels: the number in parens is the ruled rate for that class,
+        # derived from the constants so it can never drift from the policy (R-243
+        # moved fixed 25->10, non-fixed 33->20).
+        _fb = '%.0f' % bsd.SOUL_RATE_FIXED_BOSS
+        _nf = '%.0f' % bsd.SOUL_RATE_NONFIXED
         if bsd._soul_is_farmable_boss(name, cls):
-            klass = 'FARMABLE_BOSS(25)'
+            klass = 'FARMABLE_BOSS(%s)' % _fb
         elif str(cls).lower() == 'quest':
-            klass = 'QUEST(33)'
+            klass = 'QUEST(%s)' % _nf
         elif bsd._soul_record_basename(name) in placed_members:
-            klass = 'PLACED_UBER(33)'
+            klass = 'PLACED_UBER(%s)' % _nf
         elif bsd._soul_record_basename(name) in random_members:
-            klass = 'RANDOM_HERO(33)'
+            klass = 'RANDOM_HERO(%s)' % _nf
         else:
-            klass = 'UNREFERENCED(33)'
+            klass = 'UNREFERENCED(%s)' % _nf
         if held:
             klass += '+HELD'
         recs.append((name, cls, cur, expected, klass))
@@ -706,31 +717,33 @@ def main(argv):
     print("NEGATIVE / SPOT TESTS")
     print("=" * 78)
     idx = {bsd._soul_record_basename(n): (n, cls, cur, exp, k) for (n, cls, cur, exp, k) in recs}
+    _NF = bsd.SOUL_RATE_NONFIXED       # R-243: 20 (was R-105 33)
+    _FB = bsd.SOUL_RATE_FIXED_BOSS      # R-243: 10 (was R-105 25)
     EXPECT = {
         # basename: (expect_klass_contains or None, expect_actual_arz_value)
-        # ── R-105: the two ratified cohorts (66 + 50) all land on 33 ──────────
-        'um_camelbane_32':        ('RANDOM', 33.0),   # SV uber tier, random pool
-        'um_morth_18':            ('RANDOM', 33.0),
-        'um_crowboar_09':         ('RANDOM', 33.0),   # <- one of the 21 NO-GO records
-        'um_xix_36':              ('RANDOM', 33.0),   # <- NO-GO record (create_uber_souls)
-        'um_frost_32':            ('RANDOM', 33.0),   # <- NO-GO record (create_uber_souls)
-        'hero_junshan_39':        ('RANDOM', 33.0),   # <- NO-GO record (create_uber_souls)
-        'hero_grom_28':           ('RANDOM', 33.0),   # plain hero roster
-        'u_bloodwing_12':         ('RANDOM', 33.0),   # u_ unique, random pool
+        # ── R-105/R-243: the two ratified cohorts (66 + 50) all land on non-fixed ─
+        'um_camelbane_32':        ('RANDOM', _NF),    # SV uber tier, random pool
+        'um_morth_18':            ('RANDOM', _NF),
+        'um_crowboar_09':         ('RANDOM', _NF),    # <- one of the 21 NO-GO records
+        'um_xix_36':              ('RANDOM', _NF),    # <- NO-GO record (create_uber_souls)
+        'um_frost_32':            ('RANDOM', _NF),    # <- NO-GO record (create_uber_souls)
+        'hero_junshan_39':        ('RANDOM', _NF),    # <- NO-GO record (create_uber_souls)
+        'hero_grom_28':           ('RANDOM', _NF),    # plain hero roster
+        'u_bloodwing_12':         ('RANDOM', _NF),    # u_ unique, random pool
         'um_legion_28':           (None, 0.0),        # legion_soul_stages: non-terminal, zeroed
-        'um_legion_28c':          ('RANDOM', 33.0),   # R-42 closure terminal, now on the ruled rate
-        'um_possessedboar_spirit': ('RANDOM', 33.0),
-        'um_charonform2_ferryman_99': ('PLACED', 33.0),
-        'um_tantalus_unbound_99': ('PLACED', 33.0),
-        'um_vashkarr_99':         ('PLACED', 33.0),   # q_vashkarr_lone
-        'um_broodmother_99':      ('PLACED', 33.0),
-        'svc_um_hadesmarshal_80': (None, 33.0),       # module-authored placed boss
-        'xsq27_namedhero_a_machae_45': ('QUEST', 33.0),  # Four Generals (quest)
-        # ── R-105 sub-25 buckets: non-fixed ubers up to 33, honour guards to 25 ─
-        'um_calybe_20':           (None, 33.0),       # was 5% (ours, non-fixed)
-        'um_lyialeafsong_18':     (None, 33.0),       # was 5% (ours, non-fixed)
-        'um_alethadarkclaw':      (None, 33.0),       # was 2% (ours, non-fixed)
-        'boss_pharaohshonorguard1_25': (None, 25.0),  # was 10% - fixed boss, wrong rate
+        'um_legion_28c':          ('RANDOM', _NF),    # R-42 closure terminal, now on the ruled rate
+        'um_possessedboar_spirit': ('RANDOM', _NF),
+        'um_charonform2_ferryman_99': ('PLACED', _NF),
+        'um_tantalus_unbound_99': ('PLACED', _NF),
+        'um_vashkarr_99':         ('PLACED', _NF),    # q_vashkarr_lone
+        'um_broodmother_99':      ('PLACED', _NF),
+        'svc_um_hadesmarshal_80': (None, _NF),        # module-authored placed boss
+        'xsq27_namedhero_a_machae_45': ('QUEST', _NF),  # Four Generals (quest)
+        # ── R-105 sub-25 buckets: non-fixed ubers -> non-fixed, honour guards -> fixed ─
+        'um_calybe_20':           (None, _NF),        # was 5% (ours, non-fixed)
+        'um_lyialeafsong_18':     (None, _NF),        # was 5% (ours, non-fixed)
+        'um_alethadarkclaw':      (None, _NF),        # was 2% (ours, non-fixed)
+        'boss_pharaohshonorguard1_25': (None, _FB),   # fixed-location boss
         # ── R-106: the Common droppers go to 0 (classification, not filename:
         #    the mummy priests classify Common behind a boss-ish name) ─────────
         "pharaoh'shonorguard_mummypriest_19": (None, 0.0),
@@ -738,7 +751,7 @@ def main(argv):
         'swift_br_archer_14_l':   (None, 0.0),
         # ── R-107 / R-106 amendment: the named fixed-location bosses ──────────
         'um_polisgaoler_99':          (None, 0.0),    # base form NEVER drops
-        'um_polisgaoler_unbound_99':  (None, 25.0),   # only the unbound final form
+        'um_polisgaoler_unbound_99':  (None, _FB),    # only the unbound final form
         'um_charon_ferryman_99':      (None, 0.0),    # chain HEAD - its terminal drops
         'um_tantalus_99':             (None, 0.0),    # chain HEAD - its terminal drops
         # ── R-48 / R-90 / R-91: the four fought Toxeus champions stay at 100 ──
@@ -848,14 +861,15 @@ def main(argv):
     print("\n" + "=" * 78)
     print("NEGATIVE TEST: planted post-wire writer (simulates the round-1 NO-GO)")
     print("=" * 78)
+    _rh_label = 'RANDOM_HERO(%.0f)' % bsd.SOUL_RATE_NONFIXED
     planted_target = next((n for n, c, cur, e, k in recs
-                           if k == 'RANDOM_HERO(33)'
+                           if k == _rh_label
                            and abs(cur - bsd.SOUL_RATE_NONFIXED) < 0.01), None)
     if planted_target is None:
-        failures.append("negtest setup: no RANDOM_HERO@33 record found in this "
+        failures.append(f"negtest setup: no {_rh_label} record found in this "
                         "arz to plant the stomp on - cannot prove the gate catches "
                         "the round-1 regression class")
-        print("  ? no RANDOM_HERO@33 record available - negtest SKIPPED")
+        print(f"  ? no {_rh_label} record available - negtest SKIPPED")
     else:
         db_stomped = ArzDatabase.from_arz(arz_path)
         db_stomped.set_field(planted_target, 'chanceToEquipFinger2', 66.0, DATA_TYPE_FLOAT)
@@ -865,9 +879,10 @@ def main(argv):
         if not caught:
             failures.append(
                 f"NEGATIVE TEST FAILED: planted a post-wire 66% stomp on "
-                f"{planted_target} (a RANDOM_HERO@50 record) and the gate did "
+                f"{planted_target} (a {_rh_label} record) and the gate did "
                 f"NOT flag it - the gate cannot catch the round-1 regression class")
-        print(f"  {'OK ' if caught else 'XX '} planted {planted_target} 33->66: "
+        print(f"  {'OK ' if caught else 'XX '} planted {planted_target} "
+              f"{bsd.SOUL_RATE_NONFIXED:.0f}->66: "
               f"gate {'CAUGHT it' if caught else 'MISSED it'} "
               f"({len(stomp_failures)} failure(s) on the stomped copy)")
 
@@ -913,45 +928,48 @@ def main(argv):
         return f"{bn} (absent)"
 
     # (a) a champion knocked off 100
-    _plant("R-48 champion knocked off 100 (um_bloodtoxeus_99 -> 33)",
-           lambda c: _set(c, 'um_bloodtoxeus_99', 33.0))
+    _plant("R-48 champion knocked off 100 (um_bloodtoxeus_99 -> non-fixed)",
+           lambda c: _set(c, 'um_bloodtoxeus_99', bsd.SOUL_RATE_NONFIXED))
     # (b) a cohort left at 66
     _plant("a carrier left behind at 66 (um_camelbane_32)",
            lambda c: _set(c, 'um_camelbane_32', 66.0))
     # (c) a Common monster nudged up
-    _plant("a Common monster nudged to 33 (swift_ar_archer_08)",
-           lambda c: _set(c, 'swift_ar_archer_08', 33.0))
+    _plant("a Common monster nudged to the non-fixed rate (swift_ar_archer_08)",
+           lambda c: _set(c, 'swift_ar_archer_08', bsd.SOUL_RATE_NONFIXED))
     # (d) the base Gaoler made to drop
-    _plant("the base Soul Gaoler made to drop (um_polisgaoler_99 -> 33)",
-           lambda c: _set(c, 'um_polisgaoler_99', 33.0))
-    # (e) the unbound Gaoler off the fixed-boss rate
-    _plant("um_polisgaoler_unbound_99 off 25 (-> 33)",
-           lambda c: _set(c, 'um_polisgaoler_unbound_99', 33.0))
-    # (f) an honour guard left on the old 10%
-    _plant("a pharaoh honour guard left at 10%",
-           lambda c: _set(c, 'boss_pharaohshonorguard1_25', 10.0))
+    _plant("the base Soul Gaoler made to drop (um_polisgaoler_99 -> non-fixed)",
+           lambda c: _set(c, 'um_polisgaoler_99', bsd.SOUL_RATE_NONFIXED))
+    # (e) the unbound Gaoler off the fixed-boss rate (R-243: 10)
+    _plant("um_polisgaoler_unbound_99 off the fixed-boss rate (-> non-fixed)",
+           lambda c: _set(c, 'um_polisgaoler_unbound_99', bsd.SOUL_RATE_NONFIXED))
+    # (f) A FIXED-LOCATION BOSS OFF THE FIXED-BOSS RATE (R-243: honour guard must
+    #     be 10, not the non-fixed 20). NOTE: the planted value MUST NOT equal the
+    #     ruled fixed-boss rate or the gate would (correctly) stay green - this is
+    #     why it plants the NON-fixed rate, not a bare literal.
+    _plant("a pharaoh honour guard put on the non-fixed rate (should be fixed-boss)",
+           lambda c: _set(c, 'boss_pharaohshonorguard1_25', bsd.SOUL_RATE_NONFIXED))
     # (g) a stray unruled rate
     _plant("a stray unruled rate (um_morth_18 -> 12.5%)",
            lambda c: _set(c, 'um_morth_18', 12.5))
-    # (h) THE HELD TIER MOVED - a Champion-tier carrier given the 33% rate.
+    # (h) THE HELD TIER MOVED - a Champion-tier carrier given the non-fixed rate.
     #     This is the negative for the cohort Will has NOT ruled on: the policy
     #     must never touch it, and the gate must notice if anything does.
     def _move_a_champion(copy):
         for row in copy:
             if str(row[1]).lower() == 'champion':
                 row[2] = bsd.SOUL_RATE_NONFIXED
-                return "%s -> 33" % row[0]
+                return "%s -> %.0f" % (row[0], bsd.SOUL_RATE_NONFIXED)
         return 'no Champion carrier found'
-    _plant("a HELD Champion-tier carrier moved onto the 33% rate",
+    _plant("a HELD Champion-tier carrier moved onto the non-fixed rate",
            _move_a_champion)
     # (i) THE IDEMPOTENCE PIN BROKEN - a count-over-class boss put on the
     #     fixed-boss rate. This is the negative for G8: without the pin, the
-    #     classifier's SECOND evaluation of these records returns 25, so the
-    #     applier and the gate disagree and 8 records red as LAST-WRITER
-    #     mismatches. Proves the gate notices if the pin is silently narrowed.
-    _plant("a count-over-class boss put back on 25 (boss_satyrshaman_55)",
+    #     classifier's SECOND evaluation of these records returns the fixed-boss
+    #     rate, so the applier and the gate disagree and 8 records red as
+    #     LAST-WRITER mismatches. Proves the gate notices if the pin is narrowed.
+    _plant("a count-over-class boss put on the fixed-boss rate (boss_satyrshaman_55)",
            lambda c: _set(c, 'boss_satyrshaman_55', bsd.SOUL_RATE_FIXED_BOSS))
-    _plant("our placed Leinth moved off the counted 33 (q_leinth_47 -> 25)",
+    _plant("our placed Leinth moved off the counted non-fixed rate (q_leinth_47)",
            lambda c: _set(c, 'q_leinth_47', bsd.SOUL_RATE_FIXED_BOSS))
     # (j) AN UNTOUCHABLE CARRIER MOVED - checked against the GOLDEN baseline,
     #     not against _check_cohorts. It cannot live in the _plant() list above:
@@ -992,7 +1010,8 @@ def main(argv):
         print("=" * 78)
         return 1 if gate else 0
     print("PASS: every soul carrier's ACTUAL rate in the real arz matches the ONE "
-          "shared classifier's R-105/R-106/R-107 verdict (33 non-fixed, 25 "
+          f"shared classifier's R-243/R-105/R-106/R-107 verdict "
+          f"({bsd.SOUL_RATE_NONFIXED:.0f} non-fixed, {bsd.SOUL_RATE_FIXED_BOSS:.0f} "
           "fixed-location boss, 0 Common, 100 the four R-48 champions), every "
           "HELD cohort is untouched, the testing-mode forcer is unchanged, and "
           "the gate proves it reds on a planted post-wire stomp AND on a planted "

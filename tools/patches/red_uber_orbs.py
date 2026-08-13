@@ -323,7 +323,21 @@ WIRE = {
 EXEMPT = {
     r'records\xpack\creatures\monster\bosses\02_charon\um_charon_ferryman_99.dbr':
         ('shell', r'records\xpack\creatures\monster\bosses\02_charon\um_charonform2_ferryman_99.dbr',
-         "transform shell - the terminal Ferryman carries bosschest02_charon"),
+         # Will 2026-08-11: this record is no longer Charon. `tools/patches/
+         # charon_rework.py` rewrites it IN PLACE as AKREMON, THE GRASPING ROOT
+         # (the record PATH is frozen because build_section_surgery places the
+         # forecourt proxy by name, and three gates key on the basename). The
+         # exemption is unchanged in kind - it is still a transform shell whose
+         # terminal carries the orb - but the reason the terminal carries
+         # bosschest02_charon changed: the ember-oak donor inherits NO
+         # treasureProxyName, so charon_rework SETS it explicitly. That is not
+         # cosmetic: svc_orb_breadth derives its scope as "every proxy an UBER
+         # names" and enforces MIN_PROXIES=6 / MIN_TABLES=18, and this terminal
+         # is the ONLY uber naming that proxy, so retargeting it (the b53/Dagon
+         # treatment the lore wants) would drop the scope to 5/15 and red
+         # orb_loot_breadth. Registered as BL-BOUGH-DEBT-4.
+         "transform shell - the terminal (Akremon, the Heartwood Ablaze) carries "
+         "bosschest02_charon"),
     r'records\xpack\creatures\monster\epiales\um_mnemophage_99.dbr':
         ('shell', r'records\xpack\creatures\monster\epiales\um_mnemophage_core_99.dbr',
          "transform shell - _amend_boss_loot_orbs DEFENSIVELY CLEARS this one "

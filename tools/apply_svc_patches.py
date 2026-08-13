@@ -5449,8 +5449,11 @@ def _apply_soul_rate_policy(db):
         db._modified.add(rec)
         moved[(cur, target)] += 1
         changed += 1
-    print(f"  R-105/106/107 soul-rate policy: {changed} of {total} soul carriers "
-          f"re-rated (25 fixed boss / 33 non-fixed / 0 Common / 100 R-48)")
+    from build_svc_database import (SOUL_RATE_FIXED_BOSS as _SRFB,
+                                     SOUL_RATE_NONFIXED as _SRNF)
+    print(f"  R-105/106/107/243 soul-rate policy: {changed} of {total} soul "
+          f"carriers re-rated ({_SRFB:.0f} fixed boss / {_SRNF:.0f} non-fixed / "
+          f"0 Common / 100 R-48)")
     for (src, dst), n in sorted(moved.items(), key=lambda kv: -kv[1]):
         print(f"      {src:>6.2f}% -> {dst:>6.2f}%  : {n}")
     if held:
@@ -8836,15 +8839,16 @@ _SUMMON_IDENTITY_ALLOW = {
                  "(a Sepulchral Wyrm) - the epithet-matched themed form, a "
                  "registered design choice, NOT a Meritamen-class body conflation "
                  "(meritamen spec verifier false-positive list, section E).",
-    'ferryman': "Charon 'the Unferried' (C2 Golden Bough) drops from his risen-"
-                "giant form-2 body (Charon02.msh) but the {^F}Soul of the Unferried "
-                "S2 summon is deliberately built from charon_minion_30 (CharonGhost "
-                "oarsman) - Charon's OWN signature is calling the drowned dead to "
-                "row his boat (charon_summon is in his kit), so the raised oarsman "
-                "is the themed minion by design, NOT a Meritamen-class dropper/body "
-                "conflation. Same sanctioned pattern as voranthys; the round-1 vet "
-                "named this exact allow-set entry as the way to ship the EXTREME "
-                "default S2 while keeping the F2 identity gate green.",
+    # 'ferryman': RETIRED by `tools/patches/charon_rework.py` (Will 2026-08-11).
+    # It existed because the {^F}Soul of the Unferried summoned a CharonGhost
+    # oarsman while its dropper wore Charon02.msh - a deliberate but exempt
+    # cross-body summon. The Golden Bough rework replaces that encounter with
+    # Akremon, whose soul summons the SAME species as its dropper (both
+    # DRX\meshes\emberoakmesh.msh), so the F2 identity gate - which compares the
+    # summon SOURCE's mesh to the DROPPER's mesh - is green with NO exemption.
+    # A sanctioned workaround retired rather than carried. If charon_rework is
+    # ever reverted, this gate reds LOUDLY and names the record, which is the
+    # correct behaviour: put the entry back with the old encounter.
 }
 
 
@@ -10961,8 +10965,50 @@ _SUMMON_SKILL_ICON = {
                                 r'DRXtextures\skill icons\spirit\skellysummondown.tex'),
     'summon_broodmother':      (r'DRXtextures\skill icons\soul\summonslimebroodup.tex',
                                 r'DRXtextures\skill icons\soul\summonslimebrooddown.tex'),
-    'summon_charon_oarsman':   (r'SVTextures\skills\drownedspiritup.tex',
-                                r'SVTextures\skills\drownedspiritdown.tex'),
+    # 2026-08-11 (Golden Bough rework, Will's order): this row used to read
+    # `SVTextures\skills\drownedspirit{up,down}.tex` - a DROWNED-GHOST glyph, and a
+    # Charon-specific one: only 3 records in the whole 51,253-record DB reference
+    # `drownedspirit*` (drownedspirit_soul.dbr, asphyxiationbuff.dbr and this
+    # summon). `tools/patches/charon_rework.py` replaces that encounter with AKREMON
+    # and this skill now renders as "Graft the Burning Heartwood", summoning a
+    # burning DRX ember oak - so the drowned ferryman's glyph sat on the player's
+    # skill bar every single cast, which is precisely the residue Will's order
+    # exists to remove (R-125 player-surface law names the icon explicitly).
+    # WHY THIS GLYPH: the summoned body is a BURNING ember oak - its native kit is
+    # `ringofflame` + `volcanicorb` + `drxheatshield` - so the identity is fire.
+    # MEASURED, and this row BEATS the table's own convention rather than merely
+    # meeting it: it is the first entry here with ZERO collisions of any kind.
+    #   * UNCLAIMED, ABSOLUTELY. `flamewaveup.tex` / `flamewavedown.tex` are
+    #     referenced by **0 records** across EVERY string field of all 51,253 -
+    #     not by another summon, and not by any other granted skill either.
+    #     Compare the established rows, every one of which DOES share its glyph
+    #     with a live non-summon skill: `bloodbathup` (3 others), `thunderorbup`
+    #     (4 others), `voidsnapup` (1 other).
+    #   * ARC-RESOLVES - both halves PRESENT in the shipped
+    #     work/SoulvizierClassic/Resources/DRXtextures.arc (1,463 entries), under
+    #     `skill icons/soul/`, the folder this table's glyphs come from.
+    # REJECTED ALTERNATIVES, both measured:
+    #   * `flamering{up,down}` - a tighter 1:1 with the pet's own `ringofflame`
+    #     and PROVEN to render (live carriers `yaoguai_flamering.dbr` + its pcsafe
+    #     clone). Rejected because that is a SOUL-GRANTED skill: a player holding
+    #     the Yaoguai soul AND this one would see one glyph on two skill-bar
+    #     buttons, which is the duplicate-identity class Will keeps filing. Kept
+    #     documented as the proven-render fallback if the flame wave reads wrong.
+    #   * `summonquilvine{up,down}` - already claimed by the live
+    #     `summon_hellflower.dbr`, and the wrong species since the phase-2 donor
+    #     became the ember oak.
+    # HONEST RESIDUAL: a glyph with zero live carriers has never been seen on
+    # screen in this mod either. A UI icon carries none of the cross-mesh UV risk
+    # the 343_dark_smoke lesson is about (it draws or it does not), and no colour
+    # is claimed for it here; one look at the skill bar closes it -
+    # `BL-BOUGH-DEBT-10`.
+    # NO OTHER LANE IS AFFECTED: this key is reached only via
+    # `_summon_skill_basename('...\summon_charon_oarsman.dbr')`, and that one
+    # summon skill is built by exactly two call sites - the monolith's
+    # `_create_goldenbough_boss` (`_GB_SUMMON`) and `charon_rework`, which are the
+    # SAME encounter. Nothing else under tools/ names it.
+    'summon_charon_oarsman':   (r'DRXtextures\skill icons\soul\flamewaveup.tex',
+                                r'DRXtextures\skill icons\soul\flamewavedown.tex'),
     'summon_hadesmarshal':     (r'DRXtextures\skill icons\soul\wrathofthestyxup.tex',
                                 r'DRXtextures\skill icons\soul\wrathofthestyxdown.tex'),
     'summon_kravmoloch_warden':(r'DRXtextures\skill icons\spirit\bonefiendup.tex',
@@ -11145,8 +11191,18 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         # (Xeiwang's anm_skeleton01 - the build-gate caught 15 Maenad residues).
         n_stripped = _strip_foreign_anim_overrides(db, path, source)
         if n_stripped:
-            print(f"    {path.rsplit(chr(92), 1)[-1]}: stripped {n_stripped} foreign "
-                  f".anm overrides (source anm table now drives the body)")
+            # ACCURACY (charon_rework round 4): this strip is SOURCE-FAITHFUL by
+            # design - it removes only the overrides the SOURCE does not declare.
+            # The rows the source DOES declare are kept verbatim, and on some
+            # sources those still point at a foreign rig (e.g. an emberoak's
+            # `staffWalkAnim = ...\Neanderthal\ANM\Neanderthal_Run.anm`, and 16 of
+            # the 237 soulskill pets carry that same clip). Unreachable for an
+            # unarmed pet, but the old wording - "source anm table now drives the
+            # body" - claimed more than the function does, so say what it did.
+            print(f"    {path.rsplit(chr(92), 1)[-1]}: stripped {n_stripped} .anm "
+                  f"override(s) the source does not declare (those slots now fall "
+                  f"back to the source's own anm table; the source's OWN overrides "
+                  f"are kept verbatim)")
         sf = db.set_field
         if mesh: sf(path, 'mesh', str(mesh[0]))
         if tex: sf(path, 'baseTexture', str(tex[0]))
@@ -11242,11 +11298,33 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
             _run_fields = {k.split('###')[0] for k, tf in _tblf.items()
                            if k.split('###')[0].endswith('RunAnim')
                            and tf.values and str(tf.values[0]).strip()}
-            if _run_fields and f'{_row}RunAnim' not in _run_fields:
+            # 2026-08-11 (Golden Bough rework lane): the guard used to read
+            # `if _run_fields and ...`, which INVERTED it on the single worst
+            # case. An anim table with ZERO locomotion clips yields an EMPTY
+            # `_run_fields`, so the condition short-circuited to False and the
+            # assert PASSED - it only ever fired on a table that had SOME rows
+            # with locomotion but not the pet's row. `anm_quilvine.dbr` has no
+            # *RunAnim field at all, so a summon built from the SV hellflower or
+            # any quilvine sailed straight through and produced permanently
+            # immobile permanent pets with no warning. That is precisely the D19
+            # Huo-ren class this assert exists to make unbuildable. Dropping the
+            # leading truthiness test makes a locomotion-less table fail LOUD,
+            # which is the whole point of a fail-loud gate.
+            # SAFETY, MEASURED BEFORE THE CHANGE: all 20 `_build_boss_summon`
+            # call sites across the monolith and every patch module were
+            # enumerated by AST and each source resolved against the live arz.
+            # 16 sit on tables that DO bind locomotion; 4 declare no table at
+            # all and therefore take the `else` branch below, which is
+            # untouched. `anm_quilvine.dbr` is the only locomotion-less table
+            # in reach and no summon source uses it. Zero callers newly red.
+            if f'{_row}RunAnim' not in _run_fields:
+                _loco = (sorted(_run_fields) if _run_fields else
+                         'NONE - this table binds no locomotion clip at all, '
+                         'so EVERY row on it is immobile')
                 raise SystemExit(
                     f"D19 pet-mobility: {path} primary anim row '{_row}' has "
                     f"no TABLE RunAnim in {anim[0]} (table rows with "
-                    f"locomotion: {sorted(_run_fields)}) -> pet would be "
+                    f"locomotion: {_loco}) -> pet would be "
                     f"IMMOBILE. Equip the source monster's weapon "
                     f"(table-covered row) or use a table that covers "
                     f"'{_row}'.")
@@ -11262,6 +11340,31 @@ def _build_boss_summon(db, source_path, pet_paths, summon_skill, display_tag, de
         db._modified.add(path)
     # build36 A1: register this family (source + pets) for the three fail-loud pet
     # gates (parity / gear / skill-kit), run once after all pets are built.
+    #
+    # 2026-08-11 (Golden Bough rework lane): this was a blind `.append`, and the
+    # list is cleared exactly once per run (apply_all_extended_patches). The pet
+    # RECORDS are rebuilt in place, so when two callers build the SAME pet paths
+    # from DIFFERENT sources - the monolith's `_create_goldenbough_boss` and then
+    # the registry module that reworks that encounter - the first pair became a
+    # LIE the moment the second ran, and `run_registry_gates` still judged it:
+    # PET-STAT-MIRROR compared the newly-built pets against the SUPERSEDED
+    # source and red-lined the whole build, and the F2 soul-summon-identity gate
+    # red-lined next for the same reason. Registration now REPLACES by pet-path
+    # set, which is the only semantically correct answer: the pets on disk can
+    # only have been built from one source, and it is the last one to write them.
+    # Pure improvement - with no duplicate pet set the behaviour is identical.
+    _pp = {str(p).replace('/', '\\').strip().lower() for p in pet_paths}
+    _stale = [(s, p) for s, p in _SUMMON_PET_BUILDS
+              if {str(q).replace('/', '\\').strip().lower() for q in p} == _pp]
+    if _stale:
+        _SUMMON_PET_BUILDS[:] = [(s, p) for s, p in _SUMMON_PET_BUILDS
+                                 if {str(q).replace('/', '\\').strip().lower()
+                                     for q in p} != _pp]
+        print(f"    summon-pet registry: SUPERSEDED {len(_stale)} earlier "
+              f"registration(s) of {sorted(_pp)[0].rsplit(chr(92), 1)[-1]} et al. "
+              f"(was built from {_stale[-1][0].rsplit(chr(92), 1)[-1]}, now from "
+              f"{source_path.rsplit(chr(92), 1)[-1]}) - the pet gates judge the "
+              f"source that actually wrote the pets.")
     _SUMMON_PET_BUILDS.append((source_path, list(pet_paths)))
     ss = _find_record(db, lyia_summon)
     if ss:
@@ -11846,6 +11949,15 @@ def _create_enslaver_warband(db):
 # (decided); J2 = breadth ON (all shipped custom Boss-class + the content-wave ubers,
 # terminal form only). The Enslaver MARAUDERS stay orb-less (Champion, dropItems 0).
 # Charon EXCLUDED: um_charonform2_ferryman_99 already inherits BossChest02_Charon.
+# AMENDED 2026-08-11 (the Golden Bough rework): that record is now Akremon, the
+# Heartwood Ablaze, cloned from the DRX ember oak, which INHERITS NO chest at all -
+# so the "already inherits" premise is dead. The exclusion still stands and the
+# row still must not be added here, because `tools/patches/charon_rework.py` SETS
+# `treasureProxyName = bosschest02_charon` explicitly on the terminal: it is the
+# ONLY uber naming that proxy, and svc_orb_breadth's MIN_PROXIES=6 / MIN_TABLES=18
+# floors red the build if that consumer disappears. Retargeting it to _APEX_ORB
+# (the b53/Dagon treatment the lore wants, since a plant boss dropping "Charon's
+# Essence" is a naming lie) needs a coordinated floor re-measure: BL-BOUGH-DEBT-4.
 # Monster records are NOT clone-shape-gated (Goldenbough deathEffect precedent).
 _APEX_ORB = r'records\item\containers\new\genericbossorb_04.dbr'
 _MN_ORB_SHELL = r'records\xpack\creatures\monster\epiales\um_mnemophage_99.dbr'  # shell: stay orb-less
@@ -12741,7 +12853,11 @@ HELOS_HUB_OUTBOUND = [
     (r'records\quests\svc_helos_trav_warband.dbr',    'tagSVCNpcTravWarband',    'Traveler: Blood-Cave Warband',    'tagSVCHelosToWarband',     'The Blood-Cave Warband'),
     (r'records\quests\svc_helos_trav_dorus.dbr',      'tagSVCNpcTravDorus',      'Traveler: Tomb of the Queens (Kroisos)', 'tagSVCHelosToDorus',    'Kroisos, the Coin-Drowned'),
     (r'records\quests\svc_helos_trav_tantalus.dbr',   'tagSVCNpcTravTantalus',   'Traveler: Den of Tantalus',       'tagSVCHelosToTantalus',    'The Den of Tantalus'),
-    (r'records\quests\svc_helos_trav_charon.dbr',     'tagSVCNpcTravCharon',     'Traveler: Golden Bough (Charon)', 'tagSVCHelosToCharon',      'The Golden Bough'),
+    # R-231-G: the boss at this destination is no longer Charon. STRING only - the
+    # record path and the tag KEY are frozen (this NPC is placed by the TESTHUB map
+    # by name, and the records ship unconditional-but-inert on canonical/Steam), so
+    # nothing here forces a map rebuild.
+    (r'records\quests\svc_helos_trav_charon.dbr',     'tagSVCNpcTravCharon',     'Traveler: Golden Bough (Akremon)', 'tagSVCHelosToCharon',      'The Golden Bough'),
     (r'records\quests\svc_helos_trav_mnemophage.dbr', 'tagSVCNpcTravMnemophage', 'Traveler: Pools of Mnemosyne',    'tagSVCHelosToMnemophage',  'The Pools of Mnemosyne'),
     (r'records\quests\svc_helos_trav_ephialtes.dbr',  'tagSVCNpcTravEphialtes',  'Traveler: Dread Halls (Ephialtes)','tagSVCHelosToEphialtes',  'The Dread Halls'),
     # b39 HUB v2 (Will 2026-07-13, order ii): travelers for map-placed bosses NOT covered above.
@@ -17063,7 +17179,9 @@ def _svc_verify_world_chests(db):
 _HAND_DESIGNED_SOUL_TAGS = frozenset({
     # build36 content wave hand-designed uber-boss souls.
     'tagSVCSoulTantalus',    # {^F}Soul of the Insatiable
-    'tagSVCSoulFerryman',    # {^F}Soul of the Unferried
+    'tagSVCSoulFerryman',    # {^F}Soul of the Grasping Root (R-231: the KEY is
+                             # frozen for save-compat, the string was rewritten;
+                             # 'Unferried' is the SUPERSEDED name)
     'tagSVCSoulMnemophage',  # {^F}Soul of the Mnemophage
     'tagSVCSoulWakingDread', # {^F}Soul of the Waking Dread
     # Pre-existing hand-designed evocative souls the fix-wave _SOUL_NAME_STANDARD
@@ -17606,7 +17724,12 @@ _GB_YARD_POOL = r'records\drxmap\proxy\pools\q_yard_goldenbough.dbr'
 _GB_YARD_PROXY = r'records\drxmap\proxy\q_yard_goldenbough.dbr'
 _GB_AMULET_DONOR = r'records\xpack\item\equipmentarmor\amulet\u_l_001.dbr'
 _GB_AMULET = {t: r'records\item\equipmentamulet\svc_goldenbough_%s.dbr' % t for t in ('n', 'e', 'l')}
-_GB_AMULET_LOOT = r'records\item\loottables\svc\goldenbough_guaranteed.dbr'
+# _GB_AMULET_LOOT DELETED 2026-08-11: it named
+# `records\item\loottables\svc\goldenbough_guaranteed.dbr`, which DOES NOT EXIST
+# in the arz and never did. `_svc_guarantee_unique` IGNORES its `loot_name`
+# argument entirely - it writes lootMisc{n}Item1 + chanceToEquipMisc{n}=100
+# straight onto the monster - so the constant was a dead reference that read like
+# a live loot table. Found by the Golden Bough rework lane; zero behaviour change.
 _GB_MESH = r'XPack\Creatures\Monster\Charon\Charon01.msh'
 _GB_MESH2 = r'XPack\Creatures\Monster\Charon\Charon02.msh'
 _GB_BAND = [48, 72, 100]
@@ -17616,7 +17739,27 @@ _AC_ONHIT = r'records\xpack\ai controllers\autocast_items\basetemplates\base_ats
 
 
 def _create_goldenbough_boss(db, tags):
-    """C2: Charon, the Unferried - the risen ferryman-toll atop the Golden Bough
+    """SUPERSEDED DOWNSTREAM, DELIBERATELY STILL RUN (Will 2026-08-11).
+
+    Will: *"the charon uber boss we created needs to be re-worked, he is pretty
+    much identical to the base game charon boss we cloned him off. maybe we can
+    replace him with a different uber monster that is more unique"* - and the arz
+    agreed: both forms carried `boss_charon_43` / `boss_charonform2_43`'s kit
+    byte-for-byte. `tools/patches/charon_rework.py` (REGISTRY, right after
+    `uber_quest_drops`) REWRITES all three monster records this function authors,
+    IN PLACE at the same frozen paths, into AKREMON, THE GRASPING ROOT.
+
+    This function is NOT gutted, and that is on purpose: `uber_quest_drops` runs
+    BEFORE the rework and REQUIRES the Charon-derived form 2 to still carry the
+    inherited `perPartyMemberDropItemName` it exists to clear (it SystemExits if
+    the field is already absent). It also still authors everything the rework
+    REUSES rather than re-derives: the amulet tiers, the hoard chain, the world
+    chest proxy, the limit record and the pool/proxy skeleton. Read this for the
+    chain; read charon_rework.py for what actually fights you.
+
+    ORIGINAL DOCSTRING FOLLOWS.
+
+    C2: Charon, the Unferried - the risen ferryman-toll atop the Golden Bough
     shrine (EXTREME: genuine two-phase Charon, deathchill cold shroud, S1 cold/
     vitality stat soul 'Soul of the Unferried', THE GOLDEN BOUGH amulet, reused
     Boss-locked hoard). Form-2 FX per the vet byte-truth: the donor carries no
@@ -17715,7 +17858,7 @@ def _create_goldenbough_boss(db, tags):
                          'tagSVCitmGoldenBough', 'tagSVCitmGoldenBoughDESC', il,
                          _gb_amulet_block(mult))
     _svc_guarantee_unique(db, _GB_FORM2, [_GB_AMULET['n'], _GB_AMULET['e'], _GB_AMULET['l']],
-                          _GB_AMULET_LOOT)
+                          None)
 
     # ── S2 THE ONE SUMMON (EXTREME-promoted default): {^F}Soul of the Unferried
     #    raises a permanent drowned oarsman - Charon's own signature (calling the
@@ -19538,21 +19681,26 @@ def run_registry_gates(db, tags, force_full_drops=True):
     _apply_aphiastas_finger2_zero(db)
 
     # Soul drop rate. ON (100%) by default so souls are easy to test in-game.
-    # The release build flips this to the tuned 66% (Hero/Quest) / 25% (Boss)
-    # rates via SVC_RELEASE_DROPS=1 (threaded here as force_full_drops=False).
+    # The release build flips this to the tuned ruled rates (R-243: 20% non-fixed
+    # / 10% fixed-location boss) via SVC_RELEASE_DROPS=1 (threaded here as
+    # force_full_drops=False).
     if force_full_drops:
         _force_100_pct_soul_drops(db)
         print("  TESTING BUILD: soul drops forced to 100% "
-              "(set SVC_RELEASE_DROPS=1 for tuned 66%/25% rates)")
+              "(unset SVC_TESTING_DROPS / set SVC_RELEASE_DROPS=1 for the tuned "
+              "release rates)")
     else:
-        # R-105/R-106/R-107 (Will 2026-07-29) SUPERSEDE the old 66/50/25 split.
-        # LAST WRITER in the release build: every hand-set rate anywhere upstream
-        # is normalized onto the ruled value here, through the ONE shared
-        # classifier (build_svc_database.ruled_soul_equip_rate).
+        # R-105/R-106/R-107 (Will 2026-07-29) SUPERSEDE the old 66/50/25 split;
+        # R-243 (Will 2026-08-12) lowered the two RATES to 20 non-fixed / 10
+        # fixed-location boss. LAST WRITER in the release build: every hand-set
+        # rate anywhere upstream is normalized onto the ruled value here, through
+        # the ONE shared classifier (build_svc_database.ruled_soul_equip_rate).
         _apply_soul_rate_policy(db)
-        print("  RELEASE BUILD: R-105/106/107 soul rates "
-              "(33% non-fixed, 25% fixed-location boss, 0% Common, "
-              "100% the four R-48 Toxeus champions)")
+        from build_svc_database import (SOUL_RATE_FIXED_BOSS as _SRFB,
+                                         SOUL_RATE_NONFIXED as _SRNF)
+        print("  RELEASE BUILD: R-105/106/107/243 soul rates "
+              f"({_SRNF:.0f}% non-fixed, {_SRFB:.0f}% fixed-location boss, "
+              "0% Common, 100% the four R-48 Toxeus champions)")
 
     # ── R-100 #11 (Will 2026-07-29): the XP-potion forge formulas ────────────
     # "there are forge formulas for experience potions that require souls from a

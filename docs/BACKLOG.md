@@ -1,5 +1,1121 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## BUILD87-DEV GATE RECORD - R-243 lower soul drop rates (non-fixed 33->20, fixed-location boss 25->10); arz-ONLY - BUILT det-2x, ALL GATES GREEN, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING (2026-08-12, `main` fast-forwarded `e0cf0d7` build86 -> `5395334` via `git merge --no-edit fix/soul-rate-10-20`, then followup `5b81ee4` + this gate-record commit).
+
+**INTEGRATED.** `main` was at `e0cf0d7` (build86) and the lane `fix/soul-rate-10-20` was **0 behind / 2 ahead** (merge-base == `e0cf0d7`), so `git merge --no-edit` **fast-forwarded** `main` to `5395334` (`1b8f279` R-243 engine change + `5395334` R-243 docs). Clean, no conflicts, working tree clean. A followup commit `5b81ee4` corrected three stale build-LOG strings (the monolith RELEASE-BUILD print + a comment + the flag-doc comment) that still hardcoded R-105's 33/25 - now derived from `SOUL_RATE_NONFIXED` / `SOUL_RATE_FIXED_BOSS`; **arz-neutral, PROVEN: an independent COLD build from the edited source reproduces the byte-identical BUILD87 arz `3c88e537`** (see det-2x below), so the arz-only ship is unchanged.
+
+**WILL, VERBATIM (2026-08-12):** "Lets lower the drop rate further, so for non-fixed location bosses the drop rate should be 20%, and for fixed location bosses the drop rate should be 10%."
+
+**WHAT IT IS:** R-243 - lowers ONLY the two soul-drop RATE numbers of R-105. `tools/build_svc_database.py`: `SOUL_RATE_FIXED_BOSS` **25.0 -> 10.0**, `SOUL_RATE_NONFIXED` **33.0 -> 20.0**. Everything else of R-105/106/107 stands: 0% Common, 100% the four R-48 Toxeus champions, 0% chain heads (`um_polisgaoler_99`/`um_charon_ferryman_99`/`um_tantalus_99`), and the HELD Charon 39/41/43 + Hades 54 (`BL-b102-DEBT-2`, byte-identical, `double_soul_rulings.verify`). The unbound terminals follow the new fixed-boss 10% (`um_polisgaoler_unbound_99` 25->10) or non-fixed 20% (`um_charonform2_ferryman_99` / `um_tantalus_unbound_99` 33->20). Ruling: `docs/WILL_RULINGS.md` -> R-243.
+
+**NUANCE RESOLVED (do NOT extend `SOUL_RATE_RATIFIED_COHORTS`):** the release build regenerates every rate from UPSTREAM each run, so the sweep sees pre-policy wire/module values (25/50/66/10/5/2), not the 25/33 R-105 shipped; `ruled_soul_equip_rate` rule 8 re-rates by CLASSIFICATION regardless of the incoming value, so 25 and 33 ARE recognized as source values by class - "the equivalent source predicate" the ruling asks for. Adding 25/33 to the cohort would explode `_apply_soul_rate_policy`'s count-over-class drift guard (wire sets every farmable act boss to 25 pre-policy) and abort the build. Proven both ways: `dryrun_soul_rate_policy` over the build86 arz shows 33->20 x770 / 25->10 x118 (gate-view idempotent re-derivation), and record_diff vs build86 shows the same footprint.
+
+**THE ARTIFACT:** work `SoulvizierClassic.arz` = **`3c88e53715750be2aea9d05bc4e4fec9`** (kept at `local/build87_run1.arz`), from build86 `ffea32614b9719b933f589ef8abac2af`. Record count 51,298 -> 51,298. arz-ONLY: canonical `Levels.arc 6784cf0f` / `Text.arc ce0efda4` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` **md5-proven byte-unchanged**. 0 new tags authored.
+
+**CENSUS (from the build applier + record_diff):** 770 non-fixed carriers -> 20; 118 fixed-location bosses -> 10 (12 of those are the pharaoh honour guards, which were 10 pre-policy, shipped 25 under R-105, now 10 - no-op in the applier but a 25->10 diff vs build86); 888 total re-rated. Pins byte-unchanged: 4 R-48 champions at 100, 3 chain heads at 0, 15 Common + 210 hero-0 at 0, the 8 Charon/Hades UNTOUCHABLE at 66/25 (HELD). The applier's count-over-class pin re-derived from THIS build = the expected 8 (`boss_coldworm50`, `boss_dagon_66`, `boss_satyrshaman_55`, `murderbunny`, `q_leinth_47/49/50`, `svc_um_hadesmarshal_80`), all landing on 20.
+
+| gate | result |
+|---|---|
+| det byte identity (det-2x) | **PASS** - `3c88e537` == `3c88e537` across two independent COLD builds (`SVC_NO_CACHE=1`, `PYTHONHASHSEED=0`); run1 into the work/ layout ran the FULL gate battery GREEN under `SVC_REQUIRE_GATES=1`, exit 0, "Done." |
+| `verify_soul_drop_rates.py --gate` (soul-rate invariant gate) | **PASS** - 0 LAST-WRITER mismatches; shipped distribution 100%x4 / 66%x4+25%x4 (the 8 Charon/Hades HELD) / 20%x770 / 10%x118 / 0.5%x7 / 0.35%x2 / 0%x655; every cohort on its ruled rate; intended-diff-vs-golden 915 deltas, 0 UNINTENDED; ALL 12 planted negatives RED (incl. the corrected honour-guard plant: "put on the non-fixed rate (should be fixed-boss) -> RED"), POSITIVE CONTROL GREEN. The gate reads the two rates from the constants, so it asserts fixed=10 / non-fixed=20 automatically |
+| `double_soul_rulings.verify` (in-build, registry `[21/62]`) | **PASS** - "(c) Charon 39/41/43 + Hades 54: UNTOUCHED"; field-level byte-identity held (build exit 0 under `SVC_REQUIRE_GATES=1`) |
+| `record_diff` vs build86 `ffea3261` | **ADDED 0 / REMOVED 0 / MODIFIED 888, ZERO unexplained** - the ONLY changed field anywhere is `chanceToEquipFinger2`; move table is exactly **25.0 -> 10.0 x118** and **33.0 -> 20.0 x770**; all 16 pin records (4 champions, 3 heads, 9 Charon/Hades forms) ABSENT from the diff = byte-unchanged |
+| `run_contracts` (all 6 modules) on the built arz | **GATE PASS - 0 P0 / 0 P1 / 4510 P2** (= the build86 baseline EXACTLY: balance 0 / map 6 / quests 2 / resources 4391 / souls 0 / summons 111, zero new) |
+| `validate_tags` on built arz + `Text.arc ce0efda4` | **PASS** - all 383 mod tags present, 0 new tags; `tagSoulEpic`/`tagSoulLegendary` defined; 2 pre-existing base/SV WARN (non-blocking, same as build86) |
+| canonical artifacts byte-unchanged | **PASS** - `Levels.arc 6784cf0f` (canonical, NOT TESTHUB `7a7ca9ac`) / `Text.arc ce0efda4` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` all md5-match the build86 pins |
+
+**GATE UPDATE:** `verify_soul_drop_rates.py` now reads both rates from `SOUL_RATE_NONFIXED` / `SOUL_RATE_FIXED_BOSS` (no literals in the assertions), the cosmetic klass labels are constant-derived, the spot-test EXPECT table uses the constants, and the honour-guard negative was corrected (a bare 10 no longer reds under R-243, so it plants the non-fixed rate). Negatives now cover "a fixed boss off 10", "a non-fixed off 20", and "a pin moved", all RED on a mutated build, GREEN on the correct one.
+
+**NOT PROVEN IN-GAME (`BL-R243-DEBT-1`):** database + gate proof only. Will's check: kill a non-fixed hero/uber and a fixed-location act boss several times each - the soul should now drop roughly 1 in 5 (non-fixed) / 1 in 10 (fixed boss). The four Toxeus champions still drop 100%, the Soul Gaoler / Charon / Tantalus base heads never drop (only their unbound/terminal forms), Charon 39/41/43 + Hades 54 unchanged. Fully quit TQ and restart Steam first.
+
+### SHIP-PREP (this session) - INTEGRATE + det-2x re-proof + DEV DEPLOY + PACKAGE
+
+**RE-PROVEN INDEPENDENTLY (not trusted from the lane).** After the merge, a fresh **det-2x**: run1 into the **work/ layout** with the FULL gate battery (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_NO_CACHE=1 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`) -> **exit 0, "Done."**, arz `3c88e537`; run2 into scratch (cold, from the post-`5b81ee4` source) -> arz `3c88e537`. **Byte-identical**, and the followup log-string fix is thereby proven arz-neutral (run2's log now reads "20% non-fixed, 10% fixed-location boss").
+
+**STANDALONE GATES (re-run on the built arz, all GREEN):**
+- `verify_soul_drop_rates.py --gate` -> **exit 0 PASS**; asserts 20 non-fixed / 10 fixed-boss (reads the constants), every HELD cohort untouched, **12/12 planted negatives RED + positive control GREEN**.
+- `record_diff` vs build86 `ffea3261` (census script) -> **ADDED 0 / REMOVED 0 / MODIFIED 888**; the ONLY changed field anywhere is `chanceToEquipFinger2`; move table exactly **33.0->20.0 x770 + 25.0->10.0 x118**; **all 16 pins byte-unchanged / absent from the diff** (4 champions @100, 3 heads @0, the 9 Charon/Hades forms held at 66/25/0); unbound terminals moved right (`um_polisgaoler_unbound_99` 25->10, `um_charonform2_ferryman_99` + `um_tantalus_unbound_99` 33->20). Record count 51,298 -> 51,298.
+- `run_contracts` (all 6 modules) -> **GATE PASS, 0 P0 / 0 P1 / 4510 P2** = the build86 baseline EXACTLY (balance 0 / map 6 / quests 2 / resources 4391 / souls 0 / summons 111, zero new).
+- `validate_tags` on the built arz + `Text.arc ce0efda4` -> **PASS** (383 mod tags present, 0 new; `tagSoulEpic`/`tagSoulLegendary` defined; 2 pre-existing base/SV WARN, same as build86).
+- `double_soul_rulings.verify` (in-build registry `[21/62]`) -> **OK**, Charon 39/41/43 + Hades 54 byte-identical to pre-apply.
+- canonical siblings byte-unchanged: `Levels.arc 6784cf0f` (canonical, NOT TESTHUB `7a7ca9ac`) / `Text.arc ce0efda4` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53`.
+
+**DEV DEPLOY (arz-ONLY, no restart).** `work/.../SoulvizierClassic.arz` (`3c88e537`) copied to `CustomMaps\SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` with **md5 source==dest = `3c88e537`** (the DEV arz was build86 `ffea3261` before), **while TQ.exe was NOT running** (nothing killed, Steam not restarted). **DEV `Resources\Levels.arc` stays the LOCAL-ONLY TESTHUB `7a7ca9ac`** (Will's play surface, untouched); DEV `Text.arc ce0efda4` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` re-hashed **byte-unchanged**. Only the DEV database arz changed.
+
+**PACKAGED (not uploaded).** `scripts/package_workshop.ps1`: **TESTHUB guard PASS** (packaged canonical `Levels.arc` MD5 `6784cf0f` != local-only TESTHUB `7a7ca9ac`), single `SoulvizierClassic` wrapper, **56 files / 1188.4 MB**, and **dist==work all 5 artifacts** (arz `3c88e537`, `Levels.arc 6784cf0f`, `Text.arc ce0efda4`, `Quests.arc 607ec99c`, `Creatures.arc 8c0d8d53`). Dist: `dist/workshop/content/SoulvizierClassic`.
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` refreshed to build86 `ffea3261` (restore -> build86); this artifact kept at `local/build87_run1.arz` = `3c88e537`.
+
+**STEAM SHIP + GitHub push are the MAIN SESSION's to run** (this lane is arz-only, built, gated GREEN, DEV-deployed, packaged; the coupled `Text.arc ce0efda4` is byte-unchanged so it re-uploads as-is). **READY FOR STEAM UPLOAD: BUILD87, arz `3c88e53715750be2aea9d05bc4e4fec9`, coupled `Text.arc ce0efda4` (byte-unchanged).**
+
+## BUILD86-DEV GATE RECORD - R-242 uber-orb legendary/blue chance BY DIFFICULTY; Toxeus+Leinth excluded; `BL-R241-DEBT-1` CLOSED - BUILT, ALL GATES GREEN, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING, arz-ONLY (2026-08-12, `main` @ the `fix/orb-rates-by-difficulty` fast-forward merge, tip `c833d0a`)
+
+**INTEGRATED.** `main` was at `41ea7e6` (build85) and the lane `fix/orb-rates-by-difficulty` was **0 behind / 2 ahead** (merge-base == `41ea7e6`), so `git merge --no-edit` **fast-forwarded** `main` to `c833d0a` (`47c6a22` R-242 engine change + `c833d0a` R-242 docs/ruling). Clean, no conflicts, working tree clean.
+
+**WILL, VERBATIM (2026-08-12), part 1:** "all the orbs that uber monsters drop should have a 50% chance of dropping a legendary item on epic, a 75% of dropping a legendary item on legendary, a 0% chance of dropping a legendary item on normal, but a 75% chance of dropping a blue item on normal (this is a sub legendary item...they show up blue)". **part 2:** "Note that Leinth and the toxeus variants keep their current higher / better orbs / better drop rates / more loot".
+
+**WHAT IT IS:** the "genuinely rare, deliberate decision" R-241 deferred as `BL-R241-DEBT-1`. The 15 GENERAL uber-orb tables (`uberorb_default_*` + `boss_charon_*01b`) are calibrated per difficulty so P(>=1 target per open) hits Will's number: Normal blue(Epic) **75%** + legendary GEAR **0%**, Epic legendary **50%**, Legendary legendary **75%**. The 3 EXCLUDED apex tables (`svc_uberorb_apex_{n,e,l}01c`, the shared Toxeus + Leinth loot) are kept BYTE-IDENTICAL to build85 (their guaranteed relic row is still demoted 100 -> 21.2, which IS their build85 state). Ruling: `docs/WILL_RULINGS.md` -> R-242. **`BL-R241-DEBT-1` CLOSED-BY-R-242.**
+
+**THE ARTIFACT:** `work/SoulvizierClassic/Database/SoulvizierClassic.arz` = **`ffea32614b9719b933f589ef8abac2af`** (55,582,057 B, 51,298 records), up from build85 `5a6d63a9` (55,582,018 B). arz-ONLY: `Text.arc ce0efda4` / canonical `Levels.arc 6784cf0f` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` **md5-proven byte-unchanged**. **0 new tags authored**, so `validate_tags` PASSES against the EXISTING `Text.arc` (383 mod tags present, the coupling SATISFIED not waived) and no Text rebuild was needed.
+
+**THE MECHANISM (per-difficulty record, NOT a container game-mode array):** each difficulty of each general orb is a physically separate FixedItemLoot record selected upstream by the proxy slot, so a UNIFORM `loot1/2/5/6` chance is set DIRECTLY on each of the 15 records, CALIBRATED per table against the emergent P(>=1) model (bisection, derived from the bytes, not typed). Uniform preserves R-181 D3/D4/D6 weapon:armour parity; raising only strengthens the D7b armour-per-iteration floor. loot3/loot4, all members, all weights, and numSpawn are UNTOUCHED.
+
+**BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_NO_CACHE=1 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, into the work/ layout): **exit 0, "Done."** In-build `orb_legendary_chance` scope proof PASS (15 general calibrated, 3 apex frozen, only `loot{g}Chance` moved). Every coexisting gate GREEN (orb breadth / orb armour / loot distribution / loot volume / relic tiers / DLC + voyage caps / charon_rework / A9 render-chain / Atlantis).
+
+| gate | result |
+|---|---|
+| det byte identity (det-3x) | **PASS** - `ffea3261` == `ffea3261` == `ffea3261` across THREE independent COLD builds (`SVC_NO_CACHE=1`, `PYTHONHASHSEED=0`). run1 into the **work/ layout** with `SVC_REQUIRE_GATES=1` ran the FULL gate battery GREEN, exit 0, "Done."; run2 + run3 into scratch reproduced the identical arz bytes (run2 exit 1 / run3 exit 0 differ ONLY on whether the location-only A9 render-chain + F2 summons gates hard-fail under `SVC_REQUIRE_GATES=1` when there is no `Resources/` beside a scratch output - B-GATE-HARDEN-1; those two gates ran GREEN in run1) |
+| `record_diff` vs build85 `5a6d63a9` | **ADDED 0 / REMOVED 0 / MODIFIED 15, ZERO unexplained** - exactly the 15 general orb tables, 4 field(s) each (`loot1/2/5/6 Chance`), 60 field moves, **all RAISES** (0 lowered). The 3 `svc_uberorb_apex_*` tables are ABSENT (byte-identical). Record count 51,298 -> 51,298 |
+| `gate_orb_legendary.py --baseline` on the built arz | **PASS** - 15 general in band (Normal 75.0%, Epic 50.0%, Legendary 75.0%); **apex byte-diff vs baseline = 0 differences on all 3 excluded tables**. Prints the `BL-R242-DEBT-1` inversion notice (apex 60.9% < general 75% on Legendary) - an announcement, not a failure |
+| `negtest_orb_legendary.py` | **PASS** - 6 planted defects + partition-drift guard RED (G1 both edges, G2 legendary-gear-on-normal, G3 apex-chance-breach, G3b shared-master leak, G5 empty-box, X0 roster drift), 3 positive controls GREEN (wave green, inversion notice fires, coexisting breadth/distribution/volume gates 0/0/0/0 on the same db) |
+| `run_contracts`, all 6 modules, on the built arz | **GATE PASS - 0 P0 / 0 P1 / 4510 P2** (= the build85 baseline EXACTLY, zero new violations) |
+| `validate_tags` on built arz + `Text.arc ce0efda4` | **PASS** - 383 mod tags present, 0 new tags; 2 WARN are pre-existing base/SV backlog names (non-blocking, same as build85) |
+
+**PER-DIFFICULTY / PER-ORB TABLE, AFTER (general orbs, calibrated `loot1/2/5/6` chance -> P(target)):**
+
+| tier | general orbs (chance -> P) | excluded apex (frozen b85) |
+|---|---|---|
+| Normal | 46.5-46.8% -> blue(Epic) 75.0%, leg-GEAR **0.00%** | 40.0% -> Epic 69.0%, leg 0.1% |
+| Epic | 41.4-56.1% -> legendary ~50.0% | 40.0% -> legendary 48.9% |
+| Legendary | 56.9-67.2% -> legendary ~75.0% | 40.0% -> legendary **60.9%** |
+
+Proof the apex is unchanged: `record_diff` shows the 3 `svc_uberorb_apex_*` tables NOT modified; `gate --baseline` full field-by-field diff = 0 differences; loot4 stays 21.2, loot1/2/5/6 stay 40.0, numSpawn stays `*0.2283/*0.2609` (l: `*0.231/*0.2609`).
+
+### DEBT REGISTERED BY THIS LANE
+
+- `BL-R242-DEBT-1` - 🚨 **WILL DECISION (the apex-vs-general INVERSION).** Freezing the excluded Toxeus/Leinth apex at build85 makes it WEAKER than the general orbs on Legendary legendary-chance: **apex 60.9% vs general 75%** - the general orbs now drop legendaries MORE OFTEN than the "better" apex, an inversion of Will's "keep their better orbs / more loot". The apex keeps a **volume** edge (S 1.131 vs 1.125) and a **richer loot4** (21.2 vs 12.7) only. This is the LITERAL byte-unchanged exclusion Will ruled (part 2) and the instruction of this lane; the gate PRINTS it every run (`inversion_notice`) and does NOT red. **PRICED: (A)** accept the inversion (apex superiority = volume + loot4 + breadth), cost nothing; **(B)** bump the apex Legendary/Epic legendary chance to strictly exceed the general target (e.g. apex leg >= 80% / >= 55%) in a follow-up lane, and the notice clears in the same commit.
+- `BL-R242-DEBT-2` - **NOT PROVEN IN-GAME.** Everything above is a database + gate proof. **Will's check: kill a general uber a few times and open the orb - on Normal expect blue (Epic) items and NO legendaries; on Epic a legendary about half the opens; on Legendary a legendary about 3 in 4 opens. Toxeus/Leinth (Devourer, Enslaver, Endless Hunt, Leinth) orbs are UNCHANGED from build85.** Fully quit TQ and restart Steam first.
+- `BL-R242-DEBT-3` - **CHARON/AKREMON TREATED AS GENERAL (flag for Will).** `boss_charon_{n,e,l}01b` (terminal `um_charonform2_ferryman_99` = Akremon after build85) is neither Leinth nor a Toxeus variant, so by the literal ruling it is GENERAL and got 0/50/75. Its orb shares the apex-richer `loot4=21.2` (untouched by this wave). Flagged because Akremon is a marquee uber Will may want kept apex-tier.
+- `BL-R242-DEBT-4` - **No blue floor on Epic/Legendary orbs** (Will only specified Normal's 75% blue). Incidental Epic drops on Epic/Legendary orbs left as-is per the recon default.
+
+### SHIP-PREP (this session) - DEV DEPLOY + PACKAGE
+
+**DEV DEPLOY (arz-ONLY, no restart).** `work/.../SoulvizierClassic.arz` (`ffea3261`) copied to `CustomMaps\SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` with **md5 source==dest = `ffea3261`** (the DEV arz was build85 `5a6d63a9` before), **while TQ.exe was NOT running** (nothing killed, Steam not restarted). **DEV `Resources\Levels.arc` stays the LOCAL-ONLY TESTHUB `7a7ca9ac`** (Will's play surface, untouched); DEV `Text.arc ce0efda4` / `Quests.arc 607ec99c` / `Creatures.arc 8c0d8d53` re-hashed **byte-unchanged**. Only the DEV database arz changed.
+
+**PACKAGED (not uploaded).** `scripts/package_workshop.ps1`: **TESTHUB guard PASS** (packaged canonical `Levels.arc` MD5 `6784cf0f` != local-only TESTHUB `7a7ca9ac`), single `SoulvizierClassic` wrapper, **56 files / 1188.4 MB**, and **dist==work all 5 artifacts** (arz `ffea3261`, `Levels.arc 6784cf0f`, `Text.arc ce0efda4`, `Quests.arc 607ec99c`, `Creatures.arc 8c0d8d53`). Dist: `dist/workshop/content/SoulvizierClassic`.
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` refreshed to build85 `5a6d63a9` (restore -> build85); this artifact kept at `local/build86_run1.arz` = `ffea3261`; the named build85 anchor `local/build85_run1.arz` = `5a6d63a9` is unchanged.
+
+**STEAM SHIP + GitHub push are the MAIN SESSION's to run** (this lane is arz-only, built, gated GREEN, DEV-deployed, packaged; the coupled `Text.arc ce0efda4` is byte-unchanged so it re-uploads as-is). **READY FOR STEAM UPLOAD: BUILD86, arz `ffea32614b9719b933f589ef8abac2af`, coupled `Text.arc ce0efda4` (byte-unchanged).**
+
+---
+
+## BUILD85-DEV GATE RECORD - R-231 THE GOLDEN BOUGH UBER REWORK (Charon out, AKREMON THE GRASPING ROOT in) - BUILT, ALL GATES GREEN, DEPLOYED TO DEV; STEAM UPLOAD PENDING (2026-08-12, `main` @ the `feat/charon-rework` fast-forward merge, tip `a282faa`)
+
+**INTEGRATED.** `main` was at `f989a3b` (build84) and the lane `feat/charon-rework` was 0 behind / 18 ahead
+(the lane had already merged build84 in at `f3217f9` and reconciled with the R-240/R-241 Charon-orb loot
+trim), so `git merge --no-edit feat/charon-rework` was a clean **fast-forward to `a282faa`** - zero
+conflicts, no merge commit owed. TQ.exe was NOT running. This is the next sequential ship after build84;
+the `b86`/`b87` codenames in older notes are dev names, the ship number is **BUILD85**.
+
+**WHAT IT IS:** Will's 2026-08-11 order - *"the charon uber boss we created needs to be re-worked, he is
+pretty much identical to the base game charon boss we cloned him off. maybe we can replace him with a
+different uber monster that is more unique."* The old Golden Bough uber carried `boss_charon_43` /
+`boss_charonform2_43`'s kit byte-for-byte. It is REPLACED IN PLACE, at the three frozen monster record
+paths the reused proxy/placement chain names, by **Akremon, the Grasping Root** (phase 1: Plant,
+Ascacophus02 @2.8, bleed-immune, root-snare + the mod's ONLY `Skill_DefensiveWall` quillvine wall +
+quill fan, splits at 33% into thorns + an authored +35% physical with ZERO absorption / ZERO regen) ->
+**Akremon, the Heartwood Ablaze** (terminal: Plant, DRX emberoak @2.0, ring-of-flame + volcanic orb x3 +
+heatshield, NOT bleed-immune) with two **Handbriar** champions. The Golden Bough amulet, the hoard chest
+("The Orchard of Hands"), the soul ("Soul of the Grasping Root" -> "Graft the Burning Heartwood") and the
+orb are REUSED. Full design + corrections: `docs/WILL_RULINGS.md` R-231-A..I; debt register: the R-231
+LANE RECORD below.
+
+**arz + a COUPLED `Text.arc` (NOT arz-only).** This is the one deploy-shape difference from build84. The
+module mints one new tag (`tagSVCMonsterAkremonBlaze`, the terminal name) and rewrites seven existing
+`tagSVC*` strings; shipped against the FROZEN `a9fed7ba` Text the terminal would render a RAW TAG
+(C-RES-TAG-1 P1). So arz and Text ship together (the standing "arz+Text ship together" rule), and
+`validate_tags` PROVES the coupling landed. `Levels.arc 6784cf0f` (canonical) / `Quests.arc 607ec99c` /
+`Creatures.arc 8c0d8d53` are md5-proven byte-unchanged; no map/Quests rebuild (the frozen proxy chain is
+reused). The DB build emits the 9 Akremon strings into `uber_soul_tags.txt`, and `build_text_arc.py`
+rebuilds Text.arc from it.
+
+**THE BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_NO_CACHE=1 SVC_RELEASE_DROPS=1
+SVC_REQUIRE_GATES=1`, into the work/ layout, **exit 0 "Done."**; then `build_text_arc.py` with
+`SVC_BASE_TEXT_EN` = the base-game `Text\Text_EN.arc`).
+
+| artifact | md5 | bytes | vs `build84` (`4bfea2e6`) |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`5a6d63a952322a9c307da60a0056b328`** | 55,582,018 (51,298 rec) | **CHANGED** (+1,839 B, **+1 rec**) |
+| `Resources/Text.arc` (COUPLED) | **`ce0efda4f4884a3079a20fd855f2d9ca`** | 89,629 | **CHANGED** (+78 B; 1 minted + 7 rewritten tag(s)) |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**DETERMINISM: det-2x BYTE-IDENTICAL.** Two independent COLD builds (`SVC_NO_CACHE=1`), the second into a
+separate scratch path, produced `5a6d63a9` both times, 55,582,018 B, `cmp` byte-identical. (Run 2 exited
+1 only on the post-write A9/D5 render gate refusing to run outside the work/ layout - a deliberate
+B-GATE-HARDEN-1 guard, orthogonal to arz determinism; the same D5 gate PASSED on the run-1 work/ build.)
+
+**RECORD-DIFF vs the shipped `4bfea2e6`: ADDED 1 / REMOVED 0 / MODIFIED 14 = the 15-record lane
+footprint, ZERO unexplained** (matches the vet's expected_record_diff exactly). ADDED (1):
+`records\skills\monster skills\lowhealth\svc_bough_splitting.dbr`. MODIFIED (14): `q_goldenbough_lone`
+pool (1 fld) + `q_yard_goldenbough` pool (1) + `q_goldenbough_lone` proxy (2) + `q_yard_goldenbough` proxy
+(2) + `ferryman_soul_{n,e,l}` (28 each) + `charon_oarsman_{1,2,3}` pets (71 each) +
+`summon_charon_oarsman` (3) + `svc_charon_wraith_99` escort (104) + `um_charon_ferryman_99` phase 1 (175)
++ `um_charonform2_ferryman_99` terminal (208). **build84's R-240/R-241 loot records
+(`boss_charon_*01b`, `svc_uberorb_apex_*`, `uberorb_default_*`, the polisvault twins) are ABSENT from the
+diff = the loot trim is fully preserved** by the merge reconciliation. Record count 51,297 -> 51,298 (the
+one added split skill).
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (whole fail-loud battery, `SVC_REQUIRE_GATES=1`) | **exit 0, "Done."** |
+| det-2x byte identity | **PASS** - `5a6d63a9` == `5a6d63a9` (both cold, `SVC_NO_CACHE=1`, `cmp` byte-identical) |
+| `charon_rework.verify` (in-build) | **OK** - proxy chain resolves to Akremon + 2 Handbriars on forecourt AND TESTHUB yard; soul re-THEMED (0 surviving ferryman cold/vitality/life-leech/fear/%-current-life fields, fire+pierce present); flame-ring glyph + own-family cast sound (not Charon's drowned-spirit, not Lyia's Maenad); all 6 placed+summoned bodies D19-mobile; Epic 35,000 == Gaoler, beat 2 with 0 absorption / 0 regen + authored +35% phys; Misc1/2/3 muted 0.0 both forms, Bough at Misc4 100.0; mana regen authored; CC 75/60/60, terminal 300% stun wall gone; EXACTLY ONE summon-pet registration on the terminal's own donor; no `charon_*` signature skills or shared rotation |
+| in-build coexisting battery | **all PASS** - chest_loot_breadth (69 tables, SPEAR incl), armor_loot_breadth (63 surfaces), red_uber_orbs (55 red ubers), orb_loot_breadth (18), orb_armor_rows (18), loot_volume_trim (R-240, 69 canonical + 18 TESTHUB twin), orb_legendary_chance (R-241), craft_thrown_breadth (42/42/42), polis_vault, mastery_unlock_alignment, R-210 DLC cap (`['Greece','Egypt','Orient','Hades']`), R-211 Atlantis voyage cap (`[]`), + 53 registry verify() hooks. No `summon-pet registry: SUPERSEDED` line for ANY family (clean; the watch condition holds) |
+| `validate_tags` (arz -> COUPLED Text.arc) | **PASS** - all 383 referenced mod tags + all 443 authoritative `uber_soul_tags` present in `ce0efda4` Text.arc; 2 pre-existing non-blocking base monster-name WARNs (`tagNewMonster66/46`). This is the PROOF the arz+Text coupling landed |
+| D5 render-chain (`validate_render_chain`) | **PASS** - 263 pets / 3053 art refs checked, 0 blocking; the new emberoak-body summon pet (`charon_oarsman_{1,2,3}`) resolves mesh + internal shaders; 22 upstream WARNs (non-blocking) |
+| `run_contracts`, all 6 modules, on the built arz | **GATE PASS - 0 P0 / 0 P1 / 4510 P2** (balance 0, map 6, quests 2, resources 4391, souls 0, summons 111) |
+| P2 delta vs build84 baseline 4510 | **+0. Zero new P2, zero new violation class.** The 15-record lane footprint introduces no new contract finding |
+| canonical siblings byte-unchanged | **PASS** - Levels `6784cf0f` / Quests `607ec99c` / Creatures `8c0d8d53` md5-proven unchanged on disk after both builds |
+
+**DEPLOYED TO DEV** - a COUPLED arz+Text copy (this lane is NOT arz-only, so `deploy_to_custommaps.ps1`
+was NOT used: it recursively copies the whole work mod incl. canonical `Levels.arc 6784cf0f`, which would
+CLOBBER the DEV TESTHUB play surface). Targeted copy of exactly two files into
+`CustomMaps\SoulvizierClassicDEV`: `Database\SoulvizierClassicDEV.arz` = `5a6d63a9` and
+`Resources\Text.arc` = `ce0efda4`, each with md5 **source == dest** verification **while TQ.exe was NOT
+running** (nothing killed, Steam not restarted, checked immediately before the copy). **2 of 62 DEV files
+changed, 0 added, 0 removed;** the whole folder was md5-inventoried before (`local/dev_pre.md5` snapshot)
+and after and the other 60 are byte-identical. **DEV `Resources\Levels.arc` stays the TESTHUB
+`7a7ca9ac`** (Will's play surface, deliberately untouched), Quests `607ec99c` / Creatures `8c0d8d53`
+unchanged. arz+Text only, no map change -> no Steam restart owed.
+
+**PACKAGED (not uploaded).** `scripts/package_workshop.ps1`: **TESTHUB guard OK** (packaged Levels
+`6784CF0F` != TESTHUB `7A7CA9AC`), single `SoulvizierClassic` wrapper, 56 files / 1188.4 MB. **dist==work
+all 5 artifacts PASS** (arz `5a6d63a9`, Text `ce0efda4`, Levels `6784cf0f`, Quests `607ec99c`, Creatures
+`8c0d8d53` all byte-identical work vs dist). Dist staging path:
+`dist/workshop/content/SoulvizierClassic`.
+
+**STEAM UPLOAD + GITHUB PUSH ARE THE MAIN SESSION'S TO RUN.** This lane did NOT run SteamCMD and did NOT
+push to a remote. **READY FOR STEAM UPLOAD: build85, arz `5a6d63a952322a9c307da60a0056b328` + coupled
+Text `ce0efda4f4884a3079a20fd855f2d9ca`.**
+
+**Rollback (one step, COUPLED):** `local/DEV_arz_deployed_prev.arz` = build84 `4bfea2e6` +
+`local/DEV_text_deployed_prev.arc` = build84 `a9fed7ba` -> copy both back over the DEV
+`Database\SoulvizierClassicDEV.arz` and `Resources\Text.arc` together. This build's arz at
+`local/build85_run1.arz` = `5a6d63a9`.
+
+**NOT PROVEN IN-GAME (Will's DEV check).** Fight Akremon at the Golden Bough forecourt (Styx river edge,
+Act 4). Open playtest items registered as `BL-BOUGH-DEBT-2/3/6/10/11/12`: scale 2.8 footprint/clearance
+at the reused placement, `quillwards` add-density (boss + 2 Handbriars + up to 6 quillvine adds + wall
+pets), both forms are Plant (fire build finds the terminal easier - deliberate), the soul-tooltip
+movement penalty must READ on the item (rounds 3-4 wrote it into a dead field), the flame-ring granted
+skill glyph has never been rendered in-mod, and beat 2's thorn FX at 33% life is base-resolved. See
+`docs/WILL_TEST_GUIDE.md` item 12. Full quit TQ + restart Steam before testing.
+
+## LANE RECORD - R-231 THE GOLDEN BOUGH UBER REWORK: Charon is out, AKREMON THE GRASPING ROOT is in (2026-08-11, ROUND 4, branch `feat/charon-rework`, module `tools/patches/charon_rework.py`, static gates only - the Ship phase owns the build)
+
+**Will, verbatim (2026-08-11):** *"the charon uber boss we created needs to be re-worked, he is
+pretty much identical to the base game charon boss we cloned him off. maybe we can replace him with
+a different uber monster that is more unique"*
+
+He is right and the arz proved it: both our forms carried `boss_charon_43` / `boss_charonform2_43`'s
+kit BYTE-FOR-BYTE. Full artifact proof, the identity ruling, the b86 row-7 coordination note, the
+retirement-protocol record and the measured spec corrections are in **`docs/WILL_RULINGS.md`
+R-231-A..D**, and **R-231-E carries the ROUND-2 amendment**: an independent vet proved a P0 that
+red-lined the whole DB build plus two P1s / three P2s / two P3s, all now fixed, and the fix pass
+found a ninth defect the vet had not looked for - **the ratified name "Ormenos" is already a live
+boss in this database** (the China Telkine, 59 records, its own soul). Read R-231-E before this.
+**R-231-F carries the ROUND-3 amendment** (the two surfaces the PLAYER KEEPS - the soul's stat
+block and the granted summon's skill-bar face - were both still Charon under a green gate), and
+**R-231-G carries the ROUND-4 amendment: THE NUMBERS NOBODY AUTHORED.** Beat 2 was a verbatim clone
+of `DefensiveMastery_Adrenaline` silently granting **36% damage absorption + 8/s regen + 60%
+physical damage** under this lane's own claim of exact Gaoler durability parity (the vet caught two
+of the three); the terminal inherited the DRX emberoak's **act-2/3** loot band; the shell inherited
+a 75/13/1.6 roll it had never had; the escort inherited a beetle-bile burst; the soul pets lost
+their difficulty rows; and `docs/WILL_TEST_GUIDE.md` - the document Will actually reads to test this
+- still described Charon. All fixed and gated. Read R-231-G before this.
+This entry is the DEBT REGISTER half.
+
+**WHAT SHIPPED (arz-only; the forecourt placement and proxy chain are REUSED, no map rebuild):**
+
+| | record (PATH FROZEN) | donor | what it is now |
+|---|---|---|---|
+| phase 1 | `um_charon_ferryman_99.dbr` | `xhero_strongbark_44` | **Akremon, the Grasping Root** - Plant, Ascacophus02 @2.8, rs 1.35, bleed-immune, vitality res 60, root-snare + the mod's ONLY `Skill_DefensiveWall` + quill fan, splits at 33%. Life `[13000, 17000, 22000]` |
+| phase 2 | `um_charonform2_ferryman_99.dbr` | **`um_emberoak_42`** (was `us_hellflower_37` - IMMOBILE RIG, R-231-E #3) | **Akremon, the Heartwood Ablaze** - Plant, DRX emberoak @2.0, rs 1.45, native ring-of-flame + volcanic orb x3 + heatshield + stoneform, petal ring, NOT bleed-immune, vitality res 40. Life `[14000, 18000, 24000]` |
+| escort x2 | `svc_charon_wraith_99.dbr` | **`am_junglecreep_41`** (was `am_quillvine_35` - IMMOBILE RIG) | **Handbriar** - Plant, JungleCreep01 @1.55, rs 1.30, life `[5000, 7000, 9500]` (ASCENDING; the shipped one was `[878, 300, 400]`) |
+| new skill | `svc_bough_splitting.dbr` | `lowhealth_berserkerrage01` | the self-firing 33%-life phase beat, with the thorn retaliation folded in |
+
+**STATIC PROOF RUN THIS LANE (no DB build - the Ship phase owns that):**
+`py tools/patches/_check_registry.py` -> OK, 60 modules, order
+`96d61e6f2b0ce3072fa00ad7c480591af216ff3f1bdabe99458d6fe27df92454`; and a harness that runs
+`charon_rework.apply()` + `verify()` over the LIVE build83 arz (`work/SoulvizierClassic/Database/
+SoulvizierClassic.arz`, 51,253 records) -> **apply GREEN, verify GREEN, 15 records written**, then
+**20 planted negatives (round 2), every one RED, with restoration proved GREEN after each**: pool
+repointed to the old boss / Golden Bough chance 50 / escort life made descending /
+`charFxPakSelfNames` on the boss / invented `actorHeight` / terminal orb retargeted / a `charon_*`
+signature skill returning / the `'ferryman'` exemption returning / the chain HEAD starting to pay
+the soul / both forms sharing one display string / **a stale summon-pet pair re-added** / **the pet
+pair pointed at the wrong source** / **the terminal made immobile** / **the escort put back on the
+locomotion-less rig** / **the soul pet made immobile** / **the vitality wall restored** / **bleed
+immunity leaking onto the terminal** / **the boss renamed back to Ormenos** / **life inflated past
+the Gaoler band** / **life made descending across difficulties**.
+
+The harness now **SEEDS the monolith's stale `_SUMMON_PET_BUILDS` pair before `apply()`** and
+asserts it is gone afterwards, so the round-1 P0 - which red-lined a full DB build twice - is
+reproduced and proved fixed rather than argued about.
+
+### PLAYER-SURFACE CHECKLIST (process law #3 - enumerated, none silently deferred)
+
+| surface | state |
+|---|---|
+| phase-1 boss name | `tagSVCMonsterCharonFerryman` -> `{^r}Akremon, the Grasping Root` (key kept, string rewritten) |
+| phase-2 boss name | `tagSVCMonsterAkremonBlaze` -> `{^r}Akremon, the Heartwood Ablaze` (**MINTED** - the two forms shared ONE tag before, so the phase turn had no name change) |
+| escort name | `tagSVCMonsterCharonWraith` -> `{^G}Handbriar` |
+| soul name + DESC | `tagSVCSoulFerryman` -> `{^F}Soul of the Grasping Root` (+ DESC). Already in `_HAND_DESIGNED_SOUL_TAGS`, so the F6 naming standard cannot flatten it |
+| summon skill name + DESC | `tagSVCSummonCharonOarsman` -> `Graft the Burning Heartwood` (+ DESC) |
+| pet name | `tagSVCPetOarsman` -> `Burning Heartwood` |
+| **MOBILITY** (new, R-231-E #3) | every placed and summoned body sits on a rig that BINDS `unarmedRunAnim`, and its `characterRunSpeed` is written explicitly: 1.35 / 1.45 / 1.30, pet 1.0. Round 1 shipped the TERMINAL, both escorts and the permanent pet at **0.0 on a table with no locomotion clip at all** |
+| **DURABILITY** (new, R-231-E #7; **CORRECTED R-231-G #1**) | Epic total **35,000**, matching the Gaoler's 35,000 exactly (`docs/reports/gaoler_variance_rca.md`, the ratified hard-but-fair reference). Round 1 was an uncalibrated 58,000. **AND THAT NUMBER IS NOW THE WHOLE STORY:** rounds 1-3 shipped beat 2 as a verbatim clone of `lowhealth_berserkerrage01` (`DefensiveMastery_Adrenaline`) at `skillLevel 10`, which silently added **36% flat damage absorption + 8/s life regen + 60% physical damage**, permanently up (cd 5.0 < duration 12.0) for the whole last third of phase 1 - so phase 1's last 5,610 Epic HP actually cost ~56% more damage than this row claimed. All three arrays are now AUTHORED as flat 20-row values: absorption **0**, regen **0**, physical modifier **+35% (kept, stated, gated)** |
+| hoard chest name | `tagSVCCharonHoard` -> `The Orchard of Hands` |
+| amulet name / DESC | name UNCHANGED (`The Golden Bough`); DESC rewritten - the shipped one read *"Torn from Charon at his own deserted dock"* |
+| in-game colour prefixes | `{^r}` both boss forms, `{^G}` champion, `{^F}` soul - all present, gated |
+| proxy preview mesh + scale | `Ascacophus02.msh` @ 2.8 on BOTH the canonical forecourt proxy and the TESTHUB yard proxy (was Charon01 @ 1.7) |
+| race in tooltip | **Plant** on all three (inherited from the donors; the roster had zero Plant ubers) |
+| soul ITEM icon | unchanged `SVItems\jewelry\soul_{n,e,l}_icon.tex` via `_create_soul` boilerplate |
+| **soul STAT BLOCK** (new, R-231-F #1) | RE-THEMED, not just re-labelled: **13 superseded ferryman fields stripped per tier** (cold / slow-cold / cold-res / vitality / life-leech / fear / **`offensivePercentCurrentLife`**, which is base Charon's own signature lever) before the fire+pierce block is written. Round 2 layered the new stats ON TOP of the old ones and the tooltip still read as the ferryman |
+| **granted-skill icon** (new, R-231-F #2) | `_SUMMON_SKILL_ICON['summon_charon_oarsman']` -> `DRXtextures\skill icons\soul\flamewave{up,down}.tex`, a fire glyph with **0 references DB-wide** (no other summon, no other granted skill). Was Charon's `drownedspirit{up,down}` - the glyph on the player's skill bar every cast. Never-rendered-in-mod residual: `BL-BOUGH-DEBT-10` |
+| **granted-skill cast sound** (new, R-231-F #2) | `skillHitSound` -> the terminal donor's own `bogdwelleralertpak`. Was Lyia's `maenadalertpak`; that is a CLASS-wide residue on 31 of 52 soul summons, fixed here only for this record - see `BL-BOUGH-DEBT-9` |
+| pet-bar portrait | `_build_boss_summon(..., player_facing=True)` default - on-identity, never the Lyia nymph (the b40 deferred-portraits lesson) |
+| R-100 #7 exclamation marker | `DisplayAsQuestItem` re-asserted 1 / 1 / 0 after the re-clone (`uber_quest_markers` writes it earlier in REGISTRY and its `verify()` re-derives on the final db) |
+| monster sounds | donor-native throughout; no sound RECORD is authored. The one sound POINTER this lane rewrites is the granted summon's `skillHitSound` (row above) |
+| **NOT proven in-game** | scale / density / colour-in-renderer - `BL-BOUGH-DEBT-2` and `BL-BOUGH-DEBT-3` below |
+| **ORDINARY LOOT BAND** (new, R-231-G #2/#3) | **TERMINAL** retargeted onto the act-4 band (`n/e/l_04_unique_all`, `04_*_misc`, `01/02/03_act4_relics`, `01/02/03_act4_arcaneformulae`) and both act-3 `jungleroot` rows muted; the emberoak re-clone had dropped it a full act, below its OWN phase 1 and below `um_polisgaoler_unbound_99`. **SHELL** muted to `chanceToEquipMisc1/2/3 = 0`, the shipped Charon shell's own shape, behind `_ORM_MUTE_MISC` - the strongbark re-clone had added an undisclosed 75/13/1.6 roll beside b84's loot-TRIM lane. The three GUARANTEED rewards were never touched |
+| **escort kit** (new, R-231-G #5) | `quillvine_barb` (physical + 50% pierce ratio) replaces the junglecreep donor's `beetlebile_vomitbile` poison burst, in BOTH the declared slot and the cast. Its 7 live carriers are `quillvine_01..06` - the same bodies the boss's own `quillwards` wall and `hero_quillvines` retinue field, so the escorts fire the briar the boss grows. Also a raw NERF (5 x 159/183/207 poison -> one barb at 245/263/300 physical) |
+| **soul-pet difficulty rows** (new, R-231-G #5) | the three `globalproperties_{normal,epic,legendary}01` rows restored with the SHIPPED `[1,0,0]/[0,1,0]/[0,0,1]` vectors, and a MONSTER's `hero_scaling` removed from a player's permanent pet. `_build_boss_summon` had overwritten them from the emberoak source. Strict non-regression: the end state is the shipped pet shape |
+| **TESTHUB traveler NPC name** (new, R-231-G #4) | `tagSVCNpcTravCharon` string -> `Traveler: Golden Bough (Akremon)`. A live player-facing label nobody had flagged; STRING only, record path + tag KEY frozen, no map rebuild |
+| **`docs/WILL_TEST_GUIDE.md`** (new, R-231-G #4) | rewritten for this encounter (was *"Charon, the Unferried ... ~60k total; drowned-oarsman escorts ... the Ferryman's Toll hoard"* - every clause false, and it named a chest label that no longer exists) |
+
+### DEBT REGISTER (open, this lane)
+
+* **`BL-BOUGH-DEBT-1` (P3, OPEN) - the frozen record names now lie.**
+  `um_charon_ferryman_99`, `um_charonform2_ferryman_99`, `svc_charon_wraith_99`, `ferryman_soul_*`,
+  `summon_charon_oarsman`, `charon_oarsman_*`, `svc_charonhoard_*` and `svc_charon_chest` all still
+  say "charon" and none of them is Charon any more. They are frozen for two independent reasons -
+  TQ bakes ITEM paths into saves at pickup, and `build_section_surgery.INJECT_SPECS` places the
+  forecourt proxy and the world chest BY NAME - plus three gates key on the monster basenames
+  (`verify_soul_drop_rates` EXPECT, `build_svc_database.SOUL_RATE_ZERO_PINS`,
+  `uber_quest_drops.LEAKS` / `red_uber_orbs.EXEMPT`). Rename in a future BREAKING build, all at
+  once, with a map rebuild and a save-compat note.
+
+* **`BL-BOUGH-DEBT-2` (P2, OPEN) - NOT PROVEN IN-GAME.** Everything here is proven at the artifact,
+  not in the renderer. Three things need Will's eyes:
+  1. **Scale 2.8 on Ascacophus02 is 1.55x the rig's max live scale** (measured range 1.15..1.80,
+     max = `kaets.dbr`). Large scales DO work in this mod (`um_polisgaoler_99` ships Gigantes02 at
+     3.5, `um_vashkarr_99` at 3.0), so the risk is footprint / collision / landing clearance, not
+     the renderer. **REQUIRED BEFORE THE CANONICAL PLACEMENT IS BLESSED:** a TESTHUB yard sweep at
+     2.8 / 3.1 / 3.4 on `q_yard_goldenbough` (never uploaded) plus a **b44 landing/clearance gate
+     re-run on `q_goldenbough_lone`** - the footprint grows from one 1.7 body to a 2.8 plus two
+     1.55, which is a NEW SURFACE. Record the reading either way; 3.4 is available if clean.
+  2. **`quillwards` has never been fielded by a Boss-class monster in this mod.** Worst-case
+     simultaneous density: 1 boss + 2 Handbriars + up to 6 `hero_quillvines` adds + the wall pets.
+     That sits under the Enslaver's shipped 9, but it must be COUNTED in game (the b76 chumbi-freeze
+     precedent), not assumed.
+  3. **Both forms are Plant**, so a player who brings a fire build finds beat 3 easier than
+     intended. Flagged for Will's play test; deliberately NOT pre-nerfed.
+
+* **`BL-BOUGH-DEBT-3` (P3, OPEN) - the dead-trunk skin is unconfirmed and ships OFF.**
+  `_ORM_USE_SKIN_ALT = False`; the module ships the donor's own `Ascacophus01B.tex` (3 live carriers
+  on this exact mesh, zero risk). `DRXtextures\creatures\ascacophus\ascacophus_deadtrunk.tex` has
+  ONE live `baseTexture` carrier, and `ascacophus_evil.tex` has 3 but on **Ascacophus01.msh, not
+  02** - cross-mesh UV is the 343_dark_smoke / Vort-green trap. TESTHUB-verify before claiming any
+  colour (R-125 player-surface law).
+
+* **`BL-BOUGH-DEBT-4` (P2, OPEN) - the encounter still drops an orb called "Charon's Essence".**
+  The terminal keeps `treasureProxyName = bosschest02_charon` (`xtagChest18`), which now reads as
+  another boss's named essence on a plant - exactly the defect b53 fixed for Dagon. **It cannot be
+  retargeted in isolation:** `tools/svc_orb_breadth.py` enforces `MIN_PROXIES = 6` /
+  `MIN_TABLES = 18`, `orb_loot_breadth.apply` RAISES below either floor, the scope is DERIVED as
+  "every proxy an UBER names", and this terminal is the ONLY uber naming that proxy - so dropping
+  it takes the scope to 5 proxies / 15 tables, reds the build, and orphans three tables
+  `orb_loot_breadth` + `orb_armor_rows` already widened (the BL-R181-DEBT-7 ownership gate). Fix
+  needs its own wave: retarget to `_APEX_ORB` **and** re-measure both floors **and** re-audit the
+  three `boss_charon_*01b` tables' ownership together.
+
+* **`BL-BOUGH-DEBT-6` (P3, OPEN) - the terminal's runSpeed 1.45 is above its rig's only live
+  carrier.** `emberoakmesh.msh` has exactly one live carrier (`um_emberoak_42`) and it ships 1.0.
+  1.45 is far inside the roster's own Boss-uber band (min 0.35, median 1.00, max 4.00, and the
+  Charon forms this replaces ran 2.8 and 4.0) and the rig BINDS `unarmedRunAnim`, so the risk is
+  cosmetic - the run cycle may read fast - not structural. Confirm in the TESTHUB yard alongside
+  the scale sweep (BL-BOUGH-DEBT-2) and record the reading either way.
+
+* **`BL-BOUGH-DEBT-7` (P3, OPEN) - the FIVE monolith-wide changes, and what was measured.**
+  Every edit to `apply_svc_patches` is global, so each was checked against every caller before being
+  called safe. **Round 4 added two, both of which are strictly narrower than anything before them:**
+
+  4. **`HELOS_HUB_OUTBOUND` row `svc_helos_trav_charon` - STRING ONLY (R-231-G #4).** The traveler
+     NPC's display text moves from `'Traveler: Golden Bough (Charon)'` to `'... (Akremon)'`. The
+     record PATH and the tag KEY (`tagSVCNpcTravCharon`) are untouched, so the TESTHUB map's
+     place-by-name still resolves and no map rebuild is implied. One row, one string, one encounter.
+  5. **`_build_boss_summon`'s `.anm` strip LOG LINE - text only (R-231-G #5).** No behaviour, no
+     record, no field: the message claimed the strip left "the source anm table now drives the
+     body", which overstates a deliberately SOURCE-FAITHFUL function. Affects every lane's console
+     output and nothing else.
+
+  **Round 3 added the third:**
+
+  3. **`_SUMMON_SKILL_ICON['summon_charon_oarsman']` retargeted - PROVEN SCOPED, measured.** The row
+     is reached ONLY through `_summon_skill_basename('...\summon_charon_oarsman.dbr')`, and a tree
+     grep for that basename returns exactly two live references: `_GB_SUMMON` in
+     `_create_goldenbough_boss` and `_SUMMON` in `charon_rework` - **the same encounter**, whose
+     whole point is that it stops being Charon. No other lane can reach the key, and no other
+     `_SUMMON_SKILL_ICON` row changed. Residual is cosmetic-only and tracked as `BL-BOUGH-DEBT-10`.
+
+  The two round-2 changes:
+
+  1. **The D19 guard (`_run_fields and` dropped) - PROVEN SAFE, measured.** The change only bites a
+     caller whose SOURCE monster sits on an anim table that binds no `*RunAnim` row at all. All
+     **20** `_build_boss_summon` call sites were enumerated by AST across the monolith and every
+     patch module and each source resolved against the live arz: 16 sit on tables that bind
+     locomotion (`anm_skeleton01`, `anm_dragonian`, `anm_sepulchralwyrm`, `anm_melinoe`,
+     `anm_seductress`, `anm_wraith01`, `anm_minion`, `anm_epiales01`, `anm_machae`, `anm_automatoi`,
+     `anm_sandspirit`, `anm_bogdweller`), and 4 declare no table at all
+     (`um_enslaver_marauder_99`, `um_emberteeth`, `um_neferkha_99`, `um_sarpedon_41`), which takes
+     the assert's *other* branch - untouched by this edit. **`anm_quilvine.dbr` is the only
+     locomotion-less table any of this reaches, and after the donor swap no summon source uses it.**
+     Zero callers would newly red.
+  2. **Replace-by-pet-paths - argued from the green baseline, not yet re-measured.** The registry
+     now supersedes an earlier registration of the same pet-path set instead of appending. A
+     duplicate pet-path set means two builders wrote the same pet records, which is itself the bug;
+     the build was green across all 24 families before `charon_rework` existed, so no such duplicate
+     existed then and behaviour is unchanged for them. That is sound but it is still an argument
+     until the Ship phase runs the full DB build. **Watch the log for a
+     `summon-pet registry: SUPERSEDED` line naming any family other than `charon_oarsman_*`** - one
+     is expected and correct, any other is a finding.
+
+* **`BL-BOUGH-DEBT-5` (P3, OPEN) - the monolith still authors the Charon encounter first.**
+  `apply_svc_patches._create_goldenbough_boss` runs, builds Charon, and `charon_rework` then
+  overwrites all three monster records. That is DELIBERATE this wave (`uber_quest_drops` runs before
+  the rework and REQUIRES the Charon-derived form 2 to still carry the inherited
+  `perPartyMemberDropItemName` it exists to clear; the monolith also still authors the amulet tiers,
+  hoard chain, world chest, limit and pool/proxy skeleton that the rework REUSES). It is wasted work
+  and a trap for the next reader. Collapse it only together with `BL-BOUGH-DEBT-1`.
+
+* **`BL-BOUGH-DEBT-8` (P1 -> mostly DISCHARGED, round 6 2026-08-12; see R-231-I).** This lane ran
+  **static gates only** through round 5; round 6 ran the real battery on `main`@f989a3b (build84)
+  with the lane merged. It creates a NEW PLACED SURFACE: one scale-2.8 body plus two 1.30 Champions
+  where one 1.7 body stood. Status of the six ship gates:
+  1. **b44 landing/clearance gate on `q_goldenbough_lone`** - **NOT RUN (and does not apply here):**
+     this is a MAP-build gate and the lane does NO map build - the frozen `q_goldenbough_lone`
+     placement is reused verbatim (canonical `Levels.arc` 6784cf0f byte-unchanged), so no NEW
+     landing to gate. The scale-2.8 phase-1 body at the same spawn point is a **Will playtest**
+     clearance check, not a build gate (the terminal is deliberately SMALLER at 2.0). Kept OPEN as
+     a playtest item only.
+  2. **Full DB build + COUPLED `Text.arc` build** - **RUN. GREEN.** Full build completes,
+     `charon_rework.verify: OK`; `Text.arc` rebuilt from `uber_soul_tags.txt` carries the minted
+     `tagSVCMonsterAkremonBlaze` + all 7 rewritten strings; `validate_tags` PASS on the fresh
+     manifest. **arz + Text are a COUPLED deploy - shipping arz-only renders the terminal as a RAW
+     TAG (C-RES-TAG-1 P1 against the frozen text).**
+  3. **`run_contracts`** - **RUN. 0 P0 / 0 P1 / 4510 P2 = the build84 baseline EXACTLY, zero new
+     violations** (C-RES-TAG-1 clean with the coupled Text; the baseline is now 4510, not 4492).
+  4. **det-2x + record-diff** - **RUN.** record-diff = ADDED 1 (`svc_bough_splitting`) + MODIFIED 14
+     = the 15-record lane footprint, zero unexplained, build84 loot records untouched. det-2x
+     byte-identity confirmed across two cold `SVC_NO_CACHE=1` builds.
+  5. **Full `run_registry_gates` battery in a real build** - **RUN. All GREEN** end to end (orb/chest/
+     armor breadth, loot distribution/volume, DLC + voyage caps, unlock alignment, ...); no
+     `summon-pet registry: SUPERSEDED` line for any family other than `charon_oarsman_*`.
+  6. **b86 integration watch** - **still OPEN:** build84 (current `main`) has no C3 gate; re-run the
+     C3 cross-family duplicate-display-name gate when b86 integrates. `{^F}Soul of the Grasping Root`
+     is unique across the soul name tags, so C3 is expected to pass.
+
+* **`BL-BOUGH-DEBT-9` (P2, OPEN) - the Maenad cast sound is a CLASS-WIDE residue on the boss
+  summons.** `_build_boss_summon` clones `summon_lyia` and never writes `skillHitSound`, so every
+  boss summon it builds inherits Lyia's `records\sounds\soundpak\monstersgreek\maenadalertpak.dbr`.
+  MEASURED on the live arz: **31 of the 52** `records\skills\soulskills\summon_*` records carry it,
+  against 2 `mummyalertpak`, 2 `zombiealertpak` and a long tail of correctly family-matched paks.
+  This lane did not create it and fixed only its own record (`summon_charon_oarsman` ->
+  `bogdwelleralertpak`, the terminal donor's own declared `alertSound`). **Fix the class in its own
+  wave:** default `skillHitSound` in `_build_boss_summon` to the SOURCE monster's own `alertSound`
+  when it declares one, exactly as `_align_pet_identity` already does for the PET's sounds - the
+  convention is established, it is just not applied to the summon SKILL. Touches ~29 records other
+  lanes own, so it needs its own vet, not a drive-by.
+
+* **`BL-BOUGH-DEBT-10` (P3, OPEN) - the granted summon's new icon has never been rendered in this
+  mod.** `DRXtextures\skill icons\soul\flamewave{up,down}.tex` was chosen precisely BECAUSE it has
+  **0 references across every string field of all 51,253 records** - it cannot collide with any
+  other summon or granted skill on a player's skill bar, which is stronger than every established
+  row in `_SUMMON_SKILL_ICON` (all of which share with a live skill). The flip side is that nothing
+  in the mod has ever drawn it. Both halves are PRESENT in the shipped `DRXtextures.arc`, and a UI
+  icon carries none of the cross-mesh UV risk the 343_dark_smoke lesson is about - it draws or it
+  does not - so **no colour is claimed for it**. **ONE LOOK CLOSES THIS:** equip the soul, glance at
+  the skill bar. If it reads wrong, `DRXtextures\skill icons\soul\flamering{up,down}.tex` is the
+  documented proven-render fallback (live carriers `yaoguai_flamering.dbr` + its pcsafe clone), at
+  the cost of sharing a glyph with the Yaoguai soul's own granted skill.
+
+### TEN WILL-DECISIONS - all implemented at the recommended value behind a named constant, none blocking
+
+1. **Names** - Akremon, the Grasping Root / Akremon, the Heartwood Ablaze / Handbriar / Soul of the
+   Grasping Root. *This lane's invention; ships as the default, flagged for veto (R-125 precedent).*
+   The ratified spec said "Ormenos", which is **already the China Telkine** (59 records, own soul) -
+   see R-231-E #1. `akremon` is Greek for *bough*: 0 record hits, 0 text hits, and a tighter fit.
+2. **Scale** - `_ORM_SCALE = 2.8`, `_BLOOM_SCALE = 2.0`. Sweep 3.1 and 3.4 (BL-BOUGH-DEBT-2).
+   The terminal is deliberately SMALLER than the trunk: "it doubles in size" is the base Charon's
+   own beat, and a huge slow tree bursting into something compact, fast and burning reads better.
+   The 2.0 ask is now a 1.05x stretch on a rig that lives at 1.90, not the 1.33x the round-1
+   hellflower would have needed.
+3. **Skin** - donor's own `Ascacophus01B` (safe). Alt behind `_ORM_SKIN_ALT` / `_ORM_USE_SKIN_ALT`.
+4. **Soul grant** - the root proc plus the amgoz1-tradition downside, **-8/-6/-5% movement**.
+   *Recommend keep.* 🔴 **CORRECTED R-231-H #1:** through rounds 3-4 the proc was on
+   `offensiveSlowPhysical*` (band [0.00, 8.00] against an authored 22/31/40, and a duration family
+   where all 2,095 carriers ship 0.0) and the downside on `characterRunSpeed` (the CREATURE
+   locomotion field, soul band [0.00, 1.28], zero negatives), so **the penalty did not exist**.
+   Now `offensiveSlowRunSpeedMin` + `offensiveSlowRunSpeedDurationMin` (the family 46 peer souls
+   actually snare with) and `characterRunSpeedModifier` (where `mnemophage_soul_*` ships this
+   soul's exact three numbers).
+
+7. **Speeds** (NEW, R-231-E #3) - 1.35 / 1.45 / 1.30, pet 1.0. Two of the three are exactly
+   rig-proven. *Recommend keep; the alternative is the round-1 encounter, which could not move.*
+8. **Durability** (NEW, R-231-E #7) - Epic total 35,000, matched to the Gaoler exactly, down from
+   an uncalibrated 58,000. *Recommend keep; raise only if Will finds it soft in play.*
+5. **"The Orchard of Hands"** as the hoard chest name (was "Ferryman's Toll-Hoard"). *Recommend yes.*
+6. **Bleed immunity on phase 1** - it hard-counters the mod's own marquee bleed spears for half the
+   fight. *Recommend keep: it is the fight's whole shape, and beat 3 gives the build back. One skill
+   slot removes it if Will hates it in play.*
+9. **Beat 2's enrage** (NEW, R-231-G #1) - `_SPLIT_PHYSMOD = 35.0`, with `_SPLIT_ABSORB` and
+   `_SPLIT_REGEN` at 0. The donor would have given 36% absorption + 8/s regen + 60% physical for the
+   whole last third of phase 1, undisclosed. *Recommend keep: an enrage that hits harder costs the
+   player TIME; absorption and regen cost the player the fight, and the Gaoler RCA is explicit that
+   "unkillable, then killable" is the shape to avoid. Raise 35 -> 45 if Will finds phase 1 tame.*
+10. **Shell loot** (NEW, R-231-G #3) - `_ORM_MUTE_MISC = True`, i.e. phase 1 pays no ordinary Misc
+   loot, exactly as the shipped Charon shell did. *Recommend keep while b84's loot-volume trim is in
+   flight; flip the one constant for Mnemophage-shell parity (75/13/1.6) if Will wants both halves
+   paying.*
+11. **Terminal loot** (NEW, R-231-H #2) - `_BLOOM_MUTE_MISC = True`. Round 4 muted only the shell
+   and the terminal shipped `1.6 / 100.0 / 75.0` = **176.6**, so the encounter went 0 -> 176.6
+   under a written statement that it had not moved. **This is a decision, not a correctness fix:**
+   176.6 is exact peer parity with `um_ephialtes_99` / `um_mnemophage_99` / `um_helepolis_99`
+   against a roster median of 4.5, so keeping it was arguable. Muted because the shipped encounter
+   paid zero on both forms, because it keeps the coordination statement issued to b84 true as
+   issued, and because the payout is designed as Bough + hoard + soul + orb. *Recommend keep;
+   `Misc4` (the guaranteed Bough) is excluded from the mute and gated separately.*
+12. **Mana** (NEW, R-231-H #3) - `3000 / 16.0` and `3000 / 21.0`, sized by the rule
+   `regen >= rotation_cost / 20s`. Round 4 inherited `0.0` regen on phase 1 against a 312.0
+   rotation, so the snare and the wall died ~9.6 casts in. *Recommend keep: it is not a durability
+   wall, it only keeps the boss casting the things that make it this boss.*
+13. **CC / elemental profile** (NEW, R-231-H #4) - effective **Stun 75 / Freeze 60 / Trap 60** on
+   both forms, phase 1 left at **-30 fire and -30 cold** on purpose, terminal at **+70 fire**.
+   Resistant, not immune, and the terminal's inherited **300% stun wall** (from `hero_fire`) is
+   gone. *Recommend keep; if Will finds either phase perma-lockable in play, the floor is three
+   constants.*
+
+* **`BL-BOUGH-DEBT-11` (P3, OPEN) - the retinue's act-3 faucet is INHERITED, disclosed, not owned.**
+  Phase 1 keeps `hero_quillvines` as its R-125 own-family retinue. Its six spawns
+  (`records\xpack\skills\monsterskills\summoning\pets\quillvine_01..06.dbr`) each ship
+  `dropItems 1` + `chanceToEquipMisc1 3.0` on the act-3 table `01_act3_vinygrowth.dbr` - so the
+  encounter does gain a small ordinary-loot source the shipped Charon never had, at up to 6 bodies
+  per cast. These are **shared base-game records** used by the stock ascacophus heroes, so this
+  lane does not mutate them; the honest claim is that this wave does not raise the ordinary loot
+  volume of the records it **owns**, and `verify()` now reads all six and pins the disclosed 3.0 so
+  the statement cannot go stale unseen. Close it by either accepting the inherited drop or giving
+  phase 1 a mod-authored retinue skill of its own.
+* **`BL-BOUGH-DEBT-12` (P3, OPEN) - beat 2's FX is base-resolved and unrendered-in-arz.**
+  `svc_bough_splitting` now points `skillActivatedAuraName` / `targetFxPakName` at
+  `Records\Effects\Boss Effects\Typhon_Thorn_CharFXPak.dbr`. That record is **not present in the
+  mod arz** (measured) - it resolves from the base game, exactly like the
+  `Skill_Adrenaline_FX01` it replaces, and `typhon_thornyaura` (which this module wires onto the
+  terminal) already ships the identical string in all three of its FX fields, so it is proven to
+  render in this build. What is **not** proven is what it looks like at 33% life on a 2.8-scale
+  Ascacophus02. **ONE LOOK CLOSES THIS:** fight phase 1 to 33% and watch the trunk.
+## BUILD84-DEV GATE RECORD - R-240 loot-volume trim + R-241 uber-orb legendary chance - BUILT, ALL GATES GREEN, DEPLOYED TO DEV; STEAM UPLOAD PENDING (2026-08-12, `main` @ the `fix/loot-volume-trim` fast-forward merge, tip `1a003a2`)
+
+**INTEGRATED.** `main` was at `7459e22` (build83) and the lane was 0 behind / 29 ahead, so
+`git merge --no-edit fix/loot-volume-trim` was a clean **fast-forward to `1a003a2`** - zero conflicts, no
+merge commit owed. No other TQ build was running (the only Python live was AWS MCP servers + an unrelated
+pipeline poller).
+
+**THE BUILD** (`PYTHONIOENCODING=utf-8 PYTHONHASHSEED=0 SVC_NO_CACHE=1 SVC_RELEASE_DROPS=1
+SVC_REQUIRE_GATES=1`, into the work/ layout, **exit 0 "Done."** both runs; `local/build84_run1.log`,
+`local/build84_run2_det.log`).
+
+| artifact | md5 | bytes | vs `build83` (`44499f56`) |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | **`4bfea2e6fbffa1d80fa55d52807eb5c3`** | 55,580,179 (51,297 rec) | **CHANGED** (+17,359 B, **+44 rec**) |
+| `Resources/Levels.arc` (CANONICAL) | `6784cf0fe6c6bdcf5f1ee16f03fe655e` | 688,690,525 | **byte-unchanged** |
+| `Resources/Quests.arc` | `607ec99cbf5fd97135204ad465130722` | 194,963 | **byte-unchanged** |
+| `Resources/Text.arc` | `a9fed7bace4dd809791210854efb569d` | 89,551 | **byte-unchanged** |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | 42,617,179 | **byte-unchanged** |
+
+**DETERMINISM: det-2x BYTE-IDENTICAL.** Two independent COLD builds (`SVC_NO_CACHE=1`) of the committed
+tree produced `4bfea2e6` both times (`cmp` byte-identical), 55,580,179 B.
+
+**arz-ONLY, and BOTH deploy couplings are SATISFIED rather than waived.** The wave authors **0 new tags**,
+so `validate_tags` PASSES against the EXISTING `Text.arc` (`a9fed7ba`) - all 382 referenced mod tags
+present, only the 2 pre-existing non-blocking monster-name WARNs. Nothing map-side moved. All four
+siblings were **md5-proven unchanged on disk after the build**. The staged map is the CANONICAL
+`6784cf0f`, never the local-only TESTHUB `7a7ca9ac`.
+
+**RECORD-DIFF vs the shipped `44499f56`: ADDED 44 / REMOVED 0 / MODIFIED 69, ZERO unexplained** (matches
+the vet's expected_record_diff exactly). The 44 ADDED are all TESTHUB-only twin records: 20 under
+`records\drxitem\container\svc_polisvault_hub_chest_*` (2 chest proxies `_01`/`_03` + 18 themed
+containers `_{01,03}_{n,e,l}{a,b,c}`), 6 hub pools `svc_polisvault_hub_pool_{01,03}_{n,e,l}`, and 18 loot
+tables `records\item\loottables\svc\polisvault_hub_{01,03}_{n,e,l}{a,b,c}`. The 69 MODIFIED are canonical
+loot surfaces (21 polisvault cage, 27 `svc_*hoard_loot_0N` boss/guard hoards, 3
+`loottable_hidden_bloodcave_0N` DRX donors, 3 `svc_uberorb_apex_{n,e,l}01c`, 3 `boss_charon_{n,e,l}01b`,
+3 `uberorb_default_{n,e,l}01c`, 9 `defaultloot` `uberorb_default_NN-NN` orbs). The ONLY changed fields
+anywhere are `numSpawnMinEquation` (69) + `numSpawnMaxEquation` (69) + `loot4Chance` (3). The 3
+`loot4Chance` changes are on `svc_uberorb_apex_{e,l,n}01c` (100.0 -> 21.2, R-241) and are a SUBSET of the
+69. Zero members, zero weights, zero group chances beyond those 3, zero pools, zero tags. **No hub twin
+appears in MODIFIED** (clone-then-trim proven: the twin kept the shipped numSpawn, only canonical trimmed).
+
+**GATES.**
+
+| gate | result |
+|---|---|
+| full DB build (whole fail-loud battery, `SVC_REQUIRE_GATES=1`), twice | **exit 0, "Done."** both runs |
+| det-2x byte identity | **PASS** - `4bfea2e6` == `4bfea2e6` (both cold, `SVC_NO_CACHE=1`) |
+| in-build `loot_volume_trim` (R-240) | **PASS** - 44 TESTHUB twins authored, 69 of 69 canonical tables trimmed; scope proof PASS (69 watched, only numSpawnMin/Max moved) |
+| in-build `orb_legendary_chance` (R-241) | **PASS** - 3 guaranteed-legendary rows demoted 100 -> 21.2; scope proof PASS (18 orb tables, only their own loot{g}Chance moved) |
+| `gate_loot_volume.py` on the built arz | **PASS** - 69 canonical + 18 TESTHUB twin; worst canonical 2.15 gear/open (cage runs under `{n:4.55, e:3.2, l:4.55}`), >= 95% target-grade continuous / >= 90% truncated; twin floors `{n:35, e:23, l:29}` |
+| `gate_orb_legendary.py` on the built arz | **PASS** - 18 tables, 0 guaranteed rows; worst 0.846 legendary/open (ceiling 1.00). Prints the `BL-R241-DEBT-1` chance-half notice (worst 60.9% P(>=1) vs 25% bar) and passes on the committed band - an announcement, not a failure |
+| coexisting R-210 `gate_dlc_act_ui_cap` (in-build) | **PASS** - `portal pages = ['Greece','Egypt','Orient','Hades']` |
+| coexisting R-211 `gate_atlantis_voyage_cap` (in-build) | **PASS** - `V5 resolvable Atlantis-transit routes = []` |
+| coexisting unlock-alignment (in-build) | **PASS** - 238 live buttons, 13/13 waivers |
+| `validate_tags` against the EXISTING `Text.arc` | **PASS** - 382/382 referenced mod tags present, 0 new tags; 2 pre-existing non-blocking monster-name WARNs |
+| `run_contracts`, all 6 modules, on the built arz | **GATE PASS - 0 P0 / 0 P1 / 4510 P2** |
+| `run_contracts` A/B: baseline `44499f56` under the identical config | **0 P0 / 0 P1 / 4492 P2** |
+| P2 delta characterised (4510 vs 4492 = +18) | all `C-RES-DBR-1`; the 18 new findings are one per themed twin container, an INERT `lockedSound -> sounds/soundpaks/decorations/lockedobjectpak.dbr` advisory the 21 canonical polisvault chests already carry in baseline. **Zero new P0/P1, zero new violation class.** |
+
+**DEPLOYED TO DEV** (`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz` = `4bfea2e6`), copied with
+md5 **source == dest** verification **while TQ.exe was NOT running** - nothing killed, Steam not restarted,
+checked immediately before the copy. **1 of 62 DEV files changed, 0 added, 0 removed;** the whole folder
+was md5-inventoried before (`local/build84_dev_pre.md5`) and after (`local/build84_dev_post.md5`) and the
+other 61 are byte-identical.
+
+**PACKAGED (not uploaded).** `scripts/package_workshop.ps1`: **TESTHUB guard OK** (packaged Levels
+`6784CF0F` != TESTHUB `7A7CA9AC`), single `SoulvizierClassic` wrapper, 56 files / 1188.4 MB. dist==work
+all 5 artifacts PASS. Dist staging path: `dist/workshop/content/SoulvizierClassic`.
+
+**STEAM UPLOAD + GITHUB PUSH ARE THE MAIN SESSION'S TO RUN.** This lane did NOT run SteamCMD and did NOT
+push to a remote. **READY FOR STEAM UPLOAD: build84, arz `4bfea2e6fbffa1d80fa55d52807eb5c3`.**
+
+**Rollback (one step):** `local/DEV_arz_deployed_prev.arz` = `44499f56` (the build83 arz this replaced)
+-> copy back over the DEV `Database/SoulvizierClassicDEV.arz`. This build's artifact at
+`local/build84_run1.arz`.
+
+**WHAT IS OWED / NOT PROVEN.**
+- **NOT PROVEN IN-GAME.** Will's DEV check: open the two Polis Vault gaoler cage chests + an uber's
+  Mystical Orb - a handful of good pieces, not a vendor's stock, and a legendary as an occasional treat.
+- **`BL-R241-DEBT-1` (OPEN, Will's A/B call):** the CHANCE half of R-241 is not discharged - the worst orb
+  still pays a legendary 60.9% of opens against a "low chance" bar of 25%. The volume lever is spent; the
+  remaining gap needs a POOL COMPOSITION change (option B), which re-opens R-180/R-181/R-220 breadth work
+  and is Will's decision, not a gate's. The R-241 gate ANNOUNCES this every run and passes on the band.
+- **`BL-R240-DEBT-1/5/7/8/9`** carry forward from the lane's R-240 GATE RECORD below (cage lands at a
+  handful not a literal 1; engine rounding-mode unproven; TESTHUB half inert until its map is rebuilt;
+  `gate_loot_distribution` reds on every PRE-R-240 artifact by design; the D7 absolute-floor rescale).
+- **Repo pytest modules NOT RUN** (pre-existing environment gap): the four `tools/` test modules need the
+  gitignored `reference_mods/SVAERA_customquest/Resources/Levels.arc` and error at COLLECTION regardless.
+
+> ## 🚨 ROUND-4 VET CORRECTIONS (2026-08-11, branch `fix/loot-volume-trim`) - THE BUILD WOULD HAVE ABORTED. READ FIRST.
+> The round-3 vet ran all 53 registry `verify()` hooks against the applied db and found **two that red on
+> db CONTENT** - meaning they fail identically in a real build, and `run_registry_verifies`' own docstring
+> says *"a module verify() raising SystemExit propagates and aborts the build"*. Both are now fixed. Both
+> were **ruling collisions, not threshold edits**, so both were amended in the ledger with the superseding
+> quote rather than quietly relaxed. Full design record: `docs/WILL_RULINGS.md` -> **R-240/R-241 GATE
+> COLLISIONS**.
+>
+> 1. **`polis_vault.verify` T5 - 36 problems, build-aborting.** It asserted the shipped literal multiplier
+>    on all 18 cage loot tables with the message *"payout must never shrink"*. **R-240 IS the authorised
+>    shrink.** T5 now computes its expected value through R-240's own transform
+>    (`svc_loot_volume.trimmed_multipliers`), accepting **exactly two discrete committed values per
+>    field** - pre-R-240 and R-240 - so it stays an exact-match ratchet, not a band. New **T5b** reds a
+>    HALF-trimmed cage, which the original check could not see at all.
+> 2. **`uber_apex_orb.verify` - 18 problems, build-aborting, and in TWO independent copies.** It proved
+>    the apex calibre >= Leinth's frozen b96 tables. R-240 trims that calibre ~10x and R-241 demotes its
+>    `loot4Chance` 100 -> 21.2. The round-3 vet found the copy in check **(h)**; **a second copy in check
+>    (c) was behind it** and would have aborted the build three lines later on the same three records.
+>    **R-72/R-99's UNITY half survives whole** (Leinth on the same tables as the roster, never singled
+>    out - now proved TWICE) and **only the absolute-floor half is superseded**, by Will's own words.
+>    Gold, the unique-share weights and the no-`/` MP law are still proved against her originals.
+>    `_no_nerf_problems` is **not deleted**: it still runs verbatim at `apply()` time and on any
+>    pre-R-240 arz.
+> 3. **Both amendments are TWO-ERA on purpose**, so the ship lane's anti-inert control against the
+>    rollback artifact keeps working. Measured, same harness, two arz files: shipped b83 `44499f56`
+>    untouched -> **both PASS**; same arz + this lane's two waves -> **both PASS** (before: 36 and 18
+>    problems -> abort).
+> 4. **The amendments re-earned their teeth.** `py tools/debug/negtest_gate_amendments.py <arz>` -
+>    **12 plants, all RED**, one per clause of both amended checks in both directions, plus a proof that
+>    its own restore is clean so a plant cannot leak into the next case.
+> 5. **`gate_loot_distribution.py` now reds on every PRE-R-240 artifact** - the anchor working, not a
+>    defect. Registered as **`BL-R240-DEBT-8`** with the exact red text, who it bites (the ship lane's
+>    baseline control, and every other in-flight branch), and what to run instead. The gate now says so
+>    in its own failure text.
+> 6. **`gate_loot_volume.py --scope` exists now.** The PASS-line comment advertised it and `main()` did
+>    not implement it; it lists all 69 in-scope surfaces split canonical/TESTHUB.
+> 7. **Will's test note quoted only the optimistic spawn model** for the cage guarantee (99.6%). It now
+>    carries the truncated figure beside it (**98.3% Legendary, 94.0% Epic**), since that is the number
+>    the gate actually holds while the engine's rounding mode is unproven (`BL-R240-DEBT-5`).
+> 8. 🚨 **NEW FINDING, NOT IN THE ROUND-3 LIST: R-181's OWN negative battery was still asserting the
+>    contract R-240 replaced, and had been made blind by it.** Found by running
+>    `negtest_armor_breadth.py` - a coexisting battery this lane did not author and the round-3 sweep
+>    did not cover, because that sweep ran registry `verify()` hooks, not batteries. Result on the
+>    shipped b83 arz: **NEGTEST FAILED: 2**. Its N12 case planted a 25% armour cut on the surface
+>    `ARMOR_SLOT_FLOOR` used to be anchored on and expected D7 to red; **it measured GREEN**, because
+>    R-240 took the floor from 0.52 to 0.0644/open (8x) and a 25% cut no longer reaches it. The check
+>    the round-2 vet built to make that exact regression permanently catchable had been made blind by
+>    this lane. Its whole-build positive control also failed, on the one expected D7X2 problem.
+>    **Both fixed here, and made rot-proof:** N12 now reads the reference surface from
+>    `SLD.ARMOR_SLOT_FLOOR_REF_SURFACE` and **sizes its cut from the live floor**, so it cannot encode
+>    a superseded contract again; the positive control sets aside exactly the D7X2 problem, prints it,
+>    and reds on anything else. A new **N12b measures and prints the slack every run**. The residual
+>    design question - is D7b alone enough, or must the absolute floor scale per volume band? - is
+>    `BL-R240-DEBT-9`, an R-181 decision, not a volume one.
+>    **LESSON FOR THE SHIP LANE: running the registry verify() hooks is not the same as running the
+>    coexisting negative BATTERIES. This lane's two build-aborting collisions were found by the first;
+>    this one could only be found by the second.**
+> 9. **44 inert twin records ship in the Steam arz, and the push-gate record-diff will show them.**
+>    Expected: `ADDED 44 / REMOVED 0 / MODIFIED 69`, and the only fields that move anywhere are
+>    `numSpawnMinEquation` (69), `numSpawnMaxEquation` (69) and `loot4Chance` (3) - zero members, zero
+>    weights, zero pool memberships. The 44 are the TESTHUB twin. On the canonical/Steam map they are
+>    unreachable **by construction and forever**; that is the only way one shared arz can express
+>    "canonical trims, TESTHUB stays rich". **Whoever reviews that diff should expect them and not treat
+>    them as stray.**
+
+> ## ROUND-3 VET CORRECTIONS (2026-08-11, branch `fix/loot-volume-trim`) - READ BEFORE THE TWO GATE RECORDS BELOW
+> Seven findings, all discharged. Two of them changed what the lane CLAIMS, not just what it does.
+>
+> 1. **THE RULING IDS MOVED: this lane is now R-240 + R-241, and it used to be R-230 + R-231.** The vet
+>    found a two-way collision (`main` minted R-230 for Will's push-per-build law while this lane held
+>    R-230) and proposed renumbering main's single reference. **That fix was incomplete:**
+>    `feat/charon-rework` had independently minted **R-231** for the Golden Bough rework and had already
+>    merged main's R-230, so moving main alone would have left this lane's R-231 colliding with charon's,
+>    and charon is an in-flight branch this lane must not edit. **So this lane moved instead** - it was
+>    the only branch colliding with two others, and R-24x was free on every branch in the repo. 190
+>    mechanical replacements, 17 files, zero residual old ids, new-id counts (107 / 37) matching the old
+>    ones exactly. `main` was then merged in and the ledger conflict resolved **keep-both in ascending id
+>    order**, with main's R-230 preserved verbatim (byte-compared against its blob): the ledger reads
+>    R-200, R-201, R-210, R-211, R-220, R-230, R-240, R-241 and no id is used twice.
+>    **Merging this branch into `main` is now a fast-forward.**
+> 2. **THREE DOCS WERE DOUBLE-ENCODED BY THIS LANE'S OWN TOOLING, and round 2 reported that defect class
+>    as fixed when it had only fixed the BOM.** Every non-ASCII glyph in `BACKLOG.md` (616),
+>    `WILL_TEST_GUIDE.md` (94) and `CHEST_DROP_MATRIX.md` (3) had been read as the ANSI codepage and
+>    rewritten as UTF-8 - including the section marker on the first line of Will's own test note and the
+>    status glyphs on 82 BACKLOG entries - and it mechanically introduced **6 em dashes and 4 en dashes**,
+>    which the standing law forbids and `main`'s copies of these files do not contain. Reversed with a
+>    single cp1252-to-bytes-to-UTF-8 pass and **proved rather than eyeballed**: the ASCII projection of
+>    all three files is byte-identical before and after, so nothing but the mangled glyphs moved; suspect
+>    glyphs 616/94/3 -> **0/0/0**; em/en dashes now **0/0**, matching main. These files are never written
+>    from PowerShell again.
+> 3. **The CHANCE half of Will's orb ruling is still not discharged, and the contract now says so on every
+>    run instead of in a comment.** 54-61% is not "a low chance"; `ORB_MAX_P_LEGENDARY` is a ratchet, not
+>    a chosen rate. See `BL-R241-DEBT-1`, which now carries the mechanism (`LOW_CHANCE_RULING_BAR`, the
+>    banner on both gate paths, and negtests Q4/M8 proving it both fires and clears).
+> 4. **The cage lands at 2.74-3.98 pieces a run, not "1".** Unchanged and already registered as
+>    `BL-R240-DEBT-1`; the honest sentence is *"a handful, not a vendor's stock"*, and Will's test note
+>    now says it in those words rather than implying the literal 1 was delivered.
+> 5. **The TESTHUB half is inert until its map is rebuilt**, so it is now `BL-R240-DEBT-7`: SCHEDULED
+>    ship-lane work with an owner and closing evidence, not a warning the next lane inherits.
+> 6. **D7's absolute armour floor fell 8x and its reach shrank inside the lane that needed it to pass.**
+>    Correct (rescaling an absolute floor by a deliberate 10x volume cut is the point), carried by D7b on
+>    all 63 surfaces and re-proven from the bytes by D7X2 - but named out loud, and the ship lane must
+>    heed the D7X2 warning below: this gate can no longer be used as a baseline control on a pre-R-240 arz.
+> 7. **Two scope/precision corrections.** The volume gate's PASS line said *"every CANONICAL loot
+>    surface"* where it means every **mod-governed** surface; it now says so and names the nine base-game
+>    `defaultloot/orbrepeat_default_*` tables it deliberately leaves alone (**re-measured here:
+>    E\[legendary] <= 0.0753 per open, P(>=1) <= 7.26%, all nine confirmed outside scope**, so they do not
+>    offend the ruling). And the apex Epic row's legendary mass was quoted three ways (5.2% / 5.3% /
+>    5.25%); it **measures 5.2504%**, so 5.2 was a truncation and 5.3 was `%.1f` - every site, including
+>    the census formatter, now prints **0.44% / 5.25% / 6.28%** at the precision the bytes support.
+
+## GATE RECORD - R-241 UBER-ORB LEGENDARY: zero guaranteed-legendary rows, at most ONE legendary per open (2026-08-11, branch `fix/loot-volume-trim`, module `tools/patches/orb_legendary_chance.py`) - SOURCE + STATIC GATES ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
+
+**Will's ask (verbatim, 2026-08-11), and it SUPERSEDES the b79 "orbs stay generous" precedent wherever
+the two collide:** *"you made the orbs way too good... those dont need to have guaranteed legendary
+drops, they should just have a chance to drop legendary items, but a low chance."*
+
+Design record + the full derivation: `docs/WILL_RULINGS.md` -> **R-241**.
+
+### THE NUMBER WILL ASKED FOR, MEASURED FIRST (`py tools/gate_orb_legendary.py <arz> --census`)
+
+Shipped `build83` arz `44499f56`, live on Steam and DEV at the time of the ruling. Orb surface = **18
+loot tables, 6 per difficulty** (15 ordinary + 3 apex). A guaranteed-legendary row is a loot group at
+chance 100 that can pay a legendary:
+
+| difficulty | orb tables | guaranteed-legendary rows | which |
+|---|---:|---:|---|
+| Normal | 6 | **1** | `svc_uberorb_apex_n01c` g4 @100% (0.44% legendary by weight) |
+| Epic | 6 | **1** | `svc_uberorb_apex_e01c` g4 @100% (5.25% legendary) |
+| Legendary | 6 | **1** | `svc_uberorb_apex_l01c` g4 @100% (6.28% legendary) |
+| **total** | **18** | **3** | the SAME row on the SAME family; **none is a PURE legendary row** |
+
+All fifteen ordinary orb tables run that identical amulet/relic/ring/formula row at **12.7%** or
+**21.2%**. The apex 100% was the outlier - and the demotion target is DERIVED from exactly that family
+spread, never typed.
+
+### THE ROW COUNT IS NOT WHERE THE GUARANTEE LIVED
+
+Reporting *"3 rows, all 94%+ non-legendary"* would have answered the question and missed the report.
+The guarantee was made of VOLUME, not of a 100% row - six loot groups rolling independently over
+5.06-10.58 spawn iterations. **Per ONE orb open, shipped b83 -> R-240+R-241:**
+
+| difficulty | E[legendary items] before | after | cut | P(>=1 legendary) before | after | guar rows |
+|---|---:|---:|---:|---:|---:|---:|
+| Normal | 0.003 .. 0.047 | **0.001 .. 0.004** | ~12x | 0.3% .. 4.6% | **0.05% .. 0.35%** | 1 -> **0** |
+| Epic | 2.579 .. 6.291 | **0.451 .. 0.622** | ~10x | 93.6% .. 99.9% | **38.2% .. 49.0%** | 1 -> **0** |
+| Legendary | 3.738 .. 8.432 | **0.699 .. 0.846** | **~10x** | 98.4% .. 99.99% | **53.6% .. 60.9%** | 1 -> **0** |
+
+**HEADLINE: at most ONE legendary item per orb open on Legendary difficulty, against 8.43 shipped - a
+90% cut - with zero guaranteed-legendary rows anywhere in the surface.**
+
+### THE LEVER, AND ONLY THE LEVER
+
+`loot{g}Chance`, on exactly the three rows the census returns, demoted to **21.2%**. **3 records, 3
+fields. 0 members, 0 weights, 0 spawn equations, 0 pools** - the module's scope proof FAILS THE BUILD
+if anything else moves, so breadth and distribution survive verbatim and the variety still lands WHEN
+a legendary rolls. The volume half (S 5.06/6.44/8.28/10.58 -> 1.125) is R-240's, in the registry slot
+immediately above.
+
+**ORDER IS LOAD-BEARING and it is the opposite of "fix it early":** `armor_loot_breadth` SKIPS the
+guaranteed row by design (`is_guaranteed_group` - the WARDEN-theme lesson) and runs far earlier, so it
+MUST still see group 4 at 100%. Demoting AFTER it is what keeps that gate honest; demoting before it
+would have handed a theme row to the armour sweep.
+
+### GATES, all static (no build in this lane)
+
+| gate | result |
+|---|---|
+| `gate_orb_legendary` O1-O5 (NEW) on the shipped b83 arz | **29 findings - THE DEFECT REPRODUCED AS AN ARTIFACT FACT before any code was written** (3 O1 + 12 O2 + 14 O3). It read 43 in this lane's first commit, when the contract still carried the inert `O3b` truncated-ceiling twin; deleting a check that could never fail removed its 14 duplicate lines and nothing else. Re-measured, not adjusted. |
+| `gate_orb_legendary` O1-O5 (NEW) after R-240+R-241 | **PASS - 0 findings**, 18 tables, 0 guaranteed rows, worst 0.846 legendary/open (ceiling 1.00) |
+| `gate_loot_volume` V1-V7b (R-240) on the same db | **PASS - 0 findings** |
+| `gate_loot_distribution` (R-181) on the same db | **PASS - 0 findings** |
+| `gate_chest_loot_breadth` (R-180/R-186) on the same db | **PASS - 0 findings** |
+| `gate_orb_loot_breadth` (R-220) on the same db | **PASS - 0 findings** - the class variety b79 shipped is intact at the lower rate |
+| `gate_craft_thrown_breadth` (R-186) on the same db | **PASS - 0 findings** |
+| `gate_chest_artifacts` (R-185 / Will's artifact ruling) on the same db | **PASS - 0 findings** |
+| `negtest_orb_legendary` (NEW) | **8 planted defects RED / 4 positive controls GREEN** (round-3: +Q4 the chance-half notice fires at 60.9% against the 25% bar, +M8 it CLEARS at 3.7% when the rate is driven under) |
+
+**The negatives plant in BOTH directions**, because a rate ruling has two ways to be wrong: M1/M2 put
+guaranteed rows back (O1), M3 restores an orb's shipped spawn volume (O2+O3 - the guarantee Will hit
+lived there, so it is planted there), M4/M5 gut the legendary weights so a legendary becomes
+near-impossible (O4 - the mirror), M6 scales every group chance until the orb is an empty box (O5 -
+the second mirror), M7 moves the derived demotion target out from under the contract (SystemExit).
+**M5 is the case the model choice exists for:** it is GREEN on the continuous reading and RED under
+integer truncation, which is why O4 is measured on the truncated one.
+
+**A SELF-CAUGHT DEFECT, RECORDED RATHER THAN QUIETLY FIXED.** The first draft carried an "O3b", a
+truncated twin of the O3 ceiling. Truncated S is always <= continuous S and both readings rise with S,
+so a truncated CEILING can never fire while its continuous parent is green - a check that cannot fail,
+printed in a PASS line. It was removed once the monotonicity was written down instead of assumed, and
+the same monotonicity is why the FLOOR (O4) moved ONTO the truncated reading: each check now runs
+under the model hardest on it, which is R-240's own rule applied asymmetrically.
+
+### DEBT REGISTERED BY THIS LANE
+
+- `BL-R241-DEBT-1` - ✅ **CLOSED-BY-R-242 (2026-08-12, build86 lane `fix/orb-rates-by-difficulty`).** Will ruled the general orbs to explicit per-difficulty numbers (0% leg + 75% blue on normal, 50% leg on epic, 75% leg on legendary = option (B) for the general orbs) and the Toxeus/Leinth apex to keep its current loot (excluded, byte-frozen). The `ORB_MAX_P_LEGENDARY`/`undischarged_notice` ratchet described below is REPLACED by the R-242 per-difficulty bands + the `inversion_notice` (BL-R242-DEBT-1). Original text kept for history: **WILL DECISION. THE "LOW CHANCE" HALF IS NOT FULLY DISCHARGED.** P(at least
+  one legendary) lands at **54-61% on Legendary difficulty, and 60% is not "a low chance"**. Said here
+  rather than buried, because a green gate must not imply a ruling is finished.
+  **WHY:** after the trim an orb pays ~2.06 items per open and **~40% of a Legendary-tier orb's entire
+  drop mass IS legendary-classified**, because R-180/R-220 deliberately weighted
+  `svc_unique_weapons_l01` / `svc_unique_armor_l01` at ~47-50% of the weapon and shield rows to buy the
+  CLASS BREADTH Will asked for in the same fortnight. If the orb pays anything, there is a good chance
+  the thing it pays is legendary. That is COMPOSITION, not volume.
+  **WHY THIS LANE DID NOT TAKE IT:** the only remaining lever is scaling those rows' `loot{g}Chance`,
+  and that is NOT the volume lever `numSpawn` is - `svc_loot_distribution` **D7b asserts worn-slot
+  armour pieces PER SPAWN ITERATION (>= 0.0375) on all 63 surfaces**, and a uniform group-chance scale
+  divides that reading by the same factor, reding armour parity on every orb. Scaling only the
+  legendary-heavy rows moves D3/D4 and D6 instead. Either way it re-litigates the armour parity b75-b83
+  shipped, which this lane was told is untouchable.
+  **PRICED: (A) accept 54-61%** on the strength of the 90% cut in legendary ITEMS and the zero
+  guaranteed rows - cost nothing, the ceilings become permanent. **(B) push below the 25% low-chance bar** (`LOW_CHANCE_RULING_BAR`, the one number this lane proposes for what "a low chance" means: one open in four) - one
+  composition lane in R-180/R-181/R-220's scope (give the Legendary-tier orb rows an epic-grade sibling
+  pool to split their weight with, so the orb still pays two items but they are usually Epic), plus a
+  re-derivation of D7b's floor for the orb family and a re-run of the orb-breadth gate. **One lane per
+  problem means it is not this one.**
+  **ROUND-3 ADDITION - THE CEILING IS PROVISIONAL AND THE GATE NOW SAYS SO OUT LOUD.** The round-3 vet
+  was right that `ORB_MAX_P_LEGENDARY` = {n 2%, e 55%, l 68%} writes "not low" into the contract as the
+  permanent committed band, and that a later reader would take 68% for a rate somebody chose. It is not:
+  it is a ratchet holding the 90% cut already made. Two things now stop the misreading. (1) If Will
+  rules **(B)**, those two numbers come down **in the same commit as the fix**, and both the constant's
+  comment and Will's test note say so. (2) `svc_orb_legendary.undischarged_notice()` compares the
+  measured worst against `LOW_CHANCE_RULING_BAR` (**25%**, one open in four, deliberately generous so it
+  only fires when the gap is beyond argument) and prints a banner naming this debt on **every** run of
+  both the standalone audit and the in-build `verify`, on the PASS path as well as the FAIL path, with
+  the PASS line itself amended to *"PASS MEANS THE COMMITTED BAND IS HELD, NOT THAT R-241 IS FINISHED"*.
+  It does **not** red the gate: the remaining gap needs a composition change that is Will's A/B call,
+  and a gate may not take a ruling. Negtest `Q4` proves the banner fires on the shipping build; negtest
+  `M8` drives the rate under the bar and proves the banner **clears**, so it is a live measurement and
+  not a permanent decoration future readers learn to skip.
+- `BL-R241-DEBT-2` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof.
+  **Will's check: kill a Mystical Orb uber a few times on Legendary and open the orbs - you should get
+  about two items each, and AT MOST ONE of them legendary.** Note the unit: the thing that dropped 10x
+  is legendary ITEMS PER OPEN (8.43 -> 0.85), not the chance of seeing one, which is still 54-61% and is
+  `BL-R241-DEBT-1`. **An earlier draft of this line said a legendary should "be an event, not the
+  default"; that contradicted this lane's own measurement and has been corrected** - more than half of
+  opens still contain one, and the honest test is the count in the pile, not the rarity of the event.
+  Rides with
+  `BL-R240-DEBT-3` (same build, same test session). Fully quit TQ and restart Steam first.
+- `BL-R241-DEBT-3` - **THE APEX ORB LOSES ITS GUARANTEED ROW ENTIRELY, and that row was 94% relics /
+  amulets / rings.** The demotion takes the apex orb from 3.04 to 2.15 items per open - the single
+  largest per-surface cut in this lane after R-240's own - and most of what it removes is the RELIC and
+  JEWELLERY flow, not legendary gear. Nothing gates relic-per-open today. If Will reports "the apex orb
+  stopped paying relics", the fix is one field (raise `loot4Chance` back toward the family's 21.2% ->
+  higher) and it does NOT reopen the legendary question, because that row is only 0.44-6.28% legendary.
+  Recorded now so the cause is known before the symptom is reported.
+
+---
+
+
+## GATE RECORD - R-240 LOOT-VOLUME TRIM: the canonical chests come down ~10x, the TESTHUB farm keeps its own, `BL-R181-DEBT-5` CLOSED (2026-08-11, branch `fix/loot-volume-trim`) - SOURCE + STATIC GATES ONLY, NOT BUILT, NOT DEPLOYED, NO TAG
+
+**Will's ask (verbatim, 2026-08-11):** *"we probably need to trip the loot-volume trim, especially on
+the steam version where maybe from the two chests, you get guaranteed 1 legendary item. on the testhub
+version we can spawn more that is fine."*
+
+This is the say-so `BL-R181-DEBT-5` was explicitly waiting for. Design record + the full derivation:
+`docs/WILL_RULINGS.md` -> **R-240**.
+
+**MEASURED, canonical two-chest Gaoler cage run, against the shipped `build83` arz `44499f56`** (live
+on Steam and DEV right now):
+
+| difficulty | grade it pays | shipped b83 | R-240 | cut | P(>=1 at grade) | ceiling |
+|---|---|---:|---:|---:|---:|---:|
+| Normal | Epic | 43.71 | **3.84** | 11.4x | 0.9999 | 4.55 |
+| Epic | Legendary | 28.17 | **2.68** | 10.5x | 0.9686 | 3.20 |
+| Legendary | Legendary | 36.41 | **3.82** | 9.5x | 0.9963 | 4.55 |
+
+**Those are the CONTINUOUS-model numbers. Under INTEGER TRUNCATION of the spawn count the same run
+pays 3.29 / 2.12 / 2.74 with P(>=1) 0.9996 / 0.9378 / 0.9830** - and the Epic 0.9378 is BELOW the 0.95
+V7 enforces, which is why V7b now enforces the truncated reading separately at 0.90. The engine's
+rounding mode is unproven (`BL-R240-DEBT-5`); both readings are gated and both are printed.
+
+**TESTHUB twin: 43.71 / 28.17 / 36.41 - the shipped numbers, unchanged.** A 9.5x canonical-vs-DEV
+split on Legendary, and it is a RECORD split because one arz serves both map variants.
+
+**PER-SURFACE, before -> after** (`py tools/gate_loot_volume.py <arz> --calibrate` prints all 63):
+
+| surface family | count | S before | S after | gear/open before -> after |
+|---|---:|---:|---:|---|
+| gaoler cage chest_01 / _03 | 6 | 12.48 / 14.40 | 1.125 - 1.512 | 23.89 -> 2.15 (worst) |
+| boss + guard hoards (`svc_*hoard_loot_0N`) | 27 | 12.48 | 1.125 - 1.310 | 19.19 -> 1.73 |
+| blood-cave mega chest (3 DRX donors) | 3 | 18.96 | 1.612 - 1.991 | 17.45 -> 1.50 |
+| `polisvault_02 / _04 / _05` spares | 3 | 12.48 | 1.310 | 15.45 -> 1.62 |
+| apex uber orbs (`svc_uberorb_apex_*`) | 3 | 10.58 | 1.125 - 1.131 | 9.53 -> 1.01 |
+| R-220 orbs (`uberorb_default_*`, `boss_charon_*01b`) | 15 | 5.06 - 8.28 | 1.125 | 7.46 -> 1.01 |
+| **TESTHUB cage twin (NEW)** | 6 | n/a | **12.48 / 14.40** | **n/a -> 23.89** |
+
+**THE LEVER, AND ONLY THE LEVER.** `numSpawnMinEquation` / `numSpawnMaxEquation`, two fields, and the
+module's own scope proof FAILS THE BUILD if any member, weight or group chance moves. Every equation
+keeps its `(<bracket>)*<M>` shape - only `<M>` changes - so `numberOfPlayers` co-op scaling survives
+byte-for-byte in form. Breadth and distribution are therefore untouched, and re-proven on the same db
+rather than asserted.
+
+**GATES, all static (no build in this lane).**
+
+| gate | result |
+|---|---|
+| `gate_loot_volume` V1-V7 + **V7b** (NEW) | **PASS - 0 findings**, 69 canonical + 18 TESTHUB tables in scope |
+| `gate_loot_distribution` (R-181) with the trim applied | **PASS - 0 findings, 63 surfaces** |
+| `gate_chest_loot_breadth` (R-180/R-220/R-186) with the trim applied | **PASS - 0 findings, 69 tables** |
+| `ownership_problems` (the BL-R181-DEBT-7 structural half) | **PASS - 0 findings** |
+| D7X + **D7X2** (NEW) reference-surface | **PASS** |
+| `gate_chest_artifacts` (NEW) | **PASS** - 135 of 141 equippable artifacts unreachable, 6 pinned |
+| `negtest_loot_volume` (NEW) | **11 planted defects RED / 3 positive controls GREEN** (N10 = the truncation mask V7b exists for; N11 = a second `apply_wave`) |
+| `differentiation_problems` B3 (R-186) over BOTH cage families | **PASS - 0 findings**, 12 families / 36 tables - the twin's 3 themed variants are still distinct after the clone |
+| twin-vs-canonical `numSpawn` differs on all 18 | **PASS** - 0 identical, so the clone captured the SHIPPED volume and not the trimmed one |
+| map-side split trace | **PROVEN** - hub specs name `svc_polisvault_hub_chest_01/03` (4 TESTHUB-only placements); `B41_SPECS` still names `svc_polisvault_chest_01/03` (2 canonical); the two families are DISJOINT |
+| registry integrity | ⚠️ **SUPERSEDED by R-241 in the same lane** (see the gate record at the top of this file): the hash was `198242d6db75` with `loot_volume_trim` last before the no-op `visuals`. R-241 inserts `orb_legendary_chance` between them, so the manifest is now **61 modules, order hash `f5d23eca1b60`**, `loot_volume_trim` -> `orb_legendary_chance` -> `visuals`. `patches.selfcheck()` OK. The ordering is load-bearing in BOTH directions and is argued at both registry entries. |
+
+**ROUND-2 VET: 7 findings, ALL FIXED, each reproduced independently on `44499f56` before being
+touched.** 2 HIGH (the wave was NOT idempotent while four places claimed it was - measured 58-table
+drift on a second apply, now an apply-once re-entry guard that fails loud; and Will's artifact ruling
+ships as PENDING-AWAITING-RATIFICATION rather than as if satisfied), 2 MEDIUM (D7's reach was
+misstated as "42-of-57 to 21-of-75" in three places - it is 24-of-63, 18 canonical; and the
+continuous spawn model overstated the guarantee, with the Epic truncated reading at 93.78% falling
+under the gate's own 95% floor - now V7b), 3 LOW (three richness-ORDER claims false in the unit their
+own tables print; the R-181 gate reds on any pre-R-240 arz and the Ship lane must not chase it;
+`clone_record`'s False return was ignored and the Legendary trim has one unspent constant of
+headroom). Negatives grew 9 -> 11. **No shipped artifact was ever at risk from the idempotency
+defect** - `patches.run_registry` asserts each module runs exactly once, which is why det-2x is
+byte-identical; what was broken was the workflow the docs advertised.
+
+**D7 HAD TO MOVE, AND IT IS THE ONE THING IN THE R-181 CONTRACT A VOLUME CUT COULD BREAK.** Every
+other distribution check is a ratio and divides volume out. D7 is an absolute per-open armour floor,
+so its number is now DERIVED in code (a per-iteration strength times an anchor volume) and its anchor
+moves off `svc_uberorb_apex_e01c` onto `gaoler cage chest_01 [l]` - because the never-empty floor lifts
+every thin container to the same 1.125 iterations, so the old volume proxy stopped separating anything
+and D7 would newly have red the 15 R-220 orb tables b80 deliberately excluded. **Cost, MEASURED (an
+earlier draft of this line said "42-of-57 -> 21-of-75" and both halves were wrong): the audit set is
+63 surfaces after this wave (57 canonical + 6 new TESTHUB twins), and D7 is asserted on 24 of them -
+only 18 of the 57 CANONICAL surfaces.** Those 18: cage chest_01 [l], chest_03 [e], chest_03 [l]; the 3
+blood-cave donors; `polisvault_02/_04/_05`; the 9 `svc_*hoard_loot_03` tables. D7 asserts on **no orb
+at all**, on **none of the 18 `_01`/`_02` hoard tables**, and on exactly **one Normal-difficulty
+canonical surface** (`loottable_hidden_bloodcave_01`). D7b (0.0375 per spawn iteration, unchanged, all
+63 surfaces) is what carries the invariant now - exactly as R-181's own comment predicted it would have
+to, and the R-181 gate re-run on the trimmed db returns 0 findings. **D7X2** re-proves the committed
+anchor volume against the anchor surface's own bytes every run, so this cannot silently rescale again.
+
+> WARNING - **FOR THE SHIP LANE: `gate_loot_distribution.py` on this branch REDS on any PRE-R-240 arz,
+> and that is the anchor working, not a defect.** It cannot be used as a "the baseline passes too"
+> control against the rollback artifact, the previous build, or any lane branched before this one - it
+> emits `D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the reference surface
+> gaoler cage chest_01 [l], which MEASURES 12.4800 spawn iterations`, because on an untrimmed arz the
+> anchor surface really does measure 12.48. **RE-MEASURED on `44499f56`: that D7X2 is the ONLY finding
+> the R-181 gate emits there (exactly 1 FAIL line), and every other coexisting gate still PASSES on the
+> untrimmed arz** - `gate_chest_loot_breadth`, `gate_orb_loot_breadth`, `gate_craft_thrown_breadth` and
+> `gate_chest_artifacts`, 0 findings each. Do not chase it.
+
+**WHAT THE SHIP LANE OWES (not run here, by instruction).** Full DB build + det-2x, record-diff vs
+`44499f56`, `run_contracts`, `validate_tags`, DEV deploy, Steam. Expected record-diff: **ADDED 44**
+(the TESTHUB cage twin: 18 loot tables + 18 themed containers + 6 pools + 2 chest proxies) /
+**REMOVED 0** / **MODIFIED 69** (two numSpawn fields each, nothing else). **No new tags are authored**,
+so the arz+Text coupling holds with no Text rebuild.
+
+> WARNING - **MAP COUPLING, and it is the only non-arz half.** The TESTHUB Levels variant must be
+> REBUILT (`SVC_TEST_HUB=1`) for the four DEV duplicates to reach the rich twin. Until then they keep
+> naming the canonical records and DEV's cage is trimmed like canonical - the SAFE direction (DEV
+> under-pays, Steam never over-pays). **Canonical `B41_SPECS` is untouched, so
+> `local/Levels_merged.arc` stays byte-identical and the Steam delta stays arz-only.**
+
+**DEBT REGISTER**
+- `BL-R240-DEBT-1` - **THE numSpawn LEVER BOTTOMS OUT AT 2.74, NOT 1.0.** One spawn iteration of the
+  canonical cage already pays 1.60 + 1.14 = 2.74 Legendary-grade pieces, because six loot groups roll
+  independently per iteration and their chances sum past 280%. This wave lands at 3.82, within 40% of
+  that floor. Reaching a literal "1 legendary item" per run needs the group chances or the guaranteed
+  100% row lowered - COMPOSITION, which this lane is forbidden to touch. **WILL DECISION** if he meant
+  literally one.
+- `BL-R240-DEBT-2` - 🚨 **WILL DECISION REQUIRED. "artifacts should never drop from chests" ships as
+  PENDING, and the green gate must NOT be read as compliance.** The premise the ruling was relayed
+  with was wrong - "current state already complies (0/292)" is false - and the round-2 vet re-derived
+  that independently with its own loot-graph walker. **6 equippable artifacts are chest-reachable on
+  the live b83 arz** (`e_da_crescentmoonofartemis`, `e_da_demetersbounty`, `l_da_goldeneyeofsunwukong`,
+  `l_da_ikonofzeus`, `l_da_mardukstabletofdestiny`, `l_da_thothsglory`), via
+  `records\item\loottables\svc\svc_craft_reagents_artifact_l01.dbr`, named by `04_l_misc.lootName7`,
+  `amulet_l01.lootName4` and `finger_l01.lootName3`. They are there **because of R-185, one of Will's
+  own rulings, shipped the day before** - so a literal zero-artifact gate would RED the live build and
+  require reverting R-185. What ships asserts *"zero EXCEPT six pinned by name"*, with A2/A3
+  re-deriving each pin from the bytes every run so the roster can only shrink honestly, and proves the
+  other 135 unreachable. **Will's call, two options:** (a) ratify the six-artifact exemption, and this
+  becomes IMPLEMENTED-WITH-EXEMPTION; or (b) take the follow-up - one craft-lane row deletion plus a
+  *"reagent that is itself a craftable"* exemption class - after which A3 reds the now-dead pins and
+  the roster deletes itself. `docs/CHEST_DROP_MATRIX.md` 6.5 independently reaches the same verdict, so
+  42-of-42 craft completability survives either way. Priced in full in R-240's companion ruling.
+- `BL-R240-DEBT-3` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof. Will's
+  check: Prison of Souls / Hades Palace floor 4, kill Alkyoneus, open BOTH canonical cage chests on
+  Legendary - expect a handful of items with roughly one to four legendaries, not a floor covered in
+  them. On the DEV TESTHUB cage the four duplicates should still pour (after the hub map rebuild).
+- `BL-R240-DEBT-4` - the trim is applied to the 3 DRX donors (`loottable_hidden_bloodcave_0N`) as well,
+  because `all_surfaces` audits them and R-181 writes them. That is deliberate and consistent, but it
+  means the blood-cave mega chest - the game's designated jackpot - now pays **1.483-1.497** legendary
+  per open instead of 17.45. **CORRECTED (round-2 vet): it is NOT "still the richest surface in the mod
+  by construction", and it was not before this wave either.** It is the richest in SPAWN VOLUME (S
+  1.991 against the cage's 1.310/1.512), which is the unit the multiplicative trim preserves. In GEAR
+  PER OPEN it sits BELOW the cage (2.153) and below all nine `_01` hoards (1.730) - and it already did
+  on the shipped b83 arz (17.45 against the cage's 23.88 and the hoards' 19.19), because gear-per-open
+  is S times COMPOSITION and composition is R-180/R-181's. So the decision in front of Will is
+  unchanged but the reason is honest: **if he wants the jackpot to READ as a jackpot, it needs a lift
+  in absolute terms, and one constant on its family's trim is the lever** - the trim did not demote it,
+  it was never top of that ranking.
+- `BL-R240-DEBT-5` - **THE ENGINE'S SPAWN-COUNT ROUNDING MODE IS UNPROVEN, and after this trim it is
+  first-order.** `svc_loot_distribution.spawn_iterations` returns the CONTINUOUS mean of the min and max
+  equations. Pre-trim S ran 5.06-18.96 so the fractional part was noise; post-trim every canonical cage
+  table evaluates to between **1.0502 and 1.6128** iterations solo, so under integer truncation every
+  one is exactly ONE iteration. Continuous vs truncated for the two-chest run: Normal 3.839 / P 0.9999
+  vs 3.291 / 0.9996; Epic 2.676 / 0.9686 vs **2.123 / 0.9378**; Legendary 3.823 / 0.9963 vs 2.742 /
+  0.9830. **The Epic 0.9378 is below the 0.95 V7 enforces**, and V7 reported green because its model
+  never discretises - so V7b now enforces the truncated reading separately at 0.90 (same 37-38%
+  failure-side headroom construction) and `--calibrate` prints both. Two facts that ride with it:
+  the direction of the error is BENIGN for the ask (2.1-2.7 a run is closer to "guaranteed 1 legendary
+  item" than 2.7-3.8), and **solo, the per-difficulty ladder x0.085/x0.095/x0.105 is a continuous-model
+  artefact** - all three difficulties truncate to the same single iteration and what separates them is
+  composition; the ladder still does real work in co-op. Reassuring precedent, re-measured here rather
+  than taken on trust: of the 360 records on the shipped b83 arz carrying a `numSpawnMinEquation`,
+  **57 already evaluate to between 1.0 and 2.0 iterations at one player and ZERO evaluate below 1.0**
+  (303 are above 2.0). So a never-empty floor of one iteration is base-game practice, not a novelty
+  this wave invented. **Closing this needs an
+  in-game count** (open the cage N times on Epic and record how many legendaries fall), which is Will's
+  test, not a static gate's.
+- `BL-R240-DEBT-6` - **ONE CONSTANT OF LEGENDARY HEADROOM WAS LEFT DELIBERATELY UNSPENT.** The
+  Legendary cage lands at S = 1.310/1.512, above the 1.05/1.20 never-empty floor, so `CANON_TRIM['l']`
+  still has room the Normal and Epic tiers do not. Dropping Legendary to the floor takes its run from
+  **3.82 to about 3.08** continuous (2.74 truncated, the mechanical floor itself). The docs correctly
+  say the lever bottoms out at 2.74 and this wave lands at 3.82 "within 40%", but they did not say that
+  **it is the per-difficulty LADDER, not the mechanics, holding Legendary at 3.82.** One constant if
+  Will wants it tighter; the only argument against is the ladder's own rationale, that a Legendary
+  container should keep more of its shipped volume than a Normal one.
+- `BL-R240-DEBT-7` (round-3) - 🚢 **SCHEDULED SHIP-LANE WORK, NOT AN INHERITED CAVEAT: the TESTHUB
+  `Levels` variant must be REBUILT IN THE SAME WAVE that ships this arz.** The database half of Will's
+  *"on the testhub version we can spawn more that is fine"* is done and independently re-measured (the
+  44-record twin exists, holds 43.71 / 28.17 / 36.41 per run, and is unreachable from the canonical
+  map). But the four TESTHUB placements only reach the twin in a `Levels` built with `SVC_TEST_HUB=1`,
+  and the **currently deployed** DEV TESTHUB map still names `svc_polisvault_chest_01/03` - the records
+  this wave TRIMS. So on the day the arz lands and the hub map does not, **Will's DEV farm drops from
+  ~36 to ~3.8 pieces a run**, which is precisely the half he asked for going missing.
+  It is the safe direction (DEV under-pays, Steam never over-pays) and it was already written down as a
+  warning, but a warning is something the next lane inherits and a debt id is something it schedules.
+  **The ship lane owns this:** rebuild `local/Levels_merged_TESTHUB.arc` with `SVC_TEST_HUB=1`, redeploy
+  it to DEV, and hash-verify it landed, under the standing Levels+Quests deploy coupling. It is a heavy
+  map build, so it is planned into the wave rather than discovered at the end of it. **Canonical
+  `B41_SPECS` is untouched and `local/Levels_merged.arc` stays byte-identical, so this changes nothing
+  about the Steam delta, which remains arz-only.** Closing evidence: the DEV cage pours again.
+- `BL-R240-DEBT-8` (round-4) - ⚠️ **AFTER THIS MERGES, `gate_loot_distribution.py` AND THE IN-BUILD
+  `armor_loot_breadth.verify` RED ON EVERY PRE-R-240 ARTIFACT. THAT IS THE ANCHOR WORKING. DO NOT TREAT
+  IT AS YOUR LANE'S DEFECT.** Both share the same D7X2 implementation, so the standalone audit and the
+  registry hook fail together; the full 53-hook sweep confirms it (`armor_loot_breadth` is one of
+  exactly three modules that red on the untrimmed b83 arz and pass on the trimmed one, the other two
+  being this lane's own). Exact text, reproduced against the shipped b83 arz `44499f56`:
+  `D7X2 the committed ARMOR_SLOT_FLOOR_REF_SPAWN=1.3100 no longer matches the reference surface gaoler
+  cage chest_01 [l], which MEASURES 12.4800 spawn iterations`.
+  **WHY:** R-240 re-anchored `ARMOR_SLOT_FLOOR` onto the cage's post-trim volume, so the floor is now a
+  DERIVED number and D7X2 re-proves the committed anchor against the measured bytes every run. On an
+  untrimmed arz the anchor surface genuinely measures 12.48, so the check fires exactly as designed.
+  **WHO THIS BITES:** (a) the ship lane's standing anti-inert control - running the coexisting gates
+  against the **rollback artifact** to prove they are not inert; (b) every other in-flight branch
+  (`feat/charon-rework`, `fix/supra-legendary-gate`, `fix/toxeus-shroud`, `fix/gaoler-killability`,
+  `fix/soul-rename-ratified` ...) whose gate battery carries a **pre-R-240 baseline**.
+  **WHAT TO DO INSTEAD:** run the anti-inert control on a **post-R-240** artifact, and read a
+  pre-R-240 D7X2 red as the control PASSING. The gate now says this itself: `svc_loot_distribution`
+  commits `ARMOR_SLOT_FLOOR_PRE_R240_REF_SPAWN = 12.480` purely so the failure text can recognise the
+  pre-trim volume and append *"THIS IS THE EXPECTED READING ON A PRE-R-240 ARTIFACT (BL-R240-DEBT-8)"*.
+  The constant is **not** a second accepted era - the floor stays anchored to the trimmed volume,
+  because the trimmed volume is what ships.
+  **THE REAL FIX, NOT TAKEN HERE:** make D7/D7X2 two-era the way R-240 made `polis_vault` T5 and
+  `uber_apex_orb` (c)/(h) two-era, so one gate serves both artifacts. That is a refactor of a gate
+  several in-flight lanes depend on, and **one lane per problem** means it is not this one. Closing
+  evidence: `gate_loot_distribution.py` exits 0 on both a pre- and a post-R-240 arz.
+- `BL-R240-DEBT-9` (round-4) - 🚨 **THE R-240 RE-ANCHOR COST D7 REAL DETECTION POWER, AND R-181's OWN
+  NEGATIVE BATTERY WAS STILL ASSERTING THE SUPERSEDED CONTRACT.** Found by running
+  `negtest_armor_breadth.py` (a coexisting battery, not one this lane authored) against the shipped b83
+  arz: **NEGTEST FAILED: 2**.
+  1. **Its N12 case measured GREEN (BLIND).** It planted a 25% armour cut on
+     `svc_uberorb_apex_e01c` - the surface `ARMOR_SLOT_FLOOR` used to be anchored on - and expected D7
+     to red. R-240 moved the anchor to `gaoler cage chest_01 [l]` and re-derived the floor as
+     per-iteration-strength x the trimmed anchor volume, taking it from **0.52 to 0.0644 per open,
+     about 8x lower**. A 25% cut on a surface calibrated at ~0.62/open lands at ~0.47, an order of
+     magnitude clear of the new floor. **The check the round-2 vet built to make that exact regression
+     permanently catchable had itself been made blind.**
+  2. **Its whole-build positive control failed** on the one expected D7X2 anchor problem
+     (`BL-R240-DEBT-8`), because `load_fixed` applies the R-181 wave only.
+  **FIXED IN THIS LANE, both of them, and made rot-proof:** N12 no longer hardcodes either the surface
+  or the cut - it reads `SLD.ARMOR_SLOT_FLOOR_REF_SURFACE` and **sizes the cut from the live floor**, so
+  whoever moves the anchor next still gets a plant that lands just under it. The positive control now
+  sets aside exactly the D7X2 problem, names it, prints it, and reds on anything else.
+  **WHAT REMAINS OPEN, AND IT IS SHARPER THAN "THE FLOOR HAS SLACK".** Chasing the N12 rewrite to
+  ground produced the real result, measured on `gaoler cage chest_01 [l]` (S=12.48):
+
+  | check | binds at | on this surface |
+  |---|---|---|
+  | **D7** absolute | 0.0644 / open | the anchor's own floor |
+  | **D7b** per-iteration | 0.0375 / iter = **0.468 / open** equivalent | **7.3x TIGHTER** |
+
+  **D7 can no longer fire first on the very surface it is anchored to - the absolute floor is
+  DOMINATED on its own anchor.** Proven by planting: a 60% armour cut on that surface reds D6 and D7b
+  on four slots and produces **zero** D7 findings; forcing a D7-specific red would need roughly a 96%
+  cut, which is a demolition, not a regression. On the OLD anchor (`svc_uberorb_apex_e01c`, thinnest
+  armour slot 0.6229/open over S=10.58 - matching b80's own calibration to the digit) a cut must now
+  exceed **89.7% to red D7 and 36.3% to red D7b**, against **16.5%** under the pre-R-240 floor.
+  Absolute-floor COVERAGE separately fell from **42 of 57** canonical surfaces to **18 of 57**.
+  **NONE OF THIS MAKES THE RE-ANCHOR WRONG** - holding 0.52/open against a container that now spawns
+  ~1.1 iterations would turn D7 into a numSpawn demand and red the whole mod for the ruling itself -
+  and D7b is unchanged and asserted on all 63 surfaces, so armour parity IS still enforced.
+  **THE QUESTION FOR WILL: keep D7 as a dominated no-op, retire it and say so, or re-derive it per
+  volume band so it has independent teeth again?** An R-181 composition decision, one lane, not a
+  volume lane. `N12c` prints the dominance ratio every run so the answer cannot be lost. Closing
+  evidence: a stated ruling, plus (if D7 is to keep teeth) a floor that scales with the surface.
+
+---
+
 ## LANE RECORD - R-231 THE THREE SUPRA-CRAFT LAWS: every recipe is Legendary-gated, all 42 reagent sets are different, and no supra drops on Epic (2026-08-11, branch `fix/supra-legendary-gate`, module `tools/patches/supra_recipe_laws.py`)
 
 **STATIC GATES ONLY - this lane does not build.** Every number below is measured on the build83 SHIP
@@ -217,6 +1333,8 @@ merge.
   the minimum** - 42/42 sets distinct, 0 duplicate groups, but de-duplicated recipes still share two of
   three reagents (Will's own example, Aquimae / Crystal Tear of Nyx, still shares Plissken +
   Deathweaver's Legtip). If "different" meant more than "not identical", the spread widens on request.
+
+---
 
 ## SHIP RECORD - BL-R181-DEBT-7: the ordinary uber orbs pay ARMOUR now, **LIVE ON STEAM** (2026-08-11, `main` @ the `fix/orb-armor-rows` merge, tag `build83-ship`)
 
@@ -1233,10 +2351,17 @@ copy back over the DEV `Database/SoulvizierClassicDEV.arz`. The same bytes are a
   6 cage chests, over 2-3 runs.** Expect helms / chest plates / bracers / greaves / shields alongside
   weapons at roughly equal volume, no single weapon class running the run, and four copies of the same
   SPEAR now uncommon. Full note at the top of `docs/WILL_TEST_GUIDE.md`.
-- **`BL-R181-DEBT-5` (P1, WILL DECISION):** `numSpawn` is the drop-VOLUME lever and is deliberately
-  untouched under the non-reduction law. Because total legendary gear RISES 70.8 -> 109.4, **P(four
-  copies of ANY one item) only moves 47.3% -> 39.7%** even though P(four of one SPEAR) drops 27.0% ->
-  6.3%. Cutting drops per open needs Will's say-so; it is not taken quietly here.
+- **`BL-R181-DEBT-5` (P1, WILL DECISION -> CLOSED 2026-08-11 by `fix/loot-volume-trim` / R-240):**
+  `numSpawn` is the drop-VOLUME lever and is deliberately untouched under the non-reduction law.
+  Because total legendary gear RISES 70.8 -> 109.4, **P(four copies of ANY one item) only moves 47.3%
+  -> 39.7%** even though P(four of one SPEAR) drops 27.0% -> 6.3%. Cutting drops per open needs Will's
+  say-so; it is not taken quietly here.
+  **THE SAY-SO ARRIVED 2026-08-11:** *"we probably need to trip the loot-volume trim, especially on
+  the steam version where maybe from the two chests, you get guaranteed 1 legendary item."* The lever
+  is pulled: canonical cage run 36.41 -> 3.82 Legendary-grade gear (9.5x), TESTHUB twin held at 36.41.
+  Ruling `docs/WILL_RULINGS.md` -> R-240; GATE RECORD at the top of this file. The residual that
+  outlives it is `BL-R240-DEBT-1`: the lever bottoms out at 2.74 per run, so "literally one" would
+  need the guaranteed row lowered and that is a separate Will decision.
 - **`BL-R181-DEBT-7` (P1, CLOSED 2026-08-11 by `fix/orb-armor-rows`, BUILT + SHIPPED as `build83`
   (arz `44499f56`) - BUILD83-DEV GATE RECORD + SHIP RECORD at the top of this
   file; the measured range below was taken before b79's own weapon-row raise landed and understates
@@ -2262,6 +3387,9 @@ surface. 0.24 reds that by 30%, and negtest N7 re-plants it so the number stays 
 - `BL-R181-DEBT-5` - **WILL DECISION:** `numSpawn` (drop VOLUME) is untouched, so P(any single item
   lands 4x in a run) only falls 47.3% -> 39.7%. Lowering it would cut drops per open, which
   non-reduction forbids without Will's say-so.
+  **CLOSED 2026-08-11** by `fix/loot-volume-trim` / `tools/patches/loot_volume_trim.py` (R-240). Will
+  gave the say-so; the canonical cage run falls 36.41 -> 3.82 Legendary-grade gear while the TESTHUB
+  twin keeps 36.41. GATE RECORD at the top of this file, ruling at `docs/WILL_RULINGS.md` -> R-240.
 - `BL-R181-DEBT-7` - **ARMOUR ON THE R-220 ORB TABLES IS OWNED BY NOBODY, and it starves.** b79
   merged to main as `914b227` while this lane was in vet-fix. Its 15 tables (`uberorb_default_*` x12,
   `boss_charon_{n,e,l}01b`) sit outside `\svc\`, so they were never in this module's ownership rule,
@@ -2896,12 +4024,20 @@ resolves against mod UNION base and the 3 imported records are self-consistent b
 - `BL-R200-DEBT-1` - SCOPE BOUNDARY: 333 non-uber Boss-class records (base act/quest bosses, `x4_*` Eternal
   Embers, `jinchan_*`, Ragnarok/Atlantis chains) still carry no orb, deliberately. They pay out through
   level-placed quest chests. If Will ever wants those too it is a separate, economy-wide decision.
+  **CLOSED AS BY-DESIGN 2026-08-11. Will, verbatim: "no ordinary bosses dont get orbs".** No code
+  change and none wanted: R-200 drew exactly this boundary, and its red-uber gate already asserts the
+  positive side (negtest N3 reds a NEW red uber with no orb; N8 proves the scope stays red-only). The
+  ordinary bosses keep paying through their level-placed quest chests.
+  Ruling: `docs/WILL_RULINGS.md` -> R-200 CLARIFICATION [2026-08-11].
 - `BL-R200-DEBT-2` - NOT PROVEN IN-GAME. Nothing in this lane was launched. Will killing the Boar Snatcher
   (PineForest04 or SpartaOptCave03) and seeing the orb drop is the launch gate.
 - `BL-R200-DEBT-3` - the 4 non-uber, non-`tagSVC` Boss-class oddities the audit surfaced and deliberately did
   NOT touch: `drxcreatures\crowheroes\murderbunny` (lvl 66, `tagUrderMunder`), `drxmap\quest\blockersquirrel`,
   and the two `drxcreatures\bloodwitch\effects\*_bones` corpse props (lvl 1). Flagged for Will rather than
   silently wired - they are outside the class he named.
+  **CLOSED AS BY-DESIGN 2026-08-11. Will, verbatim: "no ordinary bosses dont get orbs".** The lane was
+  right to flag them and right not to wire them; they stay orb-less. No code change.
+  Ruling: `docs/WILL_RULINGS.md` -> R-200 CLARIFICATION [2026-08-11].
 - `BL-R200-DEBT-4` - REGISTRY MERGE: **RESOLVED IN-LANE.** `main` @ `6899906` (the same-day chest-loot wave,
   R-180) was merged into this branch. All three conflicts were pure both-sides-appended text and were kept
   in full: REGISTRY order is now `... gorgon_vanilla_names, chest_loot_breadth, red_uber_orbs, visuals`
