@@ -6937,3 +6937,106 @@ Also disclosed (intrinsic, not a defect): raising the gear rows raises total gea
 **CENSUS (dryrun over build86 `ffea3261`, gate-view / idempotent re-derivation):** 770 non-fixed carriers 33 -> 20, 118 fixed-location bosses 25 -> 10 (888 changed). HELD: 4 R-48 champions at 100, the 3 chain heads + 262 unset + 172 Champion + 28 hero-0 + Common at 0, and the 8 Charon/Hades UNTOUCHABLE at 66/25 (byte-identical). Named: `um_polisgaoler_unbound_99` 25 -> 10; `um_charonform2_ferryman_99` / `um_tantalus_unbound_99` 33 -> 20; `boss_satyrshaman_55` (count-over-class) 33 -> 20; `boss_charon_39/41/43` HELD.
 
 **GATE:** `tools/verify_soul_drop_rates.py` reads the two rates from the constants (no literals), so it asserts every fixed boss = `SOUL_RATE_FIXED_BOSS` (10) and every non-fixed = `SOUL_RATE_NONFIXED` (20), all pins intact, with planted negatives that RED if a fixed boss is off 10, a non-fixed off 20, or any pin moves (the honour-guard negative was corrected: it now plants the non-fixed rate, because planting a bare 10 would - correctly - no longer red under R-243).
+
+## R-170 SECOND FOLLOW-UP [2026-08-12] IMPLEMENTED (branch `fix/warden-awakening`, b88) - THE WARDEN WAS STILL MUTE: b63 changed the SLOT, the defect was the ACTION SET. A remote boat NPC must be AWAKENED (`ShowNpc` + `UpdateNPCDialog("Dialog Needed")`) before it is offered.
+
+VERBATIM (Will's bug report, re-confirmed BROKEN ON STEAM after b63 shipped): "when I click on the
+guy who travels you to the spartan crypt (warden of the spartan crypt) nothing happens, no dialog
+box comes up, nothing."
+
+THIS IS THE R-170 FOLLOW-UP'S OWN LAUNCH GATE FAILING, A SECOND TIME. That entry closed "NOT PROVEN
+IN-GAME ... The remaining gate is Will's walk." The walk happened; it failed again. SEVERITY P0 AND
+LIVE ON STEAM since 2026-08-06: the catacomb Warden is the SOLE canonical entrance to
+`spartacryptlevel2`, so that whole area has been unreachable for every subscriber.
+
+WHAT b63 GOT RIGHT AND WHAT IT GOT WRONG. Its RCA correctly identified the Warden as the only placed
+NPC whose entire menu came from an unverified trigger class, and its own HONEST CAVEAT said the two
+generators emit a STRUCTURALLY IDENTICAL trigger and that "the operative change is REGISTRATION
+ORDER plus generator provenance, not a different mechanism". That caveat was the truth: a decode of
+the DEPLOYED `Quests.arc 607ec99c` proves the Warden's trigger is STILL
+`Condition_OnLevelLoad -> [Action_BoatDialog]` alone. Moving a slot could not, and did not, change
+in-game behaviour. b63's own "next suspect" line named the real shape of the problem - "Action_
+BoatDialog binding only for levels loaded at trigger time (test by teleporting in versus walking
+in)" - and proposed a GridEntrance DOOR as the cure. Will steered to the NON-DOOR fix. This is it.
+
+THE ACTUAL ROOT CAUSE. A boat NPC that is CO-RESIDENT with the level whose load fires the trigger
+(the 14 Helos plaza travelers) is awakened by its own level's load, so `Action_BoatDialog` alone
+suffices - which is why those work and masked the defect. An NPC the player TELEPORTS INTO (the
+Warden in `CataCube02_FloorLast`, every `svc_area_return_*`, every `svc_testhub_return_*`) is not,
+so it needs to be awakened explicitly. `build_svc_database._import_dialog_needed` spells out the
+engine rationale: the "Dialog Needed" DialogPak "makes NPCs clickable when assigned via
+Action_UpdateNPCDialog. Without it, NPCs render but have no yellow icon and can't be clicked." That
+is Will's symptom word for word - the NPC is visible, the click does nothing.
+
+THE MECHANISM IS DRX/SV-UPSTREAM-AUTHENTIC, NOT INVENTED HERE. The one remote-level, teleport-out
+NPC in the whole mod that BINDS is the Leinth exit vortex "Ioannes"
+(`records/drxmap/bloodcave/portals/vortexportal_exit.dbr`, Class=Npc, `bossfight.lvl`). Its
+triggers carry `[OpenDoor,] ShowNpc + UpdateNPCDialog + BoatDialog` in the UPSTREAM SV XPack bytes
+this repo ports byte-for-byte - DRX shipped a working remote teleport NPC using this triple before
+this project touched anything - and the project already adopted it twice (`cb372fe`
+`_promote_leinth_exit_fallbacks`, `d9f6647` `_add_leinth_exit_nokill_fallback`).
+
+IMPLEMENTED (QUESTS.ARC ONLY; arz, Levels, Text and Creatures all UNTOUCHED; no new record, no new
+tag, no new QUESTS registration - every trigger still rides the already-registered
+`sv_commonmechanics` host step):
+- `build_quest_files._npc_awaken_actions(npc)` emits `Action_ShowNpc` + `Action_UpdateNPCDialog(npc,
+  "Records\Dialog\Story\Dialog Needed.dbr")` as raw parse-tree tuples decoded VERBATIM out of the
+  deployed vortex primary - including its odd `UpdateNPCDialog.delayTime` = uint32 `0x40000000`
+  (IEEE float 2.0). Preserved, not "normalized": this is the ONLY awakening shape with upstream
+  provenance, and shipping an untested variant of the one thing known to work would repeat b63's
+  mistake in a new form.
+- The pair is PREPENDED, ahead of the unchanged `Action_BoatDialog`(s), in all three SVC boat
+  generators: `_add_helos_traveler_hub_travel` (the Warden at row 0 + every `svc_area_return_*`),
+  `_add_testhub_portal_travel` (the 5 `svc_testhub_return_*`), `_add_traveler_enter_offers` (the
+  uber enter-offer). 31 triggers upgraded.
+- SCOPE IS UNIFORM. The 14 co-resident plaza travelers are UPGRADED too rather than left a second
+  class - safe and idempotent by the same reasoning b48/b94 already ship on (ShowNpc on an
+  already-shown NPC and re-assigning the standard pak are both no-ops), and one uniform shape is
+  what keeps the fail-loud deltas simple enough to actually catch a regression. The SVAERA-authored
+  co-resident `portal_master_helos` is the one boat trigger left on the old shape (deliberate, and
+  registered as debt).
+- FAIL-LOUD DELTAS UPDATED in all three generators (they previously asserted one reference per
+  npc/tag): each NPC now gains `2 + n_dests` references per trigger, plus a new
+  `_delta("Dialog Needed")` assertion requiring exactly one `Action_UpdateNPCDialog` per emitted
+  trigger.
+- GATE (no-new-surface-without-a-gate): `tools/debug/gate_boat_npc_awakening.py` (A0-A6), also run
+  in-build against the WRITTEN arc. Its NPC roster is DERIVED from the three build tables, so a
+  future traveler added without the awakening pair reds the build.
+
+R-170 AND ITS AMENDMENT ARE UNCHANGED AS DESIGN LAW. The Warden still owns EXACTLY ONE route,
+`tagSVCEnterSpartaCrypt` ("Descend into the Sparta Crypt"), still lands at `(-5596,-2,-1410)`, and
+still carries NO "Helos (Return)" port. DESCEND ONLY, per Will. Every `Action_BoatDialog` payload in
+the whole quest is byte-identical to the shipped build; only actions were ADDED in front. Step 1
+stays 33 triggers / 39 boat actions / max=33, so `_HUB_PLUS_ENTER_TRIGGERS` conservation holds.
+DO NOT "fix" a future Warden problem by re-adding `tagSVCAreaReturnToHelos` to him.
+
+PROOFS (this env; base `8035da0` = the build87 ship):
+- HARNESS FIDELITY FIRST - the UNPATCHED code rebuilds the shipped `Quests.arc` EXACTLY
+  (`607ec99cbf5fd97135204ad465130722`, 194,963 B), so the diff is attributable to this change alone.
+- PATCHED `Quests.arc` = `736cd50a3540a010e2678520922e03ce`, 195,476 B (+513 B), det-2x/3x
+  byte-identical (`PYTHONHASHSEED=0`).
+- ARC DIFF: 107 -> 107 entries, `CHANGED = ['sv_commonmechanics.qst']` and NOTHING else;
+  `open_bloodcave_portal.qst` (the reference vortex) byte-identical.
+- PER-TRIGGER DECODE: all 31 upgrades are a PURE PREPEND onto the unchanged BEFORE action list;
+  trigger headers, conditions and all BoatDialog payloads byte-identical; both awakening blocks
+  field-for-field equal to the vortex.
+- Contracts `--only quests`: 0 P0 / 0 P1 / 2 P2 on the new arc AND on the baseline arc under the
+  identical config = ZERO new violations. `tests_quests_negative` 31/31 PASS.
+- `gate_traveler_responds` PASS three ways (`--specs`, `--specs --canonical`, and against the built
+  `Quests.arc` + canonical `Levels.arc`: 31 route owners / 39 routes UNCHANGED, host quest at QUESTS
+  index 96 of 255, in-window). `gate_travel_npc_invariants` PASS. `negtest_warden_dialog` 10/10 PASS.
+  `validate_tags` PASS (383 mod tags, 0 new).
+- ANTI-INERT: the NEW gate run against the DEPLOYED/STEAM `607ec99c` EXITS 1, naming
+  `svc_warden_sparta_crypt` among 31 `A1` violations - it reproduces Will's bug as an artifact fact
+  and would have caught BOTH the 2026-08-06 and 2026-08-10 regressions. Planted-defect suite 5/5.
+- `records\dialog\story\dialog needed.dbr` CONFIRMED present in the shipped arz `3c88e537`, along
+  with all 30 SVC boat NPC records, so `Action_UpdateNPCDialog` resolves without an arz rebuild.
+
+NOT PROVEN IN-GAME (`BL-b88-DEBT-1`), AND THE HONEST CAVEAT IS STATED RATHER THAN BURIED
+(`BL-b88-DEBT-2`): NO remote boat NPC in this mod has a recorded in-game confirmation yet - the
+vortex exit that supplies the reference shape is itself playtest-pending (`BL-b94-DEBT-10`). This is
+evidence-backed, not Will-confirmed. The evidence is nonetheless non-circular: the triple is
+upstream-authentic, is the project's own adopted mechanism, and directly explains Will's exact
+symptom via the engine rationale in `_import_dialog_needed`. Will's check: fully quit TQ + restart
+Steam, then click the Warden by the stairs-down in `CataCube02_FloorLast`. If he is STILL mute, the
+remaining lever is the GridEntrance door (build24/25 Knossos-to-Uber mechanism).

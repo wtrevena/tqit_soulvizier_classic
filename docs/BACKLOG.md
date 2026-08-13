@@ -1,6 +1,55 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
 
+## LANE RECORD - b88 WARDEN AWAKENING: the Sparta Crypt Warden (and every remote boat NPC) is AWAKENED before it is offered (2026-08-12, branch `fix/warden-awakening`, base `8035da0` = build87 ship) - QUESTS.ARC BUILT det-2x + ALL GATES GREEN; NOT INTEGRATED, NOT DEPLOYED, NOT ON STEAM, NO TAG
+
+**WILL'S BUG, VERBATIM (STILL BROKEN ON STEAM after b63):** "when I click on the guy who travels you to the spartan crypt (warden of the spartan crypt) nothing happens, no dialog box comes up, nothing."
+
+**ROOT CAUSE, byte-proven against the deployed `Quests.arc 607ec99c`:** the Warden's trigger is `Condition_OnLevelLoad -> [Action_BoatDialog]` **alone**. b63 pulled the wrong lever - it moved the route from the enter-offer tail slot into the hub block (a REGISTRATION-ORDER change) and the action set never moved, so nothing about the in-game behaviour could change. A **remote-level** boat NPC (one the player teleports INTO, as opposed to a plaza traveler co-resident with the level whose load fires the trigger) is never awakened, so it renders and is **unclickable**. `build_svc_database._import_dialog_needed` states the engine rationale: the "Dialog Needed" DialogPak *"makes NPCs clickable when assigned via Action_UpdateNPCDialog. Without it, NPCs render but have no yellow icon and can't be clicked."* That is Will's symptom word for word.
+
+**THE FIX IS DRX/SV-UPSTREAM-AUTHENTIC, not invented here.** The Leinth exit vortex "Ioannes" (`vortexportal_exit.dbr`, remote `bossfight.lvl`, teleports the player out) carries `[OpenDoor,] ShowNpc + UpdateNPCDialog + BoatDialog` in the **upstream SV XPack bytes** this repo ports byte-for-byte, and the project already adopted the pattern twice (`cb372fe` `_promote_leinth_exit_fallbacks`, `d9f6647` `_add_leinth_exit_nokill_fallback`). The pair is now PREPENDED, ahead of the unchanged BoatDialog(s), in all three SVC boat generators - `_add_helos_traveler_hub_travel` (the Warden + every `svc_area_return_*`), `_add_testhub_portal_travel` (the 5 `svc_testhub_return_*`), `_add_traveler_enter_offers` (the uber enter-offer). **31 triggers upgraded.**
+
+**SCOPE IS UNIFORM, STATED PLAINLY:** the 14 co-resident plaza travelers are UPGRADED too, not left a second class. Safe + idempotent by the reasoning b48/b94 already ship on (ShowNpc on an already-shown NPC and re-assigning the standard pak are both no-ops). The SVAERA-authored `portal_master_helos` trigger (`_add_helos_portal_travel`) is the ONE boat trigger deliberately left UNCHANGED - out of this lane's named scope, co-resident in the Helos plaza, and reported-not-faulted by the new gate.
+
+**ARTIFACTS: `Quests.arc` ONLY.** No arz, no map, no Text, no new record, no new tag, no new QUESTS registration (every trigger still rides the already-registered `sv_commonmechanics` host step). `records\dialog\story\dialog needed.dbr` is ALREADY in the shipped arz `3c88e537` (verified present, alongside all 30 SVC boat NPC records), and the deployed vortex references the identical literal and resolves. Structural proof that no other artifact can move: **no arz/map/Text builder imports `build_quest_files`** (`build_svc_database`, `apply_svc_patches`, `build_section_surgery`, `svaera_plus_portals` reference it only inside comments; the only importers are four read-only `tools/debug` gates).
+
+**BUILD (det-2x byte-identical, `PYTHONHASHSEED=0`):**
+- Harness fidelity FIRST: the **UNPATCHED** code rebuilds the shipped arc EXACTLY - `607ec99cbf5fd97135204ad465130722`, 194,963 B. So the diff below is attributable to this change and nothing else.
+- Patched: **`736cd50a3540a010e2678520922e03ce`, 195,476 B (+513 B)**, identical across 3 independent runs (the 3rd with the in-build contract wired = byte-neutral).
+
+**DECODE PROOF (BEFORE vs AFTER, adversarial):** 107 -> 107 arc entries, `CHANGED = ['sv_commonmechanics.qst']` **and nothing else**; `open_bloodcave_portal.qst` (the reference vortex) byte-identical; host step 1 `max` 33 -> 33, triggers 33 -> 33, boat actions 39 -> 39, 367 steps unchanged. All **31 upgrades are a PURE PREPEND** of `[ShowNpc, UpdateNPCDialog]` onto the unchanged BEFORE action list - trigger headers, conditions and every BoatDialog payload (`npc/onOff/x/y/z/tag`) byte-identical, and both awakening blocks field-for-field equal to the vortex (including its odd `UpdateNPCDialog.delayTime` = uint32 `0x40000000` = IEEE float 2.0, preserved deliberately rather than "normalized" - it is the only awakening shape with upstream provenance).
+
+```
+WARDEN  'SVC: Helos Traveler Hub 00' (svc_warden_sparta_crypt, remote CataCube02_FloorLast)
+  BEFORE [Action_BoatDialog]
+  AFTER  [Action_ShowNpc, Action_UpdateNPCDialog, Action_BoatDialog]  dialog=Records\Dialog\Story\Dialog Needed.dbr
+RETURNS 'SVC: TESTHUB Return NPC (svc_testhub_return_{garden,secret,uber,sparta,bossarena}.dbr)'
+  BEFORE [Action_BoatDialog, Action_BoatDialog]
+  AFTER  [Action_ShowNpc, Action_UpdateNPCDialog, Action_BoatDialog, Action_BoatDialog]
+HUB+RET 'SVC: Helos Traveler Hub 01..24'  (14 plaza outbound + 10 svc_area_return_*)
+  BEFORE [Action_BoatDialog]        AFTER [Action_ShowNpc, Action_UpdateNPCDialog, Action_BoatDialog]
+OFFER   'SVC: Traveler Enter-Offer 00' (svc_area_return_uber)
+  BEFORE [Action_BoatDialog]        AFTER [Action_ShowNpc, Action_UpdateNPCDialog, Action_BoatDialog]
+UNCHANGED 'SVC: Helos Portal-Master - SV Area Travel' (portal_master_helos) = 3x Action_BoatDialog
+```
+
+**R-170 + ITS AMENDMENT PRESERVED EXACTLY:** the Warden still owns EXACTLY ONE route, `tagSVCEnterSpartaCrypt` ("Descend into the Sparta Crypt"), dest `(-5596,-2,-1410)`, **descend-only, no Helos-return port**. `_HUB_PLUS_ENTER_TRIGGERS = 26` conservation holds untouched.
+
+**GATES:** contracts `--only quests` on the new arc **0 P0 / 0 P1 / 2 P2**, and the BASELINE arc under the identical config also gives **0 P0 / 0 P1 / 2 P2** - **ZERO new violations** (the 2 P2 are the pre-existing `QST-TAG-PLACEHOLDER` pair on `open_bloodcave_portal.qst`). `tests_quests_negative` **31/31 PASS**. `gate_traveler_responds` PASS three ways (`--specs`, `--specs --canonical`, and against the built `Quests.arc` + canonical `Levels.arc` pair - 31 route owners / 39 routes UNCHANGED, host quest at QUESTS index 96 of 255, in-window). `gate_travel_npc_invariants` PASS. `negtest_warden_dialog` **10/10** PASS. `validate_tags` PASS (383 mod tags, **0 new**, the 2 documented pre-existing WARNs). In-build: quest-record contract PASS (107 records) + the new awakening contract PASS.
+
+**NEW PERMANENT GATE `tools/debug/gate_boat_npc_awakening.py` (A0-A6), wired into `build_quest_files.main()` against the WRITTEN arc.** Its NPC roster is DERIVED from `HELOS_HUB_TRAVEL` + `TESTHUB_AREA_RETURN_NPCS` + `TRAVELER_ENTER_OFFERS` at run time, so adding a traveler without the awakening pair reds it instead of shipping mute. **ANTI-INERT PROOF (the b82 discipline - reproduce the defect as an artifact fact first):** run against the DEPLOYED/Steam `607ec99c` it **EXITS 1** with 31 `A1` violations + `A6` naming all 30 SVC boat NPCs, `svc_warden_sparta_crypt` among them - i.e. it would have caught BOTH the 2026-08-06 and the 2026-08-10 regressions. Planted-defect suite `--negtest`: **5/5 caught** (`strip_pair` = the exact b63 shipped state, `wrong_pak`, `pair_after_boat`, `npc_mismatch`, `bad_count`) with the positive control green.
+
+**WHY THE SIX EXISTING TRAVEL INVARIANTS DID NOT CATCH THIS:** `G-COLLISION` / `G-WARDEN` / `G-ORPHAN` / `G-DEST` / `G-SOLE-SOURCE` / `G-DIALOG-CHAIN` all assert that a route EXISTS, is UNIQUE in its level, has a real destination and lives in an in-window quest. Every one of them is GREEN on the deployed bytes in which the Warden is mute. None looks at the ACTION SET, which is where the defect lives. That gap is now closed.
+
+**DEBT / OPEN:**
+- `BL-b88-DEBT-1` (P0, launch-gated) - **NOT PROVEN IN-GAME.** Will's check: fully quit TQ + restart Steam, then click the **Warden of the Spartan Crypt** by the stairs-down in `CataCube02_FloorLast`; the one-option "Descend into the Sparta Crypt" menu must open. Worth clicking an `svc_area_return_*` / `svc_testhub_return_*` in the same run.
+- `BL-b88-DEBT-2` (P1, honesty) - **no remote boat NPC in this mod has a recorded in-game confirmation yet.** The vortex exit that supplies the reference shape is itself playtest-pending (`BL-b94-DEBT-10`). This fix is evidence-backed (upstream-authentic + engine rationale + exact symptom match), **NOT Will-confirmed**. If the Warden is still mute the next lever is the **GridEntrance door** (the proven build24/25 Knossos-to-Uber mechanism), which the b63 ledger entry already named as the fallback.
+- `BL-b88-DEBT-3` (P2) - the 2-second `UpdateNPCDialog` delay is inherited from upstream, unexamined. If the awakening works but feels laggy on level entry, `_AWAKEN_DIALOG_DELAY` is a one-constant change that should be re-gated, not assumed.
+- `BL-b88-DEBT-4` (P2) - `portal_master_helos` (Almyros) was left on BoatDialog alone. He is co-resident and works, so this is deliberate, but he is now the only boat NPC on the old shape.
+
+**NOT INTEGRATED / NOT DEPLOYED / NOT ON STEAM / NO TAG.** The lane is a worktree only (`.claude/worktrees/wt-warden`, branch `fix/warden-awakening` off `8035da0`); the MAIN session ships serialized. The MAIN checkout's five artifacts were re-hashed at the end of this lane and are UNTOUCHED: `Quests.arc 607ec99c` / `Levels.arc 6784cf0f` / `Text.arc ce0efda4` / `Creatures.arc 8c0d8d53` / arz `3c88e537`. **DEPLOY NOTE: `Quests.arc` is variant-independent, so ONE rebuild fixes canonical (Steam) + TESTHUB together; the arz and map need no rebuild, and the Levels+Quests deploy coupling is satisfied trivially because Levels does not move.**
+
+
 ## BUILD87-DEV GATE RECORD - R-243 lower soul drop rates (non-fixed 33->20, fixed-location boss 25->10); arz-ONLY - BUILT det-2x, ALL GATES GREEN, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING (2026-08-12, `main` fast-forwarded `e0cf0d7` build86 -> `5395334` via `git merge --no-edit fix/soul-rate-10-20`, then followup `5b81ee4` + this gate-record commit).
 
 **INTEGRATED.** `main` was at `e0cf0d7` (build86) and the lane `fix/soul-rate-10-20` was **0 behind / 2 ahead** (merge-base == `e0cf0d7`), so `git merge --no-edit` **fast-forwarded** `main` to `5395334` (`1b8f279` R-243 engine change + `5395334` R-243 docs). Clean, no conflicts, working tree clean. A followup commit `5b81ee4` corrected three stale build-LOG strings (the monolith RELEASE-BUILD print + a comment + the flag-doc comment) that still hardcoded R-105's 33/25 - now derived from `SOUL_RATE_NONFIXED` / `SOUL_RATE_FIXED_BOSS`; **arz-neutral, PROVEN: an independent COLD build from the edited source reproduces the byte-identical BUILD87 arz `3c88e537`** (see det-2x below), so the arz-only ship is unchanged.
