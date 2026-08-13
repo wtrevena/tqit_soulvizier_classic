@@ -3356,6 +3356,23 @@ def main():
     # their 44-byte ARC records left @16/@20/@24/@36 zero). Fail the build loud otherwise.
     _assert_quest_records_loadable(arc2)
 
+    # PERMANENT CONTRACT (b88 WARDEN AWAKENING): every SVC boat-dialog trigger in the WRITTEN
+    # arc must lead with Action_ShowNpc + Action_UpdateNPCDialog("Dialog Needed") on its own
+    # NPC. The per-generator _delta assertions above already guard each generator in isolation;
+    # this gates the FINAL bytes, so a later chained edit cannot quietly strip the pair back off
+    # and ship a rendered-but-unclickable traveler (Will's Warden bug, twice). Imported lazily -
+    # the gate imports this module for its NPC roster.
+    sys.path.insert(0, str(Path(__file__).parent / 'debug'))
+    import gate_boat_npc_awakening as _awaken_gate
+    _viols = _awaken_gate.check(arc2.get_file(HELOS_PORTAL_HOST_QUEST), verbose=False)
+    if _viols:
+        raise SystemExit(
+            'build_quest_files: BOAT-NPC AWAKENING CONTRACT FAILED on the written '
+            f'Quests.arc ({len(_viols)} violation(s)) - a traveler would render in the world '
+            'and open no dialog when clicked:\n  ' + '\n  '.join(_viols))
+    print(f'  boat-NPC awakening contract PASS: every SVC boat trigger leads with '
+          f'Action_ShowNpc + Action_UpdateNPCDialog({DIALOG_NEEDED_DBR})')
+
 
 if __name__ == '__main__':
     main()
