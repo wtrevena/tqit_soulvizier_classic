@@ -197,13 +197,25 @@ REGISTRY = [
                             # the class only; the cross-rig half is gated PER RECORD here and
                             # registered as BL-DAGON-CROSSRIG-DEBT-1, with the three measurements
                             # showing why no cheap DB-wide form of it survives contact with
-                            # build83. ANIMATION FIELDS ONLY on one record. The S4b collision
-                            # WARN naming EXACTLY this module and `red_uber_orbs` on
-                            # boss_dagon_66 is EXPECTED and benign: their field sets are disjoint
-                            # (charAnimationTableName + 17 unarmed*Anim* here vs treasureProxyName
-                            # there, red_uber_orbs' rule (b) counting Dagon as an orb carrier) and
-                            # neither reads the other's fields. A WARN naming any THIRD module on
-                            # that record is a real finding.
+                            # build83. ANIMATION FIELDS ONLY on one record. S4b COLLISION,
+                            # CORRECTED AT THE build87 MERGE - the earlier note here PREDICTED an
+                            # expected WARN naming this module and `red_uber_orbs` on
+                            # boss_dagon_66. It was read off rule (b)'s scope prose, never
+                            # measured in a build (this lane shipped static gates only), and a
+                            # real build says otherwise: `red_uber_orbs` writes ONLY the red
+                            # ubers that are MISSING an orb ("scope proof: exactly 8 record(s)
+                            # changed treasureProxyName"), and Dagon is not one of them - he
+                            # already carries `genericbossorb_04`, byte-identical before and
+                            # after this module. So the measured S4b list names
+                            # `dagon_anim_rig` on NO record at all, and `boss_dagon_66` appears
+                            # in no collision row. The disjointness that made the predicted WARN
+                            # benign still holds and is what keeps it safe if a later module
+                            # ever does write the record: this module moves
+                            # charAnimationTableName + 17 unarmed*Anim* slots and NOTHING else,
+                            # so it cannot disturb `treasureProxyName` (the b86 R-242 orb wiring)
+                            # or `chanceToEquipFinger2` (the b87 R-243 soul rate 20.0), both
+                            # proven byte-unchanged on that record at the merge. ANY collision
+                            # row naming boss_dagon_66 is now a real finding, not a known one.
     'boss_skill_fix',       # build39: repair fought-boss skill-USAGE wiring (level-0 specials/
                             # auras/passives + Helepolis displaced turret). Runs LAST among content
                             # modules so it sees the FINAL boss records from every creating module
