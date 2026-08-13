@@ -7389,3 +7389,59 @@ the new one is >=6.69u from every traveler and >=6.96u from every clickable on b
 variants, 6.96u in FRONT of Almyros, satisfying part 5's "beside the entrance NPC" for
 Garden/Secret), with the 14 TESTHUB plaza travelers re-laid to >=4.10u pairwise around it.
 Full proofs + debts: BACKLOG "R2 ADDENDUM" under LANE RECORD R-245.
+
+## R-246 [2026-08-13] IN FLIGHT (branch `feat/native-device-travel`) - NATIVE-DEVICE TRAVEL: replace most boat-NPC routes with engine-native zero-quest-row devices (teleport-shrine rifts + GridEntrance doors); Almyros keeps his 3-route talk menu
+
+**WILL'S RULING, VERBATIM (2026-08-13, AskUserQuestion + follow-up):**
+
+1. ARCHITECTURE (his AskUserQuestion choice "Native devices"): replace most boat-NPC routes with
+   engine-native mechanisms that use zero quest rows - teleport-shrine rifts (proven in our Secret
+   Place) and/or GridEntrance doors (proven build24/25) for area entrances/returns, INCLUDING the
+   Sparta Warden descend. Almyros keeps his 3-route talk menu (matches the base-game envelope).
+   Kills the bug class permanently; fixes the Warden on Steam.
+2. EVIDENCE (his answer): during the misroutes "labels were wrong too" - the menus themselves showed
+   cross-bound rows (e.g. the Vashkarr traveler offering Helos (Return)) => corruption at LOOKUP
+   time; the whole-row cross-binding is confirmed.
+
+**WHY (the hunt's mechanism, wf device-travel round 1):** sv_commonmechanics step 1 armed 39
+Action_BoatDialog rows on a blanket OnLevelLoad step re-fired every level load; 15 rows shared one
+tag+dest; 17 NPCs were remote. Base-game census: max 2 rows armed per step EVER, zero tag/dest
+reuse, one-shot persistent arming. Result: stateful registry corruption - clicks execute OTHER rows
+(label included), NPCs with cross-bound rows go fully mute (the Warden, dorus-return). All shipped
+bytes internally perfect => invisible to offline gates. The fix is architectural: the rows die; the
+travel moves to engine-native devices that carry zero quest state.
+
+**SUPERSESSION (recorded per the ledger law):**
+- The 2026-07-12 P0 TRAVEL-LAW's "all travel is NPC boat-dialog / no authored walk-through
+  teleports" half is **SUPERSEDED by R-246**: born-open GridEntrance doors are RE-AUTHORIZED as
+  travel devices. Its PLACEMENT half **SURVIVES as law**: doors stay OFF every traffic lane
+  (>=4u off inter-POI walk lines, the B-PORTAL-2 relocation rule), walked into deliberately,
+  never straddling a path a player must cross (the "walk south in Helos -> yanked to the Garden"
+  class stays banned). Vets: do NOT red this wave against the old P0's mechanism half.
+- **R-170 / R-170-AMENDMENT / R-170-FOLLOW-UP mechanism half AMENDED:** the Warden of the Spartan
+  Crypt KEEPS his name, identity and catacomb placement (design law, unchanged) but LOSES his
+  boat-dialog menu; the descend becomes an invented born-open door pair beside him
+  (catacube02_floorlast -> spartacryptlevel2). He stands as the door's named greeter. The
+  "descend-only menu" law transfers to the door: the device beside him goes ONLY down.
+- **R-245 mechanism halves AMENDED:** every R-245 route and surveyed spot is INHERITED (maze03
+  corrected treasure-pocket spot, crypt landing (-2438,10,-2457), plaza >=4.1u de-crowding, R6
+  landing moves) but the boat ROWS that served them are replaced by devices: the labyrinth->uber
+  descend becomes a door pair at the corrected spot; svc_area_return_uber stays placed there as
+  the named greeter (R-245 "never drop the maze03 placement" do-not-regress holds). Almyros's
+  3 routes (Garden/Secret/Uber) are UNTOUCHED - Will's ruled talk menu.
+- **R-245 part 5 (return lands at the area's entrance NPC) - RECORDED DEVIATION for Will to
+  ratify:** shrine returns land at BASE PORTAL ZONES (Helos et al.), not at the area's entrance
+  NPC - the portal window's destination list comes from the base teleportmap zone records (SV's
+  override is stripped for AE-UI breakage), so custom destinations are out of scope. The
+  return-to-entrance pattern is preserved only where a door return is possible (the SC2 native
+  0x06 stretch option). Ruled acceptable under R-246's device mandate; stated explicitly, not
+  silently waived.
+
+**MECHANISMS (proven shapes only):** rifts = StrategicMovementTeleportShrine wiring mirrored
+byte-exactly from the natively-wired Garden shrine (0x05 flags=1 + 16B uid + one 1-member
+'TeleportShrine' GROUPS record; no 0x14, no 0x06, no quest state; EXIT-only device - destination
+list = base teleportmap zones). Doors = the build24/25 invented pair (born-open static GridEntrance
+portal_olympianarena1 + 60B prefixed 0x14; GridExitOneWay portal_olympianarena2 landing + 48B
+0x14; pure 0x14, no 0x06, zero quest rows). APPENDED-HOST LAW (live-proven 2026-07-08): door
+ENTRANCES fire only in ORIGINAL-INDEX host levels; landings work anywhere => returns from appended
+SV-only interiors are rift shrines, never doors.
