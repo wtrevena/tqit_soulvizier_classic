@@ -2026,7 +2026,16 @@ HELOS_PORTAL_NPC = r'records\quests\portal_master_helos.dbr'
 HELOS_PORTAL_DESTS = [
     ((1173, -39, -4001), 'tagSVCHelosToGarden'),   # Garden of Merchants (N1 H2 landing)
     ((-2396, 2, -5790), 'tagSVCHelosToSecret'),    # The Secret Place (A2 S2 landing)
-    ((-2438, 10, -2450), 'tagSVCHelosToUber'),     # Uber Dungeon (SV-native A1 arrival)
+    # R6-UBER LANDING OFF THE PORTAL PROP (2026-08-13, wf_46ee9772 forensic verified; shipped on
+    # Steam too): the old (-2438,10,-2450) sat 0.09u from the placed portal_olympianarena2 prop
+    # (crypt_floor1 local (139.94,231.94)) - the player teleported ON the portal prop
+    # (click-shadow risk). NEW (-2438,10,-2457) = local (140,225), 7u straight down the alcove
+    # into the open chamber: portal prop 6.94u, in-crypt return NPC svc_testhub_return_uber
+    # (140,229) 4.00u dead ahead (the pr5 never-ON-the-NPC law; "3u-ish" class), flanking urns
+    # >=5.7u, no monster/proxy within 13u, on-mesh clr 100%x3 (crypt_floor1 is single-component).
+    # Surveyed 2026-08-13. SAME literal in the HELOS_HUB_TRAVEL uber entrance row below - the
+    # two routes into the crypt must always land at the same proven spot.
+    ((-2438, 10, -2457), 'tagSVCHelosToUber'),     # Uber Dungeon (crypt_floor1 chamber, R6 2026-08-13)
     # PR-5 (Will 2026-08-06): "the Sparta Crypt should be entered from the Athens CATACOMBS, not from
     # Helos." The Sparta Crypt destination (was ((-5602,-2,-1409),'tagSVCHelosToSparta')) is REMOVED
     # from Almyros's Helos boat menu. Almyros KEEPS Garden / Secret Place / Uber Dungeon. The crypt is
@@ -2193,14 +2202,25 @@ TESTHUB_RETURN_NPC = r'records\quests\svc_testhub_return.dbr'
 TESTHUB_MASTER_DESTS = [
     ((1173, -39, -4001), 'tagSVCHelosToGarden'),      # Garden of Merchants (GardenofMerchants.lvl)
     ((-2396, 2, -5790), 'tagSVCHelosToSecret'),       # The Secret Place (DarkForestEnter.lvl)
-    ((-2438, 10, -2450), 'tagSVCHelosToUber'),        # The Uber Dungeon (crypt_floor1.lvl)
+    ((-2438, 10, -2450), 'tagSVCHelosToUber'),        # The Uber Dungeon (crypt_floor1.lvl) [STALE: live routes use (-2438,10,-2457) since R6 2026-08-13]
     ((-5602, -2, -1409), 'tagSVCHelosToSparta'),      # The Sparta Crypt (SpartaCryptLevel2.lvl)
     ((-429, 27, -3538), 'tagSVCTestHubToBossArena'),  # Boss Arena (boss_arena.lvl; b43-r2: ON the raised arena dais comp#2 [world y~27], 26u S of the boss spawn / outside the r20 trigger. Was (-433,0,-3602) on comp#1 - the low floor, unreachable from the fight [28u cliff, isolated navmesh island])
     ((6018, 19, 3293), 'tagSVCTestHubToBloodCave'),   # Blood Cave interior (Random09A.lvl)
     ((-5980, 1, 909), 'tagSVCTestHubToHelos'),        # Helos plaza (StartingFarmland06D.lvl)
 ]
+# R6-RETURN-LANDING HYGIENE (2026-08-13, wf_46ee9772 forensic verified): the old shared Helos
+# landing (-5980,1,909) = plaza-local (68,181) dropped the player INSIDE the traveler cluster
+# (1.12u from svc_helos_trav_secret) - the rebound trap that bounced Will into the catacombs (an
+# arrival mis-click resolves on a traveler). NEW SHARED LANDING world (-5974,1,911) = local
+# (74,183): surveyed 2026-08-13 on the built TESTHUB map - on-mesh d=0.14u, clr 100%/100%/100%
+# (N/E/L, ext 3.0), comp#1/725476 (main), >=6.32u from EVERY clickable NPC on BOTH map variants
+# (canonical: Almyros 6.96u, Starting_PortalMan 7.31u; TESTHUB adds the 14 plaza travelers, all
+# >=6.69u after the same-wave HELOS_HUB_PLAZA_SPECS de-crowding - the two changes are COUPLED:
+# never move one side without re-surveying the other). Still lands the player centre-plaza,
+# 6.96u in front of Almyros (the R5 "beside the entrance NPC, not ON it" pattern for the
+# Garden/Secret returns whose canonical entrance IS Almyros).
 TESTHUB_RETURN_DESTS = [
-    ((-5980, 1, 909), 'tagSVCTestHubToHelos'),        # Helos plaza
+    ((-5974, 1, 911), 'tagSVCTestHubToHelos'),        # Helos plaza landing court (R6 2026-08-13)
     ((6018, 19, 3293), 'tagSVCTestHubToBloodCave'),   # Blood Cave interior
 ]
 # TRAVELERS-INTO-AREAS b62 (Will 2026-07-14 final, item 2): per-NPC override of the shared 2-port
@@ -2212,14 +2232,23 @@ TESTHUB_RETURN_DESTS = [
 # NOT overridden here and keep the existing Helos+BloodCave menu unchanged: they are single-hop
 # from Helos already (their "origin" already IS Helos), so touching them isn't required by this
 # design and would only widen this wave's blast radius.
+# R5 PATTERN AUDIT (Will 2026-08-13, verbatim quote 5 in WILL_RULINGS R-245): both primaries
+# ALREADY land beside their own area's entrance NPC and stay byte-unchanged here:
+#   sparta primary (-6587,1,-3180) = catacube02_floorlast local (25,38) - 6.00u in front of the
+#     Warden at (25,32) (measured 2026-08-13; single clickable there, >=6u satisfied exactly);
+#   uber primary (-7793,1,-3793) = maze03 local (283,150) - 3.04u beside the corrected
+#     svc_area_return_uber entrance spot (280,150.5). 3.04u < the plaza's 6u rule, ACCEPTED: the
+#     treasure pocket is only ~9.6x7.4u walkable with ONE clickable NPC (no cluster to rebound
+#     into), and 3u is the brief's own "3u-ish beside the entrance NPC" class - documented, not
+#     silently waived. Secondaries follow the R6 shared-landing move (see TESTHUB_RETURN_DESTS).
 TESTHUB_RETURN_DESTS_BY_NPC = {
     r'records\quests\svc_testhub_return_sparta.dbr': [
         ((-6587, 1, -3180), 'tagSVCReturnToAthensCatacomb'),  # origin: Athens catacomb door (primary)
-        ((-5980, 1, 909),   'tagSVCTestHubToHelos'),          # Helos plaza (secondary)
+        ((-5974, 1, 911),   'tagSVCTestHubToHelos'),          # Helos plaza landing court (R6 2026-08-13)
     ],
     r'records\quests\svc_testhub_return_uber.dbr': [
         ((-7793, 1, -3793), 'tagSVCReturnToLabyrinthDoor'),   # origin: Knossos maze03 Minotaur door (primary)
-        ((-5980, 1, 909),   'tagSVCTestHubToHelos'),          # Helos plaza (secondary)
+        ((-5974, 1, 911),   'tagSVCTestHubToHelos'),          # Helos plaza landing court (R6 2026-08-13)
     ],
 }
 # b48 SPARTA-MUTE round 3 (WARDEN-SPLIT of svc_testhub_return): svc_testhub_return was PLACED in 5
@@ -2534,15 +2563,19 @@ HELOS_HUB_TRAVEL = [
     # svc_area_return_uber is now the CANONICAL Labyrinth-of-Knossos Uber entrance (placed once
     # in maze03 by the base INJECT_SPECS, both map variants - see build_section_surgery
     # UBER_LABYRINTH_ENTRANCE). His menu = EXACTLY ONE route: the b62 enter-offer
-    # tagSVCEnterUberDungeon ("Enter the Uber Dungeon") -> on-mesh (-2438,10,-2450) inside
-    # crypt_floor1 (Almyros's proven interior landing, 3.00u off the in-crypt return NPC).
+    # tagSVCEnterUberDungeon ("Enter the Uber Dungeon") -> on-mesh (-2438,10,-2457) inside
+    # crypt_floor1 (Almyros's landing, R6-moved 2026-08-13 off the portal prop; 4.00u in front
+    # of the in-crypt return NPC).
     # His old tagSVCAreaReturnToHelos "Helos (Return)" row - the mislabeled route Will clicked -
     # is REMOVED from the RETURNS block below. This row replaces his enter-offer row (the
     # enter-offer table is now empty), following the b63 warden precedent exactly: the route
     # moves off the never-in-game-confirmed enter-offer tail slot into the proven hub block,
     # right after the Warden. The way OUT of the Uber Dungeon stays svc_testhub_return_uber
     # (in-crypt, primary port back to this door's landing) - untouched.
-    (_HHUB + r'\svc_area_return_uber.dbr', (-2438, 10, -2450), 'tagSVCEnterUberDungeon'),
+    # R6 2026-08-13: dest moved with Almyros's route (see HELOS_PORTAL_DESTS) - (-2438,10,-2450)
+    # sat 0.09u ON the portal_olympianarena2 prop; (-2438,10,-2457) is 6.94u clear, 4.00u in
+    # front of the in-crypt return NPC, clr 100%x3.
+    (_HHUB + r'\svc_area_return_uber.dbr', (-2438, 10, -2457), 'tagSVCEnterUberDungeon'),
     # (npc record, (world x, y, z), boat-menu label tag)  -- OUTBOUND (all placed in Helos)
     # KEEP: Garden/Secret/BossArena already land at their natural approach (merchant hub w/ rift +
     # return NPC / forest-cluster entry / arena forecourt 90u off the boss volume) - no boss to
@@ -2565,12 +2598,12 @@ HELOS_HUB_TRAVEL = [
     (_HHUB + r'\svc_helos_trav_vashkarr.dbr',   (-227,    1,  146),  'tagSVCHelosToVashkarr'),    # random05a Chang'an cave N end (~28u off Vashkarr)
     (_HHUB + r'\svc_helos_trav_obsidian.dbr',   (-1827, -74,  -462), 'tagSVCHelosToObsidian'),    # tombobs02 Obsidian Halls stairs-down entrance (covers 4 roulette wardens + the broodmother nest)
     # RETURNS (each placed once inside its area; all travel back to the Helos plaza)
-    (_HHUB + r'\svc_area_return_dorus.dbr',      (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
-    (_HHUB + r'\svc_area_return_tantalus.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
-    (_HHUB + r'\svc_area_return_charon.dbr',     (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
-    (_HHUB + r'\svc_area_return_mnemophage.dbr', (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
-    (_HHUB + r'\svc_area_return_ephialtes.dbr',  (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
-    (_HHUB + r'\svc_area_return_warband.dbr',    (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_dorus.dbr',      (-5974, 1, 911), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_tantalus.dbr',   (-5974, 1, 911), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_charon.dbr',     (-5974, 1, 911), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_mnemophage.dbr', (-5974, 1, 911), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_ephialtes.dbr',  (-5974, 1, 911), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_warband.dbr',    (-5974, 1, 911), 'tagSVCAreaReturnToHelos'),
     # UBER-LABYRINTH PROMOTION (Will 2026-08-13): svc_area_return_uber's "Helos (Return)" row is
     # REMOVED - Will clicked him in maze03 and got the mislabeled "return to helos" offer. He is
     # now the canonical Labyrinth Uber ENTRANCE with exactly ONE route (the enter-offer row moved
@@ -2581,9 +2614,9 @@ HELOS_HUB_TRAVEL = [
     # (svc_warden_sparta_crypt); the shared svc_area_return_sparta is retired from placement (kept
     # byte-unchanged in the arz as the clone donor) so it needs no boat route. Its interior partner
     # svc_testhub_return_sparta still returns the player to the catacomb door / Helos (unchanged).
-    (_HHUB + r'\svc_area_return_devourer.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
-    (_HHUB + r'\svc_area_return_vashkarr.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
-    (_HHUB + r'\svc_area_return_obsidian.dbr',   (-5980, 1, 909), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_devourer.dbr',   (-5974, 1, 911), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_vashkarr.dbr',   (-5974, 1, 911), 'tagSVCAreaReturnToHelos'),
+    (_HHUB + r'\svc_area_return_obsidian.dbr',   (-5974, 1, 911), 'tagSVCAreaReturnToHelos'),
 ]
 
 
@@ -2719,8 +2752,9 @@ def _add_helos_traveler_hub_travel(data: bytes) -> bytes:
 # 4-port menu and every multi-dest hub NPC already rely on). Landings verified on-mesh +
 # collision-clear (tools/debug/gate_landing_clearance.py PASS): enter_sparta_crypt is a 2u NUDGE
 # off Almyros's dormant (-5602,-2,-1409) landing (2.38u from a sarcophagus there) to a clean spot
-# still 3.16u from the existing svc_testhub_return_sparta; enter_uber_dungeon reuses Almyros's
-# dormant (-2438,10,-2450) unchanged (clean, 3.00u off svc_testhub_return_uber).
+# still 3.16u from the existing svc_testhub_return_sparta; enter_uber_dungeon reused Almyros's
+# dormant (-2438,10,-2450) (3.00u off svc_testhub_return_uber) - SUPERSEDED by R6 2026-08-13:
+# both crypt routes now land at (-2438,10,-2457), 6.94u off the portal prop the old spot touched.
 #
 # The Secret Place's murderbossroom (the sweep's third sealed area) is NOT wired here - it has NO
 # placed NPC on either end (box-adjacency-proven isolated from the rest of the Secret_Place

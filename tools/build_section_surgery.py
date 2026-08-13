@@ -2764,35 +2764,48 @@ AREA_RETURN_OBSIDIAN_DBR   = b'records\\quests\\svc_area_return_obsidian.dbr'
 MAZE03_LVL_KEY             = 'levels/world/greece/knossos/underground/maze03.lvl'
 CATACUBE_FLOORLAST_LVL_KEY = 'levels/world/greece/athens/underground/catacube02_floorlast.lvl'
 DRXBC2_LVL_KEY            = 'levels/world/xbloodcave/drxbc2.lvl'
-# The 14 Helos plaza placements: grouped S of the quest NPC (Starting_PortalMan @ 68.9,188.3),
-# the shrine (74.2,194.7) and canonical Almyros (76.5,189.5) - all kept >=3u clear. floor Y=0.6.
-# Established areas front (Z 181.5-182.6); the 5 IT superbosses back (Z=184.0; Ephialtes nudged N
-# to clear the E prop). RE-SURVEYED + NUDGED 2026-07-13 vs the build36a canonical map
-# (survey_uberboss_spots.py, ext=3.0): 10/11 read on-mesh d<=0.14u / comp#1 / clr 100% (Dorus 99%)
-# all 3 tilesets. Garden is an ACCEPTED CHECK (98/96/93% N/E/L): the plaza's west edge is genuinely
-# obstructed, but the spot is on-mesh in the main component and fully walkable for a talk NPC (any
-# further west/north nudge drops below 90% or crowds Secret). The earlier "clr 100% all 3 tilesets"
-# claim here was OVERSTATED: 5 front spots actually sat at 87-95% (BossArena 87% worst) near the
-# S/E plaza props; Uber/BossArena/Warband moved into the clean Z=182.6 interleave (100%) and
-# Ephialtes to Z=186.2 (100%); Garden is the documented residual CHECK.
+# The 14 Helos plaza placements. R6-PLAZA DE-CROWDING (2026-08-13, wf_46ee9772 forensic verified;
+# same wave as the UBER-LABYRINTH promotion): the old 4-row block spanned ~15x5u with pairwise
+# gaps down to 1.66u (uber/bossarena) between BYTE-IDENTICAL clones that differ ONLY in hover
+# tooltip - Will clicked "uber" meaning "sparta" and got bounced. NEW LAW: >=4.0u PAIRWISE between
+# ALL 14, >=3u from every clickable quest NPC (Almyros 76.5,189.5 canonical / Starting_PortalMan
+# 68.9,188.3 / rift shrine 74.2,194.7 / Starting_Guard 82.9,182.3 / villagers 61.3,182.5+184.5 /
+# Female_Stationary 83.3,194.0 / gate door 85.3,189.0), and >=6u from the shared Helos-return
+# LANDING local (74,183) = world (-5974,1,911) (build_quest_files, moved this wave - the old
+# (68,181)=(-5980,1,909) sat 1.12u from trav_secret INSIDE the old block = the rebound trap).
+# The plaza mesh cannot hold 14 spots at >=4u in one block once the landing court is carved out,
+# so the layout is a COURT: landing center-front, travelers in wings around it (tooltips
+# differentiate; TESTHUB-only surface). ALL 14 spots surveyed 2026-08-13 vs the built TESTHUB map
+# (survey machinery, ext=3.0): every spot on-mesh d<=0.32u, comp#1/725476 (main), clr N/E/L below
+# per spot; 4 spots <80% worst-tileset are documented CHECKs (talk NPCs; precedent = the 75%
+# devourer-return CHECK). floor Y=0.6. Visual distinction per traveler beyond the tooltip is NOT
+# applied (no in-game-confirmed distinct meshes/tints exist in our arcs for these clones -
+# registered as debt, per the player-surface checklist; do NOT invent unverified art).
 HELOS_HUB_PLAZA_SPECS = [
-    (HELOS_TRAV_GARDEN_DBR,     67.0,  0.6, 181.8),   # ACCEPTED CHECK 98/96/93% (west plaza edge; nudged from 66.5,181.5)
-    (HELOS_TRAV_SECRET_DBR,     69.0,  0.6, 181.5),   # OK 100%
-    (HELOS_TRAV_SPARTA_DBR,     71.5,  0.6, 181.5),   # OK 100%
-    (HELOS_TRAV_UBER_DBR,       72.75, 0.6, 182.6),   # OK 100% (was 74.0,181.5 @ ~95%)
-    (HELOS_TRAV_BOSSARENA_DBR,  75.25, 0.6, 182.6),   # OK 100% (was 76.5,181.5 @ 87% worst)
-    (HELOS_TRAV_WARBAND_DBR,    77.75, 0.6, 182.6),   # OK 100% (was 79.0,181.5 @ 91%)
-    (HELOS_TRAV_DORUS_DBR,      71.5,  0.6, 184.0),   # OK 99%
-    (HELOS_TRAV_TANTALUS_DBR,   74.0,  0.6, 184.0),   # OK 100%
-    (HELOS_TRAV_CHARON_DBR,     76.5,  0.6, 184.0),   # OK 100%
-    (HELOS_TRAV_MNEMOPHAGE_DBR, 79.0,  0.6, 184.0),   # OK 100%
-    (HELOS_TRAV_EPHIALTES_DBR,  81.5,  0.6, 186.2),   # OK 100% (was 81.5,184.0 @ 89%)
-    # b39 HUB v2 (order ii): 3 new travelers on the Z=186.2 back row, interleaved with the Z=184
-    # mid row (all OK 100% comp#1, surveyed 2026-07-13; >=2.5u from every neighbour + Almyros 76.5,189.5).
-    (HELOS_TRAV_DEVOURER_DBR,   72.75, 0.6, 186.2),   # OK 100%
-    (HELOS_TRAV_VASHKARR_DBR,   75.25, 0.6, 186.2),   # OK 100%
-    (HELOS_TRAV_OBSIDIAN_DBR,   77.75, 0.6, 186.2),   # OK 100%
+    # WEST ARC (front street mouth -> plaza west edge): the 4 established-area entrances.
+    (HELOS_TRAV_GARDEN_DBR,     59.4,  0.6, 175.6),   # OK 100/100/100
+    (HELOS_TRAV_SECRET_DBR,     63.5,  0.6, 177.5),   # OK 100/100/100
+    (HELOS_TRAV_SPARTA_DBR,     67.9,  0.6, 179.3),   # OK 100/99/97
+    (HELOS_TRAV_UBER_DBR,       64.4,  0.6, 181.6),   # CHECK 86/79/74 (west edge; >=4.19u from arc neighbours)
+    # FRONT-EAST single.
+    (HELOS_TRAV_BOSSARENA_DBR,  80.2,  0.6, 180.5),   # CHECK 86/82/79 (guard 3.21u)
+    # EAST COLUMN (X~80.7, S->N).
+    (HELOS_TRAV_WARBAND_DBR,    80.7,  0.6, 187.2),   # OK 100/100/100 (Almyros 4.79u)
+    (HELOS_TRAV_DEVOURER_DBR,   80.9,  0.6, 191.5),   # OK 99/96/94
+    (HELOS_TRAV_VASHKARR_DBR,   80.6,  0.6, 195.6),   # OK 98/94/90 (Female_Stationary 3.16u)
+    # NORTH-CENTER pair (PortalMan<->Almyros gap / Almyros<->shrine gap).
+    (HELOS_TRAV_DORUS_DBR,      72.4,  0.6, 189.5),   # OK 97/96/93 (PortalMan 3.70u, Almyros 4.10u)
+    (HELOS_TRAV_TANTALUS_DBR,   77.0,  0.6, 193.2),   # CHECK 85/80/77 (shrine 3.17u, Almyros 3.73u)
+    # GATE-SIDE single (east exit road).
+    (HELOS_TRAV_MNEMOPHAGE_DBR, 89.0,  0.6, 188.4),   # OK 100/100/100 (gate door 3.80u)
+    # WEST-YARD COLUMN (village yard W of the plaza wall gap, S->N): the 3 Hades superbosses.
+    (HELOS_TRAV_CHARON_DBR,     58.3,  0.6, 187.8),   # OK 92/91/88 (Starting_Woman 4.51u)
+    (HELOS_TRAV_EPHIALTES_DBR,  58.9,  0.6, 191.9),   # OK 97/95/92
+    (HELOS_TRAV_OBSIDIAN_DBR,   58.0,  0.6, 195.9),   # CHECK 79/75/72 (yard N end)
 ]
+# Min pairwise across the 14 = 4.10u (ephialtes/obsidian column steps); min landing separation =
+# 6.69u (dorus + bossarena); every quest-NPC standoff >=3.16u. Re-derive with
+# tools/debug/survey_uberboss_spots.py --level startingfarmland06d.lvl --pt X Z 3.0 on any change.
 # The 11 area-return placements: a few u off each new v2 landing (so the player sees the return NPC
 # on arrival), on the boss/door host levels. floor Y = the landing floor. ALL spots surveyed
 # on-mesh comp#1 (2026-07-13; devourer return is an accepted CHECK at 75% clr, still on-mesh).
