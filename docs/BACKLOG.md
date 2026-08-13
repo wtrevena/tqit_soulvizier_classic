@@ -1,5 +1,99 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## LANE RECORD - R-245 UBER-LABYRINTH ENTRANCE (branch `fix/uber-labyrinth-entrance`, 2026-08-13; Levels+Quests coupled wave, arz/Text/Creatures byte-unchanged; BUILT + GATED in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
+
+**WILL'S THREE DECISIONS (2026-08-13; all five verbatim quotes in `docs/WILL_RULINGS.md` R-245):**
+promote the TESTHUB "Enter the Uber Dungeon" NPC to a CANONICAL Labyrinth-of-Knossos entrance
+(Almyros in Helos stays as the second route); the general rule "the only ones that should be
+testhub only are the portals from Helos..."; move the maze03 traveler out from "literally right
+behind the door"; his menu = travel to the Uber Dungeon, NOT "return to helos"; return travelers
+land at their own area's entrance NPC.
+
+**THE CHANGE (exactly 3 tool files + docs):**
+- `tools/build_section_surgery.py`: `svc_area_return_uber` removed from `HELOS_HUB_RETURN_SPECS`
+  (PR-5 sparta precedent) and placed by base `INJECT_SPECS[maze03]` x1 at local `(280,1,150.5)` on
+  BOTH map variants - 9.0u past the Minotaur secret door `(289,1,150)`, centered in the treasure
+  pocket, vs the DEAD old spot `(285,1,148)` that hugged the south door jamb (Will's bug).
+  Survey (canonical `6784cf0f` + re-run on the new build): d=0.10u, clr 100%/100%/100% N/E/L,
+  comp#1/2053366; wall standoffs 3.4-3.9u; landing `(283,1,150)` 3.04u away, clr 100% x3.
+- `tools/build_quest_files.py`: the uber HELOS_HUB_TRAVEL row is now the enter route
+  `tagSVCEnterUberDungeon -> (-2438,10,-2450)` (crypt_floor1 interior, the b62-proven landing),
+  slotted right after the Warden; the `tagSVCAreaReturnToHelos` row REMOVED;
+  `TRAVELER_ENTER_OFFERS` empty; `_HUB_PLUS_ENTER_TRIGGERS` 26 -> 25. Landing coords for
+  `svc_helos_trav_uber` + `svc_testhub_return_uber` (primary "The Labyrinth Door (Return)")
+  BYTE-UNCHANGED at `(-7793,1,-3793)` - already 3.04u beside the corrected spot (pattern-compliant).
+- `tools/debug/gate_travel_npc_invariants.py`: T2 23-record hub roster; T5 uber exclusions +
+  `TAG_ENTER_UBER_DUNGEON`; T5c uber-promotion battery (canonical x1 + TESTHUB x1 inherited,
+  EXACTLY ONE route, never `tagSVCAreaReturnToHelos`, never an enter-offer).
+
+**ARTIFACTS + PROOFS (all commands run in the lane worktree, `PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1`, scratch `SVC_OUT_DIR`):**
+- HARNESS FIDELITY: unmodified 34b014e reproduced the LIVE canonical Levels EXACTLY
+  (`6784cf0fe6c6bdcf5f1ee16f03fe655e`).
+- NEW canonical `Levels_merged.arc` = **`8b90214fae0edad73c01de3e9ab74f6b`** (688,690,525 B).
+  Blob-diff vs 6784cf0f (`diff_maps_blobs.py`): **1 level changed (maze03), 0x05 only, 447 -> 448,
+  ADDED svc_area_return_uber (280,1,150.5), 0 REMOVED, 0 navmesh(0x0b) changes**. maze03 0x0b
+  978,097 B BYTE-IDENTICAL (md5 084da568...) + `parse_rec02(decompress=True)` OK (3 tilesets,
+  2323 tile records). Census: `svc_area_return_uber` x1 (maze03), Almyros x1 (Helos),
+  `svc_helos_trav_*` x0 canonical.
+- NEW TESTHUB `Levels_merged_TESTHUB.arc` = `c338c2f68b0663878aabe818d4b8b231`:
+  `svc_area_return_uber` x1 at the SAME corrected spot (Will's play surface fixed too); 14 plaza
+  travelers intact; Almyros de-duped x0 (unchanged rig).
+- NEW `Quests.arc` = **`4ad49ae4d05ed45e4399f3109a56e660`** (195,476 -> built 195,4xx B; arc
+  190.9 KB). Per-entry diff vs shipped `736cd50a`: **110/110 entries, CHANGED =
+  [sv_commonmechanics.qst] ONLY** (706,715 -> 705,658 B). Route-level decode: **REMOVED exactly
+  1 route** (`svc_area_return_uber` + `tagSVCAreaReturnToHelos` -> Helos), **ADDED 0** (the enter
+  route triple is preserved byte-for-byte, moved to hub slot 14); 39 -> 38 boat actions; all 37
+  other routes byte-identical; in-build quest-record + boat-NPC-awakening contracts PASS.
+- GATES: `gate_traveler_responds` PASS 3 ways (`--specs`, `--specs --canonical`, and vs the built
+  Quests+canonical pair: 30 placed NPCs / 31 route owners, host quest in-window);
+  `gate_travel_npc_invariants` PASS incl. T6 scans of BOTH new arcs;
+  `gate_landing_clearance --wiring v1` vs the new canonical: **PASS 25/25 landings, G-NPC-LANDING-SEP
+  tightest margin +2.00u**; contracts `--only map,quests`: **0 P0 / 0 P1 / 8 P2 = the build90
+  baseline exactly** (map 6 / quests 2, same subjects).
+
+**STEP-0 TRAVEL-NPC AUDIT (Will's rule, full roster - verdicts):**
+| record | canonical | TESTHUB | role | verdict |
+|---|---|---|---|---|
+| portal_master_helos (Almyros) | x1 Helos | 0 (de-dup) | canonical Helos hub (Garden/Secret/Uber) | OK - KEEP, ruled |
+| svc_helos_trav_* (14) | 0 | x1 Helos plaza | Helos launchers | OK - "portals from Helos" = testhub-only per rule |
+| svc_warden_sparta_crypt | x1 catacomb | inherited | area entrance (Sparta) | OK (R-170) |
+| svc_area_return_uber | **x1 maze03 (THIS LANE)** | x1 same | area entrance (Uber) | WAS THE VIOLATION - FIXED |
+| svc_testhub_return_{garden,secret,sparta,uber} | x1 each | inherited | in-area returns | OK - canonical, dests pattern-compliant |
+| svc_testhub_return_bossarena | 0 | x1 | in-area return | AMBIGUOUS -> Will (below) |
+| svc_area_return_{dorus,tantalus,charon,mnemophage,ephialtes,warband,devourer,vashkarr,obsidian} (9) | 0 | x1 each | in-area "Helos (Return)" | NOT promoted - reasoned (below), flagged for Will |
+| svc_testhub_master{,_helos,_cave} + svc_testhub_return (shared) | 0 | 0 | retired rig | OK - inert records |
+
+**NOT-PROMOTED REASONING (recorded per R-245; overrule = one-line placements):** the 9 boss-area
+returns live in ordinary WALK-IN campaign areas (no transport in, no stranding); their sole route
+returns to the Helos plaza spot beside the `svc_helos_trav_*` partners that Will's own rule keeps
+TESTHUB-only - promoting them alone ships one-way Helos teleports with no way back to the area.
+Boss Arena: NO canonical entrance mechanism exists at all (its only entrances are Helos
+launchers); a canonical Boss Arena needs a NEW walk-to entrance NPC (new record + tags = arz+Text
+couple + survey lane).
+
+**OPEN DEBTS (this lane):**
+- **`BL-R245-DEBT-1` (P0, LAUNCH-GATED): NOT PROVEN IN-GAME.** Will's check is in
+  `docs/WILL_TEST_GUIDE.md` (top section): kill the Minotaur Lord, walk through the secret door,
+  SEE + CLICK the traveler ~9u in, take "Enter the Uber Dungeon", land in crypt_floor1, return
+  via "The Labyrinth Door (Return)". Fully quit TQ + restart Steam first.
+- **`BL-R245-DEBT-2` (P2, WILL DECISION): the NPC's display name is the shared generic "Return
+  Traveler"** (`tagSVCNpcAreaReturn`, shared by 10 siblings - shared-record law forbids renaming
+  in place). A fitting name (the Warden precedent: dedicated clone + own name tag, arz+Text
+  couple) is welcome but optional per the brief; queued for Will rather than inventing lore.
+- **`BL-R245-DEBT-3` (P3, WILL DECISION): label wordings.** The menu says "Enter the Uber
+  Dungeon" (Will's example: "travel to the uber dungeon"); the in-crypt return's primary port
+  says "The Labyrinth Door (Return)" (Will's example: "Return to the Labyrinth of Knossos").
+  Both name their destinations; changing either text = arz+Text-coupled tag edit (PR-5 pattern).
+- **`BL-R245-DEBT-4` (P2, WILL DECISION): the 9 boss-area returns + Boss Arena** classification
+  above - confirm or overrule.
+- **`BL-R245-DEBT-5` (P3):** `svc_testhub_return_{garden,secret,bossarena}` still carry a
+  secondary "The Blood Cave" port (testhub-rig heritage) that ships canonically for garden/secret;
+  the blood cave IS a walk-in campaign area so it is not a misroute, but it is not part of Will's
+  stated pattern either - flag, not fixed.
+- **`BL-R245-DEBT-6` (P3):** `gate_landing_clearance` V2_LANDINGS frozen snapshot still lists the
+  ret_uber Helos row (provenance snapshot only; the live `--wiring v1` path reads the real tables
+  and is what the battery runs).
+
 ## BUILD90-DEV GATE RECORD - DAGON UNFROZEN (`dagon_anim_rig`: the `boss_dagon_66` animation chain is repointed off the dead `anm_dagon` hydra table onto his own `anm_ichthian` rig); **arz-ONLY** - BUILT det-2x, ALL GATES GREEN incl. the NEW `dagon_anim_rig` gate + 15/15 negatives, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING (2026-08-12, `main` fast-forwarded `0b8e7f4` build89 gate record -> `e81d79d` via `git merge --no-edit fix/dagon-frozen`, then this gate-record commit).
 
 **INTEGRATED (one structural conflict, then a clean fast-forward).** `main` was at `0b8e7f4` (the BUILD89-DEV gate record; build88 + build89 both awaiting upload) and the lane `fix/dagon-frozen` was cut from / last merged at `8035da0` (build87), so it was **20 ahead / 10 behind**. Per the ship discipline the lane RE-MERGED current `main` FIRST, in the `wt-dagon` worktree -> merge commit `e81d79d`. Exactly the predicted shape: **`tools/patches/__init__.py` AUTO-MERGED as a registry union** (the two inserts are ~590 lines apart) and both load-bearing orders survive, re-verified by parsing the merged REGISTRY: **64 modules, 0 duplicates, `dagon_anim_rig` at slot 18 immediately after `thrown_anim_rig` (17) and before `boss_skill_fix` (19); `supra_recipe_laws` at 55 immediately after `craft_thrown_breadth` (54) and before `chest_loot_breadth` (56)**. `tools/debug/probe_anm_asset_resolve.py` and `tools/patches/dagon_anim_rig.py` do not intersect b88 or b89 at all (b88 touched the arz/Text patch modules, b89 touched `build_quest_files.py`). **`docs/BACKLOG.md` was the ONE conflict** - both sides insert a block at the same anchor - resolved **structurally, zero content dropped**: this lane's `RECONCILE RECORD - DAGON FROZEN` (08-12) kept first, then a `---` separator, then `main`'s `LANE RECORD - R-244 THE THREE SUPRA-CRAFT LAWS` (08-11), newest-first per the file convention; verified 0 markers left and both headers intact (lines 1245 / 1402), and the union is exact (`git diff --numstat` = **+344/-0 vs the lane, +157/-0 vs main**). Then `git merge --no-edit fix/dagon-frozen` on `main` **fast-forwarded** `0b8e7f4` -> `e81d79d`. Working tree clean. Next sequential ship after build89 = **BUILD90**.

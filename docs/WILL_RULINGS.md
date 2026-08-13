@@ -7311,3 +7311,69 @@ upstream-authentic, is the project's own adopted mechanism, and directly explain
 symptom via the engine rationale in `_import_dialog_needed`. Will's check: fully quit TQ + restart
 Steam, then click the Warden by the stairs-down in `CataCube02_FloorLast`. If he is STILL mute, the
 remaining lever is the GridEntrance door (build24/25 Knossos-to-Uber mechanism).
+
+## R-245 [2026-08-13] IMPLEMENTED (branch `fix/uber-labyrinth-entrance`) - PUT THE UBER DUNGEON ENTRANCE IN THE LABYRINTH OF KNOSSOS ON STEAM, TALK-TO-TRAVEL, KEEP ALMYROS IN HELOS; MOVE THE MAZE03 TRAVELER OUT FROM BEHIND THE DOOR; HIS MENU = TRAVEL TO THE UBER DUNGEON (NOT "RETURN TO HELOS"); RETURN TRAVELERS LAND AT THEIR OWN AREA'S ENTRANCE NPC
+
+**WILL DECIDED (2026-08-13), the five parts VERBATIM:**
+
+1. Put the Uber Dungeon entrance in the Labyrinth of Knossos on the STEAM build (promote the
+   TESTHUB "Enter the Uber Dungeon" NPC to canonical), keeping Almyros in Helos as a second route.
+
+2. THE GENERAL RULE, verbatim: *"the only ones that should be testhub only are the portals from
+   Helos, all the other NPCs that actually take you to the areas need to be in the steam build."*
+   I.e. `svc_helos_trav_*` (the Helos plaza hub launchers) + the TESTHUB portal rig stay
+   TESTHUB-only; EVERY other travel NPC - area ENTRANCES (enter-offers placed in the world) and
+   in-area RETURNS (no stranding) - must be placed on CANONICAL.
+
+3. THE IN-GAME PLACEMENT BUG, Will hit it live, verbatim: *"the guy in the minoan labarynth the
+   traveler there is placed literally right behind the door after you kill the minotaur and you
+   cant even see him based on where he is placed and i cant click on him. You need to move him
+   farther along the pathway so the user can see him and click on him instead of literally right
+   behind the door where the user cant see or click on him."*
+
+4. THE MAZE03 NPC IS THE ENTRANCE, NOT A WAY BACK, verbatim: *"the guy behind the door to the
+   minotaur should take you to the uber dungeon, not back to helos and his message should not be
+   'return to helos' it should be 'travel to the uber dungeon' or something like that."*
+
+5. THE RETURN-TRAVELER PATTERN, UNIVERSAL, verbatim: *"there should be a return traveler at the
+   end of the uber dungeon that takes you back to where the npc is that lets you travel to the
+   uber dungeon in the first place. this is the pattern that should be followed everywhere that
+   we have return travelers."*
+
+**IMPLEMENTED (this branch; Levels + Quests coupled, arz/Text byte-unchanged):**
+- `svc_area_return_uber` PROMOTED from the TESTHUB-only hub return set to the base INJECT_SPECS:
+  placed x1 in `maze03` (Labyrinth of Knossos) on BOTH map variants at the CORRECTED spot local
+  `(280,1,150.5)` = world `(-7796,1,-3792.5)` - 9.0u past the Minotaur secret door (was 4.3u,
+  hugging the south jamb at 90/83/81% clearance), centered in the treasure-pocket corridor,
+  d=0.10u on-mesh, clr 100% in all 3 tilesets, comp#1 (the main walkable component the player
+  fights the Minotaur Lord in; the pocket is reachable ONLY through the post-kill secret door).
+  The old TESTHUB spot `(285,1,148)` is DEAD on both variants (Will hit the bug on TESTHUB).
+- His menu = EXACTLY ONE route: `tagSVCEnterUberDungeon` ("Enter the Uber Dungeon", the b62 tag,
+  closely-similar wording to Will's "travel to the uber dungeon"; kept to avoid an arz+Text
+  couple) -> on-mesh `(-2438,10,-2450)` inside `crypt_floor1`. His `tagSVCAreaReturnToHelos`
+  "Helos (Return)" row - the mislabeled route Will clicked - is REMOVED from HELOS_HUB_TRAVEL;
+  the enter route moved into the hub block right after the Warden (the exact b63 move class).
+  TRAVELER_ENTER_OFFERS is now empty; `_HUB_PLUS_ENTER_TRIGGERS` 26 -> 25 (deliberate route
+  removal: host step 33 -> 32 triggers / 39 -> 38 boat actions).
+- Almyros (`portal_master_helos`) UNCHANGED: still x1 canonical in Helos, still offers Garden /
+  Secret Place / The Uber Dungeon (the second route Will kept).
+- PATTERN AUDIT (part 5): `svc_testhub_return_uber` (in-crypt) primary port already lands at the
+  labyrinth door landing `(-7793,1,-3793)` = 3.04u beside the corrected entrance NPC, labelled
+  "The Labyrinth Door (Return)" - byte-unchanged, pattern-compliant. `svc_testhub_return_sparta`
+  -> 6.0u beside the Warden ("Athens Catacomb (Return)") - compliant (b63). Garden/Secret/
+  BossArena returns land at the Helos plaza spot `(-5980,1,909)`, ~3-8u beside Almyros
+  (canonical Garden/Secret entrance) / the plaza launchers - compliant. The 9 boss-area
+  `svc_area_return_*` returns land at the same plaza spot beside their `svc_helos_trav_*`
+  launch partners - compliant on TESTHUB where both exist.
+- NOT PROMOTED (recorded, not silently skipped - flagged for Will): the 9 boss-area
+  `svc_area_return_*` NPCs (dorus/tantalus/charon/mnemophage/ephialtes/warband/devourer/
+  vashkarr/obsidian) stay TESTHUB-only: their areas are ordinary WALK-IN campaign areas (no
+  transport in, no stranding), and their only route is "Helos (Return)" whose round-trip partner
+  is a Helos launcher Will ruled TESTHUB-only - promoting them would ship one-way Helos
+  teleports with no way back. `svc_testhub_return_bossarena` stays TESTHUB-only: the Boss Arena
+  has NO canonical entrance mechanism at all (its only entrances are Helos launchers); making it
+  a canonical area needs a NEW walk-to entrance NPC (a fresh record + survey lane) - queued for
+  Will. If Will wants any of these 10 on Steam anyway, say so and each is a one-line placement.
+
+**DO NOT REGRESS:** never re-add `tagSVCAreaReturnToHelos` to `svc_area_return_uber`; never move
+him back against the door; never drop the maze03 placement from canonical.

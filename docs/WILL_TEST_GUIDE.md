@@ -1,5 +1,34 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 UBER-LABYRINTH ENTRANCE (2026-08-13): THE UBER DUNGEON IS NOW ENTERED FROM THE LABYRINTH OF KNOSSOS (canonical/Steam) - AND THE GUY BEHIND THE DOOR WAS MOVED + FIXED
+> **This is a CANONICAL/Steam change (it ships), Levels + Quests together** - no database, no text
+> change. Per your three decisions: (1) the Uber Dungeon entrance goes in the Labyrinth of Knossos on
+> the STEAM build (Almyros in Helos stays as a second route); (2) the traveler you found "literally
+> right behind the door after you kill the minotaur" was MOVED farther along the pathway - 9u past
+> the secret door, centered in the open treasure pocket, so you can see him and click him; (3) his
+> menu no longer says "Helos (Return)" - it is a SINGLE option, **"Enter the Uber Dungeon"**. The
+> move + menu fix apply to BOTH your DEV/TESTHUB map and canonical, so your play surface is fixed too.
+>
+> **WALK-TO TEST (the canonical path a Steam player takes):**
+> 1. In the **Labyrinth of Knossos** (maze03), fight through to the **Minotaur Lord** and kill him.
+> 2. Behind the fight, in the boss room's WEST wall, is the **secret door** (the quest door that
+>    opens after the kill). Walk through it into the small treasure pocket.
+> 3. The **entrance traveler** (`svc_area_return_uber`, named "Return Traveler" for now - naming is
+>    flagged for you) stands **centered in the pocket, ~9u past the door**, in the open - NOT behind
+>    the door frame. World spot **(-7796, 1, -3792)**. You should see him immediately and the click
+>    should land.
+> 4. Talk to him -> his menu has **EXACTLY ONE option: "Enter the Uber Dungeon"** (no "Helos
+>    (Return)"). Pick it -> you land on-mesh inside **`crypt_floor1`** (the Uber Dungeon interior).
+> 5. The in-crypt **return traveler** (`svc_testhub_return_uber`, at the landing) sends you back to
+>    **the Labyrinth door** (primary, "The Labyrinth Door (Return)") or **Helos** (secondary).
+> 6. Sanity: **Almyros in the Helos plaza** still offers **"The Uber Dungeon"** (plus Garden /
+>    Secret Place) - the Helos route is KEPT as the second way in.
+>
+> **IN-GAME CONFIRMATION IS THE REMAINING GATE.** Proven byte-level (exactly one level blob changed:
+> maze03 0x05 +1 instance; its navmesh byte-identical; the NPC's single route + awakening decoded in
+> the built Quests.arc; landing-clearance + traveler-responds + travel-invariants + contracts all
+> green) but NOT walked in-game by the implementer.
+
 > ## 🆕 build89 / R-170 SECOND FOLLOW-UP (2026-08-12): THE WARDEN OF THE SPARTAN CRYPT SHOULD TALK NOW - **TWO-PART CHECK, DO BOTH**
 > **`Quests.arc` ONLY** - no database, no map, no text change. Your character, your saves and every
 > item are untouched. **Fully quit TQ and restart Steam before testing** (standing rule) - a running
@@ -644,7 +673,7 @@ learn where everything is, and **walk in** to the boss yourself.
 | **Traveler: Garden of Merchants** | the merchant hub by the caravan_rhodes Super-Caravan + the SV **rift-shrine** (teleportshrine_gom) that reaches the Garden in game | browse the merchants; the rift-shrine is the in-game way in |
 | **Traveler: The Secret Place** | the darkforestenter **forest-cluster entry** | walk in; the crow-hero bosses (Murderbunny, Zilla) live in the interiors |
 | **Traveler: The Sparta Crypt** | the **Sparta-Crypt DOOR** in the deepest Athens catacomb (CataCube02_FloorLast, by the stairs-down), amid catacomb beastmen | 🆕 PR-5 POLISH: the **Warden of the Spartan Crypt** (`svc_warden_sparta_crypt`) stands right there. His menu is DESCEND ONLY - a single "Descend into the Sparta Crypt" option that takes you straight into `spartacryptlevel2` (the interior itself), where its own return traveler sends you back to THIS catacomb door (primary) or Helos (secondary) |
-| **Traveler: The Uber Dungeon** (was "Obsidian Halls") | the **Knossos->Uber DOOR** in the Minotaur's Labyrinth (maze03), at the Minotaur's secret door | the in-game Uber entrance; the base-game Minotaur Lord is ~24u east. 🆕 the return traveler standing right there (`svc_area_return_uber`) now has a SECOND option too: "Enter the Uber Dungeon" - takes you straight into `crypt_floor1` (the interior itself), where its own return traveler now sends you back to THIS door (primary) or Helos (secondary) |
+| **Traveler: The Uber Dungeon** (was "Obsidian Halls") | the **Knossos->Uber DOOR** in the Minotaur's Labyrinth (maze03), at the Minotaur's secret door | the in-game Uber entrance; the base-game Minotaur Lord is ~24u east. 🆕 2026-08-13 UBER-LABYRINTH PROMOTION: the entrance NPC (`svc_area_return_uber`) is now CANONICAL (ships on Steam), was MOVED 9u past the secret door into the open treasure pocket (you reported him hidden right behind the door, unclickable), and his menu is a SINGLE option, **"Enter the Uber Dungeon"** - the old "Helos (Return)" row is GONE. It takes you into `crypt_floor1`, where its own return traveler sends you back to THIS door (primary) or Helos (secondary) |
 | **Traveler: The Boss Arena** | the boss-arena forecourt (~90u south of the arena volume) | walk north into the Satyr-Shaman arena |
 | **Traveler: Blood-Cave Warband** | the blood-cave connection chamber at the **regular demon pack** (~35u off the Enslaver horde) | walk up to the Enslaver warband (skeleton leader + 4 marauders) |
 | **Traveler: Medea Tomb (Dorus)** | the tomb **entrance** (cryptentrance), amid the drowned court | walk ~82u to **Dorus, the Drowned King** + hoard |
