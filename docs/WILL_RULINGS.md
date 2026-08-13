@@ -7311,3 +7311,77 @@ upstream-authentic, is the project's own adopted mechanism, and directly explain
 symptom via the engine rationale in `_import_dialog_needed`. Will's check: fully quit TQ + restart
 Steam, then click the Warden by the stairs-down in `CataCube02_FloorLast`. If he is STILL mute, the
 remaining lever is the GridEntrance door (build24/25 Knossos-to-Uber mechanism).
+
+---
+
+## R-247 [2026-08-13] IN PROGRESS (branch `feat/akremon-enhancement`) - Akremon enhanced significantly + orb rename; second forms are ESCALATIONS (Lethaeus); class-wide multi-form/uber audit; Endless Hunt is a SKELETON with fitting summons; EoAT formula chain + tiered Toxeus souls + soul +all-skills law
+
+Appended VERBATIM from Will's 2026-08-13 rulings (the orchestrator brief packaged them as six numbered parts; the verbatim quotes inside are Will's own words):
+
+1. "akremon the heartwood ablaze got way smaller and turned into a different character completely who was much much
+   weaker, he should be enhanced significantly. also he still drops an orb named Charon's Essence"
+2. STANDING DIRECTION from 2026-08-12 (the backlogged kit pass, NOW ACTIVATED by ruling 1): make the kit MORE innovative
+   by MERGING distinctive skills from multiple sources (some of Telkine Ormenos's moves + Charon + other monsters),
+   amgoz1-style, for a truly signature kit. Cite amgoz1_design_voice.md in the content brief (standing creative bar).
+3. LETHAEUS (Will 2026-08-13, verbatim): "lethaeus the unremembered has the same problem, the second form of the boss is
+   much smaller and much weaker than the original form." In this mod the design law is: the second/final form is the
+   ESCALATION (cf. the Soul Gaoler -> unbound final version pattern). A form-2 smaller AND weaker than form-1 = defect.
+4. THE CLASS-WIDE AUDIT (implied by two hits; curious-QA law - find them ALL offline, do not let Will discover them one
+   fight at a time): enumerate EVERY multi-form boss (actorToSpawnOnDeath chains + any other form mechanism) and every
+   uber-tier boss in the shipped arz; measure form-vs-form (scale/HP/damage/defense) and boss-vs-uber-band. Produce the
+   full audit table. FIX in this lane: Akremon + Lethaeus (fully, per rulings) + any BLATANT same-class offender (form 2
+   strictly smaller AND weaker than form 1 - the D5 blatant-error-sweep precedent; each fix individually justified and
+   listed). Borderline/judgment cases: FLAG in the table for Will, do not retune.
+5. ENDLESS HUNT IDENTITY (Will 2026-08-13, verbatim): "also toxeus the murderer the endless hunt is still a demon not a
+   skeleton and he summons blood hounds which makes no sense." TWO FIXES on um_toxeus_hunt_99 (+ his _l/zzdev siblings if
+   they share the defect - enumerate): (a) MESH/RACE: he must be a SKELETON like every Toxeus variant - follow the
+   green-mesh lane precedent (Enslaver=SkeletonGrayBlack01New.msh, Devourer=GoldenSkeleton01.msh; pick a distinct clean
+   skeleton mesh for the Hunt, in-game-confirmed asset only, no green-glow-class mesh); fix race fields to match the
+   family. Note Will said "STILL a demon" - git-archaeology what b98 intended vs shipped. (b) SUMMONS: replace the blood
+   hounds (blood = the DEVOURER's theme, not the Hunt's) with summons fitting the Endless Hunt's identity (skeletal
+   spear-hunter, endless pursuit) in amgoz1 voice - design your best recommendation (e.g. skeletal huntsmen/spectral
+   pursuers in the family's black-shroud style), castability+summon-chain gated (A9 render-chain law), flag the choice
+   in not_done for Will's veto. Keep his 4 b98 skills + endless-pursuit mechanics + spear intact.
+6. ENDLESS HUNT KILL-CHAIN + TIERED SOULS (Will 2026-08-13 after killing the LEGENDARY Hunt, verbatim): "So I was able to
+   kill the demon version of legendary toxeus the murderer, the endless hunt and i got his soul and the mystical orb but
+   it didnt drop the forge formula that should allow you make craft the uber toxeus the murderer soul which should allow
+   you to summon the toxeus the murderer guy who you cant even fight in the game, toxeus the murderer end of all things.
+   the formula to craft his soul should have dropped when i killed the endless hunt. also the endless hunt wasnt using a
+   spear, and his soul should let you summon him and it doesnt. also when you pick up toxeus the murder enslaver of souls
+   soul, you can summon toxeus the murderer enslaver of souls. the legendary and epic versions of the soul should allow
+   you to summon much stronger versions of him instead of all the normal epic and legendary versions letting you summon
+   the same version." FOUR items:
+   (a) EOAT FORMULA DROP: trace the full chain in the shipped arz - Hunt death -> End-of-All-Things forge-formula drop ->
+       forge recipe -> EoAT soul -> EoAT summon. Find WHY a Legendary Hunt kill dropped soul+orb but NO formula (wrong
+       record/chance/difficulty row/missing wiring - b98 claimed "EoAT formula" shipped; archaeology what broke). FIX so
+       the formula reliably drops from the Hunt (state the chosen chance + justify; Will expected it from HIS kill, so
+       default 100% like the soul unless a ruling says otherwise) and the ENTIRE craft->summon chain resolves (every link
+       gated: formula item exists, recipe consumes real ingredients, produces the EoAT soul, soul summon castable + A9).
+   (b) SPEAR - VERIFY FIRST, FIX ONLY IF BROKEN: Will initially reported "the endless hunt wasnt using a spear" but then
+       SOFTENED it (verbatim): "maybe he was using a spear and i couldnt see it, there was a lot going on." So this is an
+       UNCERTAIN observation, not a confirmed bug. Byte-verify the whole spear chain: weapon record resolves, equip
+       chance/slot correct, anim table carries the spear stances (the thrown-wielder lesson class). If the bytes prove it
+       correct: change NOTHING, report it PROVEN with the evidence. Only fix if a real defect shows in the bytes.
+   (c) HUNT SOUL SUMMONS HIM: his soul item must grant a working summon of the Endless Hunt (like the other Toxeus souls).
+       Trace why it currently does not (missing skill grant, dead pet record, dtype trap) + fix; pet lessons apply
+       (Pet.tpl restrictions, permanent-pet spawnObjectsTimeToLive=[], NEVER clone_record for souls - use _ensure_record;
+       CLAUDE.md key lessons section).
+   (d) TIERED SOUL SUMMONS: measure how the n/e/l tiers of the TOXEUS-FAMILY souls are configured today (one record or
+       three, per-difficulty pet rows, identical-or-not - full table in the report; a parallel recon answers Will quickly
+       but YOUR measurement is the implementation truth). IMPLEMENT for the Toxeus-family souls (Enslaver + Devourer +
+       Hunt + EoAT as applicable): Normal < Epic < Legendary summon strength, Epic/Legendary "much stronger" (justify the
+       scaling from the uber band; per-difficulty rows or tier records - pick the mechanism the pet system supports safely
+       per the Pet.tpl lessons). The MOD-WIDE extension (every soul in the game tiered) = FLAG as a Will decision with a
+       measured landscape table, do NOT implement mod-wide in this lane.
+   (e) SOUL +ALL-SKILLS BONUS (Will 2026-08-13 follow-up, verbatim): "also the epic and legendary versions of these
+       toxeus the murderer souls should give you +2 and +3 to all skills respectively and +1 to all skills for the normal
+       difficulty soul." EXACT LAW for the Toxeus-family soul ITEMS (the wearer bonus, on the soul-as-equipment):
+       Normal tier = +1 to all skills, Epic = +2, Legendary = +3. Use the base-game +all-skills item mechanism
+       (augmentAllLevel or whichever field base items provably use - verify from a base +all-skills item), correct dtype
+       (the INT/FLOAT corruption trap), stacking sanely with whatever the souls already grant. Applies to "these toxeus
+       the murderer souls" = the family rosters in (d).
+
+STATUS: implementation in this lane (feat/akremon-enhancement). Note on R-231-E: ruling 1's "enhanced
+significantly" (with the "ultimate boss tier" context) re-anchors the Akremon durability calibration
+off the R-231-E Gaoler frame onto the measured Toxeus band; R-231-E correction 10 is SUPERSEDED on
+that one axis (durability reference frame), and charon_rework.verify()'s band gate moves with it.
