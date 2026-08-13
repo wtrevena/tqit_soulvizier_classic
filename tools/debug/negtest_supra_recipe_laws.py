@@ -183,7 +183,7 @@ def main(argv):
     # Thoth's Glory, Ikon of Zeus, Marduk's Tablet and Golden Eye must therefore still
     # count as Legendary-only. NOTE WHAT DOES *NOT* PROVE IT: their formulas are tier-`l`
     # records, but an EPIC mod chest reaches all four on 15 of 16 Epic surfaces through
-    # `03_act4_arcaneformulae_sp` (BL-R231-DEBT-4), so "the formula is Legendary" is
+    # `03_act4_arcaneformulae_sp` (BL-R244-DEBT-4), so "the formula is Legendary" is
     # false here and round 2 leaned on it anyway. What gates them is one level deeper -
     # `l_ga_doxakalo` and the Legendary relic `03_act4_cunningofoddyseus` - and N2e below
     # is the test that this is measured rather than assumed. This is the false-red guard:

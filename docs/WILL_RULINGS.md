@@ -6940,7 +6940,15 @@ Also disclosed (intrinsic, not a defect): raising the gear rows raises total gea
 
 ---
 
-## R-231 [2026-08-11] IMPLEMENTED (branch `fix/supra-legendary-gate`, module `tools/patches/supra_recipe_laws.py`) - the three supra-craft laws
+## R-244 [2026-08-11] IMPLEMENTED (branch `fix/supra-legendary-gate`, module `tools/patches/supra_recipe_laws.py`) - the three supra-craft laws
+
+> **NUMBERING NOTE (2026-08-12): this ruling was authored as R-231 on the `fix/supra-legendary-gate`
+> lane (cut from build84-dev `7459e22`). In parallel `feat/charon-rework` independently minted **R-231**
+> for the Golden Bough rework, which SHIPPED as build85 and owns R-231 (with its R-231-A..I amendments).
+> Reconciling this lane onto build87 (`main` tops out at R-243) collided the two, so the supra ruling was
+> renumbered to the next free number **R-244** and its four debts moved **BL-R231-DEBT-1..4 ->
+> BL-R244-DEBT-1..4**. Ruling numbers are docs-only: the CONTENT below is unchanged and the .arz is
+> unaffected. Process law #1: rulings are never silently collided.**
 
 **WILL, VERBATIM, LAW A:**
 > "ok for the four epic craftable reagent's, we need to change it so that one of the items needed to
@@ -7045,9 +7053,9 @@ the axe case produced 14 orphans because `records\equipmentweapon\axe\` is a dea
 **spears have no such folder**. Any new craftable spear supra would therefore be genuinely new content
 (a donor-cloned result record + Text tag + formula shell + loot wiring, no art) built on a *live*
 base-game spear rather than a revived dead one, which is a different design act from what Will asked
-about and needs his explicit go-ahead. `BL-R231-DEBT-1` stays open on that narrowed question only.
+about and needs his explicit go-ahead. `BL-R244-DEBT-1` stays open on that narrowed question only.
 
-### R-231 ROUND 2 [2026-08-11] - the vet caught LAW A failing on one of the four recipes Will named
+### R-244 ROUND 2 [2026-08-11] - the vet caught LAW A failing on one of the four recipes Will named
 
 **HATI WAS NOT ACTUALLY GATED, and the gate said it was.** Round 1 pointed Hati's slot 2 at
 `e_da_crescentmoonofartemis` (Crescent Moon of Artemis). It is `itemClassification = Legendary`, no
@@ -7090,7 +7098,7 @@ swap into recipes Will never complained about. Measured instead: their gates - T
 Zeus, Marduk's Tablet of Destiny, Golden Eye of Sun Wukong - are genuinely Legendary-gated and **need
 no edit**. ~~because they are paid only by the LEGENDARY `03_act1..4_arcaneformulae_table` records~~
 **- ROUND-3 CORRECTION: that stated reason was false. Their formulas ARE reachable from an EPIC mod
-chest, on 15 of 16 Epic surfaces (`BL-R231-DEBT-4`). What gates them is one level deeper: those
+chest, on 15 of 16 Epic surfaces (`BL-R244-DEBT-4`). What gates them is one level deeper: those
 formulas consume `l_ga_doxakalo` (+ the Legendary relic `03_act4_cunningofoddyseus`),
 `l_ga_elementalrage` and `l_ga_totemofthepolymath`, and nothing below Legendary pays those.** The
 verdict is unchanged and now measured rather than assumed. Negative test N2d is the false-red guard
@@ -7116,7 +7124,7 @@ provenance) reports **0 problems** on the same database, so the b81-adjacent gat
 `tools/patches/_check_registry.py` selfcheck OK, 60 modules, order hash
 `97684dfedee8e62e010d0b42db4ff3adb801e51c4094b30973f92d251802a829`.
 
-**KNOWN RESIDUAL, stated rather than laundered (new debt `BL-R231-DEBT-4`, P2):** an **EPIC** mod chest
+**KNOWN RESIDUAL, stated rather than laundered (new debt `BL-R244-DEBT-4`, P2):** an **EPIC** mod chest
 reaches the **LEGENDARY** arcane-formula tables on **15 of 16 Epic surfaces** - traced concretely as
 `svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table ->
 l_da_thothsglory_formula`. That is a chest-WIRING tier defect that predates this lane and belongs to

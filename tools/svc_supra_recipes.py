@@ -133,7 +133,7 @@ ROUND 2 GOT THE REASON WRONG AND THE VET CAUGHT IT. Round 2's craft check read o
 tier of the tables that name a formula, on the stated theory that "the formula is the
 gate". The theory is false in this database, on the exact four formulas round 2 quoted as
 its PASS evidence: an EPIC mod chest reaches `l_da_thothsglory_formula` and its three
-siblings on 15 of 16 Epic surfaces, through `03_act4_arcaneformulae_sp` (BL-R231-DEBT-4).
+siblings on 15 of 16 Epic surfaces, through `03_act4_arcaneformulae_sp` (BL-R244-DEBT-4).
 The 42/42 outcome was right; the mechanism behind it was not, and a future divine-artifact
 reagent with no Legendary member deeper in its chain would have passed while being fully
 Epic-craftable. Round 3 replaced the read with `obtainable_below_legendary`, a recursion
@@ -480,7 +480,7 @@ def obtainable_below_legendary(db, lk, ex, record, pools, memo=None, _stack=None
     siblings are tier-`l` records with 6 tier-`l` direct holders, and an EPIC mod chest
     reaches all four on 15 of 16 Epic surfaces (`svc_charonhoard_loot_02 ->
     03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table -> l_da_thothsglory_formula`
-    - the BL-R231-DEBT-4 chest-wiring defect). Round 2 got 42/42 anyway, but for a reason
+    - the BL-R244-DEBT-4 chest-wiring defect). Round 2 got 42/42 anyway, but for a reason
     its own data contradicted, and a future divine-artifact reagent whose sub-chain had no
     Legendary-only member would have PASSED while being fully Epic-craftable - the same
     class of hole that shipped in round 1.

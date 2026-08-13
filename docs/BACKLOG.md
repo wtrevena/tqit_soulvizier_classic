@@ -1116,14 +1116,14 @@ so the arz+Text coupling holds with no Text rebuild.
 
 ---
 
-## LANE RECORD - R-231 THE THREE SUPRA-CRAFT LAWS: every recipe is Legendary-gated, all 42 reagent sets are different, and no supra drops on Epic (2026-08-11, branch `fix/supra-legendary-gate`, module `tools/patches/supra_recipe_laws.py`)
+## LANE RECORD - R-244 THE THREE SUPRA-CRAFT LAWS: every recipe is Legendary-gated, all 42 reagent sets are different, and no supra drops on Epic (2026-08-11, branch `fix/supra-legendary-gate`, module `tools/patches/supra_recipe_laws.py`)
 
 **STATIC GATES ONLY - this lane does not build.** Every number below is measured on the build83 SHIP
 arz `44499f56ed52bc91219db64eb4de2f11` (51,253 records), with this lane's two writes applied to an
 in-memory copy of it (`svc_craft_thrown.ensure_thrown_tables` + `svc_supra_recipes.apply_recipe_overrides`,
 both idempotent). Ship builds the arz and re-runs the battery.
 
-### WILL'S THREE RULINGS (verbatim in `docs/WILL_RULINGS.md` R-231)
+### WILL'S THREE RULINGS (verbatim in `docs/WILL_RULINGS.md` R-244)
 A "one of the items needed to craft the formula needs to be found in legendary like the rest";
 B "each craftable supra should have different requirements";
 C "the last word should not be dropped in epic, only legendary".
@@ -1216,7 +1216,7 @@ formula or a thrown table, so the record intersection is EMPTY.** Shared FILES: 
 merge.
 
 ### DEBT REGISTERED BY THIS LANE
-- **`BL-R231-DEBT-1` (P2, Will-facing):** Will asked "are there any other orphaned spears that we can
+- **`BL-R244-DEBT-1` (P2, Will-facing):** Will asked "are there any other orphaned spears that we can
   make craftable supra formulas for? there is only one craftable spear but there is a ton of swords
   and other weapons of the different types". **The orphan pool is EMPTY, measured, not thin.** 0
   Legendary-classification spears that nothing in the database names; **no dead twin folder for
@@ -1252,22 +1252,22 @@ merge.
   folder**. Any new spear supra would be genuinely new content built on a *live* base-game spear
   rather than a revived dead one - a different design act from the one Will asked about. This debt
   stays open on that narrowed question only.
-- **`BL-R231-DEBT-2` (P3):** `m_vit_wand_01/02/03` (Reaver's Wand) are no longer reagents of anything.
+- **`BL-R244-DEBT-2` (P3):** `m_vit_wand_01/02/03` (Reaver's Wand) are no longer reagents of anything.
   They stay members of the thrown tables and this is a note rather than a leak. **Round-2 correction to
   the reason:** round 1 said "rule C2 needs them there", and that is true of `m_vit_wand_01` ONLY -
   C2 is the Normal-tier rule and `THROWN_MEMBERS['n']` names just `mi_vit_wand_01` + `m_vit_wand_01`.
   `m_vit_wand_02` and `m_vit_wand_03` sit on the e/l tables only, where C1 is carried by `u_vit_wand`,
   so **no rule needs those two**. Harmless either way, but a later lane retiring the Common band would
   cost C2 only via `m_vit_wand_01`.
-- **`BL-R231-DEBT-3` (P2, LAUNCH-GATED):** NOT PROVEN IN-GAME. Everything above is a database and gate
+- **`BL-R244-DEBT-3` (P2, LAUNCH-GATED):** NOT PROVEN IN-GAME. Everything above is a database and gate
   result. Will's check: on **Epic**, open mod chests and confirm no red-name thrown supra drops; at an
   Enchanter, confirm The Last Word's middle reagent now reads **Scepter of Thanatos** and **Hati's now
   reads Artemis' Silver Bow**; on **Legendary**, confirm the supra thrown still drop.
-- **`BL-R231-DEBT-4` (P2, NEW in round 2, belongs to the chest-table owner not this lane):** an **EPIC
+- **`BL-R244-DEBT-4` (P2, NEW in round 2, belongs to the chest-table owner not this lane):** an **EPIC
   mod chest reaches the LEGENDARY arcane-formula tables on 15 of 16 Epic surfaces.** Traced concretely:
   `svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table ->
   l_da_thothsglory_formula`. So an Epic chest can pay a Legendary-tier divine-artifact formula. This is
-  a chest-WIRING tier-discipline defect (R-100 #17) that predates R-231 and affects every Legendary
+  a chest-WIRING tier-discipline defect (R-100 #17) that predates R-244 and affects every Legendary
   item reachable that way, not just formulas. Fix it where it lives (the Epic chest/hoard wiring).
   **ROUND-3 UPDATE: the gate no longer depends on this being fixed, and no longer looks away from
   it.** Round 2 read a formula's **direct** table holders precisely to avoid this defect redding the
@@ -1292,15 +1292,15 @@ merge.
   under the sound rule**, `artifact_mortoksskull` and `artifact_plus2` included and unedited.
 - **Doc corrections:** the "51 Epic surfaces" figure restated in all four places as **16 Epic chest
   surfaces / 24 loot tables** (51 was the two-tier closure); the spear census's name-tag claim and
-  `\spear\default\` count corrected; `BL-R231-DEBT-1`'s cost estimate corrected against the b66
-  precedent; `BL-R231-DEBT-2`'s C2 justification corrected; the b81 thrown dict now states that its
+  `\spear\default\` count corrected; `BL-R244-DEBT-1`'s cost estimate corrected against the b66
+  precedent; `BL-R244-DEBT-2`'s C2 justification corrected; the b81 thrown dict now states that its
   slot-2 values are intent-and-assertion, not shipped values; Hati's formula tooltip reads **Mythic
   Formula** like its 41 siblings.
 ### ROUND-3 CORRECTIONS (the vet falsified round 2's *reason* on round 2's own evidence)
 - **HIGH, fixed:** round 2's craft check read only the tier of the tables that NAME a formula, on the
   theory that "the formula is the gate". Measured on the lane-applied db, that theory is false on the
   exact four formulas round 2 cited as its PASS evidence: **an EPIC mod chest reaches
-  `l_da_thothsglory_formula` and its three siblings on 15 of 16 Epic surfaces** (`BL-R231-DEBT-4`).
+  `l_da_thothsglory_formula` and its three siblings on 15 of 16 Epic surfaces** (`BL-R244-DEBT-4`).
   The 42/42 outcome was right, the mechanism was not, and a future divine-artifact reagent with no
   Legendary member deeper in its chain would have PASSED while being fully Epic-craftable - round 1's
   hole class. `legendary_only` now delegates to **`obtainable_below_legendary`**, one recursive
@@ -1322,13 +1322,13 @@ merge.
   pays** (which are exactly 20 of the 22 Monster Infrequents; the other two greens, **Animus** and
   **Perversion of the Bloodborn** `mi_vit_wand_01`, do sit in a chest pool), 71 Legendary-chest
   reachable, `SCT` split 22 MI + 64 ordinary + 6 artifact.
-- **LOW, fixed:** `WILL_RULINGS.md` R-231 said "10/10 negatives behave" in its body and "12/12" in its
+- **LOW, fixed:** `WILL_RULINGS.md` R-244 said "10/10 negatives behave" in its body and "12/12" in its
   round-2 delta table. Both are now **13/13**, measured.
 - **The player guide's Mortok's Skull / All-Seeing Eye passages** told players the arcane formula was
   the gate. They now name the Legendary greater artifacts and the relic that actually gate, and say
   plainly that an Epic chest can hand you the formula.
 
-- **TWO THINGS NEEDING ONE WORD FROM WILL** (see `docs/WILL_RULINGS.md` R-231 round 2): (1) the four
+- **TWO THINGS NEEDING ONE WORD FROM WILL** (see `docs/WILL_RULINGS.md` R-244 round 2): (1) the four
   supra thrown still drop on **Legendary** (N 0 / E 0 / L 4) - ratify or correct; (2) **LAW B is met at
   the minimum** - 42/42 sets distinct, 0 duplicate groups, but de-duplicated recipes still share two of
   three reagents (Will's own example, Aquimae / Crystal Tear of Nyx, still shares Plissken +
