@@ -322,22 +322,41 @@ HUNT_SUMMON = r'records\skills\boss skills\svc_hunt_summoncoursers.dbr'
 PUKE_DONOR = r'records\drxcreatures\bloodhound\skills\puke.dbr'
 COURSER_SPEW = r'records\drxcreatures\bloodhound\skills\svc_courser_bloodspew.dbr'
 
+# ── R-247.5(b) (Will 2026-08-13, verbatim): "he summons blood hounds which
+# makes no sense" - blood is the DEVOURER's theme, not the Hunt's. The pack the
+# Endless Hunt looses is now SKELETAL HUNTSMEN, cloned from the base game's own
+# skeletal spear hoplite: GoldenSkeleton01.msh + NewSkeleton_White.tex (pale
+# bone - the spectral-cold read that matches the Hunt's iceheart/Long Reach
+# identity) + anm_skeleton01 (the Toxeus family rig, 108 spear rows) + a 100%
+# right-hand SPEAR equip chain (spear_{n,e,l} tables) + resist_undead +
+# bleeding passive, ALL one in-game-proven package on ONE donor record - and
+# controller_skeleton01_hidden, an AMBUSH controller, which IS the Hunt's own
+# hidden-ambush identity. A spear-armed skeletal pack running the quarry down
+# beside a spear-armed skeletal hunter (R-247.5's "skeletal spear-hunter,
+# endless pursuit"). The bloodhound COURSER + its spew are STILL BUILT
+# (retirement protocol - nothing deleted; they simply stop being referenced by
+# the summon), so Will's veto swaps one constant back.
+HUNTSMAN_DONOR = r'records\creature\monster\skeleton\am_hopliteambush_08.dbr'
+HUNTSMAN = r'records\creature\monster\skeleton\svc_hunt_huntsman_99.dbr'
+
 NEW_RECORDS = (MONSTER_PASSIVE, BLOODBATH, BLOODSPAWN, DEV_SUMMON,
-               COURSER, HUNT_SUMMON, COURSER_SPEW)
+               COURSER, HUNT_SUMMON, COURSER_SPEW, HUNTSMAN)
 
 TAGS = {
     'tagSVCMonsterDevourerBloodspawn': 'Gorged Bloodspawn',
     'tagSVCMonsterHuntCourser': 'Courser of the Endless Hunt',
+    'tagSVCMonsterHuntHuntsman': 'Huntsman of the Endless Hunt',   # R-247.5(b)
 }
 
 # every monster this module makes the gate walk for castability
-CASTERS = (DEVOURER, HUNT, HUNT_L, ENSLAVER, BLOODSPAWN, COURSER)
+CASTERS = (DEVOURER, HUNT, HUNT_L, ENSLAVER, BLOODSPAWN, COURSER, HUNTSMAN)
 
 # minion -> the donor it was cloned from. The gate reads the DONOR live out of
 # the same db (both are proven byte-unchanged by the record-diff), so the
 # actorHeight invariant is checked against ground truth rather than a number
 # copied into this file that could drift away from the rig. See R-126.
-MINION_DONORS = {BLOODSPAWN: BLOODSPAWN_DONOR, COURSER: COURSER_DONOR}
+MINION_DONORS = {BLOODSPAWN: BLOODSPAWN_DONOR, COURSER: COURSER_DONOR,
+                 HUNTSMAN: HUNTSMAN_DONOR}
 
 ACTIVE_SLOT_FIELDS = ('attackSkillName', 'initialSkillName', 'dyingSkillName',
                       'specialAttackSkillName') + tuple(
@@ -803,10 +822,26 @@ def _build_hunt_summon(db):
         scale=1.7, run_speed=1.6, label='Courser of the Endless Hunt')
     _set_ref(db, COURSER, 'specialAttack2SkillName', COURSER_SPEW)
 
+    # R-247.5(b): the pack the summon actually looses is the SKELETAL HUNTSMAN
+    # pack, not the bloodhounds (blood = the Devourer's theme). Same fight
+    # numbers as the coursers Will has already fought and killed (life
+    # 3500/4800/6500, hand 180-240, the balance is proven); scale 1.35 (donor
+    # hoplite ships 1.18; the Enslaver ships 2.4 on this same rig, so the
+    # stretch is far inside proven range); runSpeed 1.5 (the Enslaver's own
+    # proven value on anm_skeleton01 - the pack must keep pace with the 1.8
+    # Hunt). The donor's own 100% spear equip chain + resist_undead + bleeding
+    # passive ride along untouched; the courser stays BUILT but unreferenced.
+    _build_minion(
+        db, HUNTSMAN_DONOR, HUNTSMAN, 'tagSVCMonsterHuntHuntsman',
+        life=[3500.0, 4800.0, 6500.0], hand_min=180.0, hand_max=240.0,
+        scale=1.35, run_speed=1.5, label='Huntsman of the Endless Hunt')
+
     _build_summon(
-        db, HUNT_SUMMON, COURSER, 'svc_hunt_summoncoursers',
-        'SVC Endless Hunt: looses the coursing pack that runs the quarry to '
-        'ground (R-100 #13). Anim-less by construction (B-SOUL-PROC-2).')
+        db, HUNT_SUMMON, HUNTSMAN, 'svc_hunt_summoncoursers',
+        'SVC Endless Hunt: looses the skeletal huntsman pack that runs the '
+        'quarry to ground (R-247.5b supersedes the R-100 #13 bloodhounds; the '
+        'record PATH still says coursers - frozen, see BL-R247-DEBT). '
+        'Anim-less by construction (B-SOUL-PROC-2).')
 
     _require(db, HUNT, 'the Endless Hunt')
     slot = _add_kit_skill(db, HUNT, HUNT_SUMMON, [1, 2, 3])
@@ -996,8 +1031,10 @@ def gate_violations(db):
 
     # -- 8. the summons ------------------------------------------------------
     for skill, host, spawn, label in ((DEV_SUMMON, DEVOURER, BLOODSPAWN, 'Devourer'),
-                                      (HUNT_SUMMON, HUNT, COURSER, 'Hunt'),
-                                      (HUNT_SUMMON, HUNT_L, COURSER, 'Hunt(L)')):
+                                      # R-247.5(b): the Hunt's summon spawns the
+                                      # skeletal huntsman pack, never the hounds
+                                      (HUNT_SUMMON, HUNT, HUNTSMAN, 'Hunt'),
+                                      (HUNT_SUMMON, HUNT_L, HUNTSMAN, 'Hunt(L)')):
         if not db.has_record(skill):
             p.append('%s summon missing: %s' % (label, skill))
             continue
@@ -1028,7 +1065,8 @@ def gate_violations(db):
 
     # -- 9. the minions read as real, and leak nothing -----------------------
     for mon, label in ((BLOODSPAWN, 'Gorged Bloodspawn'),
-                       (COURSER, 'Courser of the Endless Hunt')):
+                       (COURSER, 'Courser of the Endless Hunt'),
+                       (HUNTSMAN, 'Huntsman of the Endless Hunt')):
         if not db.has_record(mon):
             p.append('%s missing: %s' % (label, mon))
             continue
