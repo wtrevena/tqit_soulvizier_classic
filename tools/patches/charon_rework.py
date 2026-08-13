@@ -671,6 +671,45 @@ _SK_PLAGUE = r'records\skills\nature\drxplague.dbr'                        # Ski
 _SK_QUILLBARB = r'records\xpack\skills\monsterskills\summoning\quillvine_barb.dbr'
 _DEAD_BRIAR_SKILL = (r'records\skills\monster skills\attack_projectile'
                      r'\beetlebile_vomitbile.dbr')
+
+# ── R-247 ruling 2 - THE ACTIVATED KIT PASS (merge distinctive skills from
+# multiple sources, amgoz1-style). Two merged signatures, each CLONED from its
+# donor (donors never edited - shared-record law) and each castability-proven
+# by construction: skillSpecialAnimationName is BLANKED on the clone, the b108
+# law's "empty" arm (the donor anims 'LongBlast'/'TidalWave' are Telkine/Charon
+# rig clips that do not exist on the Ascacophus/BogDweller rigs; blank = the
+# rig's own default cast posture, the exact pcsafe/ondeath_voidnova precedent).
+#   1. TELKINE ORMENOS (Will named him): `ormenos_energyblast` - the China
+#      Telkine's marquee slow-bolt - refit as THE EMBERFALL, the Heartwood's
+#      falling cinder-bolt: the donor's cold-slow rows stay (heat-shimmer slow),
+#      an AUTHORED flat fire component is added (the ember refit), and its
+#      projectile FX (Ormenos_EnergyBoltProjectile, an orange energy bolt) reads
+#      ember out of the box. Wired on the TERMINAL in the cast slot the donor
+#      wasted on a GENERIC `meleeattack` filler (asserted incumbent, never blind).
+#   2. CHARON (Will named him; the arena IS his old dock): `charon_tidalwave` -
+#      refit as THE STYX UNDERTOW: the drowned river answers the burning tree.
+#      Cold + life + 10% current-life + 35% total-speed slow, i.e. an ANTI-KITE
+#      long-range wave that stacks with drx_earthbind on the same form. Replaces
+#      `razorquill_megaburst` in phase 1's long-range slot (the quill identity
+#      is not lost - the terminal keeps `razorquill_nova`, and the quillvine
+#      wall/retinue remain the encounter's spine). NOTE the identity gate below
+#      (section 8 of verify()) stays GREEN by construction: the gate keys on
+#      `charon_*` BASENAMES and on rotation overlap with boss_charonform2_43's
+#      cast SET - the clone's basename is svc_akremon_* and its path is not the
+#      base skill's, so R-231's "no Charon kit" law and R-247's "merge a Charon
+#      move" order compose instead of colliding: the MECHANIC is merged, the
+#      RECORD identity is Akremon's own.
+_D_EMBERFALL = r'records\skills\boss skills\ormenos_energyblast.dbr'
+_SK_EMBERFALL = r'records\skills\boss skills\svc_akremon_emberfall.dbr'
+_D_UNDERTOW = r'records\xpack\skills\bossskills\charon_tidalwave.dbr'
+_SK_UNDERTOW = r'records\xpack\skills\bossskills\svc_akremon_styx_undertow.dbr'
+# the generic filler cast the emberfall displaces on the terminal (donor slot 3)
+_DEAD_BLOOM_FILLER = r'records/skills/monster skills/attack_melee/meleeattack.dbr'
+_EMBERFALL_LEVEL = 10     # donor arrays are 20-row; row 10: life 297, slow-cold
+                          # 226, slow 51% - the band base-game Ormenos casts at
+_EMBERFALL_FIRE = 260.0   # the AUTHORED ember component (flat rows, level-proof)
+_UNDERTOW_LEVEL = 6       # donor arrays are 9-row; row 6: cold 500, life 350,
+                          # 10% current-life, 35% slow - base Charon's own band
 _BRIAR_BARB_LEVEL = [4, 5, 6]     # inside the record's SIX-entry array; cannot mis-index
 # CORRECTION 18 - the difficulty rows the soul pets are supposed to carry (the
 # SHIPPED pet shape, restored). `hero_scaling` is the incumbent they inherited
@@ -717,7 +756,37 @@ _FX_ORM_DEATH = _FX + r'\ascacophus2_deathfx.dbr'      # the trunk bursting = th
 _FX_BLOOM_SPAWN = _FX + r'\ascacophus_ambientfx.dbr'
 _FX_BLOOM_DEATH = _FX + r'\ascacophus_deathfx.dbr'
 
-_ORB = r'records\xpack\item\containers\proxies\bosschest02_charon.dbr'   # see CORRECTION 4
+# ── R-247 ruling 1, second clause: "he still drops an orb named Charon's
+# Essence" (= BL-BOUGH-DEBT-4, now closed). The name lives on the base-game
+# chain  bosschest02_charon (Proxy) -> bosschestpool02_charon_0{1,2,3}
+# (ProxyAccessoryPool) -> bosschest02_charon_0{1,2,3} (FixedItemContainer,
+# description = xtagChest18 "Charon's Essence") -> tables boss_charon_{n,e,l}01b.
+# xtagChest18 and every record in that chain are SHARED with the base-game
+# Charon (boss_charon_39/41/43) - shared-record law: CLONE, never edit. The
+# clone chain below duplicates proxy + 3 pools + 3 containers VERBATIM and
+# changes exactly ONE field per container: `description` -> the minted
+# `tagSVCChestAkremon`. The containers' `tables` pointers are KEPT at
+# boss_charon_{n,e,l}01b, so the R-242 orb-rate treatment, the b84 breadth
+# widenings and every loot number are byte-identical to the shipped orb - only
+# the on-screen name changes. CORRECTION 4's hard gate moves with the constant:
+# svc_orb_breadth derives its scope as "every proxy an UBER names", so the
+# clone (naming the SAME tables) keeps the 6-proxy / 18-table floors green,
+# and red_uber_orbs' terminal exemption condition ("carries a treasureProxyName
+# that RESOLVES") holds on the clone exactly as it did on the original.
+_ORB_DONOR = r'records\xpack\item\containers\proxies\bosschest02_charon.dbr'
+_ORB = r'records\xpack\item\containers\proxies\svc_akremon_orb.dbr'
+_ORB_POOL_DONORS = tuple(
+    r'records\xpack\item\containers\accessory pools\bosschestpool02_charon_0%d.dbr' % i
+    for i in (1, 2, 3))
+_ORB_POOLS = tuple(
+    r'records\xpack\item\containers\accessory pools\svc_akremon_orbpool_0%d.dbr' % i
+    for i in (1, 2, 3))
+_ORB_CHEST_DONORS = tuple(
+    r'records\xpack\item\containers\bosschest02_charon_0%d.dbr' % i for i in (1, 2, 3))
+_ORB_CHESTS = tuple(
+    r'records\xpack\item\containers\svc_akremon_orb_0%d.dbr' % i for i in (1, 2, 3))
+_ORB_SLOTS = ('accessory1', 'accessoryEpic1', 'accessoryLegendary1')
+_TAG_ORBNAME = 'tagSVCChestAkremon'     # MINTED; string flagged for Will's veto
 
 # ── MESHES (per-rig; each is its own donor's, so A9 is satisfied by construction)
 _MESH_ORM = r'XPack\Creatures\Monster\Ascacophus\Ascacophus02.msh'
@@ -752,8 +821,33 @@ _BAND = [48, 72, 100]
 # Gaoler on the two levers his RCA identified as the real ones: it has no 25%
 # racial pet-damage reduction and no life-drain cascade. The wall in this fight is
 # literal, made of quillvines, and has a cooldown.
-_ORM_LIFE = [13000.0, 17000.0, 22000.0]
-_BLOOM_LIFE = [14000.0, 18000.0, 24000.0]
+#
+# ── R-247 (Will 2026-08-13) RE-ANCHOR - "much much weaker, he should be
+# enhanced significantly". The Gaoler parity above WAS the shipped state Will
+# met in-game and ruled against, so the reference frame moves to the band he
+# actually farms: the TOXEUS roster (measured on shipped a86afc15):
+#   um_toxeus_enslaver_99   32,500 / 45,000 / 60,000   hand 350-500  (the apex)
+#   um_toxeus_hunt_99       16,000 / 22,000 / 30,000   hand 170-280
+#   svc_um_hadesmarshal_80  26,000 / 32,000 / 40,000
+#   um_helepolis_99         24,000 / 32,000 / 42,000
+#   this encounter now      46,000 / 62,000 / 83,000   across two forms
+# The terminal alone (26/35/47k) is the #2 single-form HP in the 50-boss uber
+# roster, behind only the Enslaver (32.5/45/60k); the two-form total lands at
+# 1.38x the Enslaver's single form, which is the "real wall for a player who
+# farms Toxeus-tier content" the ruling asks for while staying KILLABLE (the
+# fight still has no racial pet-damage reduction and no life-drain cascade).
+# The verify() band gate re-anchors onto the LIVE Enslaver record with it.
+_ORM_LIFE = [20000.0, 27000.0, 36000.0]
+_BLOOM_LIFE = [26000.0, 35000.0, 47000.0]
+# R-247 hand damage, AUTHORED on both forms (round-3 rode the donors': strongbark
+# 300-400 on phase 1, emberoak 218.75-276.25 on the terminal - i.e. the FINAL
+# form hit ~31% SOFTER than phase 1, half of Will's "turned into a different
+# character completely who was much much weaker"). Escalation restored:
+#   phase 1  300-400 (the donor's own, now written so it cannot drift)
+#   terminal 380-500 (strictly above phase 1; = the Enslaver's own 350-500 class,
+#                     below base-game Hades form-3's 560-680 escalation ceiling)
+_ORM_HAND = (300.0, 400.0)
+_BLOOM_HAND = (380.0, 500.0)
 # MOBILITY (CORRECTION 9). Written EXPLICITLY on all three bodies: two of the
 # three donors sit at the roster's median 1.0 and the encounter needs to be able
 # to close. Measured Boss-uber band on the live arz: min 0.35, median 1.00,
@@ -771,7 +865,16 @@ _BRIAR_SPEED = 1.30   # RIG-PROVEN: um_speckledjim_45 ships 1.30 on JungleCreep0
 # ships Gigantes02 at 3.5, um_vashkarr_99 at 3.0) so the residual risk is
 # footprint/clearance, not the renderer - and only phase 1 carries it.
 _ORM_SCALE = 2.8
-_BLOOM_SCALE = 2.0
+# R-247 ruling 1: "got way smaller" - the shipped terminal was 2.0 on the ember
+# oak against phase 1's 2.8 on the Ascacophus, so the FINAL form read as the
+# small one. 2.9 makes the escalation read on screen: strictly above phase 1's
+# 2.8, equal to the Mnemophage shell (2.9, same boss tier), inside the roster's
+# proven large-scale band (um_polisgaoler_99 ships Gigantes02 at 3.5/3.8,
+# um_vashkarr_99 at 3.0 - renderer-proven; the residual is arena clearance, and
+# the terminal spawns exactly where the 2.8 phase-1 body just stood, in the
+# forecourt Will has already fought at 2.8, with actorRadius untouched at the
+# donor's 1.0, so its collision footprint class is unchanged).
+_BLOOM_SCALE = 2.9
 _BRIAR_SCALE = 1.55
 # THE R-100 #18 FIX, and the anti-regression gate's reason to exist: the shipped
 # escort was [878.0, 300.0, 400.0] - life FALLING from Normal to Epic. Sized off
@@ -1052,7 +1155,10 @@ _TAG_AMULET_DESC = 'tagSVCitmGoldenBoughDESC'   # rewritten
 # the end state without importing a private table.
 _TAG_TRAVELER = 'tagSVCNpcTravCharon'
 
-_REQUIRED_DONORS = (_D_ORM, _D_BLOOM, _D_BRIAR, _D_SPLIT)
+_REQUIRED_DONORS = (_D_ORM, _D_BLOOM, _D_BRIAR, _D_SPLIT,
+                    # R-247: the merged-kit donors + the orb-name clone chain
+                    _D_EMBERFALL, _D_UNDERTOW, _ORB_DONOR) \
+                   + _ORB_POOL_DONORS + _ORB_CHEST_DONORS
 _REQUIRED_SKILLS = ((_SK_EARTHBIND, _SK_QUILLWARDS, _SK_THORNYAURA, _SK_MEGABURST,
                      _SK_NOVA, _SK_BOSS_SCALING, _SK_HPSCALING, _SK_CONVIMMUNE,
                      _SK_HEART_OF_OAK, _SK_PLAGUE, _SK_QUILLBARB)
@@ -1287,7 +1393,10 @@ def apply(db, tags):
     missing = [p for p in (_REQUIRED_DONORS + _REQUIRED_SKILLS + _REQUIRED_FX
                            + _REQUIRED_LOOT
                            + (_ORM, _BLOOM, _BRIAR, _POOL, _PROXY,
-                              _YARD_POOL, _YARD_PROXY, _ORB))
+                              # R-247: _ORB is now the CLONE this apply() mints,
+                              # so the precondition is its DONOR chain (already
+                              # in _REQUIRED_DONORS), not the clone itself.
+                              _YARD_POOL, _YARD_PROXY))
                if not db.has_record(p)]
     if missing:
         raise SystemExit(
@@ -1335,12 +1444,64 @@ def apply(db, tags):
     # to leave it.
     _sf(db, _SPLIT, 'ActorName', _SPLIT_ACTOR_NAME, S)
 
+    # ── R-247 ruling 2: the two MERGED signature casts, cloned + refit ──────
+    # Donors are NEVER edited (shared-record law: ormenos_energyblast is the
+    # live China Telkine's cast; charon_tidalwave is the live base Charon's).
+    # Castability by construction: skillSpecialAnimationName BLANKED on both
+    # clones (b108 law, "empty" arm - the donor clips LongBlast/TidalWave are
+    # Telkine/Charon-rig and do not exist on the Ascacophus/BogDweller rigs).
+    # Mana-NEUTRAL by construction: each clone takes the DISPLACED incumbent's
+    # own skillManaCost verbatim, so the mana-starvation gate's recomputed
+    # rotation cost does not move.
+    for _donor, _dest, _fdesc in (
+            (_D_EMBERFALL, _SK_EMBERFALL,
+             "Akremon: THE EMBERFALL (R-247.2) - Telkine Ormenos's slow-bolt "
+             "refit as the Heartwood's falling cinder (authored flat fire rows; "
+             "anim blanked: donor clip LongBlast is Telkine-rig)"),
+            (_D_UNDERTOW, _SK_UNDERTOW,
+             "Akremon: THE STYX UNDERTOW (R-247.2) - Charon's tidal wave refit "
+             "as the drowned river answering at the old dock (anim blanked: "
+             "donor clip TidalWave is Charon-rig)")):
+        _replace_record(db, _donor, _dest)
+        _sf(db, _dest, 'skillSpecialAnimationName', '')
+        _sf(db, _dest, 'FileDescription', _fdesc)
+    # the ember refit: an AUTHORED flat fire component (level-index-proof rows)
+    _sf(db, _SK_EMBERFALL, 'offensiveFireMin', _flat(_EMBERFALL_FIRE), F)
+
+    # ── R-247 ruling 1, second clause: the orb sheds "Charon's Essence" ─────
+    # Clone the whole display chain VERBATIM (proxy + 3 pools + 3 containers),
+    # rewire the clone chain onto itself, and change exactly ONE player-visible
+    # field: each container's `description` -> the minted _TAG_ORBNAME. The
+    # containers' `tables` stay the donors' boss_charon_{n,e,l}01b, byte-equal,
+    # so R-242 orb rates and every breadth widening are untouched by proof.
+    for _dn, _cl in ((_ORB_DONOR, _ORB),) \
+            + tuple(zip(_ORB_POOL_DONORS, _ORB_POOLS)) \
+            + tuple(zip(_ORB_CHEST_DONORS, _ORB_CHESTS)):
+        _replace_record(db, _dn, _cl)
+    for _slot, _pool in zip(_ORB_SLOTS, _ORB_POOLS):
+        _sf(db, _ORB, _slot, _pool)
+    for _pool, _chest in zip(_ORB_POOLS, _ORB_CHESTS):
+        _sf(db, _pool, 'fixedItemName1', _chest)
+    for _chest, _dn in zip(_ORB_CHESTS, _ORB_CHEST_DONORS):
+        _sf(db, _chest, 'description', _TAG_ORBNAME)
+        if _n(_one(db, _chest, 'tables')) != _n(_one(db, _dn, 'tables')):
+            raise SystemExit(
+                "charon_rework R-247: orb-name clone %s lost its donor's loot "
+                "tables (%r != %r) - the rename must not move a single loot "
+                "number." % (_chest, _one(db, _chest, 'tables'),
+                             _one(db, _dn, 'tables')))
+    _sf(db, _ORB, 'FileDescription',
+        "Akremon's Essence - the Charon-chest chain cloned for the NAME only "
+        "(R-247.1); tables/rates byte-identical to bosschest02_charon's")
+
     # ── BEAT 1: AKREMON, THE GRASPING ROOT (phase 1, the placed head) ───────
     _replace_record(db, _D_ORM, _ORM)
     _sf(db, _ORM, 'monsterClassification', 'Boss')
     _sf(db, _ORM, 'description', _TAG_ORM)
     _sf(db, _ORM, 'charLevel', list(_BAND))
     _sf(db, _ORM, 'characterLife', list(_ORM_LIFE))
+    _sf(db, _ORM, 'handHitDamageMin', _ORM_HAND[0])       # R-247: authored
+    _sf(db, _ORM, 'handHitDamageMax', _ORM_HAND[1])
     _sf(db, _ORM, 'scale', _ORM_SCALE)
     _sf(db, _ORM, 'characterRunSpeed', _ORM_SPEED)      # CORRECTION 9
     # actorHeight DELIBERATELY NOT WRITTEN (R-126: per-rig constant, inherited).
@@ -1387,8 +1548,16 @@ def apply(db, tags):
             _sf(db, _ORM, 'chanceToEquipMisc%d' % _slot, 0.0)
     # hero -> boss scaling (in place; do NOT add a second scaler)
     _swap_scaler(db, _ORM)
+    # R-247.2: the STYX UNDERTOW takes the long-range slot razorquill_megaburst
+    # held (the quill identity survives on the terminal's razorquill_nova and on
+    # the quillvine wall/retinue, which remain the encounter's spine). The clone
+    # takes the megaburst's own mana cost so the funded rotation cannot move.
+    _mb_cost = _one(db, _SK_MEGABURST, 'skillManaCost')
+    if _mb_cost is not None:
+        _sf(db, _SK_UNDERTOW, 'skillManaCost',
+            db.get_field_value(_SK_MEGABURST, 'skillManaCost'))
     for _sk, _lvl in ((_SK_EARTHBIND, 8), (_SK_QUILLWARDS, 8),
-                      (_SK_MEGABURST, 8), (_SK_HPSCALING, 1),
+                      (_SK_UNDERTOW, _UNDERTOW_LEVEL), (_SK_HPSCALING, 1),
                       (_SK_CONVIMMUNE, 1), (_SPLIT, _SPLIT_LEVEL)):
         if not _svc_add_skill(db, _ORM, _sk, _lvl):
             raise SystemExit("charon_rework: no free skillName slot on %s for %s"
@@ -1411,7 +1580,9 @@ def apply(db, tags):
     # changes how reliably the boss reaches for it, not how often it lands.
     _cast(db, _ORM, '2', _SK_EARTHBIND, 40.0, 'MediumRange', 6.0, 4.0)
     _cast(db, _ORM, '4', _SK_QUILLWARDS, 30.0, 'ShortRange', 10.0, 6.0)
-    _cast(db, _ORM, '5', _SK_MEGABURST, 35.0, 'LongRange', 6.0, 3.0)
+    # R-247.2 merged signature (Charon): the dock answers at long range; the 35%
+    # total-speed slow stacks with drx_earthbind as the second anti-kite lever.
+    _cast(db, _ORM, '5', _SK_UNDERTOW, 35.0, 'LongRange', 6.0, 3.0)
 
     # ── BEAT 3: AKREMON, THE HEARTWOOD ABLAZE (phase 2, terminal) ───────────
     _replace_record(db, _D_BLOOM, _BLOOM)
@@ -1419,6 +1590,8 @@ def apply(db, tags):
     _sf(db, _BLOOM, 'description', _TAG_BLOOM)
     _sf(db, _BLOOM, 'charLevel', list(_BAND))
     _sf(db, _BLOOM, 'characterLife', list(_BLOOM_LIFE))
+    _sf(db, _BLOOM, 'handHitDamageMin', _BLOOM_HAND[0])   # R-247: the terminal
+    _sf(db, _BLOOM, 'handHitDamageMax', _BLOOM_HAND[1])   # now out-hits phase 1
     _sf(db, _BLOOM, 'scale', _BLOOM_SCALE)
     _sf(db, _BLOOM, 'characterRunSpeed', _BLOOM_SPEED)   # CORRECTION 9: it can hunt now
     # BLEED IMMUNITY DELIBERATELY DOES NOT CARRY, AND VITALITY RESISTANCE DROPS
@@ -1503,6 +1676,25 @@ def apply(db, tags):
     # 100/40/50 with real delays), and these numbers finish the job.
     _cast(db, _BLOOM, '4', _SK_NOVA, 50.0, 'ShortRange', 5.0, 3.0)
     _cast(db, _BLOOM, '5', _SK_THORNYAURA, 40.0, 'AnyRange', 12.0, 8.0)
+    # R-247.2 merged signature (Telkine Ormenos): THE EMBERFALL takes the cast
+    # slot the donor wasted on a GENERIC meleeattack filler (slot 3 @50 Short -
+    # redundant under BogDweller_Bite @100 Short in slot 1). Asserted incumbent,
+    # never blind; mana-neutral (the clone takes the filler's own cost, which is
+    # what the mana gate's recomputed rotation already funds).
+    _inc3 = _one(db, _BLOOM, 'specialAttack3SkillName')
+    if _n(_inc3) != _n(_DEAD_BLOOM_FILLER):
+        raise SystemExit(
+            "charon_rework R-247: expected the terminal's specialAttack3 to be "
+            "the generic filler %s (got %r). The donor's rotation moved - "
+            "re-measure before displacing anything." % (_DEAD_BLOOM_FILLER, _inc3))
+    _mc = db.get_field_value(_DEAD_BLOOM_FILLER, 'skillManaCost')
+    if _mc is not None:
+        _sf(db, _SK_EMBERFALL, 'skillManaCost', _mc)
+    _swap_declared_skill(db, _BLOOM, _DEAD_BLOOM_FILLER, _SK_EMBERFALL,
+                         _EMBERFALL_LEVEL,
+                         "R-247.2: the generic meleeattack filler makes way for "
+                         "the merged Telkine Ormenos signature (the Emberfall)")
+    _cast(db, _BLOOM, '3', _SK_EMBERFALL, 45.0, 'MediumRange', 6.0, 4.0)
 
     # ── THE HANDBRIAR (Champion escort x2) - the R-100 #18 fix ──────────────
     _replace_record(db, _D_BRIAR, _BRIAR)
@@ -1751,6 +1943,10 @@ def apply(db, tags):
     tags[_TAG_BLOOM] = '{^r}Akremon, the Heartwood Ablaze'
     tags[_TAG_BRIAR] = '{^G}Handbriar'
     tags[_TAG_HOARD] = 'The Orchard of Hands'
+    # R-247.1: the orb's own name, in the base game's "X's Essence" family
+    # (Hades' Essence / Charon's Essence / Typhon's Essence), derived from his
+    # actual title. MINTED key; string flagged for Will's veto in the lane report.
+    tags[_TAG_ORBNAME] = "Akremon's Essence"
     tags[_TAG_AMULET] = 'The Golden Bough'
     tags[_TAG_AMULET_DESC] = (
         'The tree grew it and would not let it go. Cut it while it still burned, '
@@ -2887,17 +3083,20 @@ def verify(db, tags):
                 "base boss %s (%s). The AI cast rotation is what the player "
                 "actually sees, so it must not overlap." % (rec, len(shared), base, shared))
 
-    # ---- 9. DURABILITY STAYS INSIDE THE KILLABLE-UBER BAND -----------------
+    # ---- 9. DURABILITY STAYS INSIDE THE KILLABLE-UBER BAND (R-247 anchor) --
     #
-    # Anchored on the LIVE Gaoler rather than a constant, so the band tracks the
-    # roster instead of going stale. docs/reports/gaoler_variance_rca.md is the
-    # named reference frame: two forms, 35,000 on Epic, six-strong guard horde,
-    # verdict hard-but-fair and killable, "no action warranted". This encounter is
-    # two forms + two Champions with no racial pet-damage reduction and no
-    # life-drain cascade, so it must not out-tank him.
-    _GAOLER = [r'records\xpack\creatures\monster\gigantes\um_polisgaoler_99.dbr',
-               r'records\xpack\creatures\monster\gigantes'
-               r'\um_polisgaoler_unbound_99.dbr']
+    # R-247 ruling 1 (Will 2026-08-13, after fighting the Gaoler-calibrated
+    # encounter in-game): "much much weaker, he should be enhanced
+    # significantly". The R-231-E Gaoler frame WAS the shipped state he ruled
+    # against, so the anchor moves to the band he farms: the LIVE Enslaver
+    # record (um_toxeus_enslaver_99, the mod's apex single-form uber at
+    # 32.5/45/60k). The two-form total must land BETWEEN 1.0x and 1.5x the
+    # Enslaver's single form: below 1.0x the "real wall for a Toxeus-tier
+    # farmer" claim is false; above 1.5x it out-tanks the apex by half again
+    # with two Champions on the field, which is the unkillable direction.
+    # Anchored on the LIVE record so the band tracks any future Enslaver retune.
+    _R247_ANCHOR = (r'records\creature\monster\skeleton_toxeus'
+                    r'\um_toxeus_enslaver_99.dbr')
 
     def _epic(rec):
         v = db.get_field_value(rec, 'characterLife')
@@ -2907,23 +3106,119 @@ def verify(db, tags):
         except (TypeError, ValueError, IndexError):
             return 0.0
 
-    if all(resolves(g) for g in _GAOLER):
-        ref = sum(_epic(g) for g in _GAOLER)
+    _anchor_rec = _R247_ANCHOR if resolves(_R247_ANCHOR) else next(
+        (r for r in db.record_names()
+         if r.lower().endswith('um_toxeus_enslaver_99.dbr')), None)
+    if _anchor_rec:
+        ref = _epic(_anchor_rec)
         ours = _epic(_ORM) + _epic(_BLOOM)
-        if ref > 0 and ours > ref * 1.15:
+        if ref > 0 and ours > ref * 1.5:
             problems.append(
-                "DURABILITY: this encounter totals %.0f life on Epic across its "
-                "two forms against the Gaoler's %.0f - %.2fx. The Gaoler is the "
-                "ratified 'hard but fair, killable' reference (gaoler_variance_rca"
-                ".md, no action warranted) and he brings SIX guards to our two. "
-                "Anything materially above him is a wall, and the order asked for "
-                "a hard fight, not an unkillable one." % (ours, ref, ours / ref))
-        if ref > 0 and ours < ref * 0.55:
-            problems.append(
-                "DURABILITY: this encounter totals only %.0f life on Epic against "
-                "the Gaoler's %.0f (%.2fx). Will's order was that the Golden Bough "
-                "uber be a REAL uber; a pushover is its own kind of failure."
+                "DURABILITY (R-247): this encounter totals %.0f life on Epic "
+                "across its two forms against the Enslaver's %.0f single form - "
+                "%.2fx. Above 1.5x the apex it stops being a wall and becomes "
+                "unkillable; R-247 asked for enhanced, not endless."
                 % (ours, ref, ours / ref))
+        if ref > 0 and ours < ref * 1.0:
+            problems.append(
+                "DURABILITY (R-247): this encounter totals only %.0f life on "
+                "Epic against the Enslaver's %.0f single form (%.2fx). Will's "
+                "R-247 order: 'much much weaker ... enhanced significantly' - "
+                "a two-form uber below the apex single form fails it."
+                % (ours, ref, ours / ref))
+    else:
+        problems.append("R-247 durability anchor um_toxeus_enslaver_99 not "
+                        "found in the DB - the band gate cannot run")
+
+    # ---- 9b. R-247.3 ESCALATION LAW on THIS boss: the final form is the ----
+    # escalation - strictly more life, at least the presence, at least the
+    # hand damage of the form it replaces (Will: "got way smaller ... much
+    # much weaker" is exactly this gate red).
+    for _fld, _cmp, _why in (
+            ('characterLife', 'gt', 'life must strictly rise into the terminal'),
+            ('scale', 'ge', 'the terminal must not shrink'),
+            ('handHitDamageMax', 'ge', 'the terminal must not hit softer')):
+        _a = db.get_field_value(_ORM, _fld)
+        _b = db.get_field_value(_BLOOM, _fld)
+        _al = _a if isinstance(_a, list) else [_a]
+        _bl = _b if isinstance(_b, list) else [_b]
+        try:
+            _n_rows = min(len(_al), len(_bl))
+            for _i in range(_n_rows):
+                _x, _y = float(_al[_i] or 0), float(_bl[_i] or 0)
+                _bad = (_y <= _x) if _cmp == 'gt' else (_y < _x)
+                if _bad:
+                    problems.append(
+                        "R-247.3 ESCALATION: %s row %d: terminal %.2f vs "
+                        "phase-1 %.2f - %s." % (_fld, _i, _y, _x, _why))
+        except (TypeError, ValueError):
+            problems.append("R-247.3 ESCALATION: %s unreadable on a form "
+                            "(%r vs %r)" % (_fld, _a, _b))
+
+    # ---- 9c. R-247.2 merged-kit castability + wiring ----------------------
+    for _sk, _host, _slot in ((_SK_EMBERFALL, _BLOOM, '3'),
+                              (_SK_UNDERTOW, _ORM, '5')):
+        if not resolves(_sk):
+            problems.append("R-247.2: merged skill %s missing" % _sk)
+            continue
+        _anim = db.get_field_value(_sk, 'skillSpecialAnimationName')
+        _anim = _anim[0] if isinstance(_anim, list) and _anim else _anim
+        if isinstance(_anim, str) and _anim.strip():
+            problems.append(
+                "R-247.2 CASTABILITY: %s carries skillSpecialAnimationName=%r; "
+                "the donor clip is foreign-rig, so the clone must be BLANK "
+                "(b108 law) or the cast never completes." % (_sk, _anim))
+        _wired = gv(_host, 'specialAttack%sSkillName' % _slot)
+        if _n(_wired) != _n(_sk):
+            problems.append(
+                "R-247.2: %s cast slot %s carries %r, expected the merged "
+                "signature %s." % (_host, _slot, _wired, _sk))
+    # the merged Charon MECHANIC must never be the base Charon RECORD: the
+    # displaced originals stay out of both rotations (section 8 already reds
+    # any charon_* basename; this pins the two exact records too).
+    for _host in (_ORM, _BLOOM):
+        for _sfx in ('', '2', '3', '4', '5'):
+            _w = gv(_host, 'specialAttack%sSkillName' % _sfx)
+            if _n(_w) in (_n(_D_UNDERTOW), _n(_D_EMBERFALL)):
+                problems.append(
+                    "R-247.2: %s casts the DONOR record %s directly - the "
+                    "merge law is clone-and-refit, never the shared original."
+                    % (_host, _w))
+
+    # ---- 9d. R-247.1 orb rename: name moved, mechanics did not ------------
+    _tp = gv(_BLOOM, 'treasureProxyName')
+    if _n(_tp) != _n(_ORB):
+        problems.append("R-247.1: terminal treasureProxyName=%r, expected the "
+                        "renamed clone %s" % (_tp, _ORB))
+    for _chest, _dn in zip(_ORB_CHESTS, _ORB_CHEST_DONORS):
+        if not resolves(_chest):
+            problems.append("R-247.1: orb container clone missing: %s" % _chest)
+            continue
+        _d = gv(_chest, 'description')
+        if _d != _TAG_ORBNAME:
+            problems.append("R-247.1: %s description=%r, expected %s"
+                            % (_chest, _d, _TAG_ORBNAME))
+        if resolves(_dn) and _n(gv(_chest, 'tables')) != _n(gv(_dn, 'tables')):
+            problems.append(
+                "R-247.1 MECHANICS: %s tables=%r differ from donor %s - the "
+                "rename must not move a single loot number."
+                % (_chest, gv(_chest, 'tables'), _dn))
+    for _slot, _pool in zip(_ORB_SLOTS, _ORB_POOLS):
+        if _n(gv(_ORB, _slot)) != _n(_pool):
+            problems.append("R-247.1: orb proxy %s.%s=%r, expected %s"
+                            % (_ORB, _slot, gv(_ORB, _slot), _pool))
+    for _pool, _chest in zip(_ORB_POOLS, _ORB_CHESTS):
+        if resolves(_pool) and _n(gv(_pool, 'fixedItemName1')) != _n(_chest):
+            problems.append("R-247.1: orb pool %s fixedItemName1=%r, expected %s"
+                            % (_pool, gv(_pool, 'fixedItemName1'), _chest))
+    # the SHARED base-game chain is untouched (shared-record law): the base
+    # containers still read xtagChest18 so the base Charon keeps his essence.
+    for _dn in _ORB_CHEST_DONORS:
+        if resolves(_dn) and gv(_dn, 'description') != 'xtagChest18':
+            problems.append(
+                "R-247.1 SHARED-RECORD REGRESSION: base container %s description="
+                "%r - the base-game chain must stay untouched."
+                % (_dn, gv(_dn, 'description')))
     for rec, life in ((_ORM, _ORM_LIFE), (_BLOOM, _BLOOM_LIFE)):
         got_l = db.get_field_value(rec, 'characterLife')
         got_l = got_l if isinstance(got_l, list) else [got_l]
