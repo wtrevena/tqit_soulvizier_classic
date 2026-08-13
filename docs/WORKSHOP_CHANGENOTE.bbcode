@@ -1,13 +1,17 @@
-BUILD 88 - Supra crafting laws
+BUILD 89 - Travel NPCs answer again (Warden of the Spartan Crypt fix)
 
-- Every craftable supra (Mythic Formula) recipe now requires at least one reagent that
-  only drops in Legendary, so no supra can be finished without farming Legendary.
-- No two supra recipes ask for the same reagents any more. Five duplicate recipe groups
-  (a six-way axe group, a mace group and three pairs) now each have distinct requirements.
-- Supra items no longer drop below Legendary. The four supra thrown weapons (Charon's
-  Toll, Hati, Sanguine Orbit, The Last Word) that used to appear in Epic loot now drop
-  only on Legendary, where they remain droppable.
-- Formula label fix: Hati's recipe now reads Mythic Formula - Hati (was Arcane Formula).
+- FIXED: the Warden of the Spartan Crypt did nothing when clicked. No dialog box, no
+  travel option, nothing. He now opens his menu and takes you down into the crypt,
+  which was the only canonical way into that area.
+- The same defect affected every traveller you reach by teleporting in: the
+  return-to-Helos NPCs in the Soulvizier areas and the enter-offer travellers.
+  All 30 travel NPCs are fixed by the same change.
+- Cause: an NPC you arrive at by teleport was never woken up, so the game drew him
+  but he had no clickable state. Every travel NPC is now woken up before his travel
+  offer is presented, using the same method the working Leinth exit portal has always
+  used.
+- The Helos plaza travellers that already worked keep the exact same routes and
+  destinations. No route, no destination and no dialog option changed anywhere.
 
-Database plus a one-line text update. No map or quest change; existing characters and
-saves are unaffected. Fully quit and restart Steam to pick up the update.
+Quest data only. No database, map or text change: your characters, saves and items
+are untouched. Fully quit the game and restart Steam to pick up the update.
