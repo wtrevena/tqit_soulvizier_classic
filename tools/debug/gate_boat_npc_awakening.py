@@ -1,59 +1,43 @@
-"""gate_boat_npc_awakening.py - TRAVEL-INVARIANTS FAMILY (b88 WARDEN AWAKENING)
+"""gate_boat_npc_awakening.py - TRAVEL-INVARIANTS FAMILY (b88 -> R-246 rewrite)
 
-Asserts every SVC-generated boat-dialog trigger AWAKENS its NPC before offering travel:
-`Action_ShowNpc` + `Action_UpdateNPCDialog("Dialog Needed")` must come FIRST, ahead of the
-Action_BoatDialog(s). A boat NPC without that pair renders in the world and is UNCLICKABLE -
-Will's bug, VERBATIM: "when I click on the guy who travels you to the spartan crypt (warden of
-the spartan crypt) nothing happens, no dialog box comes up, nothing."
+POST-RIP CONTRACT (R-246 native-device travel, 2026-08-13). The three SVC boat generators
+this gate originally covered (_add_helos_traveler_hub_travel / _add_testhub_portal_travel /
+_add_traveler_enter_offers) are RIPPED - their 35 armed rows were the stateful boat-registry
+corruption source (docs/WILL_RULINGS.md R-246). This gate now asserts, on the FINAL built
+sv_commonmechanics.qst bytes:
 
-WHY THIS GATE EXISTS AND THE FIVE OLDER ONES WERE NOT ENOUGH. gate_traveler_responds' six
-invariants (G-COLLISION / G-WARDEN / G-ORPHAN / G-DEST / G-SOLE-SOURCE / G-DIALOG-CHAIN) were
-ALL GREEN on the build that shipped the mute Warden to Steam, twice: they check that a route
-EXISTS, is UNIQUE in its level, has a real destination and lives in an in-window quest. None of
-them looks at the ACTION SET, which is where the defect actually lives. b63 then "fixed" the bug
-by moving the Warden's registration slot and every gate stayed green, because the slot was never
-the problem.
+  R0 - THE RIP HOLDS: zero triggers whose displayTag carries a ripped-generator prefix
+       ('SVC: Helos Traveler Hub' / 'SVC: TESTHUB Return NPC' / 'SVC: Traveler Enter-Offer').
+       Any such trigger is the ripped bug class returning and fails loud.
+  A1-A5 - ANY OTHER SVC boat trigger that appears in this quest (a future addition) must be
+       a co-resident whitelisted one (Almyros 'SVC: Helos Portal-Master', reported not
+       faulted) OR lead with the upstream-authentic awakening pair Action_ShowNpc +
+       Action_UpdateNPCDialog("Dialog Needed") on its own single NPC - the b88 law that a
+       remote boat NPC without the pair renders unclickable (Will's mute-Warden bug, twice).
 
-THE REFERENCE SHAPE IS UPSTREAM-AUTHENTIC, NOT INVENTED. The Leinth exit vortex "Ioannes"
-(records/drxmap/bloodcave/portals/vortexportal_exit.dbr, remote bossfight.lvl, teleports the
-player out) ships [OpenDoor,] ShowNpc + UpdateNPCDialog + BoatDialog in the upstream SV XPack
-bytes this repo ports byte-for-byte, and it is the ONE remote-level travel NPC in the mod known
-to bind. build_svc_database._import_dialog_needed states the engine rationale: the "Dialog
-Needed" DialogPak "makes NPCs clickable when assigned via Action_UpdateNPCDialog. Without it,
-NPCs render but have no yellow icon and can't be clicked."
-
-SCOPE. Every trigger the three SVC boat generators emit - _add_helos_traveler_hub_travel
-(HELOS_HUB_TRAVEL, incl. the Warden), _add_testhub_portal_travel (TESTHUB_AREA_RETURN_NPCS) and
-_add_traveler_enter_offers (TRAVELER_ENTER_OFFERS). The NPC roster is DERIVED from those tables
-at run time, so adding a traveler without the awakening pair reds this gate instead of silently
-shipping a mute NPC. The base-game/SVAERA-authored `portal_master_helos` trigger emitted by
-_add_helos_portal_travel is deliberately OUT of scope: it is co-resident in the Helos plaza and
-predates this rig; it is REPORTED, never faulted.
+The awakening RECIPE stays in build_quest_files._npc_awaken_actions (retained, uncalled) as
+the R-246 visibility fallback shape.
 
 Read-only. Defaults to the deployed work/ Quests.arc; --quests gates a freshly-built one.
 
 Usage:
-  py tools/debug/gate_boat_npc_awakening.py
-  py tools/debug/gate_boat_npc_awakening.py --quests local/Quests_run1.arc
-  py tools/debug/gate_boat_npc_awakening.py --quests <arc> --arz <arz>   # + record resolution
-  py tools/debug/gate_boat_npc_awakening.py --quests <arc> --negtest     # planted-defect suite
+  py tools/debug/gate_boat_npc_awakening.py --quests <arc> [--arz <arz>] [--negtest]
 """
 import argparse
-import copy
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from arc_patcher import ArcArchive          # noqa: E402
 import qst_format                           # noqa: E402
-import build_quest_files as bqf             # noqa: E402
 
 HOST_QUEST = 'sv_commonmechanics.qst'
 AWAKEN = ('Action_ShowNpc', 'Action_UpdateNPCDialog')
 DIALOG_NEEDED = r'records\dialog\story\dialog needed.dbr'
-# displayTag prefixes of the three SVC generators (build_quest_files).
-SVC_TRIGGER_PREFIXES = ('SVC: Helos Traveler Hub', 'SVC: TESTHUB Return NPC',
-                        'SVC: Traveler Enter-Offer')
+# R-246: displayTag prefixes of the RIPPED generators - presence == violation.
+RIPPED_PREFIXES = ('SVC: Helos Traveler Hub', 'SVC: TESTHUB Return NPC',
+                   'SVC: Traveler Enter-Offer')
+# Co-resident, Will-ratified talk menu (R-246: "Almyros keeps his 3-route talk menu").
 OUT_OF_SCOPE_PREFIXES = ('SVC: Helos Portal-Master',)
 
 
@@ -82,20 +66,8 @@ def _quest_bytes(arc, basename):
     raise SystemExit(f'gate_boat_npc_awakening: {basename} not in the archive')
 
 
-def expected_npcs():
-    """The SVC boat-NPC roster, DERIVED from the build tables (never hand-listed)."""
-    out = set()
-    for npc, _xyz, _tag in bqf.HELOS_HUB_TRAVEL:
-        out.add(norm(npc))
-    for npc in bqf.TESTHUB_AREA_RETURN_NPCS:
-        out.add(norm(npc))
-    for npc, _xyz, _tag in bqf.TRAVELER_ENTER_OFFERS:
-        out.add(norm(npc))
-    return out
-
-
 def collect(tree):
-    """[(displayTag, cond, [(class, {field: value})...])] for every trigger with actions."""
+    """[(displayTag, cond, actionCount, [(class, {field: value})...], stepname)]."""
     steps = tree[1]
     pos = _blocks(steps)
     rows = []
@@ -128,25 +100,24 @@ def check(data, arz_names=None, verbose=True):
     """Return a list of violation strings (empty == PASS)."""
     viols = []
     rows = collect(qst_format.parse(data))
-    want_npcs = expected_npcs()
-    seen_npcs = set()
     in_scope = out_scope = 0
 
     for disp, cond, acount, blocks, stepname in rows:
         classes = [c for c, _f in blocks]
+        # R0 - the rip holds regardless of action classes
+        if disp and disp.startswith(RIPPED_PREFIXES):
+            viols.append(f'R0 {disp!r} (step {stepname!r}): a RIPPED-generator trigger is '
+                         f'back in the built quest - the R-246 boat-row bug class returning')
+            continue
         if 'Action_BoatDialog' not in classes:
             continue
         if disp and disp.startswith(OUT_OF_SCOPE_PREFIXES):
             out_scope += 1
             if verbose:
-                print(f'  [SKIP ] {disp!r}: out of scope (SVAERA-authored, co-resident) '
-                      f'-> {classes}')
+                print(f'  [SKIP ] {disp!r}: co-resident ruled menu (Almyros) -> {classes}')
             continue
-        if not (disp and disp.startswith(SVC_TRIGGER_PREFIXES)):
-            # an SVC boat trigger that lost its displayTag lineage is itself a finding
-            viols.append(f'A0 {disp!r} (step {stepname!r}) carries Action_BoatDialog but '
-                         f'matches no known generator prefix; the roster cannot be gated')
-            continue
+        if not (disp and disp.startswith('SVC:')):
+            continue  # upstream-authentic trigger, frozen by gate_boatdialog_budget
         in_scope += 1
 
         # A1 - the awakening pair leads
@@ -158,14 +129,13 @@ def check(data, arz_names=None, verbose=True):
             viols.append(f'A1 {disp!r}: actions after the awakening pair are {classes[2:]}, '
                          f'expected Action_BoatDialog only')
 
-        # A2 - one NPC per trigger, shared by all three action classes
+        # A2 - one NPC per trigger, shared by all action classes
         npcs = {norm(f.get('npc')) for _c, f in blocks}
         if len(npcs) != 1 or None in npcs:
             viols.append(f'A2 {disp!r}: actions target {sorted(npcs)}; a boat trigger must '
                          f'awaken and offer travel on exactly ONE npc record')
             continue
         npc = next(iter(npcs))
-        seen_npcs.add(npc)
 
         # A3 - the pak that makes an NPC clickable
         dlg = norm(blocks[1][1].get('dialogFile'))
@@ -173,8 +143,8 @@ def check(data, arz_names=None, verbose=True):
             viols.append(f'A3 {disp!r}: Action_UpdateNPCDialog.dialogFile is {dlg!r}, '
                          f'expected {DIALOG_NEEDED!r}')
         elif arz_names is not None and DIALOG_NEEDED not in arz_names:
-            viols.append(f'A3 {disp!r}: the "Dialog Needed" DialogPak {DIALOG_NEEDED!r} is '
-                         f'NOT in the shipped .arz; UpdateNPCDialog would resolve to nothing')
+            viols.append(f'A3 {disp!r}: the "Dialog Needed" DialogPak is NOT in the shipped '
+                         f'.arz; UpdateNPCDialog would resolve to nothing')
 
         # A4 - the count the engine reads must match the actions actually present
         if acount != len(classes):
@@ -188,70 +158,67 @@ def check(data, arz_names=None, verbose=True):
         if verbose:
             print(f'  [OK   ] {disp!r}: {classes} npc={npc.rsplit(chr(92), 1)[-1]}')
 
-    # A6 - roster coverage: every table NPC must actually appear
-    missing = sorted(want_npcs - seen_npcs)
-    if missing:
-        viols.append(f'A6 {len(missing)} SVC boat NPC(s) from the build tables have NO '
-                     f'awakened trigger in the shipped quest: '
-                     f'{[m.rsplit(chr(92), 1)[-1] for m in missing]}')
     if verbose:
-        print(f'\n  in-scope SVC boat triggers: {in_scope}   out-of-scope reported: '
-              f'{out_scope}   distinct NPCs awakened: {len(seen_npcs)}/{len(want_npcs)}')
+        print(f'\n  R-246 post-rip: ripped-prefix triggers found: 0 (R0 clean)   '
+              f'new in-scope SVC boat triggers: {in_scope}   co-resident reported: {out_scope}')
     return viols
 
 
 # ── planted-defect suite ────────────────────────────────────────────────────
-def _mutate(data, kind):
-    """Return quest bytes with one defect planted (the shapes that shipped mute)."""
+def _plant_trigger(data, display, npc, with_pair):
+    """Append a boat trigger (optionally without the awakening pair) to the refire step."""
+    import build_quest_files as bqf
     tree = qst_format.parse(data)
     steps = tree[1]
     pos = _blocks(steps)
     for sd, tc, _sn in [pos[i:i + 3] for i in range(0, len(pos), 3)]:
+        if _fld(steps[sd][1], 'name') != bqf.HELOS_PORTAL_HOST_STEP:
+            continue
         items = list(steps[tc][1])
-        tp = _blocks(items)
-        for (h, c, a) in [tp[i:i + 3] for i in range(0, len(tp), 3)]:
-            disp = _fld(items[h][1], 'displayTag')
-            if disp != 'SVC: Helos Traveler Hub 00':      # the Warden
-                continue
-            acts = list(items[a][1])
-            if kind == 'strip_pair':                     # the b63 shipped state
-                kept = [acts[0]]
-                i = 1
-                while i < len(acts):
-                    if acts[i][0] == 'field' and acts[i][1] == 'actionClassName':
-                        if acts[i][2][1] == 'Action_BoatDialog':
-                            kept.extend([acts[i], acts[i + 1]])
-                        i += 2
-                        continue
-                    i += 1
-                kept[0] = ('field', 'actionCount', ('int', 1))
-                acts = kept
-            elif kind == 'wrong_pak':
-                blk = list(acts[4][1])
-                for j, x in enumerate(blk):
-                    if x[1] == 'dialogFile':
-                        blk[j] = ('field', 'dialogFile',
-                                  ('str', r'Records\Dialog\Story\Nonexistent.dbr'))
-                acts[4] = ('block', blk)
-            elif kind == 'pair_after_boat':               # ordering regression
-                acts = [acts[0], acts[5], acts[6], acts[1], acts[2], acts[3], acts[4]]
-            elif kind == 'npc_mismatch':
-                blk = list(acts[2][1])
-                for j, x in enumerate(blk):
-                    if x[1] == 'npc':
-                        blk[j] = ('field', 'npc',
-                                  ('str', r'records\quests\svc_helos_trav_garden.dbr'))
-                acts[2] = ('block', blk)
-            elif kind == 'bad_count':
-                acts[0] = ('field', 'actionCount', ('int', 1))
-            items[a] = ('block', acts)
-            steps[tc] = ('block', items)
-            return qst_format.serialize(tree)
-    raise SystemExit('negtest: the Warden trigger was not found to mutate')
+        for j, it in enumerate(items):
+            if it[0] == 'field' and it[1] == 'max':
+                items[j] = ('field', 'max', ('int', it[2][1] + 1))
+                break
+        header = ('block', [
+            ('field', 'displayTag', ('str', display)),
+            ('field', 'displayBitmap', ('int_or_empty', 0)),
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isActive', ('int', 0)),
+        ])
+        conditions = ('block', [
+            ('field', 'conditionCount', ('int', 1)),
+            ('field', 'conditionClassName', ('str', 'Condition_OnLevelLoad')),
+            ('block', [
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'isNot', ('int', 0)),
+                ('field', 'isResettable', ('int', 1)),
+                ('field', 'isQuestCritical', ('int', 1)),
+            ]),
+        ])
+        boat = [
+            ('field', 'actionClassName', ('str', 'Action_BoatDialog')),
+            ('block', [
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'delayTime', ('int', 0)),
+                ('field', 'npc', ('str', npc)),
+                ('field', 'onOff', ('int', 1)),
+                ('field', 'x', ('int', 1)),
+                ('field', 'y', ('int', 2)),
+                ('field', 'z', ('int', 3)),
+                ('field', 'tag', ('str', 'tagPlanted')),
+            ]),
+        ]
+        pre = bqf._npc_awaken_actions(npc) if with_pair else []
+        n_actions = (2 if with_pair else 0) + 1
+        actions = ('block', [('field', 'actionCount', ('int', n_actions))] + pre + boat)
+        items.extend([header, conditions, actions])
+        steps[tc] = ('block', items)
+        return qst_format.serialize(tree)
+    raise SystemExit('negtest: refire step not found to mutate')
 
 
 def negtest(data):
-    print('\n=== PLANTED-DEFECT SUITE ===')
+    print('\n=== PLANTED-DEFECT SUITE (R-246) ===')
     ok = True
     base = check(data, verbose=False)
     if base:
@@ -259,17 +226,24 @@ def negtest(data):
         ok = False
     else:
         print('  [GREEN OK] positive control: the unmutated arc passes')
-    for kind, why in [
-            ('strip_pair', 'BoatDialog alone (the exact b63 shipped state)'),
-            ('wrong_pak', 'UpdateNPCDialog points at a non-"Dialog Needed" pak'),
-            ('pair_after_boat', 'awakening pair emitted AFTER the BoatDialog'),
-            ('npc_mismatch', 'ShowNpc awakens a DIFFERENT npc than the offer'),
-            ('bad_count', 'actionCount understates the emitted actions')]:
-        v = check(_mutate(data, kind), verbose=False)
-        if v:
-            print(f'  [RED   OK] {kind}: {why} -> {len(v)} violation(s): {v[0][:96]}')
+    cases = [
+        ('SVC: Helos Traveler Hub 00', r'records\quests\svc_warden_sparta_crypt.dbr',
+         True, True, 'a resurrected RIPPED hub trigger (R0)'),
+        ('SVC: TESTHUB Return NPC (planted)', r'records\quests\svc_testhub_return_uber.dbr',
+         True, True, 'a resurrected RIPPED testhub trigger (R0)'),
+        ('SVC: Planted Remote Traveler', r'records\quests\svc_area_return_dorus.dbr',
+         False, True, 'a NEW remote SVC boat trigger WITHOUT the awakening pair (A1)'),
+        ('SVC: Planted Remote Traveler OK', r'records\quests\svc_area_return_dorus.dbr',
+         True, False, 'a NEW remote SVC boat trigger WITH the pair (must stay green here)'),
+    ]
+    for display, npc, with_pair, want_red, why in cases:
+        v = check(_plant_trigger(data, display, npc, with_pair), verbose=False)
+        red = bool(v)
+        if red == want_red:
+            state = 'RED   OK' if want_red else 'GREEN OK'
+            print(f'  [{state}] {why}' + (f' -> {v[0][:90]}' if v else ''))
         else:
-            print(f'  [FAIL] {kind}: {why} -> NOT CAUGHT')
+            print(f'  [FAIL] {why} -> {"not caught" if want_red else v}')
             ok = False
     return ok
 
@@ -281,7 +255,8 @@ def main():
     ap.add_argument('--negtest', action='store_true')
     args = ap.parse_args()
 
-    print('gate_boat_npc_awakening - every SVC boat NPC is AWAKENED before it is offered')
+    print('gate_boat_npc_awakening (R-246): the boat-row rip holds + any future SVC boat '
+          'trigger is awakened')
     print(f'  quests: {args.quests}')
     arc = ArcArchive.from_file(Path(args.quests))
     data = _quest_bytes(arc, HOST_QUEST)
@@ -299,17 +274,15 @@ def main():
 
     print('=' * 96)
     if viols:
-        print(f'GATE FAIL: {len(viols)} violation(s) - a boat NPC would render but not be '
-              f'clickable:')
+        print(f'GATE FAIL: {len(viols)} violation(s):')
         for v in viols:
             print(f'  - {v}')
         return 1
     if not neg_ok:
         print('GATE FAIL: the planted-defect suite did not behave (the gate is inert)')
         return 1
-    print('GATE PASS: every SVC boat-dialog trigger leads with Action_ShowNpc + '
-          'Action_UpdateNPCDialog("Dialog Needed") on its own NPC, so no traveler can ship '
-          'rendered-but-mute.')
+    print('GATE PASS: the R-246 rip holds (zero ripped-generator triggers) and every '
+          'other SVC boat trigger is either the ruled Almyros menu or properly awakened.')
     return 0
 
 
