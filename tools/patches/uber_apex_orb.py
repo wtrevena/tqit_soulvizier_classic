@@ -521,6 +521,11 @@ for _d in _DIFFS:
 # on all three difficulties).
 LEINTH_MIN_EQ = '(3+(1.6*numberOfPlayers))*2.2'
 LEINTH_MAX_EQ = '(3+(1.6*numberOfPlayers))*2.4'
+# The two multipliers, split out so R-240's era check can trim them through the same
+# transform the trim itself uses instead of re-typing 2.2/2.4 in a second place.
+# Parsed from the equations above so the pair can never disagree with them.
+LEINTH_MIN_MULT = float(LEINTH_MIN_EQ.rsplit('*', 1)[1])
+LEINTH_MAX_MULT = float(LEINTH_MAX_EQ.rsplit('*', 1)[1])
 LEINTH_LOOT4_CHANCE = 100.0
 LEINTH_UNIQUE_WEIGHT = 50
 ORB04_UNIQUE_WEIGHT = 27          # the value the donor tables carry
@@ -782,12 +787,178 @@ def _group_chances(db, table):
     return out
 
 
+def _calibre_era(db, apex_table, diff):
+    r"""'pre-R-240' | 'R-240' | None - which committed calibre this apex table carries.
+
+    ⚠ ADDED BY R-240/R-241 (Will 2026-08-11). See `_post_wave_problems` and the
+    docs/WILL_RULINGS.md entry "R-241 SUPERSEDES the absolute-floor half of R-72/R-99"
+    before touching this. The era is DERIVED through R-240's own transform, so this
+    function and the trim cannot drift apart.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _t = _Path(__file__).resolve().parent.parent
+    if str(_t) not in _sys.path:
+        _sys.path.insert(0, str(_t))
+    import svc_loot_volume as SLV
+    lo_eq = _v1(db, apex_table, 'numSpawnMinEquation')
+    hi_eq = _v1(db, apex_table, 'numSpawnMaxEquation')
+    p = SLV.parse_eq(lo_eq)
+    if p is None:
+        return None
+    bracket = p[0]
+    got = (_mult(lo_eq), _mult(hi_eq))
+    if got == (LEINTH_MIN_MULT, LEINTH_MAX_MULT):
+        return 'pre-R-240'
+    tier = _SHORT[diff]
+    want = SLV.trimmed_multipliers(bracket, LEINTH_MIN_MULT, LEINTH_MAX_MULT, tier)[:2]
+    if got == want:
+        return 'R-240'
+    return None
+
+
+def _post_wave_problems(db, apex_table, leinth_table, diff):
+    r"""The R-72/R-99 calibre proof, AS AMENDED BY R-240 + R-241 (Will 2026-08-11).
+
+    WHY THIS FUNCTION EXISTS AT ALL - read this before "simplifying" it away.
+
+    R-72/R-99 (Will 2026-07-27) put the whole Toxeus roster AND Leinth on ONE apex
+    drop calibre, and `_no_nerf_problems` proves it by comparing the apex tables
+    against Leinth's own frozen reference tables (loottable_leinth_{29-31,49-51,63-65},
+    deliberately never written per the retirement protocol). That proof has TWO halves
+    braided together, and R-241 cuts exactly one of them:
+
+      UNITY   - Leinth sits on the SAME tables as the roster; she is never singled out
+                and never left behind. THIS SURVIVES R-241 COMPLETELY. Will lowered the
+                shared calibre for everyone including her, which is the opposite of
+                singling her out. It is still asserted, in two places: verify() (g)
+                proves her three chests point at `CHAIN[d][5]`, and P3 below re-proves
+                that the table those chests reach is the very table this function was
+                handed, so the two checks cannot pass while pointing at different
+                records.
+
+      ABSOLUTE - the apex calibre is never numerically below her b96-era frozen
+                numbers. THIS IS WHAT R-241 SUPERSEDES, and it is superseded by Will's
+                own words: "you made the orbs way too good... those dont need to have
+                guaranteed legendary drops, they should just have a chance to drop
+                legendary items, but a low chance." An absolute floor pinned to
+                *2.2/*2.4 and loot4Chance 100.0 is precisely the vending machine he is
+                describing, so it cannot also be the law that forbids fixing it.
+
+    A LANE MAY NOT QUIETLY DELETE ANOTHER RULING'S PROOF, so the supersession is
+    written down (docs/WILL_RULINGS.md, R-241's entry, with this collision named) and
+    the check is REPLACED rather than dropped. What replaces it is strictly more
+    specific: instead of ">= a floor", the post-wave era asserts "== the committed
+    R-240/R-241 value, re-derived every run", so drift in EITHER direction reds. The
+    old proof is not deleted from the codebase either - `_no_nerf_problems` still runs
+    verbatim at apply() time (the migration guard, where R-240/R-241 have not yet run
+    and her frozen tables are still the right comparand), and still runs verbatim here
+    whenever the arz is pre-R-240, which is what keeps the ship lane's rollback-artifact
+    control meaningful (BL-R240-DEBT-8).
+
+    THE AXES R-241 DOES NOT TOUCH ARE STILL PROVED AGAINST HER ORIGINALS: gold, and
+    every loot group chance except the ones R-241's census named for demotion. A trim
+    lane gets to lower the two things Will pointed at and nothing else.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+    _t = _Path(__file__).resolve().parent.parent
+    if str(_t) not in _sys.path:
+        _sys.path.insert(0, str(_t))
+    import svc_loot_volume as SLV
+    import svc_orb_legendary as SOL
+
+    problems = []
+    if not (db.has_record(apex_table) and db.has_record(leinth_table)):
+        return ["%s: cannot run the calibre proof (apex or Leinth table missing)" % diff]
+
+    era = _calibre_era(db, apex_table, diff)
+    if era is None:
+        lo_eq = _v1(db, apex_table, 'numSpawnMinEquation')
+        hi_eq = _v1(db, apex_table, 'numSpawnMaxEquation')
+        tier = _SHORT[diff]
+        p = SLV.parse_eq(lo_eq)
+        want = (SLV.trimmed_multipliers(p[0], LEINTH_MIN_MULT, LEINTH_MAX_MULT,
+                                        tier)[:2] if p else ('?', '?'))
+        return ["%s: apex %s carries numSpawn *%s/*%s, which is NEITHER the "
+                "pre-R-240 shared calibre *%s/*%s NOR R-240's committed trim of it "
+                "*%s/*%s. One apex calibre for the whole roster and Leinth means one "
+                "of two committed numbers, not a third one nobody chose."
+                % (diff, apex_table, _mult(lo_eq), _mult(hi_eq),
+                   LEINTH_MIN_MULT, LEINTH_MAX_MULT, want[0], want[1])]
+
+    if era == 'pre-R-240':
+        # Nothing has been trimmed yet: the ORIGINAL proof is exactly right, and is
+        # what the rollback-artifact control needs to see. Run it verbatim.
+        return _no_nerf_problems(db, apex_table, leinth_table, diff)
+
+    # ── era == 'R-240': the amended proof ────────────────────────────────────
+    # P1 - GOLD. Untouched by both rulings, so the original floor still stands.
+    try:
+        a = float(_v1(db, apex_table, 'goldGeneratorLevel') or 0)
+        l = float(_v1(db, leinth_table, 'goldGeneratorLevel') or 0)
+        if a + 1e-6 < l:
+            problems.append("%s: NERF - apex goldGeneratorLevel %s < Leinth's %s "
+                            "(R-240/R-241 authorise a VOLUME and a CHANCE cut, not a "
+                            "gold cut)" % (diff, a, l))
+    except (TypeError, ValueError):
+        problems.append("%s: goldGeneratorLevel unreadable on one of the tables" % diff)
+
+    # P2 - LOOT GROUP CHANCES. Still >= Leinth's original on every group R-241 did
+    #      NOT name; == the committed R-241 target on the ones it did. The demoted
+    #      set is read from R-241's own contract, not re-typed, so widening that
+    #      contract widens this check automatically and narrowing it re-arms the
+    #      original floor on the group that left.
+    apex_c = _group_chances(db, apex_table)
+    lein_c = _group_chances(db, leinth_table)
+    for i, (a, l) in enumerate(zip(apex_c, lein_c), 1):
+        want = SOL.FAMILY_CHANCE_EXPECTED.get(i)
+        if want is not None:
+            if abs(a - want) > max(SOL.FAMILY_CHANCE_TOL, 1e-6):
+                problems.append(
+                    "%s: apex loot%dChance %.4f, expected R-241's committed %.4f. This "
+                    "is the row Will's ruling demoted (\"they should just have a chance "
+                    "to drop legendary items, but a low chance\"); it may not drift back "
+                    "up toward the old %.1f guarantee, and it may not be cut further by "
+                    "a lane that never measured what that costs."
+                    % (diff, i, a, want, l))
+        elif a + 1e-6 < l:
+            problems.append(
+                "%s: NERF - apex loot%dChance %.2f < Leinth's original %.2f. R-241 "
+                "demotes ONLY the rows its census named (%s); every other group still "
+                "owes her the R-72/R-99 floor."
+                % (diff, i, a, l,
+                   ', '.join('loot%dChance' % g
+                             for g in sorted(SOL.FAMILY_CHANCE_EXPECTED)) or 'none'))
+
+    # P3 - UNITY, re-proved here rather than trusted from (g): the table Leinth's own
+    #      chest reaches IS the table this proof was handed. Without this, (g) and this
+    #      function could both be green while asserting about different records.
+    chest = LEINTH_CHESTS.get(diff)
+    if chest and db.has_record(chest):
+        got = str(_v1(db, chest, 'tables') or '').replace('/', '\\').lower()
+        if got != str(apex_table).replace('/', '\\').lower():
+            problems.append(
+                "%s: UNITY BROKEN - Leinth's chest reaches %r but the calibre proof was "
+                "run against %r. R-241 lowers ONE shared calibre for everyone; the "
+                "moment her chest and the roster's read different tables, a 'trim' has "
+                "become the singling-out R-72/R-99 exists to forbid."
+                % (diff, got, apex_table))
+    return problems
+
+
 def _no_nerf_problems(db, apex_table, leinth_table, diff):
     """Prove the apex table is >= Leinth's ORIGINAL on every reward axis.
 
     Returns a list of problem strings (empty == she is not nerfed). This is
     COMPUTED from the two records, never asserted in prose, so an upstream table
     change that would quietly cost her something fails the build.
+
+    ⚠ STILL THE LAW AT APPLY() TIME, and on any PRE-R-240 arz. R-240/R-241 are
+    registered LAST, so when apply() calls this the apex tables still carry the
+    b96-era calibre and Leinth's frozen tables are the correct comparand - the
+    migration this proof was written for is proved exactly as it always was. What
+    changed is only the POST-wave reading; see `_post_wave_problems`.
     """
     problems = []
     if not (db.has_record(apex_table) and db.has_record(leinth_table)):
@@ -1253,7 +1424,20 @@ def verify(db, tags=None):
             problems.append("%s.tables = %r, expected %s"
                             % (chest_new, got, table_new))
 
-    # (c) orb05's four knobs are >= Leinth's chest's, on every difficulty.
+    # (c) orb05's four knobs, measured against Leinth's chest's - AS AMENDED BY
+    #     R-240 + R-241 (Will 2026-08-11).
+    #
+    #     ⚠ THIS IS A SECOND, INDEPENDENT COPY of the law `_post_wave_problems`
+    #     amends, and it has to move with it or the amendment is cosmetic: (h) would
+    #     accept the trim and (c) would abort the build three lines later on the same
+    #     three records. The round-3 vet found (h); this one was behind it.
+    #
+    #     Both eras keep the SHAPE of the check - "orb05's knobs are exactly the
+    #     shared calibre, whatever the shared calibre currently is". Only the
+    #     reference value moves, and it moves through R-240's own transform rather
+    #     than being re-typed, so (c) cannot drift away from the trim or from (h).
+    #     The two knobs R-240/R-241 do NOT touch - the unique-share weights and the
+    #     no-'/'-in-an-MP-equation law, both below - are untouched in both eras.
     leinth_present = [t for t in LEINTH_TABLES if db.has_record(t)]
     ref_min = ref_max = ref_l4 = None
     for t in leinth_present:
@@ -1265,20 +1449,43 @@ def verify(db, tags=None):
         problems.append("Leinth's reference chest tables are all missing - the "
                         "calibre comparison cannot be made")
     else:
+        import sys as _sys
+        from pathlib import Path as _Path
+        _t = _Path(__file__).resolve().parent.parent
+        if str(_t) not in _sys.path:
+            _sys.path.insert(0, str(_t))
+        import svc_loot_volume as _SLV
+        import svc_orb_legendary as _SOL
         for d in _DIFFS:
             table_new = CHAIN[d][5]
             if not db.has_record(table_new):
                 continue
             mn, mx, l4 = _knobs(db, table_new)
-            if (_mult(mn) or 0) + 1e-6 < ref_min:
-                problems.append("%s numSpawnMin multiplier %s < Leinth's %s"
-                                % (table_new, _mult(mn), ref_min))
-            if (_mult(mx) or 0) + 1e-6 < ref_max:
-                problems.append("%s numSpawnMax multiplier %s < Leinth's %s"
-                                % (table_new, _mult(mx), ref_max))
-            if float(l4 or 0) + 1e-6 < float(ref_l4):
-                problems.append("%s loot4Chance %s < Leinth's %s"
-                                % (table_new, l4, ref_l4))
+            era = _calibre_era(db, table_new, d)
+            # The reference this difficulty is actually held to. In the R-240 era it
+            # is Leinth's own numbers put through the committed trim for this tier -
+            # i.e. she and the roster are still on ONE calibre, that calibre is just
+            # the one Will asked for on 2026-08-11.
+            d_min, d_max, d_l4 = ref_min, ref_max, ref_l4
+            if era == 'R-240':
+                _p = _SLV.parse_eq(_v1(db, table_new, 'numSpawnMinEquation'))
+                if _p is not None:
+                    d_min, d_max = _SLV.trimmed_multipliers(
+                        _p[0], ref_min, ref_max, _SHORT[d])[:2]
+                d_l4 = _SOL.FAMILY_CHANCE_EXPECTED.get(4, ref_l4)
+            _era_note = ('' if era != 'R-240' else
+                         " (R-240/R-241 calibre; Leinth's b96 reference *%s/*%s @%s "
+                         "trimmed for tier %s - see docs/WILL_RULINGS.md)"
+                         % (ref_min, ref_max, ref_l4, _SHORT[d]))
+            if (_mult(mn) or 0) + 1e-6 < d_min:
+                problems.append("%s numSpawnMin multiplier %s < Leinth's %s%s"
+                                % (table_new, _mult(mn), d_min, _era_note))
+            if (_mult(mx) or 0) + 1e-6 < d_max:
+                problems.append("%s numSpawnMax multiplier %s < Leinth's %s%s"
+                                % (table_new, _mult(mx), d_max, _era_note))
+            if float(l4 or 0) + 1e-6 < float(d_l4):
+                problems.append("%s loot4Chance %s < Leinth's %s%s"
+                                % (table_new, l4, d_l4, _era_note))
             # the unique share
             ff = _fields(db, table_new)
             bad = []
@@ -1405,23 +1612,56 @@ def verify(db, tags=None):
                 "proxy; the re-tier happens inside her chain, never by repointing "
                 "her at the generic orb" % (rec.rsplit('\\', 1)[-1], tp))
 
-    # (h) THE NO-NERF PROOF, computed against her preserved ORIGINAL tables.
+    # (h) THE CALIBRE PROOF, computed against her preserved ORIGINAL tables - AS
+    #     AMENDED BY R-240 + R-241 (Will 2026-08-11). `_post_wave_problems` runs the
+    #     ORIGINAL `_no_nerf_problems` verbatim on a pre-R-240 arz and the amended
+    #     proof on a trimmed one; read its docstring for which half of R-72/R-99
+    #     survives (unity: all of it) and which half is superseded (the absolute
+    #     floor on the two axes Will pointed at). The supersession is recorded in
+    #     docs/WILL_RULINGS.md rather than resolved here.
+    eras = set()
     for d in _DIFFS:
-        problems.extend(_no_nerf_problems(db, CHAIN[d][5],
-                                          LEINTH_TABLES_BY_DIFF[d], d))
+        problems.extend(_post_wave_problems(db, CHAIN[d][5],
+                                            LEINTH_TABLES_BY_DIFF[d], d))
+        eras.add(_calibre_era(db, CHAIN[d][5], d))
+    # ONE calibre means one ERA too: a db where Normal was trimmed and Legendary was
+    # not is not "one apex calibre for the whole roster", it is two, and each
+    # difficulty would pass its own check in isolation.
+    if len(eras) > 1:
+        problems.append(
+            "the three difficulties are in DIFFERENT calibre eras (%s). R-72/R-99's "
+            "whole point is one shared calibre; a half-applied R-240 gives the roster "
+            "two, and every per-difficulty check above still passes."
+            % ', '.join('%s: %s' % (d, _calibre_era(db, CHAIN[d][5], d))
+                        for d in _DIFFS))
 
     if problems:
         raise SystemExit(
-            "[uber_apex_orb] R-72 + R-99 VERIFY FAILED (one apex calibre for the "
-            "WHOLE Toxeus roster and Leinth):\n  - " + "\n  - ".join(problems))
+            "[uber_apex_orb] R-72 + R-99 VERIFY FAILED, as amended by R-240 + R-241 "
+            "(one apex calibre for the WHOLE Toxeus roster and Leinth; since "
+            "2026-08-11 that shared calibre is the TRIMMED one, and the gate holds it "
+            "in both directions - see docs/WILL_RULINGS.md):\n  - "
+            + "\n  - ".join(problems))
+    # The PASS line NAMES THE ERA. "all four calibre knobs >= her original chest" is
+    # true only before R-240/R-241; printing it unconditionally on a trimmed db would
+    # be the gate telling the ship lane the opposite of what it just proved.
+    _era = sorted({_calibre_era(db, CHAIN[d][5], d) for d in _DIFFS})
+    _era_txt = (
+        "all four calibre knobs >= her original b96 chest (pre-R-240 calibre)"
+        if _era == ['pre-R-240'] else
+        "all four calibre knobs EXACTLY on the R-240/R-241 shared calibre - Leinth's "
+        "own b96 numbers put through the committed trim, so she and the roster are "
+        "still on ONE calibre and it is the LOWER one Will ordered on 2026-08-11 "
+        "(\"you made the orbs way too good\"); the absolute-floor half of R-72/R-99 is "
+        "SUPERSEDED, recorded in docs/WILL_RULINGS.md, and the unity half is proved "
+        "here twice (chest->table identity + one era across all three difficulties)")
     print("  [uber_apex_orb] verify OK: the DERIVED Toxeus roster is %d record(s) "
           "(%s) and EVERY one is on genericbossorb_05, with the orb05 carrier set "
           "EXACTLY equal to it (no scope creep); Leinth's 3 chests on the SAME "
-          "apex tables + level equation; chain resolves on n/e/l; all four "
-          "calibre knobs >= her original chest; her bespoke mesh/name/gold "
-          "generator intact and her variants still on her own proxy; no-nerf "
-          "proof green on all 6 loot groups x 3 difficulties; donor tiers intact "
-          "(orb04 %d other consumers, orb01 %d); R-48/R-91 100%% souls intact on "
-          "all 3 fought champions"
+          "apex tables + level equation; chain resolves on n/e/l; %s; her bespoke "
+          "mesh/name/gold generator intact and her variants still on her own proxy; "
+          "calibre proof green on all 6 loot groups x 3 difficulties; donor tiers "
+          "intact (orb04 %d other consumers, orb01 %d); R-48/R-91 100%% souls intact "
+          "on all 3 fought champions"
           % (len(roster), ', '.join(r.rsplit('\\', 1)[-1][:-4] for r in roster),
-             len(_orb04_consumers(db)), len(_consumers_of(db, ORB01))))
+             _era_txt, len(_orb04_consumers(db)), len(_consumers_of(db, ORB01))))

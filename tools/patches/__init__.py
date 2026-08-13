@@ -674,6 +674,46 @@ REGISTRY = [
                             # LAST, so it is the ratified final writer on its own field. A WARN
                             # naming a module that also writes perPartyMemberDropItemName on any of
                             # those 3 is a real finding: investigate before shipping.
+    'charon_rework',        # WILL 2026-08-11, verbatim: "the charon uber boss we created
+                            # needs to be re-worked, he is pretty much identical to the base
+                            # game charon boss we cloned him off. maybe we can replace him
+                            # with a different uber monster that is more unique". He is right
+                            # and the arz proves it: both our forms carried boss_charon_43 /
+                            # boss_charonform2_43's kit BYTE-FOR-BYTE (same skillNames, same
+                            # specialAttack rotation); the only authored deltas were life,
+                            # four resist floats, scale, actorHeight and one aura. Replaces the
+                            # encounter IN PLACE at the three frozen record paths with AKREMON,
+                            # THE GRASPING ROOT -> THE HEARTWOOD ABLAZE + 2 Handbriar champions:
+                            # Plant (race count in the 53-boss uber roster: ZERO), the mod's
+                            # ONLY Skill_DefensiveWall carrier, bleed-immune phase 1 that stops
+                            # being bleed-immune in phase 2. ARZ-ONLY - the Golden Bough
+                            # forecourt placement, its proxy/pool chain and the world chest are
+                            # REUSED, never rebuilt, so no map rebuild is implied.
+                            # ORDER IS LOAD-BEARING, both sides:
+                            #  * AFTER `uber_quest_drops` - that module REQUIRES the pre-rework
+                            #    um_charonform2_ferryman_99 to still carry the inherited
+                            #    perPartyMemberDropItemName it clears (it SystemExits if the
+                            #    field is already absent). Running after it means the leak is
+                            #    cleared on the old contents and the new donors carry no such
+                            #    field at all, which its verify() accepts.
+                            #  * BEFORE every breadth/derivation module (chest_loot_breadth,
+                            #    armor_loot_breadth, red_uber_orbs, orb_loot_breadth,
+                            #    orb_armor_rows) - those derive their scope FROM these monster
+                            #    records, so they must see the final contents at apply() AND
+                            #    verify() time or the two disagree.
+                            # It re-asserts DisplayAsQuestItem after its re-clone, because
+                            # `uber_quest_markers` (earlier) writes that field on these records
+                            # and its verify() re-derives on the final db.
+                            # Its verify() is the fail-loud gate: the proxy chain resolves to
+                            # the new boss on BOTH the forecourt and the TESTHUB yard, all three
+                            # guaranteed rewards stay wired (Golden Bough at Misc4 100%, the one
+                            # hoard chest, the soul), A9 render chain (own-rig clones only, no
+                            # invented actorHeight, no single-carrier skin), the crash laws, the
+                            # NEW strictly-ascending-life invariant over every svc_* Champion
+                            # escort (the shipped one was [878, 300, 400] - life FELL from Normal
+                            # to Epic, R-100 #18 as a measurable field), and an identity gate that
+                            # fails if any charon_* signature skill or shared cast rotation ever
+                            # comes back.
     'pc_dissolve_restore',  # PR-1 (Steam player fleurydid 2026-07-29, "quand je meurt tombe
                             # invisible"): the PLAYER goes INVISIBLE on death/respawn. The two
                             # ACTIVE PC records (femalepc01/malepc01) are taken verbatim from SV
@@ -999,6 +1039,97 @@ REGISTRY = [
                             # armor_loot_breadth.verify's distribution gate.
                             # Standalone: py tools/gate_loot_distribution.py <arz>;
                             # negatives: py tools/debug/negtest_armor_breadth.py <arz>.
+    'loot_volume_trim',     # R-240 (Will 2026-08-11): "we probably need to trip the
+                            # loot-volume trim, especially on the steam version where
+                            # maybe from the two chests, you get guaranteed 1 legendary
+                            # item. on the testhub version we can spawn more that is
+                            # fine." This is the say-so BL-R181-DEBT-5 was waiting for:
+                            # R-181 named numSpawn as the volume lever and refused to
+                            # pull it without Will, so three waves raised COMPOSITION
+                            # while volume stood still and the shipped b83 cage paid
+                            # 36.4 Legendary gear pieces for two chests opened once.
+                            # Non-reduction is suspended for VOLUME ONLY: this module
+                            # writes numSpawnMin/MaxEquation and nothing else, and its
+                            # own scope proof fails the build if any member, weight or
+                            # group chance moves - so every breadth and distribution
+                            # property b75-b83 shipped survives at lower volume, which
+                            # the two gates running after it re-prove on the same db.
+                            # ORDER IS LOAD-BEARING, LAST before the no-op 'visuals',
+                            # for two reasons: (1) volume is an OVERRIDE - the monolith
+                            # writes *2.4/*2.8 onto 27 hoard tables and polis_vault
+                            # writes the cage's own - so running last makes this the
+                            # single authority instead of something a later module
+                            # silently undoes (the BL-R181-DEBT-7 failure mode);
+                            # (2) the TESTHUB cage twin is CLONED from the finished
+                            # canonical chain, so it inherits every b75-b83 edit for
+                            # free and there is no second copy of the tuning to keep in
+                            # step. The twin is how "canonical trims, TESTHUB stays
+                            # rich" is expressed at all: one arz serves both map
+                            # variants, so the split has to live in the RECORDS, and
+                            # build_section_surgery.build_hub_extra_specs points the 4
+                            # TESTHUB-only duplicate placements at the twin. Canonical
+                            # B41_SPECS is untouched, so Levels_merged.arc stays
+                            # byte-identical and the Steam delta stays arz-only.
+                            # Its verify() also carries Will's 2026-08-11 artifact
+                            # ruling (tools/svc_chest_artifacts.py) - which is NOT a
+                            # no-op: 6 equippable artifacts are chest-reachable today
+                            # by R-185's design, so the gate pins them by name with a
+                            # re-derived rule and the residue is BL-R240-DEBT-2.
+                            # Standalone: py tools/gate_loot_volume.py <arz> (--apply
+                            # on a pre-wave arz, --calibrate to re-derive thresholds)
+                            # and py tools/gate_chest_artifacts.py <arz>; negatives:
+                            # py tools/debug/negtest_loot_volume.py <arz>.
+    'orb_legendary_chance', # R-241 (Will 2026-08-11), and it SUPERSEDES the b79 "orbs
+                            # stay generous" precedent wherever the two collide: "you
+                            # made the orbs way too good... those dont need to have
+                            # guaranteed legendary drops, they should just have a chance
+                            # to drop legendary items, but a low chance."
+                            # THE NUMBER HE ASKED FOR, measured on the shipped b83 arz:
+                            # THREE guaranteed-legendary rows in the whole orb surface,
+                            # one per difficulty, all of them group 4 of
+                            # svc_uberorb_apex_{n,e,l}01c at chance 100% where their five
+                            # sibling orb tables run the identical amulet/relic/ring row
+                            # at 12.7% or 21.2%; none is a PURE legendary row (0.44/5.25/
+                            # 6.28% legendary by weight).
+                            # THE ROW COUNT IS NOT WHERE THE GUARANTEE LIVED, which is
+                            # the finding: per ONE orb open b83 paid 2.58-6.29 legendary
+                            # items on Epic (93.6-99.9% chance of at least one) and
+                            # 3.74-8.43 on Legendary (98.4-99.99%) - six independent loot
+                            # groups over 5.06-10.58 spawn iterations, no 100% row
+                            # required. R-220's breadth gate, R-181's distribution gate
+                            # and R-240's volume gate were ALL green on that.
+                            # This module writes ONE field per census row - loot{g}Chance
+                            # - demoted to the richest NON-guaranteed chance that row
+                            # already carries in the orb family (21.2%), DERIVED from the
+                            # shipped bytes and cross-checked against the value the
+                            # contract was measured on. 3 records, 3 fields, 0 members,
+                            # 0 weights, 0 spawn equations: breadth and distribution
+                            # survive verbatim so the variety still lands WHEN a
+                            # legendary rolls.
+                            # With R-240's trim in the slot above, one open now pays
+                            # Normal 0.001-0.004 legendary / Epic 0.451-0.622 /
+                            # Legendary 0.699-0.846 - AT MOST ONE LEGENDARY ITEM PER OPEN
+                            # on Legendary difficulty against 8.43 shipped, a 90% cut.
+                            # ORDER IS LOAD-BEARING, immediately AFTER loot_volume_trim:
+                            # (1) armor_loot_breadth SKIPS the guaranteed row by design
+                            # (is_guaranteed_group - the WARDEN-theme lesson) and runs
+                            # far earlier, so it must still see group 4 at 100% or the
+                            # armour sweep would rewrite a theme row; (2) R-241's
+                            # readings are measured against R-240's TRIMMED spawn volume.
+                            # HONEST RESIDUE, not hidden: P(>=1 legendary) lands at
+                            # 54-61% on Legendary, which is not yet "a low chance". ~40%
+                            # of a Legendary orb's drop mass IS legendary-classified
+                            # because R-180/R-220 weighted svc_unique_weapons_l01 /
+                            # svc_unique_armor_l01 at ~47-50% of the weapon and shield
+                            # rows to buy class breadth. Going lower means scaling those
+                            # rows' chances, which divides D7b (worn-slot armour per
+                            # SPAWN ITERATION, asserted on all 63 surfaces) by the same
+                            # factor and reds armour parity on every orb - a COMPOSITION
+                            # decision in R-180/R-181/R-220's scope, priced for Will as
+                            # BL-R241-DEBT-1 rather than taken by a rate lane.
+                            # Standalone: py tools/gate_orb_legendary.py <arz>
+                            # (--census for Will's number, --calibrate, --apply);
+                            # negatives: py tools/debug/negtest_orb_legendary.py <arz>.
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

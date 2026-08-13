@@ -1,5 +1,72 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-240 + R-241 (2026-08-11): THE LOOT VOLUME TRIM - CHESTS AND ORBS BOTH COME DOWN ~10x
+> **NOT BUILT YET** (branch `fix/loot-volume-trim`; this note is written with the lane so the check is
+> ready when the build lands). arz-only - no map / quest / Text change on the canonical side.
+> **Fully quit TQ and restart Steam before testing** (standing rule). Every number below is MEASURED
+> against the shipped `build83` arz, not estimated.
+>
+> **Your two asks, and what each one did:**
+>
+> **1. "from the two chests, you get guaranteed 1 legendary item" (R-240).**
+> The canonical Gaoler cage, both chests opened once, on Legendary difficulty: it paid **36.4**
+> legendary-grade pieces and now pays **3.8** (Normal 43.7 -> 3.8, Epic 28.2 -> 2.7). It still pays at
+> least one **99.6%** of the time on the optimistic reading, or **98.3%** if the engine truncates the
+> spawn count to a whole number (Epic: 96.9% vs **94.0%**) - we do not yet know which it does, so both
+> are gated and the pessimistic one is quoted alongside, because that is the number the gate actually
+> holds (`BL-R240-DEBT-5`). Either way the guarantee survives the cut. Honest note: the mechanical floor
+> is **2.74** per two-chest run, not 1.0 - six loot groups fire per spawn iteration and their chances
+> already sum past 280%, so "literally one" needs a composition change, not a volume one. That is
+> `BL-R240-DEBT-1`.
+>
+> **2. "you made the orbs way too good ... a chance to drop legendary items, but a low chance" (R-241).**
+> **The number you asked for first: THREE guaranteed-legendary rows in the whole mod** - one per
+> difficulty, all of them the same row on the three apex orb tables, and none of them a pure-legendary
+> row. **They are all gone now (zero).**
+> But the row count was not where the guarantee lived. Per ONE orb open on Legendary difficulty an orb
+> paid **3.7 to 8.4 legendary items** with a **98-99.99%** chance of at least one. It now pays
+> **0.70 to 0.85 - at most ONE legendary per open** - and the whole orb pays about **2 items** instead
+> of 9 to 29.
+>
+> **WHAT TO DO:**
+> - Kill a **Mystical Orb uber** a few times on Legendary and open the orbs. Expect roughly **two items**
+>   out of each, and **at most one of them legendary** - that is the half of your ruling that landed
+>   (8.4 legendary items per open became 0.85). Do NOT expect a legendary to feel rare yet: **a bit
+>   over half of opens still contain one**, which is the half that did not land. See the box below -
+>   it needs a decision from you, and the number there is the one to judge, not this bullet.
+> - Run the **Gaoler cage** (the two canonical chests). Expect a **handful** of pieces, not a vendor's
+>   stock, and still at least one legendary almost every run.
+> - Anything you can still get, you could get before: **no pool lost an item and no weight moved.** The
+>   spear variety, the armour parity and the class breadth from the last few builds are all intact - they
+>   just arrive less often. If some class of item has stopped appearing entirely, that is a real bug.
+>
+> **⚠️ THE ONE THING I DID NOT FULLY FIX, AND IT NEEDS YOUR ANSWER BEFORE THIS SHIPS
+> (`BL-R241-DEBT-1`).**
+> You asked for two things about the orbs and I only delivered one. **Delivered:** no guaranteed
+> legendary rows (3 -> 0) and 8.4 legendary items per open -> 0.85. **Not delivered:** "but a low
+> chance". The chance of seeing at least one legendary from an orb is still **54-61%** on Legendary
+> and **38-49%** on Epic. **That is more likely than not, so it is not a low chance, and I am not
+> pretending it is.**
+>
+> The reason: about **40% of everything a Legendary-tier orb can pay IS legendary-grade**, because the
+> last few builds deliberately weighted the unique weapon and armour pools that heavily to give you the
+> class variety you asked for. So if the orb pays two items, one of them is often legendary. The volume
+> lever is spent - the orbs are already at the floor where they would start coming up EMPTY - so
+> dropping the rate further means changing WHAT is in the pools rather than how much, which re-opens
+> the armour-parity work. That is a separate lane and your call:
+> **(A)** accept it - you get ONE legendary instead of EIGHT, and roughly every other orb has one, or
+> **(B)** I add an epic-grade sibling pool so an orb usually pays Epics with an occasional legendary.
+>
+> If you pick **(B)**, the ceiling the gate currently commits (`ORB_MAX_P_LEGENDARY` = 55%/68%) comes
+> down in the same commit as the fix. It is set where it is to lock in the 90% cut already made, **not
+> because 55-68% is a rate anyone chose.**
+>
+> **On the TESTHUB (DEV) side nothing gets poorer:** the four farm-duplicate cage chests are being moved
+> onto their own records that keep the OLD, rich volume, so DEV farming stays fast while the Steam build
+> trims. That needs the TESTHUB map rebuilt to take effect; until then the DEV cage trims with canonical
+> (under-pays rather than over-pays, which is the safe direction).
+
+
 > ## 🆕 R-211 (2026-08-11): ATLANTIS IS UNREACHABLE NOW, THE SHIP TOO (not just the portal page)
 > **✅ LIVE ON DEV as `build82` (arz `09a0f51d`).** arz-only (no map / quest / Text change).
 > **Fully quit TQ and restart Steam before testing** (standing rule).
@@ -97,7 +164,7 @@
 > | tier 3 - Inkeyes, Palai, Xaiweng, the General's Guardians | 96 -> **180** | 71 -> **96** | 196 -> **262** | 0 -> **18 / 9 / 22** |
 > | tier 4 - the custom apex roster (**Unbound Gaoler**, Tantalus Unbound, Mnemophage Core, Aithon, Dagon, Helepolis, Ephialtes, Kravmoloch, Sarkoth, Vashkarr, Ilsevar, Gorrahk, Voranthys, Broodmother, Drowned King, Hades Marshal, Bloodcrow...) | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
 > | tier 5 - the Toxeus roster | 181 | 116 | 308 | already fine (R-180) |
-> | Charon's Essence - the Ferryman's terminal form | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
+> | Charon's Essence - the Golden Bough terminal form (🆕 R-231: that form is now **Akremon, the Heartwood Ablaze**; the ORB keeps its shared base-game "Charon's Essence" display string, logged `BL-BOUGH-DEBT-4`) | 99 -> **181** | 95 -> **116** | 258 -> **308** | 0 -> **18 / 9 / 22** |
 >
 > **EASIEST CHECK - it is the SAME TRIP you are already doing for R-180.** In the **Prison of Souls**
 > (Hades Palace floor 4), killing **Alkyoneus the Soul-Gaoler** finishes on his Unbound form, and the
@@ -545,7 +612,7 @@ learn where everything is, and **walk in** to the boss yourself.
 | **Traveler: Blood-Cave Warband** | the blood-cave connection chamber at the **regular demon pack** (~35u off the Enslaver horde) | walk up to the Enslaver warband (skeleton leader + 4 marauders) |
 | **Traveler: Medea Tomb (Dorus)** | the tomb **entrance** (cryptentrance), amid the drowned court | walk ~82u to **Dorus, the Drowned King** + hoard |
 | **Traveler: Den of Tantalus** | the Styx swamp-**stairs entrance**, amid anouran | walk ~36u to **Tantalus, the Insatiable** (2 forms) + hoard |
-| **Traveler: Golden Bough (Charon)** | the Styx **Hades-city settlement** (the boatman, storyteller + a Styx rift-shrine) | test the settlement NPCs; walk east to **Charon, the Unferried** + the Golden Bough |
+| **Traveler: Golden Bough (Akremon)** | the Styx **Hades-city settlement** (the boatman, storyteller + a Styx rift-shrine) | test the settlement NPCs; walk east to **Akremon, the Grasping Root** + the Golden Bough. 🆕 R-231: Charon is OUT of this forecourt entirely - the traveler NPC was renamed with him |
 | **Traveler: Pools of Mnemosyne** | the Mnemosyne cave **stairs-up entrance** | walk ~20u to **The Mnemophage** (boss-glyph ring) |
 | **Traveler: Dread Halls (Ephialtes)** | the Dread Halls **stairs-up entrance** | walk ~130u SW to **Ephialtes, the Waking Dread** in the deep vault |
 
@@ -610,9 +677,38 @@ New build36 uber bosses (mainline Act 4, all with hoards/orbs/souls; also reacha
 11. **Tantalus, the Insatiable** - the Den of Tantalus (Styx marsh border, Act 4). TWO FORMS -
     kill him and "Tantalus, the Hunger Unbound" rises; shade waves accelerate as he weakens.
     Soul of the Insatiable (summons a Famished Shade; negative life regen downside) + hoard.
-12. **Charon, the Unferried** - the Golden Bough forecourt (Styx river edge, Act 4). TWO PHASES,
-    ~60k total; drowned-oarsman escorts; drops the Soul of the Unferried (raises an oarsman) +
-    THE GOLDEN BOUGH amulet + the Ferryman's Toll hoard.
+12. 🆕 **Akremon, the Grasping Root** - the Golden Bough forecourt (Styx river edge, Act 4).
+    **REWORKED under R-231 (your 2026-08-11 order): Charon is GONE from this forecourt.** The
+    same shrine, the same walk, an entirely different fight. A colossal black tree with every
+    hand that ever reached for the Bough grown into it. TWO PHASES: phase 1 is **bleed-IMMUNE**
+    (park the bleed spears), roots you in place, and grows a literal wall of quillvines between
+    you and it - the only monster in the mod that builds terrain. At 33% life the bark splits, the
+    thorns come out and it starts hitting **35% harder** - deliberately no damage shield and no
+    self-heal, so it gets more dangerous without getting less killable. Kill it and **Akremon, the
+    Heartwood Ablaze** walks out of the trunk:
+    faster, on fire, and **NOT bleed-immune** - the build you shelved gets the kill. Two
+    **Handbriar** champions whip alongside.
+    **THE SECOND SWAP, and please poke at it:** the tree is **weak to fire and cold (-30 each)**
+    and the thing that comes out of it **resists fire (+70)**. So burning phase 1 down should feel
+    great and then stop working, the same way the bleed spears do in reverse. Both forms are
+    **resistant but not immune** to stun/freeze/traps (75/60/60) - deliberately not the old
+    Charon's flat 100 immunity, so your control skills should land *sometimes*. If either phase
+    feels perma-lockable, or if the fire swap just reads as "phase 2 is annoying", say so.
+    **35,000 on Epic across both forms, matched exactly to Alkyoneus the Soul-Gaoler** (the fight
+    you beat on the second attempt) - so it should be hard, and it should die. Tell us if it is a
+    wall; that is the number we most want checked.
+    Drops **THE GOLDEN BOUGH** amulet (guaranteed), the **Soul of the Grasping Root** (grants
+    "Graft the Burning Heartwood" - a permanent burning cutting that walks for you; the soul roots
+    what you strike and costs you **8/6/5% movement speed** as the price), and the hoard chest,
+    now labelled **"The Orchard of Hands"**. The names are our invention and are yours to veto.
+    ⚠️ **Check the soul's tooltip specifically.** Through rounds 3 and 4 that movement penalty was
+    written into the wrong field and **did not exist** while three documents said it did; round 5
+    measured it against all 2,453 souls in the mod and moved it onto the field
+    `mnemophage_soul_*` uses. It should now read as a real movement penalty on the item. If the
+    tooltip shows nothing, the fix did not land.
+    The boss drops **no ordinary junk loot** on either form - that is deliberate (it matches what
+    the old Charon paid, and the payout is the Bough + the hoard + the soul + the orb). If that
+    feels stingy for an uber, say so and it flips back on in one line.
 13. **The Mnemophage** - the Pools of Mnemosyne temple underground (Act 4 Judgment). Memory-
     drinking horror; shell-then-core; cooldown-reduction amulet + soul.
 14. **Ephialtes, the Waking Dread** - the Dread Halls terminal vault, back corner (Judgment stone

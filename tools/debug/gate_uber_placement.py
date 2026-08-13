@@ -114,7 +114,7 @@ EXPECTED_AREA = {
     'medea_templeug_tomb03.lvl':                ('M4 Kroisos the Coin-Drowned', 'Great Hall of Propontis'),
     'styx_caveug_frogcamp02.lvl':               ('M5 Tantalus the Hunger Unbound', 'Den of Tantalus'),
     'styx_swampborder_01.lvl':                  ('M5 Tantalus (RETIRED outdoor spot)', 'Den of Tantalus'),
-    'styx_riveredge_01.lvl':                    ('M6 Charon / Soul of the Unferried', 'Shrine of the Golden Bough'),
+    'styx_riveredge_01.lvl':                    ('M6 Akremon the Grasping Root / Soul of the Grasping Root', 'Shrine of the Golden Bough'),
     'judgment_templeug_mnemosyne01.lvl':        ('M7 The Mnemophage', 'Lower City of Lost Souls'),
     'judgment_stonecity_exit01.lvl':            ('M8 Ephialtes, the Dread', 'The Dread Halls'),
     'hadespalace_floor04_01.lvl':               ('Alkyoneus the Soul-Gaoler', 'Prison of Souls'),
@@ -166,7 +166,7 @@ ACCEPTED_ON_PATH = {
         'Shrine of the Golden Bough forecourt - a destination shrine between two colossal '
         'statues, chosen over the tighter summit. Will-call.',
     ('styx_riveredge_01.lvl', 'svc_charon_chest.dbr'):
-        'Rides the Charon/Unferried encounter above.',
+        'Rides the Akremon / Golden Bough encounter above (R-231: was Charon).',
     ('tombobs02.lvl', 'q_obs_roulette_a.dbr'):
         'Obsidian roulette CORNER - a random 25% mini-event prop, not an uber monster we '
         'place. The 4 corners deliberately span both Obsidian levels.',

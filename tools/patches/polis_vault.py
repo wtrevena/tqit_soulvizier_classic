@@ -229,6 +229,38 @@ _VARIANTS = ('a', 'b', 'c')          # 'a' KEEPS the shipped record paths (T5 / 
 _DIFFEQ_FIELDS = ('difficultyEquationFile', 'difficultyLimitsFile')
 
 
+# ── T5's two eras (R-240, Will 2026-08-11) ───────────────────────────────────
+# See the long note in verify()'s T5 block for WHY the check is two-era. These two
+# helpers exist so the expected numbers are DERIVED through R-240's own transform
+# rather than re-typed here: `svc_loot_volume.trimmed_multipliers` is the single
+# implementation the trim itself writes with, so T5 and the trim cannot drift apart.
+# The gate_relic_difficulty_tiers precedent - one implementation, two callers.
+def _t5_mult(eq):
+    """The multiplier of a `(<bracket>)*<M>` equation, rendered the way the records
+    render one ('2.4', '0.2188'), or None if the equation is not that shape."""
+    import svc_loot_volume as SLV
+    p = SLV.parse_eq(eq)
+    if p is None:
+        return None
+    return SLV.format_eq('', p[1]).lstrip('*')
+
+
+def _t5_expected(min_eq, nmin, nmax, tier):
+    """((pre_lo, pre_hi), (post_lo, post_hi)) as rendered strings, or (None, None).
+
+    `pre` is the shipped `_PLACED_TIERED` richness; `post` is what R-240's trim
+    computes from it for this difficulty, floor and rounding included. Both are
+    exact strings - T5 compares for equality, never for a range."""
+    import svc_loot_volume as SLV
+    p = SLV.parse_eq(min_eq)
+    if p is None:
+        return None, None
+    bracket = p[0]
+    lo, hi, _marks = SLV.trimmed_multipliers(bracket, nmin, nmax, tier)
+    fmt = lambda m: SLV.format_eq('', m).lstrip('*')
+    return (fmt(nmin), fmt(nmax)), (fmt(lo), fmt(hi))
+
+
 def _tier_table(N, tier, variant):
     r"""Loot-table path for one (chest, difficulty, variant). Variant 'a' reuses the
     SHIPPED paths so the Legendary chain still reaches polisvault_0N (verify T5) and
@@ -774,26 +806,95 @@ def verify(db, tags):
                     problems.append("T4 %s -> %s loot3Chance=%r, expected 100"
                                     % (cpath, lt, ch3))
         # T5 - the Legendary chain reaches polisvault_0N (variant a), and every
-        #      Legendary variant carries the placed chest's numSpawn richness.
+        #      Legendary variant carries the committed numSpawn richness for its era.
+        #
+        # ⚠ AMENDED BY R-240 (Will 2026-08-11), recorded verbatim in
+        #   docs/WILL_RULINGS.md under "R-240 AMENDS R-181's non-reduction AND this
+        #   gate". Read that entry before touching this block.
+        #
+        #   T5 used to assert `numSpawnMin/MaxEquation` ends with the literal shipped
+        #   multiplier from `_PLACED_TIERED` ("payout must never shrink"). That was a
+        #   correct reading of the law THEN: non-reduction was in force and nobody had
+        #   authorised a volume cut. Will has now authorised exactly that cut, for the
+        #   canonical cage specifically - "from the two chests, you get guaranteed 1
+        #   legendary item" - so a gate whose failure message is "payout must never
+        #   shrink" would abort the build that carries his own ruling. Deleting the
+        #   check instead would be worse: it is the only thing standing between the
+        #   cage and a silent starve.
+        #
+        #   So it is AMENDED, not relaxed. What T5 protects is unchanged in substance:
+        #   every one of the 18 cage tables carries the SAME, DERIVABLE richness its
+        #   placed chest was specced with, and no variant is quietly starved relative
+        #   to its siblings. What changes is that the expected value is now computed
+        #   through R-240's own transform (`svc_loot_volume.trimmed_multipliers`, the
+        #   single implementation the trim itself writes with) rather than read off a
+        #   b83 literal. Two discrete values are accepted per field and no others -
+        #   the PRE-R-240 shipped multiplier and the POST-R-240 committed one - so
+        #   this is still an exact-match ratchet, not a band.
+        #
+        #   TWO REASONS THE TWO-ERA FORM IS THE RIGHT ONE, not a convenience:
+        #     1. The ship lane runs every coexisting gate against the ROLLBACK artifact
+        #        as an anti-inert control. A gate that only knows the post-R-240 value
+        #        reds on the previous ship arz and the control becomes noise - the
+        #        exact hazard the round-3 vet raised against `gate_loot_distribution`'s
+        #        D7X2 (BL-R240-DEBT-8).
+        #     2. A PARTIAL trim is a real defect and neither single-era form catches
+        #        it. T5b below asserts all 18 tables agree on their era, so a wave that
+        #        trims some variants and misses others reds by name - something the
+        #        original literal check could not do either.
         leg_cont = _tier_container(N, 'l', 'a')
         leg_tbl = _scalar(db.get_field_value(leg_cont, 'tables')) if db.has_record(leg_cont) else None
         want_leg = rf'{L}\polisvault_{N}.dbr'
         if str(leg_tbl or '').replace('/', '\\').lower() != want_leg.lower():
             problems.append("T5 %s Legendary tables=%r, expected the shipped %s"
                             % (leg_cont, leg_tbl, want_leg))
+        eras = {}
         for tier in ('n', 'e', 'l'):
             for v in _VARIANTS:
                 tbl = grdt.real(db, _tier_table(N, tier, v))
                 if not tbl:
                     problems.append("T5 loot table MISSING: %s" % _tier_table(N, tier, v))
                     continue
-                for field, want in (('numSpawnMinEquation', nmin),
-                                    ('numSpawnMaxEquation', nmax)):
-                    got = str(_scalar(db.get_field_value(tbl, field)) or '')
-                    if not got.endswith('*%s' % want):
-                        problems.append("T5 %s %s=%r, expected the placed chest's "
-                                        "richness *%s (payout must never shrink)"
-                                        % (tbl, field, got, want))
+                got_min = str(_scalar(db.get_field_value(tbl, 'numSpawnMinEquation')) or '')
+                got_max = str(_scalar(db.get_field_value(tbl, 'numSpawnMaxEquation')) or '')
+                pre, post = _t5_expected(got_min, nmin, nmax, tier)
+                if pre is None:
+                    problems.append(
+                        "T5 %s numSpawnMinEquation=%r does not have the "
+                        "`(<bracket>)*<M>` shape R-240 trims and T5 reads. An "
+                        "unparseable equation is NOT waved through: it is the "
+                        "build28/29/30 numSpawn-evaluates-to-0 P0 wearing a "
+                        "different hat." % (tbl, got_min))
+                    continue
+                era = None
+                for name, (want_lo, want_hi) in (('pre-R-240', pre), ('R-240', post)):
+                    if (_t5_mult(got_min) == want_lo and _t5_mult(got_max) == want_hi):
+                        era = name
+                        break
+                if era is None:
+                    problems.append(
+                        "T5 %s numSpawn=*%s/*%s, expected either the pre-R-240 "
+                        "shipped richness *%s/*%s or R-240's committed trim "
+                        "*%s/*%s for tier %s. The cage may be trimmed to Will's "
+                        "2026-08-11 ruling or left at its shipped volume; it may "
+                        "not sit at a third number nobody chose."
+                        % (tbl, _t5_mult(got_min), _t5_mult(got_max),
+                           pre[0], pre[1], post[0], post[1], tier))
+                    continue
+                eras.setdefault(era, []).append(SLB._n(tbl).rsplit('\\', 1)[-1])
+        # T5b - ALL of this chest's tables are in the SAME era. A half-applied trim
+        #       (some variants trimmed, some not) passes T5 table-by-table and is
+        #       still a starved cage, so it gets its own check and its own message.
+        if len(eras) > 1:
+            problems.append(
+                "T5b chest_%s is HALF-TRIMMED: %s. Every variant of every difficulty "
+                "must be in one era - a cage whose 'b'/'c' variants kept their "
+                "shipped volume while 'a' was trimmed pays a different amount "
+                "depending on which weighted variant the proxy rolled, which is the "
+                "BL-R181-DEBT-7 failure mode (a surface silently left behind by a "
+                "sweep that reported success)."
+                % (N, '; '.join('%s: %s' % (k, ', '.join(sorted(v)))
+                                for k, v in sorted(eras.items()))))
 
     # T6 - the map half.
     try:

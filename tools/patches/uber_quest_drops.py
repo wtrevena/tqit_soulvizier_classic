@@ -107,8 +107,18 @@ _GIG = r"records\xpack\creatures\monster\gigantes"
 
 LEAKS = [
     {
+        # Will 2026-08-11 (the Golden Bough rework): this record path is FROZEN
+        # but its CONTENTS are no longer Charon - `tools/patches/charon_rework.py`
+        # rewrites it in place as "Akremon, the Heartwood Ablaze" from the DRX
+        # ember oak, which carries no `perPartyMemberDropItemName` at all.
+        # THIS ROW STAYS AND IS STILL LOAD-BEARING: charon_rework is registered
+        # AFTER this module precisely so this clear still runs against the
+        # pre-rework contents (apply() SystemExits if the field is already gone,
+        # which is the correct alarm if the ordering is ever changed). After the
+        # rework the field is absent rather than empty, which verify() accepts.
+        # If charon_rework is reverted, this row is needed unchanged.
         "record": _CHARON + r"\um_charonform2_ferryman_99.dbr",
-        "name_tag": "tagSVCMonsterCharonFerryman",
+        "name_tag": "tagSVCMonsterAkremonBlaze",   # was tagSVCMonsterCharonFerryman
         "item": _Q + r"\xsq12_charonsoar.dbr",
         "item_label": "Charon's Oar",
         "reported_by_will": True,
