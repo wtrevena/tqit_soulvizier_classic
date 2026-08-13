@@ -923,6 +923,50 @@ def main():
     print(f'  appended GROUPS record {_duister_rec["name"]!r} cat={_duister_rec["category"]!r} '
           f'(count {_g_count} -> {_g_count + 1}, +{len(_rec_bytes)} B)')
 
+    # --- 2c-r246. R-246 RETURN RIFT SHRINES: the GROUPS half (2026-08-13) ---------------
+    # One 1-member 'TeleportShrine' record per R-246 shrine (Duister byte-shape). The 0x05
+    # half (a NEW flags=1+uid teleportshrineorient01 instance) is injected via INJECT_SPECS
+    # / the TESTHUB fold. Canonical shrines (uber crypt + SC2) go in BOTH variants;
+    # hub_only shrines ONLY when SVC_TEST_HUB=1 (flag-OFF byte identity: the canonical
+    # GROUPS carries exactly the 2 canonical records). Level GUIDs are resolved from the
+    # MERGED index (AE keeps its GUIDs incl. the R09 swap; SV-only keep SV GUIDs) - a
+    # missing level fails LOUD.
+    from build_section_surgery import R246_SHRINE_SPECS, build_r246_shrine_group_record
+    print('=== C2c-r246: R-246 rift-shrine GROUPS records (TeleportShrine network) ===')
+    _guid_by_key = {}
+    for _lv in ae_levels:
+        _ints = struct.unpack_from('<13I', _lv['ints_raw'], 0)
+        _guid_by_key[_lv['fname'].replace('\\', '/').lower()] = struct.pack('<4I', *_ints[9:13])
+    for _lv in sv_only:
+        _ints = struct.unpack_from('<13I', _lv['ints_raw'], 0)
+        _guid_by_key[_lv['fname'].replace('\\', '/').lower()] = struct.pack('<4I', *_ints[9:13])
+    _added_r246 = 0
+    for _spec in R246_SHRINE_SPECS:
+        if _spec['hub_only'] and not USE_HUB:
+            continue
+        _gk = _spec['level_key'].replace('\\', '/').lower()
+        if _gk not in _guid_by_key:
+            raise SystemExit(f'R-246 shrine {_spec["label"]}: host level {_gk} not in the '
+                             f'merged LEVELS index - cannot wire its GROUPS record')
+        _rec = build_r246_shrine_group_record(_spec, _guid_by_key[_gk])
+        _nb = _rec['name'].encode('ascii')
+        _cb = _rec['category'].encode('ascii')
+        assert _nb not in merged_groups, f'GROUPS already contains {_rec["name"]!r}'
+        _rb = (struct.pack('<I', _rec['sub_count'])
+               + struct.pack('<I', len(_nb)) + _nb
+               + struct.pack('<I', len(_cb)) + _cb
+               + struct.pack('<I', _rec['member_count'])
+               + _rec['raw_data'])
+        _gc = struct.unpack_from('<I', merged_groups, 4)[0]
+        _mg = bytearray(merged_groups + _rb)
+        struct.pack_into('<I', _mg, 4, _gc + 1)
+        merged_groups = bytes(_mg)
+        _added_r246 += 1
+        print(f'  appended GROUPS record {_rec["name"]!r} uid={_spec["uid"].hex()[:12]}.. '
+              f'pos={_spec["pos"]} (count {_gc} -> {_gc + 1})')
+    print(f'  R-246 shrine GROUPS records appended: {_added_r246} '
+          f'({"TESTHUB (canonical 2 + hub)" if USE_HUB else "canonical 2"})')
+
     # --- 3. SD: SV's (blood cave zone definitions) ---
     sv_sd = sv_data[sv_sec[SEC_SD]['data_offset']:
                     sv_sec[SEC_SD]['data_offset'] + sv_sec[SEC_SD]['size']]
