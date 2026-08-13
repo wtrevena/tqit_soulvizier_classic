@@ -6938,6 +6938,277 @@ Also disclosed (intrinsic, not a defect): raising the gear rows raises total gea
 
 **GATE:** `tools/verify_soul_drop_rates.py` reads the two rates from the constants (no literals), so it asserts every fixed boss = `SOUL_RATE_FIXED_BOSS` (10) and every non-fixed = `SOUL_RATE_NONFIXED` (20), all pins intact, with planted negatives that RED if a fixed boss is off 10, a non-fixed off 20, or any pin moves (the honour-guard negative was corrected: it now plants the non-fixed rate, because planting a bare 10 would - correctly - no longer red under R-243).
 
+---
+
+## R-244 [2026-08-11] IMPLEMENTED (branch `fix/supra-legendary-gate`, module `tools/patches/supra_recipe_laws.py`) - the three supra-craft laws
+
+> **NUMBERING NOTE (2026-08-12): this ruling was authored as R-231 on the `fix/supra-legendary-gate`
+> lane (cut from build84-dev `7459e22`). In parallel `feat/charon-rework` independently minted **R-231**
+> for the Golden Bough rework, which SHIPPED as build85 and owns R-231 (with its R-231-A..I amendments).
+> Reconciling this lane onto build87 (`main` tops out at R-243) collided the two, so the supra ruling was
+> renumbered to the next free number **R-244** and its four debts moved **BL-R231-DEBT-1..4 ->
+> BL-R244-DEBT-1..4**. Ruling numbers are docs-only: the CONTENT below is unchanged and the .arz is
+> unaffected. Process law #1: rulings are never silently collided.**
+
+**WILL, VERBATIM, LAW A:**
+> "ok for the four epic craftable reagent's, we need to change it so that one of the items needed to
+> craft the formula needs to be found in legendary like the rest of the craftable supra recipes."
+
+**WILL, VERBATIM, LAW B:**
+> "each craftable supra should have different requirements (we should not have two formulas that both
+> require stymphalian, plisskey, and deathweavers legtip)"
+
+**WILL, VERBATIM, LAW C:**
+> "the last word should not be dropped in epic, only legendary"
+
+**THE LAWS, stated so a later lane cannot re-break them:** every one of the supra recipes names at
+least one reagent whose only obtain paths are Legendary-tier; no two supra craftables name the same
+reagent set; and no supra ITEM is reachable from a Normal- or Epic-tier loot surface.
+
+**WHAT WAS WRONG, measured on the build83 ship arz `44499f56` (51,253 records).** LAW A: 4 offenders,
+exactly the four thrown Will named; the other 38 were already gated. LAW B: **5 duplicate groups over
+15 of the 42 craftables** - a SIX-way axe group Will did not know about, a three-way mace group, and
+three pairs including his own example. LAW C: 4 offenders; the supra thrown sat on
+`svc_unique_thrown_e01` as well as `_l01`, and through `svc_unique_weapons_e01` that Epic membership
+reached **all 16 Epic chest surfaces, via 24 loot tables** (every Epic mod chest, general's hoard,
+polis vault, the blood-cave mega chest, the Epic uber orb tables). *(Round-2 correction: round 1 wrote
+"51 surfaces" here and in three other places. 51 was the item's TOTAL pre-fix loot-table closure
+across BOTH the Epic and the Legendary path; post-fix the closure is 27, all Legendary, so the
+Epic-specific part was 24 tables. 51 is separately the mod's whole chest-surface count - 16 N + 16 E +
+19 L - which is how the two got conflated. Measured post-fix: `svc_wep_lastword` surf n=0 e=0 l=19.)*
+**There is no name collision**: exactly one record in the
+database is named The Last Word, `records\drxitem\supra\svc_wep_lastword.dbr`. **No monster pays any
+supra**, and Normal was already clean.
+
+**THE FIX: 14 formula fields and 4 loot memberships. No new record, no formula/result change.**
+
+**LAW C IS A RELOCATION, NOT A RETIREMENT.** "only legendary" leaves `svc_unique_thrown_l01`
+untouched, so R-186's own ask ("make the legendary thrown weapons droppable") still holds at the tier
+Will kept it for. Rule S4c fails the build if a later lane finishes the job Will did not ask for.
+R-180/R-186 non-reduction is SUPERSEDED for these four memberships and nothing else; every surviving
+member of the Epic thrown table GAINS share (total 155 -> 115).
+
+> **LAW A IS PER-RECIPE BECAUSE THE ONE-MOVE FIX COLLIDES WITH LAW C, and this is the reusable
+> lesson.** Promoting the shared `u_vit_wand` off the Epic thrown table would have fixed all four
+> recipes with one membership and no formula edit - and it reds C1 on every Epic mod chest in the
+> game. The ENTIRE `WeaponHunting_RangedOneHand` universe at `itemClassification = Legendary` is
+> **five records**: `u_vit_wand` plus the four supra thrown. `TARGET_IC['e']` is Legendary, so C1
+> ("the thrown class is payable at its own tier") can only ever be satisfied by one of those five.
+> LAW C removes four; promoting `u_vit_wand` removes the fifth. **Before promoting a shared reagent
+> out of a tier, count how many records of its CLASS remain at that tier's target classification.**
+
+**GATES (fail-loud, in the craft gate family; `tools/svc_supra_recipes.py` is the one implementation
+shared by the in-build gate, the standalone gate and the negatives):** S1 Legendary-only reagent per
+recipe; S2 reagent-set uniqueness (+S2b two formulas of one craftable must agree); S3 every
+replacement resolves, is not one of the 13 dead `records\equipmentweapon\axe\` twins, and is
+Legendary-reachable; S4 no supra item below Legendary (+S4b the 38 craft-only supras named by no loot
+table at all, +S4c the four stay droppable on Legendary). **13/13 negatives behave** (corrected in
+place: this line read 10/10 from round 1 and the round-2 delta table read 12/12; the current suite is
+13/13), N1 being the shipped defect replanted byte-for-byte.
+
+**S3 EARNED ITS KEEP DURING THE LANE:** the in-flight LAW B table pointed Ten Suns' Wrath at
+Zhurong's Firebow, which an EPIC chest pool reaches - it would have de-duplicated the recipe while
+adding no gate. The pick is now Qin Warbow (Legendary-only, and Hou Yi's myth is Chinese anyway).
+
+**SPEAR ORPHAN CENSUS (Will, same session: "are there any other orphaned spears that we can make
+craftable supra formulas for?") - ANSWER: THERE ARE NONE, and the number is zero rather than small.**
+Measured: **0** Legendary-classification spears that nothing in the database names; **0** spear
+records in a dead twin folder (`records\equipmentweapon\` contains ONE subfolder, `axe`, with 151
+records - the axe case that produced 14 dead axes has no spear equivalent); 22 of the 24 Legendary
+spears are chest-reachable and the other 2 are already purposed (`drxitem\supra\wep_spear` = Blood
+Whisper, the craft-only supra; `svc_l_runbreaker` = the mod's own guaranteed drop). Of 32
+Epic-classification spears exactly 2 sit outside the chest pools and both are purposed. The
+`\spear\default\` (**102** records, corrected from 101) and `\spear\old\` (39) records are base
+random-generation art and dev-era duplicates: **0 of the 141 carry an `itemLevel`**, which is what
+settles that they are not orphaned uniques. *(Round-2 correction, re-measured independently on the
+same arz: `\spear\default\` = **102** records with `itemLevel` 0 and `itemNameTag` **0**;
+`\spear\old\` = 39 records with `itemLevel` 0 and `itemNameTag` **39**. Round 1 wrote "101" and "no
+unique name tag"; the count was off by one and the name-tag half is **false for `old\`**. The
+conclusion stands on the `itemLevel` evidence alone. Full class split for the record:
+`WeaponHunting_Spear` = 301 records, Common 129 / Epic 32 / Legendary 24 / Rare 14 / unclassified
+102, which matches the round-1 Legendary and Epic counts exactly.)*
+
+**ROUND-2 CORRECTION TO THE SPEAR COST ESTIMATE - Will was quoted a price our own shipped code
+disproves.** Round 1 concluded new spear supras "would have to be authored from scratch (new item
+records + new Text tags + **art**)". The art claim is wrong: `tools/patches/uber_orphan_weapons.py`
+(b66) already promoted 14 weapons to the supra tier and its docstring states every result "KEEPS its
+orphan's mesh/skin/icon (**no new art** - Will's efficiency law)". Stronger still, **3 of those 14 -
+Hati, Sword Fish, Di Jun's Pride - were BASE-GAME-ONLY records absent from this mod's database
+entirely**, reconstructed verbatim from the bundled dump `tools/patches/data/b66_orphan_donor_fields.json`
+(verified: exactly the 3 keys `hati`, `swordfish`, `dijunspride`). So the donor pool is **not** limited
+to orphans already in this arz, and no art work is implied. The honest per-spear cost is **a result
+record cloned from a donor + one Text tag + a formula shell + the loot wiring the other 42 already
+have**. What remains true is that **no spear orphan exists inside this database**.
+
+**AND THE BASE GAME WAS THEN CENSUSED TOO, WHICH ROUND 1 NEVER DID - THE ANSWER IS STILL NO.** The
+corrected cost only matters if a donor exists, and the b66 precedent said donors may live outside this
+arz, so the base game's own `database.arz` was measured directly: **440 `WeaponHunting_Spear` records,
+of which exactly ONE named Epic/Legendary record is referenced by nothing at all** -
+`testpoisonspear`, itemLevel 52, `itemNameTag` = **"BEST SPEAR EVER"**. That is a developer test
+asset, not shippable content, and it is the entire pool.
+
+**So round 1's ANSWER was right and only its REASONING was too narrow.** There are no orphaned spears
+to promote, in this database or in the base game, and the reason is structural rather than accidental:
+the axe case produced 14 orphans because `records\equipmentweapon\axe\` is a dead twin folder, and
+**spears have no such folder**. Any new craftable spear supra would therefore be genuinely new content
+(a donor-cloned result record + Text tag + formula shell + loot wiring, no art) built on a *live*
+base-game spear rather than a revived dead one, which is a different design act from what Will asked
+about and needs his explicit go-ahead. `BL-R244-DEBT-1` stays open on that narrowed question only.
+
+### R-244 ROUND 2 [2026-08-11] - the vet caught LAW A failing on one of the four recipes Will named
+
+**HATI WAS NOT ACTUALLY GATED, and the gate said it was.** Round 1 pointed Hati's slot 2 at
+`e_da_crescentmoonofartemis` (Crescent Moon of Artemis). It is `itemClassification = Legendary`, no
+Normal or Epic chest pool reaches it, a Legendary pool does, and no sub-Legendary loot table names it -
+so it passed every arm rule S1 had. **And it gates nothing**, because a divine artifact is never
+*found*: it is **made**, and `e_da_crescentmoonofartemis_formula` is paid by the four **EPIC**
+`02_act1..4_arcaneformulae_table` records. A player could craft it on Epic and finish Hati without ever
+farming Legendary - the exact defect Will filed, surviving inside its own fix, on one of the four
+recipes he named by hand.
+
+**ROOT CAUSE: S1 only ever looked at DROP paths.** All four of its arms asked "who pays this item";
+none asked "who can BUILD this item". That is a whole class of hole, not one bad pick - the repo
+already knew the class existed (`svc_craft_thrown`'s own docstring notes the six IT divine artifacts
+are "craftable from base arcane formulae the chests DO drop, but not droppable themselves").
+
+**FIX, two parts, and the second is the one that matters.**
+1. **Hati's reagent is now `u_l_artemis'silverbow` (Artemis' Silver Bow).** Same goddess, opposite
+   provenance: **nothing in the database builds it**, it is `u_l_` drop-only, and **19 of 19 Legendary
+   chest surfaces pay it**. The wolf that hunts the moon is handed the moon-huntress's own bow. The
+   four thrown gates remain four different item classes - amulet / **bow** / spear / mace.
+2. **`legendary_only` gained arm 5, the craft-path check:** if any formula in the database builds the
+   reagent, every one of those formulas must itself be Legendary-tier-only by the same closure test.
+   ~~No recursion into the formula's own reagents is needed or wanted~~ **- CORRECTED IN ROUND 3, see
+   below: the recursion IS needed, because "the formula is the gate" is false in this database.** The
+   round-2 caution behind that sentence was real and survives inside the recursion: formula reagent
+   slots are per-difficulty ARRAYS, measured -
+   `e_da_crescentmoonofartemis_formula.reagent3BaseName = [02x_vengeance, 03x_vengeance]` - so the
+   walk reads them per SLOT (any one variant satisfies a slot; every slot must be satisfied), and
+   `03x_vengeance` is a base-game record this mod's arz does not contain, which is why an absent
+   record counts as obtainable rather than as a gate.
+   `table_tier` was widened at the same time to read the base game's spelled-out convention
+   (`xq04 - arcaneformulae_legendary`), so every table paying a formula can be classified instead of
+   returning `None` and being silently forgiven.
+
+**ARM 5 IS NOT "CRAFTED REAGENTS NEVER GATE", AND THAT DISTINCTION IS LOAD-BEARING.** Every divine
+artifact in the game is a craft result (**77 of 77** have a formula; TQ drops formulas, never
+artifacts), so a blanket rule would have redded the two DRX artifact craftables
+(`artifact_mortoksskull`, `artifact_plus2`) with no legal fix available and forced a cosmetic reagent
+swap into recipes Will never complained about. Measured instead: their gates - Thoth's Glory, Ikon of
+Zeus, Marduk's Tablet of Destiny, Golden Eye of Sun Wukong - are genuinely Legendary-gated and **need
+no edit**. ~~because they are paid only by the LEGENDARY `03_act1..4_arcaneformulae_table` records~~
+**- ROUND-3 CORRECTION: that stated reason was false. Their formulas ARE reachable from an EPIC mod
+chest, on 15 of 16 Epic surfaces (`BL-R244-DEBT-4`). What gates them is one level deeper: those
+formulas consume `l_ga_doxakalo` (+ the Legendary relic `03_act4_cunningofoddyseus`),
+`l_ga_elementalrage` and `l_ga_totemofthepolymath`, and nothing below Legendary pays those.** The
+verdict is unchanged and now measured rather than assumed. Negative test N2d is the false-red guard
+that keeps it that way; N2c replants the Hati defect and proves the craft arm fires; N2e (round 3)
+makes Thoth's Glory's own chain Epic-satisfiable without touching a loot table and proves the
+recursion fires. Final: **42 of 42 craftables carry a Legendary-gated reagent under the sound rule.**
+
+**ROUND-2 GATE READINGS, measured on the build83 ship arz `44499f56` with the lane's own two
+idempotent writes applied (static gates only; Ship does the build):**
+
+| reading | round 1 | round 2 |
+|---|---|---|
+| negative tests | 10/10, no craft-path negative existed | **12/12**, incl. N2c (arm 5 fires) + N2d (no false red) |
+| craftables carrying a Legendary gate | 42/42 *claimed*, 39/42 in truth | **42/42, proved** |
+| thinnest craftable's gate count | 1 (Hati's was bogus) | **1, and every one of them sound** |
+| reagents provably Legendary-only | 41 of 92 | **45 of 92** (the widened `table_tier` promotes 4 that the `?`-tier quest tables had been hiding) |
+| distinct reagent sets / duplicate groups | 42 / 0 | **42 / 0** (unchanged) |
+| supra items droppable | N 0 / E 0 / L 4 | **N 0 / E 0 / L 4** (unchanged) |
+| Hati's gate | `e_da_crescentmoonofartemis` (Epic-craftable) | **`u_l_artemis'silverbow`** (drop-only, 19/19 L) |
+
+`svc_craft_thrown.audit_db` (the b81 C+G rules: thrown tier coverage, reagent completability, MI
+provenance) reports **0 problems** on the same database, so the b81-adjacent gates did not regress.
+`tools/patches/_check_registry.py` selfcheck OK, 60 modules, order hash
+`97684dfedee8e62e010d0b42db4ff3adb801e51c4094b30973f92d251802a829`.
+
+**KNOWN RESIDUAL, stated rather than laundered (new debt `BL-R244-DEBT-4`, P2):** an **EPIC** mod chest
+reaches the **LEGENDARY** arcane-formula tables on **15 of 16 Epic surfaces** - traced concretely as
+`svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table ->
+l_da_thothsglory_formula`. That is a chest-WIRING tier defect that predates this lane and belongs to
+the chest-table owner, not to a recipe module. ~~Arm 5 asks whether the FORMULA's own tables are
+Legendary, which is the question this module can answer honestly.~~ **ROUND-3 CORRECTION: that
+sidestep is what made the gate's stated reason false. The walk now takes this measurement at face
+value - an Epic chest DOES pay those formulas - and proves the gate one level below them instead. The
+debt stays open and is still the chest owner's to fix; the gate's verdicts no longer depend on it
+either way.**
+
+### ROUND 3 (2026-08-11, third vet): THE OUTCOME WAS RIGHT, THE REASON WAS FALSIFIED
+
+**WHAT THE VET MEASURED.** Round 2's craft check read only the tier of the tables that NAME a
+formula, on the stated theory that "the formula is the gate". On the lane-applied db, all four
+formulas round 2 quoted as its PASS evidence are reachable from **15 of 16 EPIC chest surfaces**
+(BFS-derived: `svc_charonhoard_loot_02 -> 03_act4_arcaneformulae_sp -> 03_act4_arcaneformulae_table ->
+l_da_thothsglory_formula`). So the theory is false exactly where the ledger asserted it, the module
+docstring taught it, and `docs/SUPRA_CRAFTING_GUIDE.md` told players it as fact under a header
+promising "no source is guessed". **42/42 still held** - the vet re-derived that independently - but a
+future divine-artifact reagent with no Legendary member deeper in its chain would have PASSED while
+being fully Epic-craftable. That is round 1's hole class, not a wording nit.
+
+**THE FIX.** `legendary_only` now delegates to **`obtainable_below_legendary`**, which asks ONE
+question at every depth: *can a player who never sets foot in Legendary end up HOLDING this record,
+by drop or by craft?* Order is the point - measured evidence decides, convention is consulted only
+where this database physically cannot measure:
+1. record does not resolve -> obtainable (a base-game record the overlay never copied; an unprovable
+   claim must never become a PASS);
+2. a Normal/Epic chest pool reaches it -> obtainable;
+3. a Normal/Epic-tier table in its upward closure names it -> obtainable (the MONSTER path);
+4. **the craft path**: for each formula that builds it, if that formula is itself obtainable below
+   Legendary AND every one of its reagent SLOTS has one variant obtainable below Legendary, the record
+   can be MADE below Legendary. Slots, not a flat list, because a slot is a per-difficulty array;
+5. nothing fired. If the record is VISIBLE to the measurement, the silence is the answer -
+   Legendary-only. If it is invisible (no pool at any tier, no table anywhere), fall back to the base
+   game's own record-name convention: `n_`/`e_`/`0N_` -> obtainable, `l_`/`03_` -> Legendary, no tier
+   in the name -> obtainable.
+
+**WHY STEP 5 NEEDS THAT FALLBACK, AND IT IS NOT A LOOPHOLE.** This arz is a ~51k-record OVERLAY, not
+the whole game. `n_la_amberflask` resolves, sits in no chest pool at any tier and is named by no loot
+table in it. Reading that silence as "Legendary-only" gates the entire base-game artifact chain behind
+Legendary and turns `e_da_crescentmoonofartemis` into a PASS - i.e. it re-blesses round 1's defect.
+Measured both ways before choosing.
+
+**READINGS (same arz, same two idempotent writes; static gates only, Ship builds):**
+
+| reading | round 2 | round 3 |
+|---|---|---|
+| negative tests | 12/12 | **13/13**, +N2e (the recursion fires) |
+| reagents provably Legendary-only | 45 of 92 | **45 of 92 - identical, and now proved** |
+| craftables carrying a Legendary gate | 42/42, right answer / false reason | **42/42, measured** |
+| Thoth's Glory's gate | `l_da_thothsglory_formula`'s own table tier (FALSE - an Epic chest pays it) | **`l_ga_doxakalo` + the Legendary relic `03_act4_cunningofoddyseus`** |
+| Ikon of Zeus / Marduk's Tablet / Golden Eye | same false reason | **`l_ga_elementalrage` / `l_ga_totemofthepolymath` x2** |
+| Crescent Moon of Artemis | RED (asserted from the formula's tier) | **RED, and shown: all three slots of its Epic formula are Epic-payable** |
+| S1-S4 / `SCT.audit_db` / `SLB.audit_db` | 0 problems | **0 problems** (51 chest tables) |
+
+**N2e, the negative round 2 could not have written:** make Thoth's Glory's own craft chain
+Epic-satisfiable (swap `l_ga_doxakalo` -> `n_ga_furyoftheages`, `03_act4_cunningofoddyseus` ->
+`01_act4_shadeofhektor`) **without touching a single loot table**. Round 2's rule cannot see that
+plant; round 3's reds on it.
+
+**DOC CORRECTIONS THE SAME PASS (the round-2 correction pass had updated this ledger and left the
+board and the player guide behind):** `docs/BACKLOG.md` said "46 of 91 reagents" in two places and the
+guide said "91 distinct reagents" / "69 come from chests". Measured: **92 reagents, 45 Legendary-only,
+72 chest-payable, 20 that no chest pays** - exactly 20 of the 22 Monster Infrequents, the other two
+greens (**Animus**, **Perversion of the Bloodborn** `mi_vit_wand_01`) being chest-payable - **71**
+Legendary-chest reachable, `SCT` split **22 MI + 64 ordinary + 6 artifact**. The guide's two artifact
+passages no longer tell players the arcane formula is the gate.
+
+### TWO THINGS THAT NEED ONE WORD FROM WILL
+
+1. **The four supra thrown still drop on LEGENDARY (N 0 / E 0 / L 4).** Will's verbatim was "the last
+   word should not be dropped in epic, **only legendary**", and R-186 was his earlier ask to make the
+   legendary thrown droppable, so stripping the Legendary side too would silently revert a standing
+   ruling. Rule S4c fails the build if a later lane finishes that job. **Ratify or correct.**
+2. **LAW B is satisfied at the minimum: one changed slot per duplicate.** 42/42 reagent sets are now
+   distinct and 0 duplicate groups remain, but the de-duplicated recipes still share two of three
+   reagents - the six-way axe group all still carry Shai'tan + Dragonian and differ only in slot 1,
+   and Will's own example (Aquimae / Crystal Tear of Nyx) still shares Plissken + Deathweaver's
+   Legtip. This is the minimal non-reduction change and it keeps each DRX-authored original intact,
+   but **if Will meant "different" more strongly than "not identical", say so and the spread widens.**
+
+---
+
 ## R-170 SECOND FOLLOW-UP [2026-08-12] IMPLEMENTED (branch `fix/warden-awakening`, b88) - THE WARDEN WAS STILL MUTE: b63 changed the SLOT, the defect was the ACTION SET. A remote boat NPC must be AWAKENED (`ShowNpc` + `UpdateNPCDialog("Dialog Needed")`) before it is offered.
 
 VERBATIM (Will's bug report, re-confirmed BROKEN ON STEAM after b63 shipped): "when I click on the

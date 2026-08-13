@@ -601,7 +601,12 @@ _FORMULA_TAGS = {
     'tagSVCRecipeFuries': 'Mythic Formula - Wrath of the Furies',
     'tagSVCRecipeSwordFish': 'Mythic Formula - Sword Fish',
     'tagSVCRecipeDoomHerald': "Mythic Formula - The Doomcaller's Maul",
-    'tagSVCRecipeHati': 'Arcane Formula - Hati',
+    # b66 typo, caught by the R-231 round-2 vet: every sibling in this dict reads
+    # "Mythic Formula", the shipped guide calls all 42 Mythic Formulas, and Hati alone
+    # said "Arcane" - which is the base game's name for the ORDINARY formula tier these
+    # deliberately are not. Text-tag value only; the tag name and every wiring are
+    # untouched, so this is a string fix with no coupling beyond the usual Text.arc.
+    'tagSVCRecipeHati': 'Mythic Formula - Hati',
     'tagSVCRecipeTenSunsWrath': "Mythic Formula - Ten Suns' Wrath",
 }
 
