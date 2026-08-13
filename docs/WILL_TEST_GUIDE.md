@@ -1,5 +1,27 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-247 (2026-08-13): AKREMON ENHANCED + LETHAEUS ESCALATED + THE HUNT IS A SKELETON - FIGHT CHECKS
+> **arz + Text change** (branch feat/akremon-enhancement). Fully quit TQ + restart Steam first.
+>
+> **1. AKREMON (Golden Bough forecourt, the old Charon dock):**
+> * Phase 2 (the Heartwood Ablaze) must now be BIGGER than phase 1 (2.9 vs 2.8) and much
+>   tankier/harder-hitting - a real wall even for your Toxeus-farming character.
+> * NEW casts to look for: **the Emberfall** (an orange Telkine bolt from the terminal) and
+>   **the Styx Undertow** (a cold wave from phase 1 at range - the river answering the tree).
+> * The orb he drops must now read **"Akremon's Essence"**, NOT "Charon's Essence" (veto the
+>   name if you want a different one - it is one string).
+> **2. LETHAEUS (the Mnemophage):** the second form (the core) must now be BIGGER than the
+>   shell (3.1 vs 2.9) and clearly stronger - never again the shrunken half-health form.
+> **3. THE ENDLESS HUNT (Hades Palace floor):**
+> * He must be a pale GIANT SKELETON now (Undead), not the shadow demon - with his spear.
+> * His summons must be SKELETAL HUNTSMEN with spears, not blood hounds.
+> * His soul now SUMMONS him (manual cast, like the Enslaver soul); Normal/Epic/Legendary
+>   souls summon visibly different tiers (", Ascendant" / ", Unbound" names, much stronger).
+> * All Toxeus-family souls now give +1/+2/+3 to all skills by tier (EoAT soul +3).
+> * The **Rite of the Undivided** formula from his kill now drops with a LEGENDARY (orange)
+>   name so it cannot vanish under the loot pile again - it was always dropping, it was white.
+
+
 > ## 🆕 build89 / R-170 SECOND FOLLOW-UP (2026-08-12): THE WARDEN OF THE SPARTAN CRYPT SHOULD TALK NOW - **TWO-PART CHECK, DO BOTH**
 > **`Quests.arc` ONLY** - no database, no map, no text change. Your character, your saves and every
 > item are untouched. **Fully quit TQ and restart Steam before testing** (standing rule) - a running
