@@ -1,30 +1,25 @@
-BUILDS 89 + 90 - Travel NPCs answer again, and Dagon wakes up
+[h2]Travel reliability overhaul + the Toxeus bosses and their souls[/h2]
 
-BUILD 89 - the Warden of the Spartan Crypt (and every travel NPC) responds again
-- FIXED: the Warden of the Spartan Crypt did nothing when clicked. No dialog box, no
-  travel option. He now opens his menu and takes you down into the crypt, which is the
-  canonical way into that area.
-- The same defect affected every traveller you reach by teleporting in: the
-  return-to-Helos NPCs in the Soulvizier areas and the enter-offer travellers. All 30
-  travel NPCs are fixed by the same change.
-- Cause: an NPC you arrive at by teleport was never woken up, so the game drew him but
-  he had no clickable state. Every travel NPC is now woken before his travel offer is
-  presented, using the same method the working Leinth exit portal has always used.
-- The Helos plaza travellers that already worked keep the exact same routes and
-  destinations. No route, destination or dialog option changed anywhere.
+[b]Travel[/b]
+[list]
+[*][b]Fixed the scrambled teleports.[/b] Talking to a traveler could send you to the wrong place, or leave a traveler silent, once you had moved around the world a while. The whole travel system was rebuilt to the base-game pattern so a traveler goes where its label says. Almyros in the Village of Helos remains your hub to the Garden of Merchants, the Secret Place, and the Uber Dungeon.
+[*][b]A way into the Uber Dungeon from the Labyrinth.[/b] After the Minotaur, further along the passage past his door, a traveler will take you down into the dungeon.
+[*][b]The Warden of the Spartan Crypt[/b] in the Athens catacombs was reworked toward letting you descend into the crypt.
+[/list]
 
-BUILD 90 - Dagon, Lord of the Poisoned Deep no longer stands frozen
-- FIXED: Dagon stood frozen in place. He now walks, runs, attacks, staggers, dies and
-  casts Tidal Strike, his signature move, for the first time.
-- The bug dates back to the original Soulvizier: Dagon was built out of the Hydra, and
-  every animation clip pointed at the 101-bone Hydra skeleton while his actual body is
-  a 30-bone deep-one mage. He is now bound to his own rig, the one the base game uses
-  for his same-body relatives.
-- NEW PERMANENT GATE: no monster can ship any more with animations that cannot drive
-  its body (the same freeze class that once took the maenad thrown-weapon fighters).
-- Nothing else about Dagon changed: same fight, same skills, same soul, same drop
-  chance, same orb.
+[b]Toxeus the Murderer[/b]
+[list]
+[*][b]Akremon[/b], the Golden Bough uber, is back to a proper imposing size and strength with a signature kit.
+[*][b]The Endless Hunt[/b] is a skeleton again, as his kin are, and fights with his own moves.
+[*][b]Lethaeus the Unremembered[/b] second form is now the escalation it should be, not a weaker one.
+[*][b]The soul tiers now matter.[/b] The Epic and Legendary versions of the Toxeus souls summon markedly stronger versions, and grant +1 / +2 / +3 to all skills on Normal / Epic / Legendary.
+[*][b]The forge formula[/b] that crafts the ultimate Toxeus soul is easier to spot when it drops.
+[/list]
 
-Quest data plus database. No map or text change beyond these fixes: your characters,
-saves and items are untouched. Fully quit the game and restart Steam to pick up the
-update.
+[b]Loot[/b]
+[list]
+[*]The uber boss stash chests were restored toward their original Soulvizier generosity after being trimmed too far.
+[*]Toxeus the Murderer, the Devourer of Blood now guards his stash on every difficulty.
+[/list]
+
+[i]Credits: [b]amgoz1[/b] for Soulvizier and the emblem, used with permission - [b]soa[/b] for Soulvizier AERA - [b]Dragonlord[/b] for DRX.[/i]
