@@ -61,9 +61,26 @@ R3. ROUND-3 FIRST-EVER-EXECUTION SWEEP: fixing the round-2 red let the verify ph
    After (a)-(d): ALL 58 registry verify hooks GREEN in one cold gated build - the first
    complete verify pass in this lane's history (build-3 log; zero OFFENDER/FAILED lines).
 
-**BUILD + PROOFS (FILLED-AFTER-BUILD):** arz md5 `FILLED-AFTER-BUILD` det-2x; record-diff vs
-shipped `a86afc15` = intended records only; Text.arc built + validate_tags green; contracts;
-registry selfcheck 66 modules; negatives 12/12 (r247_boss_forms) + 12/12 (r247_bloodcave_rulings).
+**BUILD + PROOFS (ROUND 3, measured):** arz md5 `b888f02254e93ea4044b8b25e1cec39d`
+(55,600,482 B, 51,298 -> 51,312 records) **det-2x PROVEN**: two cold gated builds
+(PYTHONHASHSEED=0 SVC_NO_CACHE=1 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1, work-style scratch
+layout with SVC_MOD_RESOURCES pointing at the staged Resources) both EXIT=0 and byte-identical
+(a third earlier cold build produced the same md5); ALL 58 registry verify hooks GREEN (first
+complete verify pass in lane history) incl. the A9 render-chain gate and the V5 Atlantis cap.
+Record-diff vs shipped `a86afc15`: **14 ADDED / 26 MODIFIED / 0 REMOVED, every row intended**
+(adds = hunt pets x3 + summon + huntsman + 2 kit clones + orb chain x7; mods = Hunt x2 [identity
++ r3 inline rebind, 72 fields], Akremon both forms, Lethaeus core, 3 stash tables, EoAT formula,
+blooddragon pool, warband, 9 souls [+all-skills; hunt souls -> summon @1/2/3], coursers->huntsmen
+swap, 4 tier pets); the donor Charon chain is BYTE-IDENTICAL to shipped (not even case rows).
+Text.arc `e1d9592aef8f662979a38c7dd91bc2c7` (89,829 B) + validate_tags PASS (454 authoritative);
+tag delta vs shipped Text = EXACTLY 11 added / 0 removed / 0 changed (orb rename + huntsman +
+hunt summon/pet + 6 tier-suffix tags). Contracts (all 6 modules vs built arz + new Text + live
+shipped arcs, real upstream provenance): **0 P0 / 0 P1** - after one owner-accepted-inherited
+whitelist entry (C-RES-DBR-1 x3: the orb-chest clones' lockedSound dead ref, byte-inherited from
+the shipped donors under the ratified twin pin; see whitelist_resources.txt + flags below).
+Byte battery (scratchpad r2_battery, checks A-F incl. the moved check E): ALL PASS. Negatives:
+r247_boss_forms 15/15, toxeus_hunt_encounter 17/17, champion_mesh 14/14, r247_bloodcave_rulings
+12/12, negtest_orb_breadth 11/11+N10, twin smoke 5/5 states; registry selfcheck 66 modules.
 
 **DEBTS:** BL-R247-DEBT-1..5 (see report section 6) + BL-R247-DEBT-6 (Normal-stash residual
 channels: engine champion-budget runtime / map-instance flag; escalation = dedicated solo guard
@@ -72,7 +89,11 @@ proxy) + BL-R247-DEBT-7 (warband relocation, WILL DECISION, map lane).
 **WILL DECISIONS FLAGGED:** orb name "Akremon's Essence"; Hunt texture pairing; huntsman summons
 (vs blood hounds); Quarry's Mark superseded by the summon; EoAT formula 100%+ungated; tier names
 + multipliers; mod-wide soul tiering (NOT implemented); skeleton\toxeus_soul_{n,e,l} outside the
-ruled roster; mod-authored stash chests stay trimmed (no SV original); warband relocation spot.
+ruled roster; mod-authored stash chests stay trimmed (no SV original); warband relocation spot;
+NEW r3: the C-RES-DBR-1 whitelist entry (3 orb-chest clones' inherited dead lockedSound ref,
+twin-pinned - the alternative is fixing the SHARED donor, a shared-record-law call); the Hunt's
+new mesh SkeletonRumorBoss ships the base game's own embedded Boss Aura (q4-confirmed asset,
+visible on him in-game - veto = one champion_mesh constant).
 
 
 ## BUILD90-DEV GATE RECORD - DAGON UNFROZEN (`dagon_anim_rig`: the `boss_dagon_66` animation chain is repointed off the dead `anm_dagon` hydra table onto his own `anm_ichthian` rig); **arz-ONLY** - BUILT det-2x, ALL GATES GREEN incl. the NEW `dagon_anim_rig` gate + 15/15 negatives, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING (2026-08-12, `main` fast-forwarded `0b8e7f4` build89 gate record -> `e81d79d` via `git merge --no-edit fix/dagon-frozen`, then this gate-record commit).
