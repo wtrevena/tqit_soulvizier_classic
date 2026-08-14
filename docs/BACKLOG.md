@@ -1,5 +1,53 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## LANE RECORD - R-247 AKREMON ENHANCEMENT WAVE (2026-08-13, branch `feat/akremon-enhancement`, base `34b014e` = build90 ship) - arz + COUPLED Text; BUILT det-2x + GATES; NOT INTEGRATED, NOT DEPLOYED, NOT ON STEAM
+
+**Scope (all 8 R-247 parts; ledger `docs/WILL_RULINGS.md` R-247 + R-240 amendment; report
+`docs/reports/r247_akremon_wave.md`):**
+1+2. AKREMON enhanced significantly (`charon_rework.py` amended): terminal scale 2.0->2.9, two-form
+   life 46/62/83k re-anchored on the measured Toxeus band, hand 380-500; kit innovation pass
+   ACTIVATED->DONE (the 2026-08-12 backlogged "merge distinctive skills" standing direction):
+   +THE EMBERFALL (Ormenos energyblast refit) + THE STYX UNDERTOW (Charon tidalwave refit), both
+   cloned + anim-blanked (b108 castability law); orb renamed "Akremon's Essence"
+   (`tagSVCChestAkremon`, closes BL-BOUGH-DEBT-4; R-242 drop mechanics byte-kept).
+3. LETHAEUS form-2 = the ESCALATION (`r247_boss_forms.py`): core 1.8->3.1 scale, 7/9.5/12.5 ->
+   16/21/28k life, hand 300-330 (kit intact, sentinel-gated).
+4. CLASS-WIDE multi-form + uber audit (probe `tools/debug/r247_boss_form_audit.py`, table in the
+   report): 66 chains + 50 ubers measured; Lethaeus = the one BLATANT boss-tier offender (fixed);
+   Gaoler/Tantalus unbound + base Hades arcs FLAGGED borderline (untouched); death-echo class
+   FLAGGED as base-game mechanic.
+5. ENDLESS HUNT identity (`r247_boss_forms.py` + `devourer_kit.py`): SkeletonRumorBoss +
+   NewSkeleton_White + anm_skeleton01 + race Undead (b98 demon body superseded); summons =
+   Huntsmen of the Endless Hunt (skeletal spear hoplites; coursers retired-but-built);
+   spear chain byte-VERIFIED correct (no fix needed - Will's softened report was right).
+6. Kill-chain + tiered souls: EoAT formula -> Legendary classification (visibility; the 100% drop
+   wiring was measured CORRECT); Hunt soul now SUMMONS him (pets toxeus_hunt_1/2/3, granted 1/2/3);
+   family tier ladders x1.5/x1.75 + per-tier display names (", Ascendant"/", Unbound");
+   +all-skills 1/2/3 law (augmentAllLevel) on Enslaver/Devourer/Hunt tiers + EoAT 3.
+7. CHESTS + SPAWNS (`r247_bloodcave_rulings.py`, NEW module + `svc_loot_volume.R247_STASH_EXEMPT`):
+   (a) Devourer stash tables reverted to SV 0.98i volume (*3.8/*4.1, ~19 rolls; R-240 carve-out
+   Will-ratified, ledger amended; R-242 measured not-involved; composition kept >= SV; orb
+   sentinels gated to KEEP their trim); (b) stash-guard pool hardened to the proven _BT_POOL
+   shape (bytes were already 100% on N/E/L - see BL-R247-DEBT-6); (c) Enslaver warband dormant
+   (chanceToRun 0) at the parchment chamber - the 33% Devourer ambush is the spot's only Toxeus
+   roll again (R-18 collision -> BL-R247-DEBT-7).
+8. Enslaver Epic: MEASURED ONLY (45k life / 12 regen / reflect 30@33 / Undead leech-immunity),
+   ledger open tuning question. NO change.
+
+**BUILD + PROOFS (FILLED-AFTER-BUILD):** arz md5 `FILLED-AFTER-BUILD` det-2x; record-diff vs
+shipped `a86afc15` = intended records only; Text.arc built + validate_tags green; contracts;
+registry selfcheck 66 modules; negatives 12/12 (r247_boss_forms) + 12/12 (r247_bloodcave_rulings).
+
+**DEBTS:** BL-R247-DEBT-1..5 (see report section 6) + BL-R247-DEBT-6 (Normal-stash residual
+channels: engine champion-budget runtime / map-instance flag; escalation = dedicated solo guard
+proxy) + BL-R247-DEBT-7 (warband relocation, WILL DECISION, map lane).
+
+**WILL DECISIONS FLAGGED:** orb name "Akremon's Essence"; Hunt texture pairing; huntsman summons
+(vs blood hounds); Quarry's Mark superseded by the summon; EoAT formula 100%+ungated; tier names
++ multipliers; mod-wide soul tiering (NOT implemented); skeleton\toxeus_soul_{n,e,l} outside the
+ruled roster; mod-authored stash chests stay trimmed (no SV original); warband relocation spot.
+
+
 ## BUILD90-DEV GATE RECORD - DAGON UNFROZEN (`dagon_anim_rig`: the `boss_dagon_66` animation chain is repointed off the dead `anm_dagon` hydra table onto his own `anm_ichthian` rig); **arz-ONLY** - BUILT det-2x, ALL GATES GREEN incl. the NEW `dagon_anim_rig` gate + 15/15 negatives, INTEGRATED ON `main`, DEPLOYED TO DEV, PACKAGED; STEAM UPLOAD PENDING (2026-08-12, `main` fast-forwarded `0b8e7f4` build89 gate record -> `e81d79d` via `git merge --no-edit fix/dagon-frozen`, then this gate-record commit).
 
 **INTEGRATED (one structural conflict, then a clean fast-forward).** `main` was at `0b8e7f4` (the BUILD89-DEV gate record; build88 + build89 both awaiting upload) and the lane `fix/dagon-frozen` was cut from / last merged at `8035da0` (build87), so it was **20 ahead / 10 behind**. Per the ship discipline the lane RE-MERGED current `main` FIRST, in the `wt-dagon` worktree -> merge commit `e81d79d`. Exactly the predicted shape: **`tools/patches/__init__.py` AUTO-MERGED as a registry union** (the two inserts are ~590 lines apart) and both load-bearing orders survive, re-verified by parsing the merged REGISTRY: **64 modules, 0 duplicates, `dagon_anim_rig` at slot 18 immediately after `thrown_anim_rig` (17) and before `boss_skill_fix` (19); `supra_recipe_laws` at 55 immediately after `craft_thrown_breadth` (54) and before `chest_loot_breadth` (56)**. `tools/debug/probe_anm_asset_resolve.py` and `tools/patches/dagon_anim_rig.py` do not intersect b88 or b89 at all (b88 touched the arz/Text patch modules, b89 touched `build_quest_files.py`). **`docs/BACKLOG.md` was the ONE conflict** - both sides insert a block at the same anchor - resolved **structurally, zero content dropped**: this lane's `RECONCILE RECORD - DAGON FROZEN` (08-12) kept first, then a `---` separator, then `main`'s `LANE RECORD - R-244 THE THREE SUPRA-CRAFT LAWS` (08-11), newest-first per the file convention; verified 0 markers left and both headers intact (lines 1245 / 1402), and the union is exact (`git diff --numstat` = **+344/-0 vs the lane, +157/-0 vs main**). Then `git merge --no-edit fix/dagon-frozen` on `main` **fast-forwarded** `0b8e7f4` -> `e81d79d`. Working tree clean. Next sequential ship after build89 = **BUILD90**.
