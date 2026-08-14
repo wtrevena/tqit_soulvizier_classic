@@ -98,6 +98,19 @@ above the shell's; the core's menace is its dream-kit, not its swing).
   All 67 inline foreign-rig `.anm` rows cleared (the A9/Dagon-frozen class;
   the module counts and prints the exact number at apply time - 67 measured in
   the round-2 build, correcting round 1's "~100" estimate).
+  **ROUND 3 (the round-2 vet blocker, fixed):** the bare clear left the kept
+  `toxeus_bladestorm` uncastable (anm_skeleton01 binds 'AoE360' only on
+  sHanded/dHanded rows - never spear, never unarmed) and redded
+  toxeus_hunt_encounter's SPEAR-ANIM-1/CASTABILITY-1 gates (14 problems, no
+  arz). Fix = the adfda67 BOTH-SURFACES law (dagon_anim_rig's in-game-proven
+  mechanism): the spear + unarmed rows are REBOUND INLINE from the table's own
+  clips, read live at build time (spearAttackAnim3 duplicates the table's slot
+  1 - the rig's own idiom, 1,063 shipped carriers), plus
+  `spear/unarmedSpecialAnimRef1='AoE360'` -> the table's `sHandedSpecialAnim1`
+  clip (MalePC_DW_Skill_AOE360.anm, the rig's proven AoE360). The round-2
+  "zero inline rows" law was RETIRED (3,498/3,807 shipped table-carriers bind
+  inline rows - inline-ness was never the hazard, foreign-rig clips are);
+  verify() now enforces RIG-COMPAT: every inline clip must be table-bound.
   The Legendary `_l` variant inherits everything at clone time (ordering gated).
 * **5(b) summons:** blood hounds -> **Huntsmen of the Endless Hunt**
   (`svc_hunt_huntsman_99`, in `devourer_kit.py`, the summon's owner): cloned
@@ -105,12 +118,15 @@ above the shell's; the core's menace is its dream-kit, not its swing).
   NewSkeleton_White + 100% spear equip chain + ambush controller - one proven
   package). Same fight numbers as the coursers Will already fought (3500/4800/
   6500, 180-240). Coursers stay BUILT, unreferenced (retirement protocol).
-* **6(b) spear - VERIFIED, NOT FIXED:** the shipped chain was byte-correct
-  (equip 100% -> runbreaker_guaranteed_{n,e,l} -> real Weapon_Spear records;
-  inline spear stances bound). Will's softened "maybe he was using a spear and
-  i couldnt see it" is the likely truth. After the rig swap the chain is
-  re-proven on anm_skeleton01 (108 spear rows; 7 base-game spear-wielding
-  hoplites); verify() gates the whole chain.
+* **6(b) spear - VERIFIED on the SHIPPED bytes, then round-3-corrected on the
+  new rig:** the shipped chain was byte-correct (equip 100% ->
+  runbreaker_guaranteed_{n,e,l} -> real Weapon_Spear records; inline spear
+  stances bound). Will's softened "maybe he was using a spear and i couldnt
+  see it" is the likely truth. ROUND-3 CORRECTION: round 2's "re-proven on
+  anm_skeleton01, 108 spear rows" was overstated - the table ships NO
+  spearSpecialAnimRef rows and only 2 spear attack clips, so after the rig
+  swap the spear kit is carried by the round-3 INLINE rebind (see 5(a));
+  verify() gates the whole chain on the final state.
 * **6(c) his soul summons him:** a BUILD (no summon/pets existed): pets
   `toxeus_hunt_1/2/3` (12000/18000/31500 life, 110-180/165-270/290-470 hand,
   skeleton identity + spear loadout inherited from the FIXED Hunt, permanent/
