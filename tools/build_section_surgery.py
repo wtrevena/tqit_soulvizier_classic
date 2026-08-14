@@ -3017,13 +3017,14 @@ TOMBOBS02_GUID   = bytes.fromhex('679799dd994a74ff77b1fdb359c1c9a5')  # tombobs0
 # pos = the 0x05 LEVEL-LOCAL position (GROUPS member pos must equal it, Duister law).
 # Y = 0x0b-derived floorCal (r246_sites.json). hub_only=True entries exist ONLY in the
 # TESTHUB build (flag-OFF byte-identity preserved).
-# NOTE boss_arena Y=27.0: kept at the b43 live-proven dais literal (spawn/volume at ~27);
-# the naive navmesh read is 28.2 there - the Y gate's calibration (light-excluded anchors)
-# resolves it, see gate_device_resolution.
+# NOTE boss_arena Y=28.1: RE-DERIVED from 0x0b (floorCal 28.11; naive read 28.2 agrees,
+# per-level calibration ~-0.1). The b43 "dais literal" 27.0 was a SPAWN/volume Y (actors
+# snap to mesh at spawn); static devices render at authored Y, so 27.0 sank them 1.1u
+# into the dais - the exact buried class R-246 kills. Gate-proven within 0.01u.
 R246_SHRINE_SPECS = [
     dict(label='uber',      level_key=CRYPT_FLOOR1_LEVEL_KEY,  pos=(140.0, 10.0, 217.5),  hub_only=False),
     dict(label='sc2',       level_key=SPARTA_LVL_KEY,          pos=(55.0, 1.0, 40.0),     hub_only=False),
-    dict(label='bossarena', level_key=BOSSARENA_LVL_KEY,       pos=(138.5, 27.0, 107.5),  hub_only=True),
+    dict(label='bossarena', level_key=BOSSARENA_LVL_KEY,       pos=(138.5, 28.1, 107.5),  hub_only=True),
     dict(label='warband',   level_key=EN_WARBAND_HOST_KEY,     pos=(46.5, 10.0, 24.0),    hub_only=True),
     dict(label='dorus',     level_key=DORUS_HOST_KEY,          pos=(81.5, 1.0, 55.0),     hub_only=True),
     dict(label='tantalus',  level_key=TANTALUS_OUTDOOR_HOST_KEY, pos=(50.0, -7.7, 72.5),  hub_only=True),
@@ -3083,7 +3084,7 @@ R246_COURT = [
     ('uber',      HELOS_TRAV_UBER_DBR,       (116.0, 4.3, 194.5), (113.5, 3.7, 192.0),
      MAZE03_LVL_KEY, MAZE03_GUID, (283.0, 1.0, 150.0)),
     ('bossarena', HELOS_TRAV_BOSSARENA_DBR,  (96.0, 1.1, 199.5),  (98.5, 1.7, 202.0),
-     BOSSARENA_LVL_KEY, BOSSARENA_GUID, (132.0, 27.0, 104.0)),
+     BOSSARENA_LVL_KEY, BOSSARENA_GUID, (132.0, 28.1, 104.0)),
     ('warband',   HELOS_TRAV_WARBAND_DBR,    (101.0, 1.9, 199.5), (103.5, 2.7, 202.0),
      EN_WARBAND_HOST_KEY, WARBAND_GUID, (40.0, 10.0, 24.0)),
     ('dorus',     HELOS_TRAV_DORUS_DBR,      (106.0, 2.9, 199.5), (108.5, 3.5, 202.0),
