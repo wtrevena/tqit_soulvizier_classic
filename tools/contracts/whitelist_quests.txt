@@ -18,19 +18,20 @@
 # enter the returned violation list or affect the exit code, so they need no
 # whitelist entry.
 #
-# ── BUILD36a P0 HOTFIX (Will 2026-07-12): walk-through travel portals removed ──
-# Will's TRAVEL LAW stripped every walk-through/proximity teleport we authored from
-# the canonical map (fix commit 0f08297), portal_olympianarena1 among them -
-# bossarena.qst opened it by record name. The portal RECORD still ships in the
-# RE-EVALUATED under R-246 (2026-08-13, native-device travel): portal_olympianarena1
-# is PLACED AGAIN (canonical maze03 + catacube door entrances; the TESTHUB court), so
-# the old "names a door no longer placed" justification is DEAD. The line SURVIVES on
-# a different, disasm-proven ground: the record's class is the BORN-OPEN static
-# GridEntrance (apply_svc_patches _make_portals_born_open_gridentrance; verify hook
-# green), and Action_OpenDynGridEntrance / the unlock only drives the
-# GridEntranceDynamic state machine (SetPortalIsOpen call sites: Close/Open/activate,
-# Game.dll - docs/DYNGRID_GATE_RCA.md sec 3-5). On a static GridEntrance the action
-# finds no Dynamic state to flip and no-ops; the doors are open from raw data with or
-# without it. FOLLOW-UP (unchanged, registered in BACKLOG): a future bossarena.qst
-# rebuild should drop the dead unlock action entirely, then delete this line.
+# ── QST-DOOR-UNLOCK: bossarena.qst names portal_olympianarena1 ──
+# HISTORY: 07-12 P0 stripped the placed doors ("names a door no longer placed");
+# R-246 placed them again (justification moved to the static-class no-op ground);
+# R-248 (2026-08-14) REVERTED every placed door - the born-open GridEntrance travel
+# device class is GRAVEYARDED (in-game refuted twice; MODDING_PLAYBOOK sec 10/10a).
+# RE-EVALUATED under R-248: BOTH grounds now hold simultaneously -
+#   (1) the record is placed NOWHERE on either map variant (gate_doors_hub, the
+#       graveyard tombstone gate, asserts this stays true), so bossarena.qst's
+#       unlock action targets no placed instance and no-ops; and
+#   (2) even if one were placed, the record's class is the born-open STATIC
+#       GridEntrance and Action_OpenDynGridEntrance only drives the
+#       GridEntranceDynamic state machine (docs/DYNGRID_GATE_RCA.md sec 3-5) -
+#       nothing to flip, no-op either way.
+# The RECORD stays in the arz (shared-record law). FOLLOW-UP (unchanged, BACKLOG):
+# a future bossarena.qst rebuild should drop the dead unlock action entirely, then
+# delete this line.
 QST-DOOR-UNLOCK bossarena.qst :: records/quests/portal_olympianarena1.dbr

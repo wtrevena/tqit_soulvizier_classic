@@ -1,30 +1,29 @@
 #!/usr/bin/env python3
-"""GATE: TESTHUB device-court rig (R-246 native-device travel, 2026-08-13).
+"""GATE: traveler-NPC rig - render chain + variant census (R-248 restored travelers).
 
-LINEAGE: the pre-R-246 versions of this gate verified the boat-dialog rig NPCs
-(svc_testhub_master/return; render chain + Steam-inertness). R-246 ripped every rig
-BOAT ROW; the records survive as MUTE NAMED MARKERS beside the new devices (shared-
-record law), and the rig itself is now the 14-door east-field court + T15 return
-shrines, whose byte-level invariants live in gate_device_resolution (D1-D7/C/Y).
-This gate keeps the two rig checks the device gate does NOT cover:
+LINEAGE: pre-R-246 this gate verified the boat-dialog rig NPCs; R-246 turned them
+into mute device markers; R-248 reverted the devices (in-game refuted, graveyarded -
+MODDING_PLAYBOOK sec 10/10a) and the SAME records are LIVE one-shot-armed boat
+travelers again. The placement roster is identical to the R-246 disposition (the
+revert moved records back, not away), so the census table is unchanged - only its
+MEANING changed: these are clickable travelers now, not markers. The two checks:
 
-  A. RENDER CHAIN (D5 law): every R-246 marker/greeter NPC record still in the arz
-     must share the PROVEN Knossos-boatman donor mesh + baseTexture byte-identically
-     (a marker whose art does not resolve renders invisible/T-posed - the fate the
-     b88 lesson warns about; markers are the court's ONLY label surface). When the
-     art dirs are present, the donor mesh + internal shaders must also resolve under
-     engine-faithful archive scoping.
-  B. VARIANT PLACEMENT CENSUS (Steam-inertness, R-246 dispositions): the canonical
-     map places EXACTLY the ruled marker set and ZERO hub-only records; the TESTHUB
-     map places the full court. Censused by record-name prefix on the 0x05 sections:
+  A. RENDER CHAIN: every travel NPC record in the arz must share the PROVEN
+     Knossos-boatman donor mesh + baseTexture byte-identically (a traveler whose
+     art does not resolve renders invisible/T-posed - the b88 lesson; these NPCs
+     are the ENTIRE travel surface now). When the art dirs are present, the donor
+     mesh + internal shaders must also resolve under engine-faithful scoping.
+  B. VARIANT PLACEMENT CENSUS (Steam-inertness, R-248 dispositions): the canonical
+     map places EXACTLY the canonical traveler set and ZERO hub-only records; the
+     TESTHUB map places the full restored rig. By record-name prefix on 0x05:
         prefix                       canonical   TESTHUB
         svc_testhub_master*              0          0     (retired b48r3)
         svc_testhub_return.dbr           0          0     (retired b48r3 warden-split)
-        svc_testhub_return_*             4          5     (area markers; bossarena hub-only)
-        svc_helos_trav_*                 0         14     (court markers - NEVER Steam)
-        svc_area_return_*                1         10     (maze03 greeter canonical;
-                                                           9 more are hub landing markers)
-        svc_warden_sparta_crypt          1          1     (the named Warden greeter)
+        svc_testhub_return_*             4          5     (in-area returns; bossarena hub-only)
+        svc_helos_trav_*                 0         14     (plaza launchers - NEVER Steam)
+        svc_area_return_*                1         10     (maze03 uber greeter canonical;
+                                                           9 boss-area returns hub-only)
+        svc_warden_sparta_crypt          1          1     (the Warden, catacombs)
 
 Usage:
   py tools/debug/gate_testhub_portal_rig.py [<arz>] [<canonical.arc>] [<testhub.arc>]
@@ -43,7 +42,7 @@ from arz_patcher import ArzDatabase              # noqa: E402
 import validate_render_chain as vrc              # noqa: E402
 
 DONOR = r'records\creature\npc\speaking\greece\knossos_boatmantoegypt.dbr'
-# The full R-246 marker roster (all knossos-boatman clones; records stay in the arz
+# The full traveler roster (all knossos-boatman clones; records stay in the arz
 # under the shared-record law even where placements are TESTHUB-only or zero).
 MARKERS = (
     [r'records\quests\svc_helos_trav_%s.dbr' % s for s in
@@ -75,8 +74,8 @@ def _norm(s):
 
 
 def census_map(path):
-    import gate_device_resolution as g
-    data, levels, _groups = g.load_map(path)
+    import gate_travel_y_terrain as g
+    data, levels = g.load_map(path)
     counts = {n: 0 for (n, _c, _h) in CENSUS}
     for lv in levels:
         blob = data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
@@ -154,17 +153,17 @@ def main(argv):
             want = c_want if label == 'canonical' else h_want
             got = counts[n]
             if got != want:
-                fails.append(f'B: {label} places {got}x {n.decode()} - the R-246 '
+                fails.append(f'B: {label} places {got}x {n.decode()} - the R-248 '
                              f'disposition is exactly {want}')
         print(f'  B census {label}: ' + ' '.join(
             f'{n.decode().rstrip("_")}={counts[n]}' for (n, _c, _h) in CENSUS))
 
     if fails:
-        print(f'TESTHUB DEVICE-COURT RIG GATE: {len(fails)} FAILURE(S)')
+        print(f'TRAVELER RIG GATE (R-248): {len(fails)} FAILURE(S)')
         for f in fails:
             print(f'  FAIL {f}')
         return 1
-    print('TESTHUB DEVICE-COURT RIG GATE: PASS')
+    print('TRAVELER RIG GATE (R-248): PASS')
     return 0
 
 

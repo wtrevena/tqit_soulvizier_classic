@@ -1,38 +1,38 @@
 #!/usr/bin/env python3
-"""GATE: travel invariants under the R-246 NATIVE-DEVICE TRAVEL LAW (2026-08-13).
+"""GATE: travel invariants under the R-248 PROVEN-MECHANISM TRAVEL LAW (2026-08-14).
 
-HISTORY OF THE LAW (both halves are explicit here so no vet re-litigates them):
-  * 2026-07-12 P0 (Will: "walk south in Helos -> yanked to the Garden, no way back"):
-    ALL travel became NPC boat-dialog; every authored walk-through portal was stripped.
-    This gate's previous incarnation asserted THAT world (zero walk-through portals,
-    the 23-record Helos traveler hub, warden law, cross-file agreement).
-  * 2026-08-13 R-246 (Will, "Native devices"): the boat-dialog MECHANISM half is
-    SUPERSEDED - the blanket-refire arming of 39 Action_BoatDialog rows was proven to
-    corrupt the engine's stateful boat-offer registry (cross-bound rows, mute NPCs,
-    wrong labels). Travel moved to engine-native devices (born-open GridEntrance door
-    pairs + wired teleport-shrine rifts); the row tables were RIPPED; Almyros alone
-    keeps his 3-route talk menu. The 07-12 PLACEMENT half SURVIVES as law (doors off
-    every traffic lane, walked into deliberately) and is enforced structurally by
-    gate_device_resolution's C-block. See docs/WILL_RULINGS.md R-246.
+HISTORY OF THE LAW (all three eras explicit so no vet re-litigates them):
+  * 2026-07-12 P0: ALL travel became NPC boat-dialog; authored walk-through portals
+    stripped. * 2026-08-13 R-246: the blanket-refire arming of 39 rows was proven to
+    corrupt the stateful boat-offer registry; the row tables were RIPPED and travel
+    moved to born-open GridEntrance doors + rift shrines. * 2026-08-14 R-248: Will
+    refuted the devices IN-GAME ("they lag the game out and break everything");
+    the device class is GRAVEYARDED (MODDING_PLAYBOOK sec 10/10a) and the traveler
+    rows RETURN in the base-game-faithful shape: dedicated ONE-SHOT steps
+    (Condition_OnLevelLoad isResettable=0), <=3 rows/step, 1 trigger : 1 NPC, b88
+    awakening pair. The RIP itself survives as law (no row ever rides a re-firing
+    step again). See docs/WILL_RULINGS.md R-248.
 
 THIS GATE (spec-based, build-free - reads the LIVE tooling tables so no 1.3GB build
-is needed; the artifact-side twin checks live in gate_boatdialog_budget [Quests.arc]
-and gate_device_resolution [Levels arcs]):
-  V1 RIP HOLDS, quest side: build_quest_files defines NONE of the ripped generators/
-     tables (HELOS_HUB_TRAVEL, TESTHUB_MASTER_DESTS, TESTHUB_RETURN_DESTS,
-     TESTHUB_RETURN_DESTS_BY_NPC, TESTHUB_AREA_RETURN_NPCS, TRAVELER_ENTER_OFFERS),
-     and its ONLY SVC hub table is Almyros' HELOS_PORTAL_DESTS with EXACTLY 3 rows,
-     every row driven by portal_master_helos (no other SVC NPC re-enters the
-     boat-dialog world through the back door).
-  V2 DEVICE TABLES CONSISTENT, map side (the spec-side mirror of D4/D5): the R-246
-     court has 14 uniquely-labeled doors; ALL minted uids (court mouths+exits, shrine
-     uids+tails, canonical door uid constants) are pairwise distinct; every door
-     entrance host is in the ORIGINAL-INDEX allowlist (appended-host law); court
-     dest GUIDs are pairwise distinct; exactly 2 shrines are canonical (hub_only
-     False), the rest TESTHUB-only.
-  V3 DISPOSITIONS: the ripped rows' NPC records are NOT deleted from the arz
-     creation tables (shared-record law: records stay, placements become mute named
-     markers) - checked against apply_svc_patches source text.
+is needed; the artifact-side twins are gate_boatdialog_budget [Quests.arc],
+gate_travel_y_terrain [Levels arcs] and gate_testhub_portal_rig [census]):
+  V1 RIP HOLDS, quest side: build_quest_files defines NONE of the ripped
+     blanket-refire generators/tables (HELOS_HUB_TRAVEL, TESTHUB_MASTER_DESTS,
+     TESTHUB_RETURN_DESTS, TESTHUB_RETURN_DESTS_BY_NPC, TESTHUB_AREA_RETURN_NPCS,
+     TRAVELER_ENTER_OFFERS, _add_helos_traveler_hub_travel,
+     _add_testhub_portal_travel); Almyros' HELOS_PORTAL_DESTS has EXACTLY 3 rows.
+  V2 R-248 STEP SPEC: R248_CANONICAL_STEPS arm exactly 10 rows, R248_TESTHUB_STEPS
+     exactly 25; every step <=3 rows; rows for one NPC are contiguous (1 trigger :
+     1 NPC); the emitted arming is one-shot (the generator's emission is asserted
+     on real bytes by gate_boatdialog_budget check (e) - here the SOURCE is checked
+     for the isResettable-0 literal so a source edit cannot silently flip it).
+  V3 ARMED <=> PLACED, spec side: every NPC armed by the canonical steps is placed
+     by the canonical INJECT_SPECS; every NPC armed by the TESTHUB steps is placed
+     by the TESTHUB fold (merge_hub_into_inject_specs); NO device records
+     (portal_olympianarena*/teleportshrineorient placed by us) exist in either
+     spec set (the R-248 revert holds).
+  V4 SHARED-RECORD LAW: the traveler records stay minted in the arz pipeline
+     (apply_svc_patches source text).
 
 Usage: py tools/debug/gate_travel_npc_invariants.py
 Exit 0 = PASS. Read-only, no build required.
@@ -44,16 +44,16 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'tools'))
 sys.path.insert(0, str(REPO / 'tools' / 'debug'))
 
+BS = chr(92)
+
 RIPPED_TABLES = (
     'HELOS_HUB_TRAVEL', 'TESTHUB_MASTER_DESTS', 'TESTHUB_RETURN_DESTS',
     'TESTHUB_RETURN_DESTS_BY_NPC', 'TESTHUB_AREA_RETURN_NPCS',
     'TRAVELER_ENTER_OFFERS',
 )
 RIPPED_GENERATORS = ('_add_helos_traveler_hub_travel', '_add_testhub_portal_travel')
-ALMYROS = 'portal_master_helos'
 
-# Shared-record law: the ripped rows' records must STAY minted in the arz pipeline
-# (they are now the named mute markers beside the devices).
+# Shared-record law: every travel record must STAY minted in the arz pipeline.
 KEPT_RECORD_STEMS = (
     'svc_helos_trav_garden', 'svc_helos_trav_secret', 'svc_helos_trav_sparta',
     'svc_helos_trav_uber', 'svc_helos_trav_bossarena', 'svc_helos_trav_warband',
@@ -62,87 +62,114 @@ KEPT_RECORD_STEMS = (
     'svc_helos_trav_vashkarr', 'svc_helos_trav_obsidian',
     'svc_warden_sparta_crypt', 'svc_area_return_uber',
 )
+# Device records WE place are banned from both spec sets (R-248 revert holds).
+# NOTE: an SV-NATIVE inert portal_olympianarena2 prop ships inside crypt_floor1's
+# own blob - that is upstream bytes, not an INJECT_SPECS entry, hence out of scope.
+BANNED_DEVICE_STEMS = ('portal_olympianarena', 'teleportshrineorient', 'map_portal_aura')
+
+
+def _spec_records(specs):
+    out = set()
+    for _k, entries in specs.items():
+        for s in entries:
+            rec = s if isinstance(s, (bytes, bytearray)) else s[0]
+            out.add(bytes(rec).replace(b'/', BS.encode()).lower().decode())
+    return out
 
 
 def main():
     fails = []
 
-    # ── V1: quest side ────────────────────────────────────────────────────────
+    # ── V1: the rip holds ─────────────────────────────────────────────────────
     import build_quest_files as bqf
     for t in RIPPED_TABLES:
         if hasattr(bqf, t):
             fails.append(f'V1: RIPPED table {t} is BACK in build_quest_files - the '
-                         f'stateful-registry bug class returns with it (R-246)')
+                         f'blanket-refire bug class returns with it (R-246/R-248)')
     for g in RIPPED_GENERATORS:
         if hasattr(bqf, g):
             fails.append(f'V1: RIPPED generator {g} is BACK in build_quest_files')
     dests = getattr(bqf, 'HELOS_PORTAL_DESTS', None)
-    if dests is None:
-        fails.append('V1: HELOS_PORTAL_DESTS (Almyros) missing - his ruled 3-route '
-                     'menu is the ONE surviving SVC hub table')
+    if dests is None or len(dests) != 3:
+        fails.append('V1: Almyros HELOS_PORTAL_DESTS must exist with EXACTLY 3 rows '
+                     '(R-246 ruled menu, R-248 unchanged)')
+
+    # ── V2: R-248 step spec ───────────────────────────────────────────────────
+    canon = getattr(bqf, 'R248_CANONICAL_STEPS', None)
+    hub = getattr(bqf, 'R248_TESTHUB_STEPS', None)
+    if canon is None or hub is None:
+        fails.append('V2: R248 step tables missing from build_quest_files')
     else:
-        if len(dests) != 3:
-            fails.append(f'V1: Almyros HELOS_PORTAL_DESTS has {len(dests)} rows, '
-                         f'ruled EXACTLY 3 (R-246: "Almyros keeps his 3-route talk menu")')
+        n_c = sum(len(r) for _s, r in canon)
+        n_h = sum(len(r) for _s, r in hub)
+        if n_c != 10:
+            fails.append(f'V2: canonical steps arm {n_c} rows, spec is 10')
+        if n_h != 25:
+            fails.append(f'V2: TESTHUB steps arm {n_h} rows, spec is 25')
+        for (sname, rows) in list(canon) + list(hub):
+            if len(rows) > 3:
+                fails.append(f'V2: step {sname!r} arms {len(rows)} rows > 3')
+            seen, last = set(), None
+            for (npc, _xyz, _tag, _lk) in rows:
+                k = npc.replace('/', BS).lower()
+                if k != last and k in seen:
+                    fails.append(f'V2: step {sname!r} rows for {npc} not contiguous '
+                                 f'(1 trigger : 1 NPC grouping broken)')
+                seen.add(k)
+                last = k
+        names = [s for s, _r in list(canon) + list(hub)]
+        if len(names) != len(set(names)):
+            fails.append('V2: duplicate R248 step names')
     src = (REPO / 'tools' / 'build_quest_files.py').read_text(encoding='utf-8',
                                                               errors='replace')
-    # the awakening fallback recipe must stay available (uncalled is fine)
+    if "('field', 'isResettable', ('int', 0)),   # ONE-SHOT" not in src:
+        fails.append('V2: the R248 generator no longer emits the isResettable=0 '
+                     'one-shot literal - the no-churn law is off in SOURCE')
     if '_npc_awaken_actions' not in src:
-        fails.append('V1: the retained b88 awakening recipe _npc_awaken_actions is '
-                     'GONE - it is the sanctioned visibility fallback for R-246 markers')
+        fails.append('V2: the b88 awakening recipe _npc_awaken_actions is GONE')
 
-    # ── V2: map-side device tables ────────────────────────────────────────────
+    # ── V3: armed <=> placed, spec side ───────────────────────────────────────
     import build_section_surgery as bss
-    labels = [row[0] for row in bss.R246_COURT]
-    if len(labels) != 14 or len(set(labels)) != 14:
-        fails.append(f'V2: R246_COURT must carry 14 uniquely-labeled doors, '
-                     f'found {len(labels)} ({len(set(labels))} unique)')
-    uids = []
-    for lbl, (m, x) in bss.R246_COURT_UIDS.items():
-        uids += [('court-' + lbl + '-mouth', m), ('court-' + lbl + '-exit', x)]
-    for s in bss.R246_SHRINE_SPECS:
-        uids += [('shrine-' + s['label'], s['uid']),
-                 ('shrine-' + s['label'] + '-tail', s['tail'])]
-    for nm in ('R246_UBER_M1', 'R246_UBER_X1', 'SPARTA_M1', 'SPARTA_X1'):
-        uids.append((nm, getattr(bss, nm)))
-    seen = {}
-    for nm, u in uids:
-        if u in seen:
-            fails.append(f'V2: minted uid COLLISION: {nm} == {seen[u]} ({u.hex()[:12]}..)')
-        seen[u] = nm
-    # appended-host law, spec side: every door-entrance host key must sit in the
-    # device gate's ORIGINAL-INDEX allowlist (the one place the law is authored).
-    sys.path.insert(0, str(REPO / 'tools'))
-    from gate_device_resolution import ALLOWED_ENTRANCE_HOSTS
-    allow = {k.replace(chr(92), '/').lower() for k in ALLOWED_ENTRANCE_HOSTS}
-    for k in (bss.MAZE03_LVL_KEY, bss.CATACUBE_FLOORLAST_LVL_KEY, bss.HELOS_HOST_KEY):
-        if k.replace(chr(92), '/').lower() not in allow:
-            fails.append(f'V2: door-entrance host {k} is NOT in the original-index '
-                         f'allowlist (appended-host law: it would NEVER fire)')
-    dest_guids = [row[5] for row in bss.R246_COURT]
-    if len(set(dest_guids)) != len(dest_guids):
-        fails.append('V2: court dest GUIDs are not pairwise distinct (two doors would '
-                     'silently share a destination)')
-    canon_shrines = [s['label'] for s in bss.R246_SHRINE_SPECS if not s['hub_only']]
-    if sorted(canon_shrines) != ['sc2', 'uber']:
-        fails.append(f'V2: canonical shrine set must be exactly uber+sc2, got {canon_shrines}')
+    canon_placed = _spec_records(bss.INJECT_SPECS)
+    hub_placed = _spec_records(bss.merge_hub_into_inject_specs(bss.INJECT_SPECS))
+    # the TESTHUB random09a swap-path extras are applied outside INJECT_SPECS;
+    # include them for completeness
+    if canon is not None and hub is not None:
+        for (sname, rows) in canon:
+            for (npc, _xyz, _tag, _lk) in rows:
+                nl = npc.replace('/', BS).lower()
+                if nl not in canon_placed:
+                    fails.append(f'V3: canonical step {sname!r} arms {npc} but the '
+                                 f'canonical INJECT_SPECS never places it '
+                                 f'(armed-but-unplaced = a dead row)')
+        for (sname, rows) in hub:
+            for (npc, _xyz, _tag, _lk) in rows:
+                nl = npc.replace('/', BS).lower()
+                if nl not in hub_placed:
+                    fails.append(f'V3: TESTHUB step {sname!r} arms {npc} but the '
+                                 f'TESTHUB fold never places it')
+    for nm in sorted(hub_placed):
+        base = nm.rsplit(BS, 1)[-1]
+        if any(base.startswith(p) for p in BANNED_DEVICE_STEMS):
+            fails.append(f'V3: DEVICE record {base} is placed by the spec tables - '
+                         f'the R-248 revert is regressing (graveyard sec 10/10a)')
 
-    # ── V3: shared-record law ─────────────────────────────────────────────────
-    psrc = (REPO / 'tools' / 'apply_svc_patches.py').read_text(encoding='utf-8',
-                                                               errors='replace')
+    # ── V4: shared-record law ─────────────────────────────────────────────────
+    asp = (REPO / 'tools' / 'apply_svc_patches.py').read_text(encoding='utf-8',
+                                                              errors='replace')
     for stem in KEPT_RECORD_STEMS:
-        if stem not in psrc:
-            fails.append(f'V3: record {stem} vanished from apply_svc_patches - '
-                         f'retirement protocol requires records STAY (mute markers)')
+        if stem not in asp:
+            fails.append(f'V4: record stem {stem} vanished from apply_svc_patches - '
+                         f'shared-record law (records stay; only rows/placements move)')
 
     if fails:
-        print(f'TRAVEL-INVARIANTS GATE (R-246): {len(fails)} VIOLATION(S)')
+        print(f'TRAVEL-NPC INVARIANTS (R-248): {len(fails)} FAILURE(S)')
         for f in fails:
             print(f'  FAIL {f}')
         return 1
-    print('TRAVEL-INVARIANTS GATE (R-246): PASS - rip holds (0 hub tables, Almyros 3 '
-          'rows), 14-door court + 11 shrines consistent (uids unique, canonical set '
-          'uber+sc2), shared-record law holds for all 16 marker records')
+    print('TRAVEL-NPC INVARIANTS (R-248): PASS - rip holds; R248 steps 10+25 rows, '
+          '<=3/step, 1-trigger-per-NPC, one-shot in source; armed<=>placed both '
+          'variants; zero placed device records; shared-record law intact')
     return 0
 
 
