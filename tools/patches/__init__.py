@@ -1186,6 +1186,30 @@ REGISTRY = [
                             # Standalone: py tools/gate_orb_legendary.py <arz>
                             # (--census for Will's number, --calibrate, --apply);
                             # negatives: py tools/debug/negtest_orb_legendary.py <arz>.
+    'r247_bloodcave_rulings',  # R-247 parts 7a/7b/7c (Will 2026-08-13, ANGRY): (a) the
+                            # Devourer-stash tables loottable_hidden_bloodcave_01/02/03
+                            # reverted to the SV 0.98i ORIGINAL numSpawn volume (*3.8/*4.1,
+                            # ~19 iterations - R-240 had trimmed them ~12x; R-242 measured
+                            # NOT involved), a Will-ratified R-240 scope carve-out mirrored
+                            # in svc_loot_volume.R247_STASH_EXEMPT + the R-240 ledger
+                            # amendment; composition (chances/weights/members, all >= SV)
+                            # KEPT. (b) the egg_blooddragon stash-guard pool hardened to
+                            # the in-game-proven _BT_POOL byte-shape (limit1..3=1 + weight
+                            # 150; the bytes already guaranteed 1 Devourer main + 3 dragon
+                            # champions on N/E/L - residual runtime channels are
+                            # BL-R247-DEBT-6). (c) q_enslaver_warband chanceToRun 100 -> 0
+                            # (the A1 set-piece shared the parchment chamber with the 33%
+                            # Devourer ambush; R-247.7c supersedes that placement -
+                            # relocation is BL-R247-DEBT-7, a Will map-lane decision).
+                            # ORDER IS LOAD-BEARING: MUST run after loot_volume_trim (its
+                            # apply() FAILS LOUD unless the three tables still carry the
+                            # exact R-240-trimmed multipliers - which simultaneously proves
+                            # the ordering) and after orb_legendary_chance (its verify()
+                            # asserts the ORB sentinels kept their trim - the carve-out
+                            # must not leak). Last writer of the three tables' numSpawn
+                            # fields, the egg pool's limits/weights and the warband's
+                            # chanceToRun. Negative test:
+                            # py tools/patches/r247_bloodcave_rulings.py --negtest
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

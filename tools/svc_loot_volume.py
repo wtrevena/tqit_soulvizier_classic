@@ -142,6 +142,27 @@ MIN_SPAWN_MIN_SOLO = 1.05
 # SECOND iteration and the per-difficulty ladder has somewhere to express itself.
 MIN_SPAWN_MAX_SOLO = 1.20
 
+# ── R-247.7a SCOPE CARVE-OUT (Will 2026-08-13, verbatim: "wtf did you do to all the
+# chests like toxeus the murderer devourer of blood's stash? Revert it back to what
+# it was dropping in the original sv you nerfed the fuck out of it.") ──────────────
+# The THREE Devourer-stash tables (the blood-cave "Toxeus the Murderer, Devourer of
+# Blood's Stash" Majestic chest, tiers n/e/l) LEAVE R-240's trim scope and its V1
+# canonical ceiling. Their volume authority is now tools/patches/
+# r247_bloodcave_rulings.py, which restores the SV 0.98i originals (*3.8/*4.1) and
+# gates them at exactly those values. This is a Will-ratified supersession recorded
+# in docs/WILL_RULINGS.md (R-240 amendment + R-247 part 7) - NOT a quiet exclusion:
+# scope_tables() drops them (so trim_table never trims them and V3/V4 stop covering
+# them - the r247 module's verify() re-asserts form+floor+exact values), and the V1
+# per-surface ceiling skips any surface made up entirely of exempt tables. Every
+# other R-240 surface is untouched by this carve-out.
+R247_STASH_EXEMPT = frozenset(
+    'records\\drxitem\\container\\loottable_hidden_bloodcave_0%d.dbr' % i
+    for i in (1, 2, 3))
+
+
+def _r247_exempt(path):
+    return SLB._n(path) in R247_STASH_EXEMPT
+
 # ─────────────────────────────────────────────────────────────────────────────
 # THE ENGINE'S ROUNDING MODE IS UNPROVEN, SO BOTH READINGS ARE ENFORCED
 #
@@ -339,6 +360,8 @@ def scope_tables(db, lk=None):
             real = lk.real(t)
             if not real:
                 continue
+            if _r247_exempt(real):
+                continue  # R-247.7a: the Devourer-stash tables left R-240's scope
             out[SLB._n(real)] = (real, tier, is_hub(real))
     return out
 
@@ -764,6 +787,8 @@ def problems(db, lk=None, report=None):
     for label, tables, weights, tier in SAB.all_surfaces(db, lk):
         if any(is_hub(t) for t in tables):
             continue
+        if all(_r247_exempt(t) for t in tables):
+            continue  # R-247.7a: the Devourer stash is ruled SV-rich; its own gate owns it
         S, leg, _pn = surface_reading(d, dist, tables, weights, tier)
         if leg > worst[0]:
             worst = (leg, label)
