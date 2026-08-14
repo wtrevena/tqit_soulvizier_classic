@@ -46,9 +46,39 @@ RULING 5(a) - THE ENDLESS HUNT IS A SKELETON (um_toxeus_hunt_99).
                    one-constant fallback.
     anm table   -> anm_skeleton01 (the family rig: 108 spear rows, 7 base-game
                    skeletal hoplites equip spears on it, unarmedRunAnim bound)
-                   and EVERY inline .anm override CLEARED - foreign-rig clips on
-                   a skeleton mesh are the A9/Dagon-frozen class; the table now
-                   drives everything, spear stances included.
+                   and EVERY inline foreign-rig .anm override CLEARED - foreign
+                   clips on a skeleton mesh are the A9/Dagon-frozen class.
+    >>> ROUND 3 (the round-2 vet blocker). Round 2 stopped at the clear and
+        wrote ZERO inline rows, betting the table drives everything. The vet
+        refuted that on one axis: anm_skeleton01 binds 'AoE360' ONLY on its
+        sHanded/dHanded rows - never on the SPEAR row a spear-guaranteed
+        monster occupies, never on unarmed - so toxeus_bladestorm (kept per
+        ruling 5: "Keep his 4 b98 skills ... + spear intact") was uncastable
+        under ANY engine model, and toxeus_hunt_encounter's SPEAR-ANIM-1 /
+        CASTABILITY-1 gates (which read INLINE rows, the b98 lane's proven
+        surface) went red 14x. Fix = the adfda67 BOTH-SURFACES law
+        (dagon_anim_rig, IN-GAME-proven on build90): after the clear, the two
+        rows he can actually read are REBOUND INLINE with the table's OWN
+        clips, read live from anm_skeleton01 at build time so they can never
+        desync from the rig:
+          * the full SPEAR row (his live row - spear-guaranteed @100) and the
+            full UNARMED row (the engine's universal fallback; the coldworm
+            precedent): attack 1-3 / run / walk / attackIdle / die1 / stun /
+            spawn. spearAttackAnim3 duplicates the table's spearAttackAnim1 -
+            the rig's own idiom (anm_skeleton01 binds ONE clip on all three
+            unarmedAttackAnim slots; 1,063 shipped records share the
+            duplicate-slot pattern).
+          * 'AoE360' bound on BOTH rows: <row>SpecialAnimRef1='AoE360' ->
+            the table's own sHandedSpecialAnim1 clip
+            (MalePC_DW_Skill_AOE360.anm - the rig's proven AoE360 clip; the
+            same table drives it on every base skeletal hoplite in-game, and
+            the rig plays MalePC clips throughout: MalePC_SPear_AttAlpha IS
+            its spear attack).
+        Inline rows on a table-carrying record are the shipped data's own
+        idiom - 3,498 of 3,807 charAnimationTableName carriers also bind
+        inline .anm rows (measured, a86afc15). What the law excludes is
+        FOREIGN-RIG clips, not inline-ness: verify() now asserts every inline
+        clip on the Hunt is one the resolved rig table itself binds.
     race        -> Undead (the family value; both brothers measured Undead).
     actorHeight -> 2.0 (R-126: the RIG constant, measured on this mesh's own
                    q4_giantskeleton records AND on the GoldenSkeleton hoplites;
@@ -70,8 +100,11 @@ RULING 6(b) - THE SPEAR, VERIFIED (no fix - the bytes prove it correct).
   VERDICT: the shipped spear chain was byte-correct - Will's softened "maybe he
   was using a spear and i couldnt see it" is the likely truth. After this
   module's rig swap the chain is RE-proven on the new rig: anm_skeleton01
-  carries the full spear row set and base-game skeletal hoplites wield spears
-  on it in-game. verify() gates the whole chain either way.
+  carries the spear stance rows and base-game skeletal hoplites wield spears
+  on it in-game. ROUND-3 CORRECTION: round 2 overstated "the full spear row
+  set" - the table ships NO spearSpecialAnimRef rows and only 2 spear attack
+  clips, which is exactly why the ruling-5a round-3 inline rebind exists
+  (see above). verify() gates the whole chain either way.
 
 RULING 6(c) - THE HUNT SOUL SUMMONS HIM (a BUILD, not a fix).
   Measured: toxeus_hunt_soul_{n,e,l} grant svc_hunt_quarrysmark @ 1/2/3 via an
@@ -170,6 +203,35 @@ _HUNT_ANM = r'records\creature\monster\skeleton\anm\anm_skeleton01.dbr'
 _HUNT_RACE = 'Undead'
 _HUNT_HEIGHT = 2.0          # R-126 rig constant: q4_giantskeleton + hoplites
 _RUNBREAKER_N = r'records\item\loottables\svc\runbreaker_guaranteed_n.dbr'
+# ── R-247.5a ROUND 3: the inline rebind (adfda67 both-surfaces law) ────────
+# dst inline slot on the Hunt -> src slot on anm_skeleton01 whose clip is
+# copied VERBATIM at build time. spearAttackAnim3 <- spearAttackAnim1 is the
+# rig's own duplicate-slot idiom (its unarmed row binds one clip on all 3
+# attack slots; 1,063 shipped records share the pattern). Both rows he can
+# read (spear = live @100% equip, unarmed = engine universal fallback) are
+# bound in full, so the resolved animation set is identical whichever surface
+# the engine reads.
+_INLINE_REBIND = {}
+for _row in ('spear', 'unarmed'):
+    for _slot, _src in (('AttackAnim1', 'AttackAnim1'),
+                        ('AttackAnim2', 'AttackAnim2'),
+                        ('AttackAnim3', 'AttackAnim1'),
+                        ('RunAnim', 'RunAnim'), ('WalkAnim', 'WalkAnim'),
+                        ('AttackIdleAnim', 'AttackIdleAnim'),
+                        ('DieAnim1', 'DieAnim1'), ('StunAnim', 'StunAnim'),
+                        ('SpawnAnim', 'SpawnAnim')):
+        _INLINE_REBIND[_row + _slot] = _row + _src
+del _row, _slot, _src
+# the table's spear row has no AttackAnim3 and unarmed's 3 slots are all one
+# clip, so both AttackAnim3 entries above self-heal to slot 1's clip.
+_AOE360_REF = 'AoE360'                     # toxeus_bladestorm's declared anim
+_AOE360_SRC = 'sHandedSpecialAnim1'        # the rig's own AoE360 clip slot
+_AOE360_SRC_REF = 'sHandedSpecialAnimRef1'  # asserted == 'AoE360' at build
+_AOE360_ROWS = ('spear', 'unarmed')        # live row + universal fallback row
+# the 9 SPEAR-ANIM-1 slots toxeus_hunt_encounter's gate requires inline
+_SPEAR_GATE_SLOTS = ('spearAttackAnim1', 'spearAttackAnim2', 'spearAttackAnim3',
+                     'spearRunAnim', 'spearWalkAnim', 'spearAttackIdleAnim',
+                     'spearDieAnim1', 'spearStunAnim', 'spearSpawnAnim')
 
 # ── the Hunt soul chain (6c) ────────────────────────────────────────────────
 _SOUL_ROOT = r'records\item\equipmentring\soul\svc_uber'
@@ -270,6 +332,30 @@ def _fix_lethaeus(db):
              [int(x) for x in _CORE_LIFE], _CORE_HAND[0], _CORE_HAND[1]))
 
 
+def _table_clip(db, slot):
+    """The .anm clip anm_skeleton01 itself binds at `slot` - fail-loud if the
+    rig table no longer carries it (NO-ESTIMATES: the rebind copies the rig's
+    own bytes, never a hand-typed path)."""
+    v = _gv1(db, _HUNT_ANM, slot)
+    v = str(v).strip() if v is not None else ''
+    if not v.lower().endswith('.anm'):
+        raise SystemExit(
+            "[r247] anm_skeleton01 %s=%r - the rig table no longer binds the "
+            "clip the round-3 inline rebind copies; re-measure before building "
+            "(NO-ESTIMATES law)." % (slot, v))
+    return v
+
+
+def _set_str(db, rec, field, value):
+    """Write a string field; type it explicitly ONLY when absent (the
+    dtype-preservation law's sanctioned arm - same pattern this module already
+    uses for charAnimationTableName)."""
+    if db.get_field_value(rec, field) is None:
+        db.set_field(rec, field, value, S)
+    else:
+        db.set_field(rec, field, value)
+
+
 def _fix_hunt_identity(db):
     if not db.has_record(_HUNT):
         raise SystemExit("[r247] the Endless Hunt is missing: %s" % _HUNT)
@@ -299,12 +385,32 @@ def _fix_hunt_identity(db):
         db.set_field(_HUNT, 'charAnimationTableName', _HUNT_ANM)
     db.set_field(_HUNT, 'characterRacialProfile', _HUNT_RACE)
     db.set_field(_HUNT, 'actorHeight', _HUNT_HEIGHT)
+    # ── ROUND 3: rebind his two readable rows INLINE from the rig's own
+    # clips (adfda67 both-surfaces law; see the module docstring, ruling 5a).
+    rebound = 0
+    for dst, src in sorted(_INLINE_REBIND.items()):
+        _set_str(db, _HUNT, dst, _table_clip(db, src))
+        rebound += 1
+    ref = _gv1(db, _HUNT_ANM, _AOE360_SRC_REF)
+    if str(ref or '').strip() != _AOE360_REF:
+        raise SystemExit(
+            "[r247] anm_skeleton01 %s=%r != %r - the rig's AoE360 slot moved; "
+            "re-measure before building (NO-ESTIMATES law)."
+            % (_AOE360_SRC_REF, ref, _AOE360_REF))
+    aoe_clip = _table_clip(db, _AOE360_SRC)
+    for row in _AOE360_ROWS:
+        _set_str(db, _HUNT, row + 'SpecialAnimRef1', _AOE360_REF)
+        _set_str(db, _HUNT, row + 'SpecialAnim1', aoe_clip)
+        rebound += 2
     db._modified.add(_HUNT)
     print("  [r247.5a] the Endless Hunt is a SKELETON: SkeletonRumorBoss.msh + "
-          "NewSkeleton_White + anm_skeleton01 (family rig; spear rows proven), "
-          "race Undead, actorHeight 2.0 (rig constant), %d inline foreign-rig "
-          ".anm override(s) cleared; scale 1.9 untouched. The _l variant "
-          "inherits all of it at clone time." % cleared)
+          "NewSkeleton_White + anm_skeleton01 (family rig), race Undead, "
+          "actorHeight 2.0 (rig constant), %d inline foreign-rig .anm "
+          "override(s) cleared, then %d inline slot(s) REBOUND from the rig's "
+          "own clips (spear + unarmed rows in full, 'AoE360' on both - "
+          "toxeus_bladestorm castable; adfda67 both-surfaces law); scale 1.9 "
+          "untouched. The _l variant inherits all of it at clone time."
+          % (cleared, rebound))
 
 
 def _build_hunt_soul_summon(db, tags):
@@ -480,13 +586,55 @@ def verify(db, tags=None):
         if gv(_HUNT, 'characterRacialProfile') != _HUNT_RACE:
             p.append("R-247.5a: Hunt race=%r != %s (Will: 'still a demon not a "
                      "skeleton')" % (gv(_HUNT, 'characterRacialProfile'), _HUNT_RACE))
-        stray = [k.split('###')[0] for k, tf in (db.get_fields(_HUNT) or {}).items()
-                 if any(isinstance(v, str) and v.lower().endswith('.anm')
-                        for v in (tf.values or []))]
-        if stray:
-            p.append("R-247.5a: Hunt still carries %d inline foreign-rig .anm "
-                     "override(s) (%s...) - the A9/Dagon-frozen class"
-                     % (len(stray), stray[:3]))
+        # ROUND 3 LAW (supersedes round 2's zero-inline law, which the vet
+        # refuted): inline .anm rows are LEGAL - what is banned is a clip the
+        # resolved rig table does not itself bind (the A9/Dagon-frozen
+        # foreign-rig class). 3,498/3,807 shipped table-carriers bind inline
+        # rows; the ban is on FOREIGN clips, not inline-ness.
+        table_clips = {_norm(v) for _k, _tf in (db.get_fields(_HUNT_ANM) or {}).items()
+                       for v in (_tf.values or [])
+                       if isinstance(v, str) and v.lower().endswith('.anm')}
+        if not table_clips:
+            p.append("R-247.5a: anm_skeleton01 binds no .anm clips at all - "
+                     "the rig table is gutted")
+        for _k, _tf in (db.get_fields(_HUNT) or {}).items():
+            base = _k.split('###')[0]
+            for v in (_tf.values or []):
+                if (isinstance(v, str) and v.lower().endswith('.anm')
+                        and _norm(v) not in table_clips):
+                    p.append("R-247.5a: Hunt inline %s=%r is NOT a clip the "
+                             "resolved rig table binds - the A9/Dagon-frozen "
+                             "foreign-rig class" % (base, v))
+        # ROUND 3: his two readable rows are fully bound INLINE (adfda67
+        # both-surfaces law) - the spear row is his live row (SPEAR-ANIM-1,
+        # toxeus_hunt_encounter's gate reads these inline slots), unarmed is
+        # the engine's universal fallback row.
+        for dst in sorted(_INLINE_REBIND):
+            v = gv(_HUNT, dst)
+            if not v or not str(v).strip().lower().endswith('.anm'):
+                p.append("R-247.5a r3: Hunt inline %s=%r - the live/fallback "
+                         "row must be fully bound on both surfaces" % (dst, v))
+        # ROUND 3: bladestorm's 'AoE360' is bound on BOTH readable rows, and
+        # the kept skill still declares exactly that ref (the castability
+        # chain re-proven end to end).
+        for row in _AOE360_ROWS:
+            ref = str(gv(_HUNT, row + 'SpecialAnimRef1') or '').strip()
+            if ref != _AOE360_REF:
+                p.append("R-247.5a r3: Hunt %sSpecialAnimRef1=%r != %r - "
+                         "toxeus_bladestorm has no playable animation on that "
+                         "row" % (row, ref, _AOE360_REF))
+            clip = gv(_HUNT, row + 'SpecialAnim1')
+            if not clip or _norm(clip) not in table_clips:
+                p.append("R-247.5a r3: Hunt %sSpecialAnim1=%r is empty or "
+                         "foreign to the rig - the AoE360 cast dies on that "
+                         "row" % (row, clip))
+        bs = gv(_HUNT, 'specialAttack2SkillName')
+        if bs and db.has_record(bs):
+            need = str(gv(bs, 'skillSpecialAnimationName') or '').strip()
+            if need and need != _AOE360_REF:
+                p.append("R-247.5a r3: specialAttack2 skill declares anim %r "
+                         "but this module binds only %r - the kept cast slot "
+                         "is dead again" % (need, _AOE360_REF))
         # 6b: the spear chain, byte-proven end to end on the NEW rig
         if float(gv(_HUNT, 'chanceToEquipRightHand') or 0) < 100.0:
             p.append("R-247.6b: Hunt chanceToEquipRightHand=%r != 100"
@@ -644,12 +792,14 @@ def verify(db, tags=None):
         raise SystemExit("r247_boss_forms.verify FAILED: %d problem(s)" % len(p))
     print("  [r247_boss_forms].verify OK: Lethaeus core is the escalation "
           "(kit intact); the Hunt is an Undead giant skeleton on the family "
-          "rig with zero foreign-rig anim rows and a byte-proven spear chain; "
-          "his soul summons him at 1/2/3 with TTL-free pets that raise no "
-          "enemies; all three family ladders strictly ascend with visible "
-          "per-tier names; the +all-skills law is 1/2/3 (+EoAT 3, INT); the "
-          "formula is Legendary-classified with its guaranteed 100%% drop and "
-          "the full craft->summon chain resolving.")
+          "rig, every inline clip rig-proven, spear + unarmed rows fully "
+          "bound on both surfaces with 'AoE360' castable on each (r3), and a "
+          "byte-proven spear chain; his soul summons him at 1/2/3 with "
+          "TTL-free pets that raise no enemies; all three family ladders "
+          "strictly ascend with visible per-tier names; the +all-skills law "
+          "is 1/2/3 (+EoAT 3, INT); the formula is Legendary-classified with "
+          "its guaranteed 100%% drop and the full craft->summon chain "
+          "resolving.")
     return tags
 
 
@@ -703,18 +853,37 @@ def _negtest():
                        'skillName18': ['records\\xpack\\skills\\dream\\distortreality.dbr'],
                        'skillName19': ['records\\skills\\monster skills\\summoning_pets\\epiales_summon2.dbr'],
                        'skillName23': ['records\\skills\\monster skills\\attack_radius\\ondeath_voidnova.dbr']}
-        db.d[_HUNT] = {'mesh': [_HUNT_MESH], 'baseTexture': [_HUNT_SKIN],
-                       'charAnimationTableName': [_HUNT_ANM],
-                       'characterRacialProfile': [_HUNT_RACE],
-                       'chanceToEquipRightHand': [100.0],
-                       'lootRightHandItem1': [
-                           _RUNBREAKER_N,
-                           _RUNBREAKER_N.replace('_n', '_e'),
-                           _RUNBREAKER_N.replace('_n', '_l')],
-                       'lootMisc4Item1': [_RITE_TABLE] * 3,
-                       'chanceToEquipMisc4': [100.0]}
-        db.d[_HUNT_ANM] = {'spearAttackAnim1': ['a.anm'],
-                           'unarmedRunAnim': ['b.anm']}
+        anm = {'spearAttackAnim1': ['spear_a.anm'],
+               'spearAttackAnim2': ['spear_b.anm'],
+               'spearRunAnim': ['run.anm'], 'spearWalkAnim': ['walk.anm'],
+               'spearAttackIdleAnim': ['idle.anm'],
+               'spearDieAnim1': ['die.anm'], 'spearStunAnim': ['stun.anm'],
+               'spearSpawnAnim': ['spawn.anm'],
+               'unarmedAttackAnim1': ['una_a.anm'],
+               'unarmedAttackAnim2': ['una_b.anm'],
+               'unarmedRunAnim': ['b.anm'], 'unarmedWalkAnim': ['walk.anm'],
+               'unarmedAttackIdleAnim': ['idle.anm'],
+               'unarmedDieAnim1': ['die.anm'], 'unarmedStunAnim': ['stun.anm'],
+               'unarmedSpawnAnim': ['spawn.anm'],
+               _AOE360_SRC_REF: [_AOE360_REF], _AOE360_SRC: ['aoe360.anm']}
+        db.d[_HUNT_ANM] = anm
+        hunt = {'mesh': [_HUNT_MESH], 'baseTexture': [_HUNT_SKIN],
+                'charAnimationTableName': [_HUNT_ANM],
+                'characterRacialProfile': [_HUNT_RACE],
+                'chanceToEquipRightHand': [100.0],
+                'lootRightHandItem1': [
+                    _RUNBREAKER_N,
+                    _RUNBREAKER_N.replace('_n', '_e'),
+                    _RUNBREAKER_N.replace('_n', '_l')],
+                'lootMisc4Item1': [_RITE_TABLE] * 3,
+                'chanceToEquipMisc4': [100.0]}
+        # the round-3 inline rebind, mirrored exactly (both-surfaces law)
+        for dst, src in _INLINE_REBIND.items():
+            hunt[dst] = list(anm[src])
+        for row in _AOE360_ROWS:
+            hunt[row + 'SpecialAnimRef1'] = [_AOE360_REF]
+            hunt[row + 'SpecialAnim1'] = list(anm[_AOE360_SRC])
+        db.d[_HUNT] = hunt
         db.d[_RUNBREAKER_N] = {
             'lootName1': [r'records\item\equipmentweapon\spear\svc_n_runbreaker.dbr'],
             'lootWeight1': [100]}
@@ -768,6 +937,13 @@ def _negtest():
         ('a foreign-rig inline anim row returns',
          lambda db, t: db.d[_HUNT].__setitem__(
              'spearAttackAnim1', ['Creatures\\Monster\\Maenad\\ANM\\x.anm'])),
+        ('a live spear slot goes empty again (the round-2 defect)',
+         lambda db, t: db.d[_HUNT].__setitem__('spearRunAnim', [''])),
+        ('the spear row loses its AoE360 binding (bladestorm dies)',
+         lambda db, t: db.d[_HUNT].__setitem__('spearSpecialAnimRef1', [''])),
+        ('the AoE360 clip goes foreign to the rig',
+         lambda db, t: db.d[_HUNT].__setitem__('unarmedSpecialAnim1',
+                                               ['foreign.anm'])),
         ('the spear equip chain breaks',
          lambda db, t: db.d[_HUNT].__setitem__('chanceToEquipRightHand', [0.0])),
         ('a hunt soul stops granting the summon',
