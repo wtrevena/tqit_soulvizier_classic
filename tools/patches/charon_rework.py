@@ -1029,7 +1029,14 @@ _RETINUE_PET_TABLE = 'vinygrowth'
 # under the shipped Charon's 8000 / 50.0.
 _MANA_CYCLE_SECONDS = 20.0        # both signature casts are skillCooldownTime 20.0
 _ORM_MANA = 3000.0                # the donor's own pool, = the Gaoler's
-_ORM_MANA_REGEN = 16.0            # funds 312.0 / 20s = 15.6
+# R-247 ROUND 3: 16.0 funded the b85 rotation (312.0/20s = 15.6). The R-247.2
+# kit merge put THE STYX UNDERTOW (250.0 @ its wired level) into phase 1's
+# rotation - measured total 562.0/cycle - and round 1 forgot to re-fund it;
+# this module's OWN mana gate caught it the first time it ever ran (round-3
+# build). 30.0 funds 600.0/cycle (562.0 measured + drift headroom), derived
+# from the gate's own arithmetic (cost/_MANA_CYCLE_SECONDS = 28.1 minimum),
+# still far under the shipped Charon's 50.0 ceiling the note above cites.
+_ORM_MANA_REGEN = 30.0
 _BLOOM_MANA = 3000.0              # raised from the inherited 1177 to phase-1 parity
 _BLOOM_MANA_REGEN = 21.0          # funds 417.0 / 20s = 20.85
 
@@ -3032,7 +3039,13 @@ def verify(db, tags):
     # this gate makes the mistake unrepeatable. It checks the NAME TOKEN against
     # the live record namespace, ignoring the records this module itself owns.
     _ours = {_n(x) for x in (_ORM, _BLOOM, _BRIAR, _SUMMON, _SPLIT)} \
-        | {_n(x) for x in _PETS} | {_n(x) for x in _SOUL_TIERS}
+        | {_n(x) for x in _PETS} | {_n(x) for x in _SOUL_TIERS} \
+        | {_n(_SK_EMBERFALL), _n(_SK_UNDERTOW), _n(_ORB)} \
+        | {_n(x) for x in _ORB_POOLS} | {_n(x) for x in _ORB_CHESTS}
+    # (R-247 round 3: the R-247.1/2 amendments mint svc_akremon_* records of
+    # their own - the orb-rename chain and the two kit clones. They are THIS
+    # wave's records, so the collision census must own them; without this the
+    # gate redded on the wave's own children the first time it ever ran.)
     for token in _NAME_TOKENS:
         foreign = sorted(n for n in _names
                          if token in n and n not in _ours)[:6]
