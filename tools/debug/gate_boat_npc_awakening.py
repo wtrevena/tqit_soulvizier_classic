@@ -37,7 +37,8 @@ DIALOG_NEEDED = r'records\dialog\story\dialog needed.dbr'
 # R-246: displayTag prefixes of the RIPPED generators - presence == violation.
 RIPPED_PREFIXES = ('SVC: Helos Traveler Hub', 'SVC: TESTHUB Return NPC',
                    'SVC: Traveler Enter-Offer')
-# Co-resident, Will-ratified talk menu (R-246: "Almyros keeps his 3-route talk menu").
+# Co-resident, Will-ratified talk menu (R-246: "Almyros keeps his ... talk menu"; R-249
+# 2026-08-14 trimmed it to Garden ONLY - Secret + Uber removed from the Steam build).
 OUT_OF_SCOPE_PREFIXES = ('SVC: Helos Portal-Master',)
 
 
