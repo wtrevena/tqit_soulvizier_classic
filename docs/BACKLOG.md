@@ -14,7 +14,8 @@
 
 **BL-W0814-5 APHORYTEUS (sp?) DREAD HOARD chest over-nerfed:** "Another terrible chest aphoryteus (spelled wrong) dread hoard is a terrible chest, it got nerfed somewhere along the way and needs to drop more items." Identify the real record (name ~ "Aphoryteus/Amphitryos Dread Hoard"); it got trimmed (likely R-240/R-242); restore toward SV richness (same class as BL-W0814-2 + the R-247.7a stash reverts).
 
-**BL-W0814-6 SPARTA CRYPT TRAVELER / WARDEN STILL BROKEN (P1, on canonical+Steam):** Will's verbatim in-game sequence (TESTHUB): "the spartan crypt traveler isnt working still. i was able to travel from helos via the traveler to athena catacombs level 3 where you see the npc that takes you to the spartan crypt, when i clicked on him a pop up came up that said something like do you want to descend into the spartan crypt and before i could click on it the question went away and then when i clicked the warden of the spartan crypt again nothing happened." + "when i clicked on the traveler from helos to travel to the golden bough, after i traveled back to helos... when i clicked on the guy to travel to the golden bough then it teleported me to what i think is the spartan crypt but my pets did not come with me and i cant move in the spartan crypt... i teleported back to helos, then when i clicked on the traveler again to go to the golden bough, nothing happened... then... i clicked on the guy to travel me to the garden of merchants, and he sent me to the river styx (the area where the boss monster is that summons the briarwood)." => NEW SIGNATURES beyond the b63 mute: (a) Warden descend popup FIRES then AUTO-DISMISSES before click (competing OnLevelLoad refire? churn re-arm cancelling the dialog?); (b) golden-bough->sparta-crypt with NO PETS + CAN'T MOVE (off-mesh landing OR a teleport type that strands + drops pets); (c) residual CROSS-BINDING at 51 TESTHUB rows under churn (golden-bough->sparta, garden->river-styx = still executing other rows after heavy travel/death churn). NOTE: all of (b)(c) involve TESTHUB-ONLY plaza launchers (golden-bough/garden-court) = NOT on canonical/Steam; (a) the Warden IS on canonical => the auto-dismiss is the ship-relevant one. Root-cause the popup auto-dismiss + the churn residual; the definitive fix for the whole class = FIXED-PORTAL conversion (R-248 DEBT-4, mechanism B, Typhon->Rhodes style) which removes per-click quest rows entirely.
+**BL-W0814-6 SPARTA CRYPT TRAVELER / WARDEN STILL BROKEN (P1, on canonical+Steam) — WARDEN AUTO-DISMISS (part a) FIXED BY R-249 (branch `feat/warden-fix-almyros-trim`, awaiting integration + in-game confirm BL-R249-DEBT-2):** the ship-relevant symptom (a) — the descend popup opens then AUTO-DISMISSES before the click, then mute on re-click — is root-caused to the awakening `Action_UpdateNPCDialog` `delayTime` = 2.0s (0x40000000) inherited from the Leinth vortex: reached by teleport, the player clicks inside the 2s window and the delayed pak re-assignment closes the just-opened boat menu. R-249 sets `delayTime=0` (base quest-7 boatman value) in the shared `_npc_awaken_actions` helper, so the pak assigns at level load before any click — KEEPING the boat-traveler method (Will explicitly REJECTED the fixed-portal/Typhon-style conversion this item previously proposed: R-249 "no we dont want to do the typhon-style fix... we just need to fix the issue with the warden"). Parts (b) no-pets/can't-move and (c) cross-binding are TESTHUB-ONLY plaza-launcher symptoms (golden-bough/garden-court, NOT on canonical/Steam) and remain open under the R-248 TESTHUB capacity-probe debt. Original report kept verbatim below.
+> Will's verbatim in-game sequence (TESTHUB): "the spartan crypt traveler isnt working still. i was able to travel from helos via the traveler to athena catacombs level 3 where you see the npc that takes you to the spartan crypt, when i clicked on him a pop up came up that said something like do you want to descend into the spartan crypt and before i could click on it the question went away and then when i clicked the warden of the spartan crypt again nothing happened." + "when i clicked on the traveler from helos to travel to the golden bough, after i traveled back to helos... when i clicked on the guy to travel to the golden bough then it teleported me to what i think is the spartan crypt but my pets did not come with me and i cant move in the spartan crypt... i teleported back to helos, then when i clicked on the traveler again to go to the golden bough, nothing happened... then... i clicked on the guy to travel me to the garden of merchants, and he sent me to the river styx (the area where the boss monster is that summons the briarwood)." => NEW SIGNATURES beyond the b63 mute: (a) Warden descend popup FIRES then AUTO-DISMISSES before click (competing OnLevelLoad refire? churn re-arm cancelling the dialog?); (b) golden-bough->sparta-crypt with NO PETS + CAN'T MOVE (off-mesh landing OR a teleport type that strands + drops pets); (c) residual CROSS-BINDING at 51 TESTHUB rows under churn (golden-bough->sparta, garden->river-styx = still executing other rows after heavy travel/death churn). NOTE: all of (b)(c) involve TESTHUB-ONLY plaza launchers (golden-bough/garden-court) = NOT on canonical/Steam; (a) the Warden IS on canonical => the auto-dismiss is the ship-relevant one. Root-cause the popup auto-dismiss + the churn residual; the definitive fix for the whole class = FIXED-PORTAL conversion (R-248 DEBT-4, mechanism B, Typhon->Rhodes style) which removes per-click quest rows entirely.
 
 **BL-W0814-7 SECRET PLACE GIFT BOX +3x ITEMS:** "the gift box in the secret places need to increase the number of items dropped by 3x." Identify the Secret Place (darkforestenter) gift-box chest record + its loot table; triple the item COUNT it drops (numSpawn* / loot slot count, not just chance). Same chest-generosity class as BL-W0814-2/5 (obsidian + aphoryteus hoards) + the R-247.7a stash reverts - candidate to batch into one chest-tuning lane.
 
@@ -40,6 +41,80 @@
 
 ---
 
+
+## LANE RECORD - R-249 WARDEN FIX + ALMYROS TRIM (branch `feat/warden-fix-almyros-trim` from 40ea6d9/build91-ship, 2026-08-14; **QUESTS-ONLY** wave - Levels/arz/Text BYTE-UNCHANGED by construction; BUILT det-2x + ALL TRAVEL GATES GREEN in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
+
+**THE RULING (docs/WILL_RULINGS.md R-249, verbatim there):** "no steam should not have a traveler
+from helos to the secret place or the uber place. remove those from the steam build now. no we dont
+want to do the typhon-style fix, the current method we are using is getting much closer, we just need
+to fix the issue with the warden." => (A) trim Almyros's Secret+Uber rows on canonical/Steam, keep
+Garden; (B) fix the Warden descend USING THE CURRENT BOAT-TRAVELER METHOD (fixed-portal / GridEntrance
+door explicitly rejected).
+
+**ROOT CAUSE (Warden auto-dismiss):** the awakening `Action_UpdateNPCDialog("Dialog Needed")` carried
+`delayTime` = uint32 0x40000000 (IEEE 2.0s), inherited from the Leinth vortex (only ever reached on
+foot). The Warden is reached by TELEPORT, so the player clicks within the 2s window; the delayed pak
+re-assignment lands on the just-opened descend BoatDialog popup, closes it, and leaves the empty
+placeholder as the active dialog (mute on re-click). `svc_area_return_uber` carries the byte-identical
+triple and only escapes because maze03 is reached by WALKING. FIX = `_AWAKEN_DIALOG_DELAY` 0x40000000
+-> 0 (base quest-7 knossos remote-boatman value), in the SHARED `_npc_awaken_actions` helper so it
+covers every teleport-exposed R-248 traveler; `isResettable` stays 0 (no-churn law untouched);
+`messageDialogTag` greeting KEPT byte-identical to the proven-working uber NPC. PRIMARY-only was
+chosen over the forensic's PRIMARY+TERTIARY: the uber exemplar works WITH its greeting, so the
+greeting is proven-benign; keeping the Warden byte-shape-identical to that exemplar gives a clean A/B
+(BL-R249-DEBT-2) and keeps the change Quests-only. SECONDARY (isResettable=1) deliberately withheld -
+it would reintroduce the ripped churn term and breaks gate_travel_npc_invariants V2's isResettable=0
+source check.
+
+**SHIPPED IN THIS LANE (commits f8ec951, 2ec3f5c, + this docs commit):**
+- SOURCE (f8ec951): `build_quest_files.py` HELOS_PORTAL_DESTS 3->1 (Garden only) +
+  `_AWAKEN_DIALOG_DELAY` 0x40000000->0; `gate_boatdialog_budget.py` ALMYROS_ALLOWED 3->1, ROSTER
+  26->24 (2 Almyros rows dropped), C2_ALLOWED emptied (tagSVCHelosToUber divergence dissolved);
+  `gate_travel_npc_invariants.py` V1 Almyros EXACTLY 1 row; awakening-gate comment.
+- DOCS (2ec3f5c): R-249 verbatim ledger append + WILL_TEST_GUIDE top R-249 section.
+
+**ARTIFACT MD5s (PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1; det-2x = two cold builds byte-identical):**
+| artifact | baseline (40ea6d9) | THIS LANE | note |
+| --- | --- | --- | --- |
+| Quests.arc CANONICAL | `176bf545e3b44a1f2eac990db3b02d4d` | **`6bad2ea7184076379b246140665104b3`** | det-2x identical; baseline md5 == the LIVE shipped build91 Quests |
+| Quests.arc TESTHUB (LOCAL-ONLY) | `1764c3a261ecfc7a0fe9346f6f4df595` | **`90d401f1cebaedc674c74eed899a5aae`** | det-2x identical; baseline md5 == the exact DEV build Will played (forensic 1764c3a2) |
+| Levels.arc CANONICAL | `61aaf3e4...` | **`61aaf3e4...` (UNCHANGED)** | byte-identical by construction: no Levels-build source touched; neither svaera_plus_portals nor build_section_surgery imports build_quest_files |
+| Levels.arc TESTHUB | `37c33fb0...` | **`37c33fb0...` (UNCHANGED)** | ditto (forensic build Will played) |
+| SoulvizierClassic.arz | `b888f022...` | UNCHANGED | no DB source touched (PRIMARY-only Warden fix; no apply_svc_patches change) |
+| Text.arc | `e1d9592a...` | UNCHANGED | no Text source / tag mint changed |
+
+**INTENDED-ONLY DIFF PROOF (decoded from the built arcs):** in BOTH variants the ONLY differing
+`.qst` is `sv_commonmechanics.qst` (105 other quests byte-identical). Within it: (1) every
+`Action_UpdateNPCDialog` `delayTime` = 0x40000000 -> 0 (canonical 6/6, testhub 30/30 - includes the
+Warden's, decoded = 0); (2) Almyros (`portal_master_helos`) BoatDialog tags [Garden, Secret, Uber] ->
+[Garden]. Nothing else changed.
+
+**GATES GREEN (against the built arcs):**
+- gate_boatdialog_budget CANONICAL: PASS (24 armed rows == frozen roster 24; Almyros exactly 1;
+  zero talk-menu reuse; label integrity; one-shot arming). NEGTEST N1-N5 all correctly RED.
+- gate_boatdialog_budget TESTHUB (--hub, roster 49): positive control GREEN; NEGTEST N1-N5 RED.
+- gate_boat_npc_awakening CANONICAL: PASS (Warden trigger = [ShowNpc, UpdateNPCDialog(Dialog Needed),
+  BoatDialog] on svc_warden_sparta_crypt; A1-A5 clean; R0 rip holds; 6 in-scope awakened, 1
+  co-resident Almyros). NEGTEST all correct.
+- gate_travel_npc_invariants (build-free): PASS (Almyros EXACTLY 1 row; R248 steps 10+25; isResettable=0
+  one-shot literal present in source; awakening recipe present; armed<=>placed both variants).
+- In-build contracts: quest-record contract PASS (107 records); boat-NPC contract PASS (R-246 rip holds).
+- arz/Text/Levels contracts: UNAFFECTED - those artifacts are byte-identical to build91 (which shipped 0 P0/0 P1).
+
+**ARMED-ROW COUNTS (before -> after):** canonical 26 -> 24 (Almyros 3 -> 1); TESTHUB 51 -> 49.
+
+**DEBTS:**
+- `BL-R249-DEBT-1` (WILL / in-game): confirm the Garden->Secret-Place teleport-shrine rift admits ENTRY
+  (not return-only) on canonical now that Almyros's Secret row is gone; if return-only, add a canonical
+  Secret-Place entrance NPC mirroring the uber-laby Labyrinth-entrance pattern.
+- `BL-R249-DEBT-2` (in-game A/B): re-test the descend on the Warden AND on svc_area_return_uber via the
+  teleport-onto-then-immediate-click path; confirm the popup STAYS OPEN and is the sole dialog. If a
+  dismiss persists, sanctioned fallbacks are SECONDARY (isResettable=1) then TERTIARY (drop the Warden
+  messageDialogTag) - both withheld here to keep the A/B clean + the no-churn law intact.
+- INTEGRATION (orchestrator): this lane is Quests-only. Ship the new canonical Quests.arc (6bad2ea7) to
+  Steam; the TESTHUB Quests (90d401f1) stays LOCAL-ONLY. Levels/arz/Text need NO rebuild (byte-unchanged).
+
+---
 
 ## LANE RECORD - R-248 PROVEN-MECHANISM TRAVEL (branch `feat/proven-mechanism-travel` from 057a605, 2026-08-14; Levels+Quests coupled wave, arz/Text byte-unchanged; BUILT det-2x + ALL GATES GREEN in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
 

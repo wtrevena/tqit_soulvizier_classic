@@ -18,14 +18,15 @@ structurally banned by check (e); this gate freezes the whole roster by name.
 CHECKS (on a BUILT Quests.arc):
   (a) BUDGET   - per (quest, step): armed SVC BoatDialog rows <= PER_STEP_BUDGET
                  (3; the quest-7/8 pair shape at 2 is preferred). The
-                 sv_commonmechanics REFIRE step arms exactly ALMYROS_ALLOWED (3)
+                 sv_commonmechanics REFIRE step arms exactly ALMYROS_ALLOWED (1
+                 since R-249: Garden only; was 3 before Secret + Uber removed)
                  Almyros rows and ZERO other SVC rows (the Will-ratified
                  grandfathered exception; any other SVC row there is the ripped
                  churn class returning). SV-native steps already >budget are
                  RECORDED AS PRECEDENT (printed), never touched.
   (b) ROSTER   - the global armed row set == the explicit BY-NAME whitelist
-                 below (quest, npc, tag, dest per row): ROSTER (canonical 26)
-                 or + ROSTER_TESTHUB_EXTRA (--hub, 51). ANY new row fails loud.
+                 below (quest, npc, tag, dest per row): ROSTER (canonical 24)
+                 or + ROSTER_TESTHUB_EXTRA (--hub, 49). ANY new row fails loud.
   (c) NO REUSE - zero tag reuse and zero dest-coord reuse across the SVC
                  MENU-AUTHORED rows (Almyros + the Olympus herald), plus LABEL
                  INTEGRITY over ALL SVC rows: one tag -> exactly one dest
@@ -57,7 +58,8 @@ BS = chr(92)
 
 # ── The Will-ratified budget (R-246 envelope; R-248 restored steps) ─────────────
 PER_STEP_BUDGET = 3          # R-248: <=2 preferred (quest-7/8 pairing), <=3 allowed
-ALMYROS_ALLOWED = 3          # R-246: "Almyros keeps his 3-route talk menu"
+ALMYROS_ALLOWED = 1          # R-249 (2026-08-14): Garden ONLY (Secret + Uber removed from Steam);
+#                              was 3 under R-246 ("Almyros keeps his 3-route talk menu")
 ALMYROS_QUEST = 'sv_commonmechanics.qst'
 ALMYROS_STEP = ('Makes it so Quest Never Completes -- '
                 'Allows for refiring on triggers')
@@ -69,14 +71,13 @@ ALMYROS_NPC = r'records\quests\portal_master_helos.dbr'
 # urder 'PortalDude Control' precedent class, NOT the blanket level-load churn the
 # rip killed. Shipped since build31; never touch (WILL_RULINGS R-248 route 8).
 HERALD_NPC = r'records\quests\portal_master_olympus.dbr'
-# (c2) LABEL-INTEGRITY exemption: the b62 DELIBERATE cross-build divergence
-# (build_quest_files RECONCILIATION NOTE): Almyros's canonical tagSVCHelosToUber
-# lands INSIDE crypt_floor1; the TESTHUB launcher's same tag lands at the maze03
-# DOOR. Never both placed in one level (Almyros is de-duped off the TESTHUB plaza),
-# and both labels truthfully name the same area. Any OTHER split fails loud.
-C2_ALLOWED = {
-    'tagSVCHelosToUber': frozenset({(-2438, 10, -2457), (-7793, 1, -3793)}),
-}
+# (c2) LABEL-INTEGRITY exemption: EMPTY since R-249 (2026-08-14). The ONE entry it
+# held was the b62 DELIBERATE cross-build divergence for tagSVCHelosToUber (Almyros's
+# canonical row landed INSIDE crypt_floor1 while the TESTHUB launcher's same tag lands
+# at the maze03 DOOR). R-249 REMOVED Almyros's Uber row from the Steam build, so
+# tagSVCHelosToUber now points at exactly ONE dest (the TESTHUB maze03 door) and needs
+# no allowance; the divergence is dissolved. Any tag armed with >1 dest now fails loud.
+C2_ALLOWED = {}
 
 # SVC-authored boat NPCs (checks (c)+(d) scope). Everything else in the arc is
 # upstream-authentic (SV-native / base) and is frozen by the roster whitelist
@@ -121,19 +122,20 @@ def _svc_all_lc():
 #   (quest_lc, npc_lc, tag, (x, y, z))
 # Derived from the post-R-246-rip census (this file's --census on the built arc)
 # and cross-checked against the pre-rip census: the ONLY SVC-authored survivors
-# are Almyros's 3 rows + the herald's 1; the other 12 are upstream-authentic
-# (urder 3, Leinth vortex 5, base knossos 2 + greece-to-egypt 2). If corruption
-# ever recurs on Steam, the residual suspect list is IN THIS ORDER: vortex 5
-# (shared-step), urder 3 (see docs/BACKLOG.md R-246 lane record).
+# are Almyros's 1 row (Garden only; Secret + Uber removed by R-249 2026-08-14) +
+# the herald's 1; the other 12 are upstream-authentic (urder 3, Leinth vortex 5,
+# base knossos 2 + greece-to-egypt 2). If corruption ever recurs on Steam, the
+# residual suspect list is IN THIS ORDER: vortex 5 (shared-step), urder 3 (see
+# docs/BACKLOG.md R-246 lane record).
 def _r(quest, npc, tag, xyz):
     return (quest.lower(), npc.replace('/', BS).lower(), tag, xyz)
 
 
 ROSTER = [
-    # SVC-authored: Almyros the Wayfarer, the ONE ruled talk menu (R-246).
+    # SVC-authored: Almyros the Wayfarer, the ruled talk menu (R-246), now GARDEN ONLY
+    # (R-249 2026-08-14 removed his Secret Place + Uber Dungeon rows from the Steam build;
+    # both tags stay minted on the TESTHUB launchers svc_helos_trav_secret/_uber below).
     _r('sv_commonmechanics.qst', ALMYROS_NPC, 'tagSVCHelosToGarden', (1173, -39, -4001)),
-    _r('sv_commonmechanics.qst', ALMYROS_NPC, 'tagSVCHelosToSecret', (-2396, 2, -5790)),
-    _r('sv_commonmechanics.qst', ALMYROS_NPC, 'tagSVCHelosToUber', (-2438, 10, -2457)),
     # SVC-authored: the Olympus->Rhodes herald (base-exemplar-mirroring, 1 row).
     _r('quest that controls bosses and their doors.qst',
        r'records\quests\portal_master_olympus.dbr', 'tagSVCOlympusRhodesTravel', (700, 41, -6466)),
@@ -248,7 +250,7 @@ ROSTER_TESTHUB_EXTRA = [
     _r('sv_commonmechanics.qst', r'records\quests\svc_area_return_obsidian.dbr',
        'tagSVCAreaReturnToHelos', _HELOS),
 ]
-assert len(ROSTER) == 26, f'canonical roster must be 26 rows, is {len(ROSTER)}'
+assert len(ROSTER) == 24, f'canonical roster must be 24 rows, is {len(ROSTER)}'
 assert len(ROSTER_TESTHUB_EXTRA) == 25, \
     f'TESTHUB extra roster must be 25 rows, is {len(ROSTER_TESTHUB_EXTRA)}'
 

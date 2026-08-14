@@ -2025,25 +2025,41 @@ HELOS_PORTAL_NPC = r'records\quests\portal_master_helos.dbr'
 # (world x, y, z), boat-menu label tag - one per SV side-area destination.
 HELOS_PORTAL_DESTS = [
     ((1173, -39, -4001), 'tagSVCHelosToGarden'),   # Garden of Merchants (N1 H2 landing)
-    ((-2396, 2, -5790), 'tagSVCHelosToSecret'),    # The Secret Place (A2 S2 landing)
-    # R6-UBER LANDING OFF THE PORTAL PROP (2026-08-13, wf_46ee9772 forensic verified; shipped on
-    # Steam too): the old (-2438,10,-2450) sat 0.09u from the placed portal_olympianarena2 prop
-    # (crypt_floor1 local (139.94,231.94)) - the player teleported ON the portal prop
-    # (click-shadow risk). NEW (-2438,10,-2457) = local (140,225), 7u straight down the alcove
-    # into the open chamber: portal prop 6.94u, in-crypt return NPC svc_testhub_return_uber
-    # (140,229) 4.00u dead ahead (the pr5 never-ON-the-NPC law; "3u-ish" class), flanking urns
-    # >=5.7u, no monster/proxy within 13u, on-mesh clr 100%x3 (crypt_floor1 is single-component).
-    # Surveyed 2026-08-13. SAME literal in the HELOS_HUB_TRAVEL uber entrance row below - the
-    # two routes into the crypt must always land at the same proven spot.
-    ((-2438, 10, -2457), 'tagSVCHelosToUber'),     # Uber Dungeon (crypt_floor1 chamber, R6 2026-08-13)
+    # ── R-249 (Will 2026-08-14): ALMYROS SECRET + UBER ROWS REMOVED FROM THE STEAM BUILD ──────────
+    # VERBATIM: "no steam should not have a traveler from helos to the secret place or the uber
+    # place. remove those from the steam build now. ... we just need to fix the issue with the
+    # warden." => Almyros's Secret Place + Uber Dungeon boat rows are REMOVED here; he KEEPS Garden.
+    # CANONICAL-SCOPED BY CONSTRUCTION: portal_master_helos (Almyros) is placed ONLY on canonical/
+    # Steam (0x on TESTHUB - de-duped by build_section_surgery.merge_hub_into_inject_specs), so
+    # editing his menu table is exactly R-249's "steam build". His per-record BoatDialog count
+    # auto-derives from len(HELOS_PORTAL_DESTS) (assertion below) and drops 3 -> 1 (Garden only);
+    # tools/gate_boatdialog_budget.py ALMYROS_ALLOWED drops 3 -> 1 + its ROSTER loses the two rows.
+    # RETIREMENT-PROTOCOL-SAFE (both tags stay minted + referenced -> validate_tags green):
+    #   * tagSVCHelosToSecret is still armed by the TESTHUB launcher svc_helos_trav_secret
+    #     (R248_TESTHUB_STEPS below).
+    #   * tagSVCHelosToUber is still armed by the TESTHUB launcher svc_helos_trav_uber (below).
+    #   * the uber interior landing (-2438,10,-2457) is still referenced by the CANONICAL Labyrinth
+    #     entrance NPC svc_area_return_uber via tagSVCEnterUberDungeon (R248_CANONICAL_STEPS step 1).
+    # REACHABILITY on canonical WITHOUT Almyros's two rows:
+    #   * UBER DUNGEON = CONFIRMED: svc_area_return_uber (placed in maze03 on BOTH variants, the
+    #     byte-identical-to-Warden Labyrinth entrance NPC) lands the SAME (-2438,10,-2457) crypt
+    #     chamber via its one-shot tagSVCEnterUberDungeon descend row.
+    #   * SECRET PLACE = the SV-native shrine/rift network reached from the Garden (Almyros's KEPT
+    #     Garden row -> teleportshrine_gom) + urder's 3 native portal rows. The rift's entry-vs-
+    #     return-only behavior is a runtime property (not decodable statically) -> flagged
+    #     BL-R249-DEBT-1 for an in-game confirmation; add a canonical Secret-Place entrance NPC
+    #     mirroring the uber-laby pattern if the rift proves return-only.
+    # Removed here (were):
+    #     ((-2396, 2, -5790), 'tagSVCHelosToSecret')    # The Secret Place (A2 S2 landing)
+    #     ((-2438, 10, -2457), 'tagSVCHelosToUber')     # Uber Dungeon (crypt_floor1 chamber)
     # PR-5 (Will 2026-08-06): "the Sparta Crypt should be entered from the Athens CATACOMBS, not from
-    # Helos." The Sparta Crypt destination (was ((-5602,-2,-1409),'tagSVCHelosToSparta')) is REMOVED
-    # from Almyros's Helos boat menu. Almyros KEEPS Garden / Secret Place / Uber Dungeon. The crypt is
-    # now reached from a CANONICAL catacomb entrance NPC (svc_area_return_sparta, placed in
-    # catacube02_floorlast by build_section_surgery.py), whose sv_commonmechanics enter-offer
-    # ("Descend into the Sparta Crypt", tagSVCEnterSpartaCrypt -> TRAVELER_ENTER_OFFERS) lands the
-    # player on-mesh inside spartacryptlevel2. The tagSVCHelosToSparta TAG stays minted (still used by
-    # the TESTHUB-only svc_helos_trav_sparta + svc_testhub_master) so validate_tags stays green.
+    # Helos." The Sparta Crypt destination (was ((-5602,-2,-1409),'tagSVCHelosToSparta')) was REMOVED
+    # from Almyros's Helos boat menu then; with R-249 above Almyros now KEEPS Garden ONLY. The crypt
+    # is reached from a CANONICAL catacomb entrance NPC (svc_warden_sparta_crypt, placed in
+    # catacube02_floorlast by build_section_surgery.py), whose sv_commonmechanics one-shot descend row
+    # ("Descend into the Sparta Crypt", tagSVCEnterSpartaCrypt) lands the player on-mesh inside
+    # spartacryptlevel2. The tagSVCHelosToSparta TAG stays minted (still used by the TESTHUB-only
+    # svc_helos_trav_sparta + svc_testhub_master) so validate_tags stays green.
 ]
 # PR-5 UPDATE (Will 2026-08-06): the Sparta half of the b62 reconciliation below is SUPERSEDED.
 # Almyros no longer offers tagSVCHelosToSparta at all (removed from HELOS_PORTAL_DESTS above) - the
@@ -2229,22 +2245,43 @@ def _add_helos_portal_travel(data: bytes) -> bytes:
 # has it is a no-op. One uniform shape is also what keeps the fail-loud deltas below simple
 # enough to actually catch a regression.
 #
-# BYTE SHAPE IS COPIED FROM THE VORTEX, INCLUDING THE ODD delayTime. The UpdateNPCDialog block
-# upstream carries delayTime == uint32 0x40000000, which is IEEE float 2.0 - a 2-second delay
-# before the dialog pak is assigned. It is preserved verbatim: this pair is the ONLY awakening
-# shape with in-repo, upstream-authentic provenance, and "normalizing" the delay to 0 would ship
-# an untested variant of the one thing known to work.
+# BYTE SHAPE IS COPIED FROM THE VORTEX, EXCEPT the delayTime, which R-249 sets to 0. The upstream
+# vortex UpdateNPCDialog block carried delayTime == uint32 0x40000000 (IEEE float 2.0) - a 2-second
+# delay before the "Dialog Needed" pak is assigned. That 2.0 was preserved verbatim through b88/R-248
+# as "the one thing known to work" - but it is exactly what broke the Warden.
+#
+# ── R-249 WARDEN FIX (Will 2026-08-14, "we just need to fix the issue with the warden") ──────────
+# SYMPTOM (Will, in-game): the descend BoatDialog popup OPENS on click, then AUTO-DISMISSES ~before
+# he can answer, then the NPC goes MUTE on re-click. ROOT CAUSE (the ONE time-delayed action in the
+# whole descend trigger is this awakening's UpdateNPCDialog): the Warden is reached by TELEPORT
+# (svc_testhub_return_sparta / svc_helos_trav_sparta land you ~6u away in CataCube02_FloorLast), so
+# the player can click WITHIN the ~2s window after the catacomb's OnLevelLoad fires the awakening.
+# The delayed Action_UpdateNPCDialog then lands while the freshly-opened boat menu is up, RE-ASSIGNS
+# the "Dialog Needed" placeholder pak to the Warden (closing the popup) and leaves that empty
+# placeholder as his active dialog (mute on re-click). The proven-working svc_area_return_uber carries
+# the BYTE-IDENTICAL triple and "gets away with it" only because maze03 is reached by WALKING (the 2s
+# elapses before any click). PROVENANCE OF THE FIX (base-game-proven, KEEPS the boat-traveler method
+# per R-249 - NO fixed portal, NO door): the base-game boat NPC this recipe was modeled on - quest 7
+# knossos.qst's own REMOTE Knossos boatman - uses UpdateNPCDialog delayTime=0 (immediate); the 2.0 was
+# inherited from the Leinth exit vortex, which is only ever reached on foot. delayTime = 0 assigns the
+# pak at level load, BEFORE any click, so no delayed re-assignment can ever race/close the descend
+# popup. Shared by EVERY R-248 traveler (they all have the same teleport-race exposure) via this one
+# helper - correct, since every teleport-destination boat NPC is equally exposed. isResettable stays 0
+# (the R-248 no-churn law is untouched; a re-fire flip would reintroduce the ripped churn term).
 #
 # ARTIFACT SCOPE: Quests.arc ONLY. No new quest is registered (every trigger is appended to the
-# already-registered sv_commonmechanics host step), no record is minted, no placement moves.
-# records\dialog\story\dialog needed.dbr is ALREADY in the shipped .arz (imported by
-# build_svc_database._import_dialog_needed; verified present in the deployed 3c88e537 arz), and
-# the deployed vortex references the identical literal and resolves - so the .arz and Levels.arc
-# stay byte-unchanged.
+# already-registered sv_commonmechanics host step), no record is minted, no placement moves, and the
+# Warden's messageDialogTag greeting is KEPT byte-identical to the proven-working svc_area_return_uber
+# (whose own greeting demonstrably does NOT block its boat menu - so a competing chat is NOT the
+# defect; the delayed pak re-assignment is). records\dialog\story\dialog needed.dbr is ALREADY in the
+# shipped .arz (imported by build_svc_database._import_dialog_needed), and the deployed vortex
+# references the identical literal and resolves - so the .arz and Levels.arc stay byte-unchanged.
 NPC_AWAKEN_ACTION_CLASSES = ('Action_ShowNpc', 'Action_UpdateNPCDialog')
-# Upstream literal: uint32 0x40000000 == IEEE float 2.0. Copied from the deployed vortex
-# primary; do NOT "normalize" it to 0 (see the block comment above).
-_AWAKEN_DIALOG_DELAY = 1073741824
+# R-249 (2026-08-14): delayTime = 0 (immediate) - the base quest-7 knossos remote-boatman value. Was
+# uint32 0x40000000 (IEEE float 2.0), inherited from the Leinth vortex; the 2.0 delay let the delayed
+# UpdateNPCDialog close the just-opened descend popup on the teleport-onto-then-click path (the mute-
+# Warden bug). Do NOT restore 2.0 - the pak assignment must not outlive the level-load click window.
+_AWAKEN_DIALOG_DELAY = 0
 
 
 def _npc_awaken_actions(npc: str) -> list:
@@ -2323,10 +2360,11 @@ def _npc_awaken_actions(npc: str) -> list:
 #     remote-boatman shape: it awakens the REMOTE Knossos boatman the same way).
 #   * <=3 armed rows per step (uber/sparta = enter 1 + return 2; Almyros's 3-row refire
 #     trigger stays the ONE Will-ratified grandfathered exception - never touched here).
-# CENSUS (enforced by-name by tools/gate_boatdialog_budget.py): canonical = 16 survivors
-# + these 10 = 26 armed rows; TESTHUB (SVC_TEST_HUB=1 Quests variant, LOCAL-ONLY) adds 25
-# = 51. The TESTHUB variant stays off Steam until the Frida boat-registry capacity probe
-# (BACKLOG R-248 lane) converts 51 from 'worry' to 'measured'.
+# CENSUS (enforced by-name by tools/gate_boatdialog_budget.py): canonical = 14 survivors
+# + these 10 = 24 armed rows (was 16 + 10 = 26 before R-249 removed Almyros's Secret + Uber
+# rows); TESTHUB (SVC_TEST_HUB=1 Quests variant, LOCAL-ONLY) adds 25 = 49. The TESTHUB variant
+# stays off Steam until the Frida boat-registry capacity probe (BACKLOG R-248 lane) converts 49
+# from 'worry' to 'measured'.
 # Dest literals: budget-gate ROSTER + R-245-addendum values are authoritative over the
 # pre-rip tables; every dest re-verified vs the merged map's 0x0b floorCal 2026-08-14
 # (|dy|<=0.5 - the buried class): sc2 y -2->1, bossarena 27->28, tantalus -12->-9,
@@ -3052,9 +3090,9 @@ def main():
         raise SystemExit(f'Q2: host quest missing: {HELOS_PORTAL_HOST_QUEST}')
     patched_cm = _add_helos_portal_travel(raw_cm)
     # R-246 RIP holds (2026-08-13): the blanket-refire TESTHUB rig / 25-row hub /
-    # enter-offer generators stay REMOVED - Almyros's single 3-route trigger above is
-    # the ONLY SVC-authored boat trigger on the refire step (enforced by
-    # tools/gate_boatdialog_budget.py).
+    # enter-offer generators stay REMOVED - Almyros's single trigger above (Garden-only
+    # since R-249 removed his Secret + Uber rows) is the ONLY SVC-authored boat trigger on
+    # the refire step (enforced by tools/gate_boatdialog_budget.py).
     # R-248 (2026-08-14): the traveler ROUTES return on NEW per-connection ONE-SHOT
     # steps (base quest-7/8 arming envelope; zero rows on any re-firing step).
     patched_cm = _add_r248_travel_steps(patched_cm, r248_testhub)

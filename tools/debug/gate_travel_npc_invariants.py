@@ -20,7 +20,8 @@ gate_travel_y_terrain [Levels arcs] and gate_testhub_portal_rig [census]):
      blanket-refire generators/tables (HELOS_HUB_TRAVEL, TESTHUB_MASTER_DESTS,
      TESTHUB_RETURN_DESTS, TESTHUB_RETURN_DESTS_BY_NPC, TESTHUB_AREA_RETURN_NPCS,
      TRAVELER_ENTER_OFFERS, _add_helos_traveler_hub_travel,
-     _add_testhub_portal_travel); Almyros' HELOS_PORTAL_DESTS has EXACTLY 3 rows.
+     _add_testhub_portal_travel); Almyros' HELOS_PORTAL_DESTS has EXACTLY 1 row
+     (R-249: Garden only; Secret + Uber removed from Steam).
   V2 R-248 STEP SPEC: R248_CANONICAL_STEPS arm exactly 10 rows, R248_TESTHUB_STEPS
      exactly 25; every step <=3 rows; rows for one NPC are contiguous (1 trigger :
      1 NPC); the emitted arming is one-shot (the generator's emission is asserted
@@ -90,9 +91,10 @@ def main():
         if hasattr(bqf, g):
             fails.append(f'V1: RIPPED generator {g} is BACK in build_quest_files')
     dests = getattr(bqf, 'HELOS_PORTAL_DESTS', None)
-    if dests is None or len(dests) != 3:
-        fails.append('V1: Almyros HELOS_PORTAL_DESTS must exist with EXACTLY 3 rows '
-                     '(R-246 ruled menu, R-248 unchanged)')
+    if dests is None or len(dests) != 1:
+        fails.append('V1: Almyros HELOS_PORTAL_DESTS must exist with EXACTLY 1 row '
+                     '(R-249 2026-08-14: Garden ONLY; Secret + Uber removed from Steam. '
+                     'Was 3 under R-246/R-248)')
 
     # ── V2: R-248 step spec ───────────────────────────────────────────────────
     canon = getattr(bqf, 'R248_CANONICAL_STEPS', None)
