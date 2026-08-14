@@ -187,6 +187,70 @@ remaining BLATANT rows are all the death-echo class above or unplaced legacy
 
 ---
 
+## 4b. RULING 7 - CHESTS + DEVOURER SPAWNS (`tools/patches/r247_bloodcave_rulings.py`)
+
+### 7(a) the stash revert - before / current / after (measured both arzs)
+
+The nerf wave is **R-240 alone** (volume). R-242 measured NOT involved (chances sat at
+the pre-R-242 40.0; relic row 21.2 == the SV original byte). Solo loot ITERATIONS =
+numSpawn at numberOfPlayers=1 (bracket `(3+(1.8*nP))` = 4.8 solo):
+
+| table (tier) | SV 0.98i original | shipped build90 (R-240) | AFTER this lane |
+|---|---|---|---|
+| loottable_hidden_bloodcave_01 (n) | `*3.8/*4.1` = 18.2-19.7 iter | `*0.323/*0.3485` = 1.55-1.67 | **SV verbatim `*3.8/*4.1`** |
+| loottable_hidden_bloodcave_02 (e) | `*3.8/*4.1` = 18.2-19.7 | `*0.361/*0.3895` = 1.73-1.87 | **SV verbatim** |
+| loottable_hidden_bloodcave_03 (l) | `*3.8/*4.1` = 18.2-19.7 | `*0.399/*0.4305` = 1.92-2.07 | **SV verbatim** |
+| E[items]/open (chance sum 1.81 shipped, 1.13 SV) | ~21 (SV mix) | ~2.9-3.7 | **~34 (>= SV on every axis)** |
+
+Composition (loot1/2/5/6 chances 40.0, widened weights, svc-unique member rows, relic
+row 21.2) deliberately KEPT: each value >= its SV counterpart and they carry R-181's
+distribution contract + the mod's uniques. The revert class was ENUMERATED by a
+both-arz numSpawn sweep over all 51,298 records: **19 records differ; 15 are uber-ORB
+tables (the R-242 class - kept trimmed, gated by the module's orb sentinels), 1 is the
+richer-than-SV tutorial chest, and the 3 stash tables above are the ONLY SV-original
+stash-chest tables the trim reached.** Mod-authored stash chests with NO SV original
+(gaoler cage, polis vault, the 27 svc_*hoard chests) stay under R-240 - FLAGGED for
+Will below (decision 9). Ledger: R-240 entry amended with the carve-out
+(`svc_loot_volume.R247_STASH_EXEMPT` removes the 3 tables from trim scope + V1
+ceiling); R-242 entry carries a measured not-involved note.
+
+### 7(b) the stash guard on Normal - measured verdict + hardening
+
+The shipped bytes are **difficulty-invariant and already guarantee him** under the
+mod's RE'd + negative-tested model (spawn 4/4; champions = 3 blood dragons, min=max=3
+@100; name1..3 = um_bloodtoxeus_99; equation neutralized; proxy limits [1..110] N/E/L;
+mains = spawnMax - championMax = 1). Will's Normal absence is NOT derivable from any
+decoded DB field. Shipped hardening: per-slot `limit1..3=1` + `weight1..3=150` - the
+exact byte-shape class of the in-game-proven `_BT_POOL` (the ambush that DOES deliver
+the Devourer). Residual channels (engine champion-budget runtime behaviour; a
+per-difficulty flag on the map INSTANCE in the TESTHUB Levels Will plays) =
+`BL-R247-DEBT-6`, escalation pre-designed (dedicated solo guard proxy, q_yard shape).
+The closing proof is Will's Normal-difficulty look at the stash.
+
+### 7(c) the parchment spot - root cause + fix
+
+TWO set-pieces share `drxFirstxistion_connection`: the b79-relocated 33% Devourer
+ambush (`q_bloodtoxeus_ambush` -> 1 Devourer + 2 blood demons - wired CORRECTLY) and
+the A1/build36 **Enslaver warband** (`q_enslaver_warband`, chanceToRun 100, Enslaver +
+4 marauders) ~26.6u away. Will meets the 100% warband next to the parchment and reads
+it as the wrong Toxeus. The old "PARCHMENT REPOINT / championChance 50->33" queue items
+are NOT the cause (the 50% pool was retired 2026-07-14, never wired; the ambush IS 33).
+Fix: warband `chanceToRun 100 -> 0` (dormant; the chamber = exactly the ruled state).
+R-18 collision (the warband was the Enslaver's "dependable placed beat") flagged:
+relocation to a deeper pocket = `BL-R247-DEBT-7`, a Will map-lane decision. His other
+spawns intact + gated: rare roam (R-18-frozen), egypt/orient undead-pool rares,
+TESTHUB yard @100.
+
+## 4c. RULING 8 - THE ENSLAVER ON EPIC (measured, NO change; ledger R-247.8)
+
+Epic `um_toxeus_enslaver_99`: level 68, life 45,000, regen 12/s, hand 350-500;
+reflect = 30% @ 33% chance (svc_toxeus_passiveproperties_monster - ALREADY the
+R-103/R-107-reduced value, down from 100/33), defensivePercentCurrentLife 20,
+defensivePhysical 40, dodge 15, deflect 33; race Undead = leech-immune, so Will's 50%
+ADCTH works on the demon adds and never on the boss, and his two Normal-tier pets
+cannot outpace 12/s regen. Recorded as an OPEN TUNING QUESTION with levers listed;
+no stat moved (Will: "Maybe this difficulty setting is right, idk but make note of it").
+
 ## 5. WILL DECISIONS (implemented at recommended values, one constant each)
 
 1. **Orb name** `tagSVCChestAkremon` = "Akremon's Essence" (base-game essence
@@ -208,6 +272,15 @@ remaining BLATANT rows are all the death-echo class above or unplaced legacy
 8. **skeleton\toxeus_soul_{n,e,l}** (the original Toxeus soul, reagent 1 of
    the Rite): not in ruling 6(d)'s roster, so no +all-skills / no summon
    retune applied. Will call whether the law extends to it.
+9. **Mod-authored stash chests** (gaoler cage, polis vault, 27 svc_*hoard
+   chests): NO SV original exists, so "revert to original sv" is undefined for
+   them - they stay under R-240's trim (the cage was R-240's own ratified
+   exemplar). If Will wants THEM at pre-R-240 richness too, that is a one-set
+   extension of `R247_STASH_EXEMPT` + a target-value ruling. FLAGGED.
+10. **Warband relocation** (`BL-R247-DEBT-7`): the Enslaver's dependable placed
+   beat (R-18) is vacant after 7(c); recommended fix = relocate the ONE
+   `EN_WARBAND_SPEC` placement to a deeper blood-cave pocket (surveyed spot,
+   map lane). Will picks the destination or vetoes the beat entirely.
 
 ## 6. DEBTS (registered in BACKLOG)
 
@@ -222,3 +295,14 @@ remaining BLATANT rows are all the death-echo class above or unplaced legacy
   are byte-proven castable/banded but not yet fought in-game.
 * BL-R247-DEBT-5: hunt soul summon skill uses the neutral proxy icon/portrait
   (the sanctioned unmapped-boss fallback); bespoke art is a future call.
+* BL-R247-DEBT-6: the Devourer's Normal-difficulty stash absence could NOT be
+  reproduced from the DB bytes (config difficulty-invariant + model-guaranteed);
+  hardened to the proven pool shape. If Will's Normal look still shows him
+  absent, the residual channels are (i) engine champion-budget runtime
+  behaviour, (ii) a per-difficulty flag on the map INSTANCE (TESTHUB Levels) -
+  next lane runs the instance-flag probe + ships a dedicated solo guard proxy
+  (q_yard shape, one new INJECT_SPECS entry).
+* BL-R247-DEBT-7: the Enslaver warband set-piece is DORMANT (chanceToRun 0) at
+  its only placement; R-18's "dependable placed beat" is vacant. Relocation to
+  a deeper blood-cave pocket = one EN_WARBAND_SPEC change + surveyed spot +
+  chanceToRun restore, map lane, WILL DECISION on the destination.

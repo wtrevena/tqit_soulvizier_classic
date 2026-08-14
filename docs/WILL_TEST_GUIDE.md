@@ -20,6 +20,19 @@
 > * All Toxeus-family souls now give +1/+2/+3 to all skills by tier (EoAT soul +3).
 > * The **Rite of the Undivided** formula from his kill now drops with a LEGENDARY (orange)
 >   name so it cannot vanish under the loot pile again - it was always dropping, it was white.
+> **4. THE DEVOURER'S STASH (blood cave, the hidden chest room) - R-247.7:**
+> * The Majestic stash chest is UN-NERFED: back to the original-SV flood (~19 loot rolls per
+>   open, vs the ~2 the trim left it). Every other chest in the game keeps the trimmed rates.
+> * The Devourer must be guarding it - CHECK ON NORMAL specifically (that was your report; the
+>   bytes always said 100% on every difficulty, so if Normal is STILL empty after this build,
+>   say so - that fingers the one remaining suspect [the map instance] and the next lane ships
+>   a dedicated guard spawner).
+> **5. THE PARCHMENT SPOT (blood-cave entrance, by the tattered parchment) - R-247.7:**
+> * The ENSLAVER no longer spawns there (his warband set-piece is dormant; where his
+>   dependable fight should MOVE to is your call - flagged as a decision).
+> * The DEVOURER still ambushes there at ~33% (1-in-3 entries), with his two blood-demon guys.
+> **6. NOT touched, per your "make note of it":** the Enslaver's Epic difficulty. Measured for
+>   the ledger: 45k life / 12 per-sec regen / 30% reflect at 33% chance / leech-immune (Undead).
 
 
 > ## 🆕 build89 / R-170 SECOND FOLLOW-UP (2026-08-12): THE WARDEN OF THE SPARTAN CRYPT SHOULD TALK NOW - **TWO-PART CHECK, DO BOTH**
