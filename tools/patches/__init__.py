@@ -335,7 +335,12 @@ REGISTRY = [
                             # svc_rite_guaranteed and the EoAT formula this module's R-92 wiring
                             # and its recipe-gate assertion read. Also after boss_skill_fix and
                             # toxeus_champion_kits, so it is the ratified last writer of the
-                            # Hunt's cast slots. Negative test:
+                            # Hunt's cast slots - EXCEPT the R-247 surfaces: r247_boss_forms
+                            # (registered later) is the ruling-5a/6c amendment layer for his
+                            # body/rig/soul-grant, and THIS module's verify() asserts the FINAL
+                            # post-R-247 state (soul pin = summon_toxeus_hunt per R-247.6c; the
+                            # R-94 quarrysmark pin + b98 Maenad-clip provenance are RETIRED -
+                            # see the reconciliation block in its docstring). Negative test:
                             # py tools/patches/toxeus_hunt_encounter.py --negtest
     'enslaver_shroud',      # b98 (Will 2026-07-28, R-95): the Enslaver's PERSISTENT black shroud.
                             # He ALREADY carries the marauders' shadowcloak pak on
@@ -591,7 +596,11 @@ REGISTRY = [
                             # the Endless Hunt becomes an Undead GIANT SKELETON
                             # (SkeletonRumorBoss.msh + NewSkeleton_White + anm_skeleton01, all
                             # inline foreign-rig .anm rows cleared - the b98 demon body was the
-                            # b98 design, superseded by R-247.5a); his soul finally SUMMONS him
+                            # b98 design, superseded by R-247.5a - then the spear + unarmed rows
+                            # REBOUND INLINE from the table's own clips incl. 'AoE360' on both,
+                            # r3: the adfda67 both-surfaces law, so toxeus_hunt_encounter's
+                            # SPEAR-ANIM-1/CASTABILITY-1 gates pass and bladestorm is castable
+                            # on the row he occupies); his soul finally SUMMONS him
                             # (pets toxeus_hunt_1/2/3 via _build_boss_summon from the FIXED
                             # skeleton Hunt + summon_toxeus_hunt granted at tier 1/2/3);
                             # enslaver/blood/hunt tier ladders raised (x1.5 epic / x1.75
