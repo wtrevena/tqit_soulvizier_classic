@@ -190,9 +190,19 @@ _CORE_SCALE = 3.1
 _CORE_HEIGHT = 2.4          # the shell's own value on the same Epiales01 mesh
 _CORE_LIFE = [16000.0, 21000.0, 28000.0]
 _CORE_HAND = (300.0, 330.0)
-# the core's signature kit, asserted intact (this is a scale+power fix ONLY)
-_CORE_KIT_SENTINELS = ('chainconvert', 'sandsofsleep', 'distortreality',
-                       'epiales_summon2', 'ondeath_voidnova')
+# the core's signature kit, asserted intact (this is a scale+power fix ONLY).
+# ROUND-3 CORRECTION (found by the first build in which this verify ever ran):
+# round 1 listed sandsofsleep/distortreality/epiales_summon2/ondeath_voidnova
+# here - those are the SHELL's skills (um_mnemophage_99 skillName17/18/19/23,
+# byte-decoded on shipped a86afc15); the CORE never carried them, so the gate
+# redded on a kit that was never his. The sentinels below are the core's OWN
+# shipped kit, byte-decoded from a86afc15: chainconvert (skillName4 +
+# specialAttack3), chainconvert_cascade (skillName5), mnemophage_mindshroud
+# (initialSkillName), breach_shadowgrasp (skillName7),
+# shadowstalker_distortionfield (skillName9).
+_CORE_KIT_SENTINELS = ('chainconvert', 'chainconvert_cascade',
+                       'mnemophage_mindshroud', 'breach_shadowgrasp',
+                       'shadowstalker_distortionfield')
 
 # ── the Endless Hunt ────────────────────────────────────────────────────────
 _HUNT = r'records\creature\monster\shadowstalker\um_toxeus_hunt_99.dbr'
@@ -845,14 +855,15 @@ def _negtest():
         db.d[_SHELL] = {'characterLife': [14000.0, 19000.0, 25000.0],
                         'scale': [2.9], 'actorHeight': [2.4],
                         'handHitDamageMax': [284.0]}
+        # the core's REAL shipped kit (round-3 correction; see _CORE_KIT_SENTINELS)
         db.d[_CORE] = {'characterLife': list(_CORE_LIFE),
                        'scale': [_CORE_SCALE], 'actorHeight': [_CORE_HEIGHT],
                        'handHitDamageMax': [_CORE_HAND[1]],
                        'skillName4': ['records\\skills\\sv\\refnat\\chainconvert.dbr'],
-                       'skillName17': ['records\\xpack\\skills\\dream\\sandsofsleep.dbr'],
-                       'skillName18': ['records\\xpack\\skills\\dream\\distortreality.dbr'],
-                       'skillName19': ['records\\skills\\monster skills\\summoning_pets\\epiales_summon2.dbr'],
-                       'skillName23': ['records\\skills\\monster skills\\attack_radius\\ondeath_voidnova.dbr']}
+                       'skillName5': ['records\\skills\\sv\\refnat\\chainconvert_cascade.dbr'],
+                       'initialSkillName': ['records\\skills\\monster skills\\buff_self\\mnemophage_mindshroud.dbr'],
+                       'skillName7': ['records\\skills\\monster skills\\attack_radius\\breach_shadowgrasp.dbr'],
+                       'skillName9': ['records\\skills\\monster skills\\passive_buffs\\shadowstalker_distortionfield.dbr']}
         anm = {'spearAttackAnim1': ['spear_a.anm'],
                'spearAttackAnim2': ['spear_b.anm'],
                'spearRunAnim': ['run.anm'], 'spearWalkAnim': ['walk.anm'],
@@ -930,7 +941,7 @@ def _negtest():
          lambda db, t: db.d[_CORE].__setitem__('characterLife',
                                                [7000.0, 9500.0, 12500.0])),
         ('Lethaeus loses a kit signature',
-         lambda db, t: db.d[_CORE].__delitem__('skillName17')),
+         lambda db, t: db.d[_CORE].__delitem__('initialSkillName')),
         ('the Hunt goes back to the demon body',
          lambda db, t: db.d[_HUNT].__setitem__(
              'mesh', ['Creatures\\Monster\\ShadowStalker\\ShadowStalker.msh'])),
