@@ -33,3 +33,20 @@
 #        runtime problem. The DB-build gate demotes it to P2 via --upstream-dir; the push-gate
 #        omits that flag so it surfaces as P1. Permanently acceptable inherited debt.
 C-RES-ASSET-1 records\xpack\skills\dream\pet\anm\anm_dreamcopy.dbr
+
+# OWNER-ACCEPTED inherited finding (R-247 round 3, feat/akremon-enhancement, 2026-08-13):
+#   C-RES-DBR-1  records\xpack\item\containers\svc_akremon_orb_0{1,2,3}.dbr
+#     -> ONE unresolved lockedSound ref each (Sounds\SoundPaks\Decorations\LockedObjectPak.dbr;
+#        the live record is records\sounds\soundpak\decorations\lockedobjectpak.dbr - a
+#        base-game-era path quirk), inherited BYTE-FOR-BYTE from the shipped donors
+#        bosschest02_charon_0{1,2,3}, which have carried the identical dead ref in-game for
+#        years (never a runtime problem: lockedSound fires only on locked containers and these
+#        are never locked). The R-247.1 DONOR-TWIN law PINS the clones field-identical to the
+#        donors (excl description) - "fixing" the clone VOIDS the twin pin and re-reds the
+#        build (svc_orb_breadth.DONOR_TWINS), and fixing the shared donor is the shared-record
+#        law's domain. The P1 arises only because the svc_ name classifies the record
+#        "authored" while the byte is inherited; the donors' identical ref sits in the P2
+#        inherited net. Flagged in the R-247 lane report for Will.
+C-RES-DBR-1 records\xpack\item\containers\svc_akremon_orb_01.dbr
+C-RES-DBR-1 records\xpack\item\containers\svc_akremon_orb_02.dbr
+C-RES-DBR-1 records\xpack\item\containers\svc_akremon_orb_03.dbr

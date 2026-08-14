@@ -335,7 +335,12 @@ REGISTRY = [
                             # svc_rite_guaranteed and the EoAT formula this module's R-92 wiring
                             # and its recipe-gate assertion read. Also after boss_skill_fix and
                             # toxeus_champion_kits, so it is the ratified last writer of the
-                            # Hunt's cast slots. Negative test:
+                            # Hunt's cast slots - EXCEPT the R-247 surfaces: r247_boss_forms
+                            # (registered later) is the ruling-5a/6c amendment layer for his
+                            # body/rig/soul-grant, and THIS module's verify() asserts the FINAL
+                            # post-R-247 state (soul pin = summon_toxeus_hunt per R-247.6c; the
+                            # R-94 quarrysmark pin + b98 Maenad-clip provenance are RETIRED -
+                            # see the reconciliation block in its docstring). Negative test:
                             # py tools/patches/toxeus_hunt_encounter.py --negtest
     'enslaver_shroud',      # b98 (Will 2026-07-28, R-95): the Enslaver's PERSISTENT black shroud.
                             # He ALREADY carries the marauders' shadowcloak pak on
@@ -586,6 +591,29 @@ REGISTRY = [
                             # reds the build) and closed over actorToSpawnOnDeath. Every other
                             # Toxeus variant (Enslaver, both Endless Hunt forms) stays MARKED -
                             # Will asked for those explicitly.
+    'r247_boss_forms',      # R-247 rulings 3/5a/6 (Will 2026-08-13): Lethaeus core becomes the
+                            # ESCALATION (scale 3.1 / life 16-28k / hand 300-330, kit intact);
+                            # the Endless Hunt becomes an Undead GIANT SKELETON
+                            # (SkeletonRumorBoss.msh + NewSkeleton_White + anm_skeleton01, all
+                            # inline foreign-rig .anm rows cleared - the b98 demon body was the
+                            # b98 design, superseded by R-247.5a - then the spear + unarmed rows
+                            # REBOUND INLINE from the table's own clips incl. 'AoE360' on both,
+                            # r3: the adfda67 both-surfaces law, so toxeus_hunt_encounter's
+                            # SPEAR-ANIM-1/CASTABILITY-1 gates pass and bladestorm is castable
+                            # on the row he occupies); his soul finally SUMMONS him
+                            # (pets toxeus_hunt_1/2/3 via _build_boss_summon from the FIXED
+                            # skeleton Hunt + summon_toxeus_hunt granted at tier 1/2/3);
+                            # enslaver/blood/hunt tier ladders raised (x1.5 epic / x1.75
+                            # legendary) + per-tier display names; +all-skills 1/2/3 law on the
+                            # family souls (+EoAT 3); the EoAT formula goes Legendary-classified
+                            # (visibility - the 100% drop wiring was measured CORRECT).
+                            # ORDER IS LOAD-BEARING, both sides: AFTER devourer_kit (it builds
+                            # the huntsman pack + hunt summon this identity pairs with; also
+                            # after every enslaver/blood pet writer so the tier retune reads
+                            # final values) and BEFORE toxeus_hunt_endless (um_toxeus_hunt_l_99
+                            # is a build-time clone of the base, so the Legendary variant
+                            # inherits the skeleton identity and the one-field-diff invariant
+                            # stays green; the module SystemExits if the clone already exists).
     'toxeus_hunt_endless',  # b98 (Will 2026-07-28, R-90): "yeah lets have the endless pursuit only
                             # be on legendary". Pursuit is a CONTROLLER property and both
                             # MaxPursuitDistance and PursuitTime are declared class="variable" in
@@ -1012,7 +1040,13 @@ REGISTRY = [
                             # to. MEASURED: 51 uber carriers -> 7 proxies (6 IN REACH) -> 18 tables =
                             # genericbossorb_01..05 (the mystical-orb ladder, tagEndChest02)
                             # plus bosschest02_charon, whose terminal Ferryman IS a red uber
-                            # and whose 3 tables carry the identical collapse. The 6 proxies
+                            # and whose 3 tables carry the identical collapse. (R-247.1:
+                            # the terminal - now Akremon - names the clone proxy
+                            # svc_akremon_orb instead; SAME 3 tables, kept in scope via
+                            # svc_orb_breadth.DONOR_TWINS - the story Charon's donor
+                            # chests are exempt from the shared-table refusal only while
+                            # byte-identical to the clone chests outside `description`;
+                            # negtest N10 plants the drift.) The 6 proxies
                             # consumed only by BASE act/quest bosses (Aktaios, Typhon, Black
                             # Widow, coldworm, the wanddrop test proxy) stay OUT - the same
                             # boundary R-200 drew - and are registered as BL-R220-DEBT-1.
@@ -1167,6 +1201,30 @@ REGISTRY = [
                             # Standalone: py tools/gate_orb_legendary.py <arz>
                             # (--census for Will's number, --calibrate, --apply);
                             # negatives: py tools/debug/negtest_orb_legendary.py <arz>.
+    'r247_bloodcave_rulings',  # R-247 parts 7a/7b/7c (Will 2026-08-13, ANGRY): (a) the
+                            # Devourer-stash tables loottable_hidden_bloodcave_01/02/03
+                            # reverted to the SV 0.98i ORIGINAL numSpawn volume (*3.8/*4.1,
+                            # ~19 iterations - R-240 had trimmed them ~12x; R-242 measured
+                            # NOT involved), a Will-ratified R-240 scope carve-out mirrored
+                            # in svc_loot_volume.R247_STASH_EXEMPT + the R-240 ledger
+                            # amendment; composition (chances/weights/members, all >= SV)
+                            # KEPT. (b) the egg_blooddragon stash-guard pool hardened to
+                            # the in-game-proven _BT_POOL byte-shape (limit1..3=1 + weight
+                            # 150; the bytes already guaranteed 1 Devourer main + 3 dragon
+                            # champions on N/E/L - residual runtime channels are
+                            # BL-R247-DEBT-6). (c) q_enslaver_warband chanceToRun 100 -> 0
+                            # (the A1 set-piece shared the parchment chamber with the 33%
+                            # Devourer ambush; R-247.7c supersedes that placement -
+                            # relocation is BL-R247-DEBT-7, a Will map-lane decision).
+                            # ORDER IS LOAD-BEARING: MUST run after loot_volume_trim (its
+                            # apply() FAILS LOUD unless the three tables still carry the
+                            # exact R-240-trimmed multipliers - which simultaneously proves
+                            # the ordering) and after orb_legendary_chance (its verify()
+                            # asserts the ORB sentinels kept their trim - the carve-out
+                            # must not leak). Last writer of the three tables' numSpawn
+                            # fields, the egg pool's limits/weights and the warband's
+                            # chanceToRun. Negative test:
+                            # py tools/patches/r247_bloodcave_rulings.py --negtest
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

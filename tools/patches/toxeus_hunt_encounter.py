@@ -7,6 +7,37 @@ names - `q_toxeus_hunt_lone` proxy and pool are NOT renamed and NOT deleted (the
 q_bloodtoxeus_lone_50 lesson: an "obviously stale" name was load-bearing).
 
 --------------------------------------------------------------------------------
+R-247 ROUND 3 RECONCILIATION (Will 2026-08-13; RETIREMENT PROTOCOL on two of
+this module's own laws - read this before trusting any R-93/R-94 claim below)
+--------------------------------------------------------------------------------
+`r247_boss_forms` (registered AFTER this module; its apply() rewrites the Hunt
+this module built) implements Will's R-247 rulings 5(a) and 6(c), and two of this
+module's pinned laws are SUPERSEDED by them. The apply()-side functions below
+still run first and still author the b98 state - r247_boss_forms is the amendment
+layer - but verify() runs POST-finalization and asserts the FINAL (post-R-247)
+state:
+
+  * MESH/RIG (R-247.5a): the ShadowStalker demon body this module's spear graft
+    was authored for is GONE - the Hunt is a skeleton (SkeletonRumorBoss.msh +
+    anm_skeleton01). The Maenad-clip graft below is therefore TRANSIENT build
+    state: r247_boss_forms clears every foreign-rig inline clip and REBINDS the
+    spear + unarmed rows inline from anm_skeleton01's own clips (the adfda67
+    both-surfaces law; dagon_anim_rig's in-game-proven mechanism). SPEAR-ANIM-1
+    and CASTABILITY-1 keep their b98 engine-truth (inline rows on the monster
+    are the live surface) and now pass on the skeleton clips. `_anim_provenance`
+    is REWRITTEN: the b98 census of the 3 borrowed Maenad clips is retired with
+    the body that wore them; the round-3 law is rig-compat - every inline clip
+    must be one the resolved rig table itself binds.
+  * SOUL GRANT (R-247.6c, Will verbatim: "his soul should let you summon him
+    and it doesnt"): the R-94 pin "his soul grants svc_hunt_quarrysmark" is
+    RETIRED, superseded by the family summon contract - the souls grant
+    `summon_toxeus_hunt` at 1/2/3 (r247_boss_forms builds the pets + summon).
+    Quarry's Mark remains HIS monster skill and rides the pets' mirrored kit;
+    the grant swap is FLAGGED for Will in the lane report. The soul gate below
+    now pins the summon and treats BOTH flashpowder (b98's retirement) AND
+    quarrysmark (R-94's grant, retired by R-247.6c) as illegal regressions.
+
+--------------------------------------------------------------------------------
 WHAT WAS WRONG WITH THE OLD NAME (ground truth, deployed arz md5 9f98e3e8)
 --------------------------------------------------------------------------------
 The Endless Hunt has TWO spawn mechanisms and only ONE was ever difficulty-gated:
@@ -361,7 +392,23 @@ _STRIP_DONOR_PAYLOAD = {
 _HUNT_SOULS = {t: r'records\item\equipmentring\soul\svc_uber\toxeus_hunt_soul_%s.dbr' % t
                for t in 'nel'}
 _RETIRED_SOUL_GRANT = r'records\skills\soulskills\toxeus_flashpowder.dbr'
-_SOUL_GRANT = _MARK
+# APPLY-TIME grant (the b98 author state): _wire_soul_grant still writes the
+# mark - r247_boss_forms (the R-247.6c amendment layer, registered later)
+# re-points the souls at the summon it builds. verify() asserts the FINAL law.
+_SOUL_GRANT_B98 = _MARK
+# VERIFY-TIME law (R-247.6c, Will 2026-08-13: "his soul should let you summon
+# him and it doesnt"): the souls grant the family summon. RETIREMENT PROTOCOL:
+# the R-94 quarrysmark pin is retired, superseded by R-247.6c - see the
+# reconciliation block at the top of this docstring.
+_SOUL_GRANT_FINAL = r'records\skills\soulskills\summon_toxeus_hunt.dbr'
+# grants a soul may NEVER carry again, with the law that retired each
+_RETIRED_SOUL_GRANTS = {
+    _RETIRED_SOUL_GRANT:
+        "the skill b98/R-94 RETIRED from his kit (the Enslaver's flash-burst)",
+    _MARK:
+        "the R-94 grant, RETIRED by R-247.6c (the soul must summon him; "
+        "Quarry's Mark stays his monster skill, not the wearer grant)",
+}
 _SOUL_GRANT_LEVEL = {'n': 1, 'e': 2, 'l': 3}   # the monolith's own N=1/E=2/L=3 convention
 _SOUL_DESC_TAG = 'tagSVCSoulToxeusHuntDESC'
 # the Toxeus family signature verb he KEEPS at specialAttack2 @40%. It declares
@@ -807,29 +854,29 @@ def _build_kit_skills(db, tags):
 # =============================================================================
 def _wire_soul_grant(db):
     """Repoint `toxeus_hunt_soul_{n,e,l}` off the retired flashpowder."""
-    _require(db, _SOUL_GRANT, *_HUNT_SOULS.values())
-    maxlv = _gv1(db, _SOUL_GRANT, 'skillMaxLevel') or 0
+    _require(db, _SOUL_GRANT_B98, *_HUNT_SOULS.values())
+    maxlv = _gv1(db, _SOUL_GRANT_B98, 'skillMaxLevel') or 0
     for t in 'nel':
         soul = _HUNT_SOULS[t]
         cur = _gv1(db, soul, 'itemSkillName')
-        if _norm(cur) not in (_norm(_RETIRED_SOUL_GRANT), _norm(_SOUL_GRANT)):
+        if _norm(cur) not in (_norm(_RETIRED_SOUL_GRANT), _norm(_SOUL_GRANT_B98)):
             raise SystemExit(
                 "[toxeus_hunt_encounter] %s itemSkillName is %r, expected the shipped "
                 "%r (or an already-applied %r). Another writer owns his soul grant; "
                 "refusing to overwrite it blind."
-                % (soul, cur, _RETIRED_SOUL_GRANT, _SOUL_GRANT))
+                % (soul, cur, _RETIRED_SOUL_GRANT, _SOUL_GRANT_B98))
         lv = _SOUL_GRANT_LEVEL[t]
         if lv > int(maxlv):
             raise SystemExit(
                 "[toxeus_hunt_encounter] %s would grant %s at level %d but the skill's "
                 "skillMaxLevel is %r - a soul may never grant a level its skill does "
-                "not have." % (soul, _SOUL_GRANT, lv, maxlv))
-        db.set_field(soul, 'itemSkillName', _SOUL_GRANT)
+                "not have." % (soul, _SOUL_GRANT_B98, lv, maxlv))
+        db.set_field(soul, 'itemSkillName', _SOUL_GRANT_B98)
         db.set_field(soul, 'itemSkillLevel', lv)
         db._modified.add(soul)
     print("  R-94 round 2: toxeus_hunt_soul_{n,e,l} grant %s at level 1/2/3 "
           "(was the RETIRED soulskills\\toxeus_flashpowder at 4/6/8)"
-          % _SOUL_GRANT.rsplit('\\', 1)[-1])
+          % _SOUL_GRANT_B98.rsplit('\\', 1)[-1])
 
 
 def _free_skillname_slot(db, rec, lo=1, hi=30):
@@ -955,27 +1002,37 @@ def _spear_gate(db, mon, label, problems):
 
 
 def _anim_provenance(db, problems):
-    """The 3 BORROWED poses must each be referenced by at least one OTHER shipped
-    record. Provenance, not a guess that the .anm file exists."""
-    want = dict((_norm(a), 0) for a in _SPEAR_ATT_ANIMS)
-    for name in db.record_names():
-        if name == _HUNT:
-            continue
-        ff = db.get_fields(name)
-        if not ff:
-            continue
-        for k, tf in ff.items():
-            if not k.split('###')[0].startswith('spearAttackAnim'):
-                continue
-            for v in (tf.values or []):
-                n = _norm(v)
-                if n in want:
-                    want[n] += 1
-    for a in _SPEAR_ATT_ANIMS:
-        if want[_norm(a)] < 1:
-            problems.append(
-                "SPEAR-ANIM-1 provenance: %s is referenced by NO other shipped "
-                "record, so nothing proves the .anm exists" % a)
+    """RIG-COMPAT provenance (R-247.5a round 3; RETIREMENT PROTOCOL: this
+    REPLACES the b98 census of the 3 borrowed Maenad clips, which retired with
+    the ShadowStalker body that wore them - see the reconciliation block in the
+    module docstring). The Hunt must resolve a charAnimationTableName, and
+    EVERY inline .anm clip on him must be a clip that table itself binds - so
+    each inline binding is proven playable on his ACTUAL rig by the table that
+    drives every base-game carrier of that rig in-game. A foreign-rig inline
+    clip is the A9/Dagon-frozen class. Provenance, not a guess that the .anm
+    fits the skeleton."""
+    table = _gv1(db, _HUNT, 'charAnimationTableName')
+    table = str(table).strip() if table is not None else ''
+    if not table or not db.has_record(table):
+        problems.append(
+            "RIG-COMPAT (R-247.5a): the Hunt's charAnimationTableName=%r does "
+            "not resolve - no rig table, no provenance for any inline clip"
+            % table)
+        return
+    table_clips = set()
+    for k, tf in (db.get_fields(table) or {}).items():
+        for v in (tf.values or []):
+            if isinstance(v, str) and v.strip().lower().endswith('.anm'):
+                table_clips.add(_norm(v))
+    for k, tf in (db.get_fields(_HUNT) or {}).items():
+        base = k.split('###')[0]
+        for v in (tf.values or []):
+            if (isinstance(v, str) and v.strip().lower().endswith('.anm')
+                    and _norm(v) not in table_clips):
+                problems.append(
+                    "RIG-COMPAT (R-247.5a): Hunt inline %s=%r is not a clip his "
+                    "resolved rig table %s binds - foreign-rig, the A9/Dagon-"
+                    "frozen class" % (base, v, table.rsplit('\\', 1)[-1]))
 
 
 def _wielded_rows(db, mon, label, problems):
@@ -1213,16 +1270,18 @@ def verify(db, tags=None):
             problems.append("R-94 SOUL: %s missing" % soul)
             continue
         grant = _gv1(db, soul, 'itemSkillName')
-        if _norm(grant) == _norm(_RETIRED_SOUL_GRANT):
+        retired = next((r for r in _RETIRED_SOUL_GRANTS
+                        if _norm(grant) == _norm(r)), None)
+        if retired is not None:
             problems.append(
-                "R-94 SOUL IDENTITY: %s still grants %s - the skill this lane RETIRED "
-                "from his kit. The one player-facing artifact of his identity would "
-                "hand out an ability he no longer has."
-                % (soul.rsplit('\\', 1)[-1], _RETIRED_SOUL_GRANT.rsplit('\\', 1)[-1]))
+                "R-247.6c SOUL IDENTITY: %s grants %s - %s. The one player-facing "
+                "artifact of his identity must summon HIM."
+                % (soul.rsplit('\\', 1)[-1], retired.rsplit('\\', 1)[-1],
+                   _RETIRED_SOUL_GRANTS[retired]))
             continue
-        if _norm(grant) != _norm(_SOUL_GRANT):
-            problems.append("R-94 SOUL: %s itemSkillName=%r != %s"
-                            % (soul.rsplit('\\', 1)[-1], grant, _SOUL_GRANT))
+        if _norm(grant) != _norm(_SOUL_GRANT_FINAL):
+            problems.append("R-247.6c SOUL: %s itemSkillName=%r != %s"
+                            % (soul.rsplit('\\', 1)[-1], grant, _SOUL_GRANT_FINAL))
             continue
         lv = _gv1(db, soul, 'itemSkillLevel')
         maxlv = _gv1(db, grant, 'skillMaxLevel')
@@ -1293,10 +1352,11 @@ def verify(db, tags=None):
                          % len(problems))
     print("  [toxeus_hunt_encounter].verify OK: fixed encounter resolves on N/E/L; "
           "Rite at 100 percent Misc4 with the recipe still gated on LEGENDARY "
-          "souls; Runbreaker x3 + a playable spear animation block (3 borrowed "
-          "poses, provenance proven); pursuit kit wired, named and no longer an "
-          "Enslaver clone; EVERY populated cast slot castable on every row he can "
-          "read; his soul grants his own mark at a level the skill has.")
+          "souls; Runbreaker x3 + a playable spear animation block (every inline "
+          "clip rig-compat-proven on his resolved table, R-247.5a); pursuit kit "
+          "wired, named and no longer an Enslaver clone; EVERY populated cast "
+          "slot castable on every row he can read; his soul summons HIM at a "
+          "level the skill has (R-247.6c).")
     return tags
 
 
@@ -1321,6 +1381,9 @@ def _negtest():
      13. the soul DESCRIPTION still advertises the retired flash-burst
      14. the emerge pose (spearSpawnAnim) is unbound on his only weapon row
      15. the AI is told to cast the lance beyond the projectile's own reach
+      R-247 ROUND 3 (the gate reconciliation):
+     16. his soul regresses to the R-94 quarrysmark grant (retired by R-247.6c)
+     17. an inline clip foreign to his resolved rig (RIG-COMPAT, R-247.5a)
     """
     from collections import OrderedDict
 
@@ -1384,20 +1447,29 @@ def _negtest():
         for row, ref, anim in _ANIM_REF_BINDINGS:
             hunt['%sSpecialAnimRef1' % row] = [ref]
             hunt['%sSpecialAnim1' % row] = [anim]
+        # R-247.5a round 3: the rig-compat provenance proof - a resolved anim
+        # table that binds every inline clip the stub Hunt carries.
+        rig = r'records\creature\monster\stub\anm\anm_stub.dbr'
+        hunt['charAnimationTableName'] = [rig]
+        clips, n = {}, 0
+        for vals in hunt.values():
+            for v in (vals if isinstance(vals, list) else [vals]):
+                if isinstance(v, str) and v.lower().endswith('.anm'):
+                    n += 1
+                    clips['clip%d' % n] = [v]
+        db.d[rig] = clips
         db.d[_HUNT] = hunt
         db.d[_BLADESTORM] = {'Class': ['Skill_AttackProjectileRing'],
                              'skillSpecialAnimationName': ['AoE360']}
-        # a second record carrying the borrowed poses = the provenance proof
-        db.d[r'records\provenance\donor.dbr'] = dict(
-            ('spearAttackAnim%d' % i, [a])
-            for i, a in enumerate(_SPEAR_ATT_ANIMS, start=1))
+        db.d[_SOUL_GRANT_FINAL] = {'Class': ['Skill_SpawnPet'],
+                                   'skillMaxLevel': [3]}
         db.d[_SPEAR_DONOR] = {'mesh': [_SPEAR_MESH]}
         for t in 'nel':
             db.d[_SPEAR[t]] = {'Class': ['WeaponHunting_Spear'],
                                'itemNameTag': [_SPEAR_NAME_TAG],
                                'mesh': [_SPEAR_MESH]}
             db.d[_SPEAR_GUAR[t]] = {'lootName1': [_SPEAR[t]]}
-            db.d[_HUNT_SOULS[t]] = {'itemSkillName': [_SOUL_GRANT],
+            db.d[_HUNT_SOULS[t]] = {'itemSkillName': [_SOUL_GRANT_FINAL],
                                     'itemSkillLevel': [_SOUL_GRANT_LEVEL[t]]}
         for sk, cls in _EXPECT_CLASS.items():
             name_tag, desc_tag = _SKILL_TEXT[sk]
@@ -1436,6 +1508,13 @@ def _negtest():
         ('his soul goes back to granting the RETIRED flashpowder',
          lambda db: db.d[_HUNT_SOULS['l']].__setitem__(
              'itemSkillName', [_RETIRED_SOUL_GRANT])),
+        ('his soul regresses to the R-94 quarrysmark grant (retired by R-247.6c)',
+         lambda db: db.d[_HUNT_SOULS['n']].__setitem__(
+             'itemSkillName', [_MARK])),
+        ('an inline clip foreign to his resolved rig (RIG-COMPAT, R-247.5a)',
+         lambda db: db.d[_HUNT].__setitem__(
+             'spearAttackAnim2',
+             [r'Creatures\Monster\Hydra\ANM\Hydra_Bite.anm'])),
         ('his soul grants a level the skill does not have',
          lambda db: db.d[_HUNT_SOULS['l']].__setitem__('itemSkillLevel', [8])),
         ('an inherited donor payload survives on a new skill (the 2s hard petrify)',

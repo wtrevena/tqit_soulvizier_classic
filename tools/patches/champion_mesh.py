@@ -56,7 +56,7 @@ skeleton core (395) and then to those with zero embedded FX (303).
 |---|---|---|---|---|
 | Enslaver of Souls | `SkeletonGrayBlack01New.msh` | **none** | IDENTICAL 20-bone set | see THE ANIMATION PROOF - it is the NATIVE mesh of the clips he already plays |
 | Devourer of Blood | `GoldenSkeleton01.msh` | **none** | IDENTICAL 20-bone set | closest clean sibling: only 4.6% of bytes differ from RevenantPoison, so his silhouette survives the fix; 464 shipped users, 59 of them on a `NewSkeleton_*` override + `ANM_Skeleton01` - the exact triple we need |
-| The Endless Hunt | `ShadowStalker.msh` (UNCHANGED) | ShadowStalker_Smoke (Will-confirmed BLACK) | superset (30 bones) | already distinct; grandfathered, and named here so the gate can tell "known and confirmed" from "unaudited" |
+| The Endless Hunt | ~~`ShadowStalker.msh` (UNCHANGED)~~ **`SkeletonRumorBoss.msh` (R-247.5a, 2026-08-13)** | Boss Aura (base game's own, q4-confirmed; was ShadowStalker_Smoke) | ALL 20 core bones | Will ruled him a SKELETON; the demon-body grandfather clause is RETIRED - see the R-247.5a comment at HUNT_MESH |
 
 `Skeleton01.msh` was the other FX-free candidate and is deliberately REJECTED:
 it differs from `SkeletonGrayBlack01New.msh` by 784 bytes out of 348,798 (0.2%),
@@ -122,13 +122,31 @@ GREEN_MESH = r'Creatures\Monster\Skeleton\RevenantPoison.msh'
 # ── destinations, measured FX-free (see the table in the docstring) ──────────
 ENSLAVER_MESH = r'Creatures\Monster\Skeleton\SkeletonGrayBlack01New.msh'
 DEVOURER_MESH = r'Creatures\Monster\Skeleton\GoldenSkeleton01.msh'
-HUNT_MESH = r'Creatures\Monster\ShadowStalker\ShadowStalker.msh'
+# R-247.5a (Will 2026-08-13, RETIREMENT PROTOCOL on this module's own pin):
+# "toxeus the murderer the endless hunt is still a demon not a skeleton". The
+# grandfathered ShadowStalker demon body is RETIRED - the Hunt joins his
+# brothers as a SKELETON on the family precedent this very module built
+# (Enslaver=SkeletonGrayBlack01New, Devourer=GoldenSkeleton01). The new pin is
+# r247_boss_forms' choice: SkeletonRumorBoss.msh, the base game's own
+# giant-skeleton BOSS mesh (q4_giantskeleton carriers, in-game-confirmed),
+# DISTINCT from both brothers (R-93 stands three ways). Measured at gate time:
+# it carries ALL 20 core bones (missing set = []) and ONE embedded FX - the
+# base game's own 'Boss Aura' (in-game-confirmed on its q4 carrier), tracked in
+# HUNT_GRANDFATHERED_FX below. Without this pin update the module MOVED the
+# Hunt back to ShadowStalker after r247_boss_forms fixed him (found by the
+# round-3 build - the first build in which both verifies ever ran).
+HUNT_MESH = r'Creatures\Monster\Skeleton\SkeletonRumorBoss.msh'
 
 # The Hunt's mesh is NOT effect-free, and that is fine and deliberate: this is
 # the smoke Will looked at and called "the proper black shroud". Naming it makes
 # the gate able to distinguish CONFIRMED from MERELY-PRESENT, instead of either
 # failing on it or ignoring FX entirely.
-HUNT_GRANDFATHERED_FX = ['Records\\Effects\\MonsterFX\\ShadowStalker_Smoke.dbr']
+# R-247.5a: was ShadowStalker_Smoke (retired with the demon body). The new
+# mesh's ONE embedded effect is the base game's own generic boss aura -
+# in-game-confirmed on every q4_giantskeleton carrier, not the R-102 green
+# class (that was RevenantPoison_FX, and the green gate below still bans that
+# mesh outright).
+HUNT_GRANDFATHERED_FX = ['Records\\Effects\\Boss Effects\\Boss Aura.dbr']
 
 _EN_MONSTER = r'records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr'
 _BT_MONSTER = r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr'
@@ -139,6 +157,10 @@ _MARAUDER = r'records\creature\monster\shadowstalker\um_enslaver_marauder_99.dbr
 _EN_SUMMON = r'records\skills\soulskills\summon_toxeus_enslaver.dbr'
 _BT_SUMMON = r'records\skills\soulskills\summon_bloodtoxeus.dbr'
 _EOAT_SUMMON = r'records\skills\soulskills\summon_toxeus_eoat.dbr'
+# R-247.6c: the Hunt finally HAS a summon + pet tiers (r247_boss_forms builds
+# them from the fixed skeleton Hunt, earlier in the registry) - derived and
+# gated here exactly like his brothers'.
+_HUNT_SUMMON = r'records\skills\soulskills\summon_toxeus_hunt.dbr'
 
 # FAMILIES: (label, mesh, anchor monsters, soul-summon skills whose spawnObjects
 # ARE the pet tiers, preview proxies). Anchors only - tiers are derived.
@@ -170,9 +192,12 @@ FAMILIES = [
         'label': 'Toxeus the Murderer, The Endless Hunt',
         'mesh': HUNT_MESH,
         'monsters': [_HUNT_MONSTER, _HUNT_MONSTER_L],
-        'summons': [],
+        'summons': [_HUNT_SUMMON],          # R-247.6c pet tiers, family pattern
         'proxies': [],
-        'must_be_fx_free': False,          # grandfathered, see HUNT_GRANDFATHERED_FX
+        # R-247.5a: SkeletonRumorBoss ships the base game's own Boss Aura
+        # embedded (in-game-confirmed on q4_giantskeleton); allowed via
+        # HUNT_GRANDFATHERED_FX, any OTHER embedded effect still reds.
+        'must_be_fx_free': False,
     },
 ]
 
@@ -539,6 +564,8 @@ def _negtest():
                for i in (1, 2, 3)]
     EOAT_PETS = [r'records\skills\soulskills\pets\toxeus_eoat_%d.dbr' % i
                  for i in (1, 2, 3)]
+    HUNT_PETS = [r'records\skills\soulskills\pets\toxeus_hunt_%d.dbr' % i
+                 for i in (1, 2, 3)]
     TABLE = r'records\creature\monster\skeleton\anm\anm_skeleton01.dbr'
     LIVE_ANM = r'Creatures\Monster\Skeleton\ANM\SkeletonGrayBlackNEW_Run.anm'
     DEAD_ANM = (r'Build\Resources\Creatures\Monster\Skeleton\ANM'
@@ -556,12 +583,16 @@ def _negtest():
                 r'records\drxmap\proxy\q_bloodtoxeus_lone.dbr',
                 r'records\drxmap\proxy\q_bloodtoxeus_ambush.dbr']:
             db.d[r] = {'mesh': [DEVOURER_MESH], 'charAnimationTableName': [TABLE]}
-        for r in (_HUNT_MONSTER, _HUNT_MONSTER_L):
-            db.d[r] = {'mesh': [HUNT_MESH]}
-        db.d[_MARAUDER] = {'mesh': [HUNT_MESH]}
+        for r in [_HUNT_MONSTER, _HUNT_MONSTER_L] + HUNT_PETS:
+            db.d[r] = {'mesh': [HUNT_MESH], 'charAnimationTableName': [TABLE]}
+        # bystander: the marauder KEEPS the retired ShadowStalker demon body
+        # (nothing in R-247.5a names him; non-roster, unchecked)
+        db.d[_MARAUDER] = {
+            'mesh': [r'Creatures\Monster\ShadowStalker\ShadowStalker.msh']}
         db.d[_EN_SUMMON] = {'spawnObjects': list(EN_PETS)}
         db.d[_BT_SUMMON] = {'spawnObjects': list(BT_PETS)}
         db.d[_EOAT_SUMMON] = {'spawnObjects': list(EOAT_PETS)}
+        db.d[_HUNT_SUMMON] = {'spawnObjects': list(HUNT_PETS)}
         # the non-target carriers the shared-record law protects
         for r in (r'records\creature\monster\skeleton\um_toxeus_21.dbr',
                   r'records\creature\monster\skeleton\um_rotbone_14.dbr'):
@@ -611,6 +642,13 @@ def _negtest():
         ('the Hunt is dragged onto the Enslaver mesh',
          lambda db: [db.d[r].__setitem__('mesh', [ENSLAVER_MESH])
                      for r in (_HUNT_MONSTER, _HUNT_MONSTER_L)]),
+        ('the Hunt regresses to the RETIRED ShadowStalker demon body (R-247.5a)',
+         lambda db: [db.d[r].__setitem__(
+             'mesh', [r'Creatures\Monster\ShadowStalker\ShadowStalker.msh'])
+             for r in (_HUNT_MONSTER, _HUNT_MONSTER_L)]),
+        ('a Hunt pet tier misses the skeleton mesh (R-247.6c family law)',
+         lambda db: db.d[HUNT_PETS[1]].__setitem__(
+             'mesh', [r'Creatures\Monster\ShadowStalker\ShadowStalker.msh'])),
     ]
 
     try:

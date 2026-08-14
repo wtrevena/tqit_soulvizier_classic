@@ -109,6 +109,10 @@ are in reach -> 18 tables**:
                                     terminal form `um_charonform2_ferryman_99` is a
                                     red uber, and its 3 tables carry the IDENTICAL
                                     collapsed weapon row)
+                                    R-247.1 UPDATE: the uber terminal (now Akremon)
+                                    names the CLONE proxy `svc_akremon_orb` instead;
+                                    same 3 tables, shared with the story Charon's
+                                    donor chests under the DONOR_TWINS byte gate.
     25_towerofjudgement_treasure   OUT OF REACH - see OUT_OF_REACH below. Found BY
                                    this gate on its first union run, which is R-200
                                    HOLE 2 paying for itself immediately.
@@ -247,8 +251,137 @@ OUT_OF_REACH = {
 # widen shared loot. Pin it here WITH the decision to make the gate green again.
 SHARED_TABLES_ACKNOWLEDGED = {}
 
+# ── DONOR TWINS: the R-247.1 orb-rename carve-out (MEASURED, byte-gated) ─────
+# `charon_rework` (R-247 ruling 1: "he still drops an orb named Charon's
+# Essence") clones the base-game Charon chest chain so ONLY the on-screen name
+# changes: Akremon's terminal names the CLONE proxy `svc_akremon_orb`, whose
+# containers `svc_akremon_orb_0{1,2,3}` keep the donors' `tables` pointers
+# (boss_charon_{n,e,l}01b) verbatim. The DONOR containers
+# `bosschest02_charon_0{1,2,3}` remain the LIVE drop chain of the base-game
+# story Charon - MEASURED on the shipped a86afc15 arz: boss_charonform2_39/41/43
+# all name the donor proxy - so they still name those same three tables from
+# OUTSIDE the uber chains. Without this carve-out `shared_tables` refuses the
+# three tables and the scope floor collapses 18 -> 15 (the round-1 vet's
+# SCOPE COLLAPSED repro, exit 1 at module 61/66).
+#
+# THE DECISION BEING PINNED (O6's question is "may shared loot stay widened?"):
+# YES for exactly this sharing, because it is the SHIPPED, RATIFIED state. In
+# every build up to and including a86afc15 the uber terminal and the story
+# Charon dropped through the SAME chain, so boss_charon_{n,e,l}01b already carry
+# the R-220 widening and the R-242 orb-rate treatment for BOTH consumers. The
+# carve-out preserves those bytes verbatim; the alternative (cloning the tables
+# for the uber chain) would strip the treatment from the story Charon's chest -
+# a silent base-game loot nerf, the exact R-247.7 offence class.
+#
+# THE FIELD GATE: a donor is exempt ONLY while it is field-for-field identical
+# to its clone twin outside DONOR_TWIN_ALLOWED_DIFFS (`description` - the
+# renamed chest tag - is the single authored delta of the R-247.1 clone).
+# String values are compared CASE-NORMALIZED (`_twin_cmp` - the engine resolves
+# record refs case-insensitively, and the pipeline lowercases refs it writes
+# while untouched records keep upstream mixed case; a case variant of the same
+# path is not drift). The moment either record REALLY drifts (different target
+# record, different number, added/removed field, dtype change), the exemption
+# dies, the tables return to shared/refused, the floors collapse and the build
+# reds loudly with the diverged fields AND both values printed - drift is a
+# human decision, never a quiet pass. Negative:
+# `tools/debug/negtest_orb_breadth.py` N10 plants exactly that divergence.
+DONOR_TWINS = {
+    r'records\xpack\item\containers\bosschest02_charon_01.dbr':
+        r'records\xpack\item\containers\svc_akremon_orb_01.dbr',
+    r'records\xpack\item\containers\bosschest02_charon_02.dbr':
+        r'records\xpack\item\containers\svc_akremon_orb_02.dbr',
+    r'records\xpack\item\containers\bosschest02_charon_03.dbr':
+        r'records\xpack\item\containers\svc_akremon_orb_03.dbr',
+}
+DONOR_TWIN_ALLOWED_DIFFS = ('description',)
+
 _n = SLB._n
 _sc = SLB._sc
+
+_DONOR_TWINS_N = {_n(k): _n(v) for k, v in DONOR_TWINS.items()}
+_TWIN_ANNOUNCED = set()
+
+
+def _twin_fields(db, rec):
+    """{lower(field): (values, dtype)} - the comparable image of one record."""
+    out = {}
+    for k, tf in (db.get_fields(rec) or {}).items():
+        out[k.split('###')[0].lower()] = (list(tf.values), tf.dtype)
+    return out
+
+
+def _twin_cmp(vals):
+    """Comparable form of one field's values: strings are compared
+    case-normalized (`_n`), everything else exact.
+
+    WHY (MEASURED, round-2 build 1): the upstream arzs carry MIXED-case
+    reference paths (`Records\\Item\\...\\BossGoldGenerator.dbr`); modules that
+    WRITE a reference write it `_n`-lowercased. So a record that has ever been
+    written carries lowercase refs while an untouched one keeps upstream case -
+    the shipped a86afc15 donor itself shows both in one record (mesh mixed-case,
+    the 4 ref fields lowercase). The clone is written (description) and so gets
+    re-encoded; the donor is untouched in the R-247 build - a case-only,
+    semantics-free divergence on goldGenerator/levelEquationFile/openSound/
+    tables that redded build 1 at slot 59. The engine resolves record refs
+    case-insensitively, so the twin law compares what the engine sees. Every
+    REAL drift (different target record, different number, added/removed field,
+    dtype change) still differs after normalization - negtest N10 proves it."""
+    return [_n(v) if isinstance(v, str) else v for v in vals]
+
+
+def twin_field_diffs(db, donor, clone):
+    """Field names on which donor and clone differ SEMANTICALLY (strings
+    case-normalized - see `_twin_cmp`), ignoring the allowed set."""
+    a, b = _twin_fields(db, donor), _twin_fields(db, clone)
+    allowed = {f.lower() for f in DONOR_TWIN_ALLOWED_DIFFS}
+    out = []
+    for k in sorted((set(a) | set(b)) - allowed):
+        ta, tb = a.get(k), b.get(k)
+        if ta is None or tb is None:
+            out.append(k)
+        elif ta[1] != tb[1] or _twin_cmp(ta[0]) != _twin_cmp(tb[0]):
+            out.append(k)
+    return out
+
+
+def _twin_exempt(db, lk, referrer, chest_set):
+    """True iff `referrer` is a PINNED donor whose R-247 clone twin is one of the
+    uber chains' own chests AND the two records still satisfy the same-bytes law
+    (identical outside DONOR_TWIN_ALLOWED_DIFFS). Inert on any arz where the
+    clone chain does not exist or is not in an uber chain (a pre-R-247 build has
+    the donor itself in `chest_set`, so this is never even consulted there).
+    Announced once per donor per process, both ways - never a silent pass."""
+    ref_l = _n(referrer)
+    twin_l = _DONOR_TWINS_N.get(ref_l)
+    if twin_l is None or twin_l not in chest_set:
+        return False
+    twin = lk.real(twin_l)
+    if twin is None:
+        return False
+    diffs = twin_field_diffs(db, referrer, twin)
+    key = (ref_l, bool(diffs))
+    if diffs:
+        if key not in _TWIN_ANNOUNCED:
+            _TWIN_ANNOUNCED.add(key)
+            a, b = _twin_fields(db, referrer), _twin_fields(db, twin)
+            detail = '; '.join('%s: donor=%r clone=%r' % (f, a.get(f), b.get(f))
+                               for f in diffs)
+            print("  ORB BREADTH: DONOR-TWIN PIN VOID - %s has drifted from its "
+                  "R-247 clone %s on field(s) %s [%s]. The same-bytes law is "
+                  "broken, so the shared-table refusal is BACK ON for its tables "
+                  "(expect the scope floor to red). Re-decide the pin; never "
+                  "widen blind."
+                  % (ref_l.rsplit('\\', 1)[-1], twin_l.rsplit('\\', 1)[-1],
+                     ', '.join(diffs), detail))
+        return False
+    if key not in _TWIN_ANNOUNCED:
+        _TWIN_ANNOUNCED.add(key)
+        print("  ORB BREADTH: donor-twin exemption active - %s verified "
+              "field-identical (excl %s) to in-chain clone %s (R-247.1 rename "
+              "law; the story Charon keeps the shipped shared tables)"
+              % (ref_l.rsplit('\\', 1)[-1], '/'.join(DONOR_TWIN_ALLOWED_DIFFS),
+                 twin_l.rsplit('\\', 1)[-1]))
+    return True
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -353,7 +486,11 @@ def shared_tables(db, lk=None, base_rows=None, chains=None):
     lane that was asked about mystical orbs. A table is therefore in scope only if
     every referrer is one of the uber chains' own chests, OR the table is mod-owned
     (an `\\svc\\` table is R-180's scope and is already gated there; the 3 apex
-    tables are exactly that case, shared deliberately with Leinth's chests).
+    tables are exactly that case, shared deliberately with Leinth's chests), OR
+    the referrer is a byte-verified DONOR TWIN of an in-chain chest (the R-247.1
+    orb-rename carve-out - see DONOR_TWINS above: the story Charon's own chests,
+    field-identical to the uber's clone chests outside `description`, keep the
+    shipped shared tables in scope instead of collapsing the floor).
     """
     lk = lk or SLB.Lookup(db)
     chains = orb_chains(db, lk, base_rows) if chains is None else chains
@@ -364,7 +501,8 @@ def shared_tables(db, lk=None, base_rows=None, chains=None):
         if not table or _n(table) in out or SLB.is_mod_owned(table):
             continue
         outside = [r for r in _referrers(db, _n(table), cache)
-                   if _n(r) not in chest_set]
+                   if _n(r) not in chest_set
+                   and not _twin_exempt(db, lk, r, chest_set)]
         if outside:
             out[_n(table)] = outside
     return out
