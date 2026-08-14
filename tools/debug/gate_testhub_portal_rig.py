@@ -1,69 +1,101 @@
 #!/usr/bin/env python3
-"""GATE: TESTHUB portal rig (Model C) - render chain + Steam-inertness.
+"""GATE: TESTHUB device-court rig (R-246 native-device travel, 2026-08-13).
 
-Two fail-loud checks for the flag-gated LOCAL-ONLY travel rig
-(records\\quests\\svc_testhub_master.dbr + svc_testhub_return.dbr):
+LINEAGE: the pre-R-246 versions of this gate verified the boat-dialog rig NPCs
+(svc_testhub_master/return; render chain + Steam-inertness). R-246 ripped every rig
+BOAT ROW; the records survive as MUTE NAMED MARKERS beside the new devices (shared-
+record law), and the rig itself is now the 14-door east-field court + T15 return
+shrines, whose byte-level invariants live in gate_device_resolution (D1-D7/C/Y).
+This gate keeps the two rig checks the device gate does NOT cover:
 
-  A. RENDER CHAIN (D5 law). Both rig NPCs must render like the two SHIPPING
-     boat-dialog masters (Almyros/portal_master_helos + Keryx/portal_master_
-     olympus): their mesh + baseTexture must be BYTE-IDENTICAL to the proven
-     Knossos-boatman donor, and the mesh entry + every internal shader must
-     resolve under engine-faithful archive scoping. A rig NPC whose art does
-     not resolve would appear invisible/T-posed.
-
-  B. STEAM-INERTNESS. The canonical/Steam map (local/Levels_merged.arc) must
-     PLACE ZERO of the two rig NPC records in ANY level's 0x05 section, so the
-     boat-dialog triggers (which ship UNCONDITIONALLY in Quests.arc) attach to
-     nothing and are inert for canonical players (the D3 unplaced-record no-op).
-     Only the TESTHUB map variant (placed by the map lane) may reference them.
+  A. RENDER CHAIN (D5 law): every R-246 marker/greeter NPC record still in the arz
+     must share the PROVEN Knossos-boatman donor mesh + baseTexture byte-identically
+     (a marker whose art does not resolve renders invisible/T-posed - the fate the
+     b88 lesson warns about; markers are the court's ONLY label surface). When the
+     art dirs are present, the donor mesh + internal shaders must also resolve under
+     engine-faithful archive scoping.
+  B. VARIANT PLACEMENT CENSUS (Steam-inertness, R-246 dispositions): the canonical
+     map places EXACTLY the ruled marker set and ZERO hub-only records; the TESTHUB
+     map places the full court. Censused by record-name prefix on the 0x05 sections:
+        prefix                       canonical   TESTHUB
+        svc_testhub_master*              0          0     (retired b48r3)
+        svc_testhub_return.dbr           0          0     (retired b48r3 warden-split)
+        svc_testhub_return_*             4          5     (area markers; bossarena hub-only)
+        svc_helos_trav_*                 0         14     (court markers - NEVER Steam)
+        svc_area_return_*                1         10     (maze03 greeter canonical;
+                                                           9 more are hub landing markers)
+        svc_warden_sparta_crypt          1          1     (the named Warden greeter)
 
 Usage:
-  py tools/debug/gate_testhub_portal_rig.py [<arz>] [<mod_resources>] [<game_dir>]
-Defaults resolve the standard work/ layout. Exit 0 = PASS, non-zero = FAIL.
+  py tools/debug/gate_testhub_portal_rig.py [<arz>] [<canonical.arc>] [<testhub.arc>]
+Defaults: work/SoulvizierClassic/Database/SoulvizierClassic.arz; map checks run only
+for the paths given. Exit 0 = PASS.
 """
-import sys, struct
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / 'tools'))
+sys.path.insert(0, str(REPO / 'tools' / 'contracts'))
 sys.path.insert(0, str(REPO / 'tools' / 'debug'))
-from arz_patcher import ArzDatabase
-import validate_render_chain as vrc
 
-MASTER = r'records\quests\svc_testhub_master.dbr'
-RETURN = r'records\quests\svc_testhub_return.dbr'
-# b48 round 3 (WARDEN-SPLIT): the 5 distinct per-area return records that replaced the single
-# svc_testhub_return placement (each a byte-clone of the donor, same render chain).
-AREA_RETURNS = [
-    r'records\quests\svc_testhub_return_garden.dbr',
-    r'records\quests\svc_testhub_return_secret.dbr',
-    r'records\quests\svc_testhub_return_uber.dbr',
-    r'records\quests\svc_testhub_return_sparta.dbr',
-    r'records\quests\svc_testhub_return_bossarena.dbr',
-]
+from arz_patcher import ArzDatabase              # noqa: E402
+import validate_render_chain as vrc              # noqa: E402
+
 DONOR = r'records\creature\npc\speaking\greece\knossos_boatmantoegypt.dbr'
-SHIPPING = [r'records\quests\portal_master_helos.dbr',
-            r'records\quests\portal_master_olympus.dbr']
+# The full R-246 marker roster (all knossos-boatman clones; records stay in the arz
+# under the shared-record law even where placements are TESTHUB-only or zero).
+MARKERS = (
+    [r'records\quests\svc_helos_trav_%s.dbr' % s for s in
+     ('garden', 'secret', 'sparta', 'uber', 'bossarena', 'warband', 'dorus',
+      'tantalus', 'charon', 'mnemophage', 'ephialtes', 'devourer', 'vashkarr',
+      'obsidian')]
+    + [r'records\quests\svc_testhub_return_%s.dbr' % s for s in
+       ('garden', 'secret', 'uber', 'sparta', 'bossarena')]
+    + [r'records\quests\svc_area_return_%s.dbr' % s for s in
+       ('uber', 'dorus', 'tantalus', 'charon', 'mnemophage', 'ephialtes',
+        'warband', 'devourer', 'vashkarr', 'obsidian')]
+    + [r'records\quests\svc_warden_sparta_crypt.dbr',
+       r'records\quests\svc_testhub_master.dbr',       # retired-but-kept
+       r'records\quests\svc_testhub_return.dbr']       # retired-but-kept donor
+)
+# (record-name prefix, canonical count, testhub count)
+CENSUS = [
+    (b'svc_testhub_master', 0, 0),
+    (b'svc_testhub_return.dbr', 0, 0),
+    (b'svc_testhub_return_', 4, 5),
+    (b'svc_helos_trav_', 0, 14),
+    (b'svc_area_return_', 1, 10),
+    (b'svc_warden_sparta_crypt', 1, 1),
+]
 
 
 def _norm(s):
     return str(s).replace('/', '\\').lower()
 
 
+def census_map(path):
+    import gate_device_resolution as g
+    data, levels, _groups = g.load_map(path)
+    counts = {n: 0 for (n, _c, _h) in CENSUS}
+    for lv in levels:
+        blob = data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
+        for (nm, _x, _y, _z, _f, _u, _i) in g.parse_0x05(blob)[0]:
+            nb = nm.encode()
+            for (n, _c, _h) in CENSUS:
+                if n.lower() in nb:
+                    counts[n] += 1
+    return counts
+
+
 def main(argv):
     arz = Path(argv[1]) if len(argv) > 1 else \
         REPO / 'work/SoulvizierClassic/Database/SoulvizierClassic.arz'
-    mod_res = Path(argv[2]) if len(argv) > 2 else \
-        REPO / 'work/SoulvizierClassic/Resources'
-    game = Path(argv[3]) if len(argv) > 3 else Path(
-        r'C:/Program Files (x86)/Steam/steamapps/common/'
-        r'Titan Quest Anniversary Edition')
+    fails = []
 
+    # ---- A: render chain ----
     db = ArzDatabase.from_arz(arz)
     recmap = {_norm(n): n for n in db.record_names()}
-
-    def rec(p):
-        return recmap.get(_norm(p))
 
     def fld(name, key):
         ff = db.get_fields(name) or {}
@@ -72,112 +104,67 @@ def main(argv):
                 return str(tf.values[0])
         return None
 
-    fails = []
-
-    # ---- A: render chain ----
-    for p in (MASTER, RETURN, *AREA_RETURNS):
-        if not rec(p):
-            fails.append(f'A: rig NPC MISSING from arz: {p}')
-    dn = rec(DONOR)
+    dn = recmap.get(_norm(DONOR))
     if not dn:
         fails.append(f'A: donor MISSING from arz: {DONOR}')
-
-    if not fails:
+    else:
         dmesh, dtex = fld(dn, 'mesh'), fld(dn, 'baseTexture')
-        for p in (MASTER, RETURN, *AREA_RETURNS):
-            r = rec(p)
+        n_ok = 0
+        for p in MARKERS:
+            r = recmap.get(_norm(p))
+            if not r:
+                fails.append(f'A: marker record MISSING from arz (shared-record law): {p}')
+                continue
             m, t = fld(r, 'mesh'), fld(r, 'baseTexture')
             if _norm(m) != _norm(dmesh):
                 fails.append(f'A: {p} mesh {m!r} != donor {dmesh!r}')
-            if _norm(t) != _norm(dtex):
+            elif _norm(t) != _norm(dtex):
                 fails.append(f'A: {p} baseTexture {t!r} != donor {dtex!r}')
-        # shipping masters must share the same art (sanity anchor)
-        for sp in SHIPPING:
-            r = rec(sp)
-            if r and _norm(fld(r, 'mesh')) != _norm(dmesh):
-                fails.append(f'A: shipping {sp} mesh drifted from donor - anchor broken')
-
-        # engine-faithful mesh + shader closure (only if art dirs present)
+            else:
+                n_ok += 1
+        mod_res = REPO / 'work/SoulvizierClassic/Resources'
+        game = Path(r'C:/Program Files (x86)/Steam/steamapps/common/'
+                    r'Titan Quest Anniversary Edition')
         if mod_res.is_dir() and (game / 'Resources').is_dir():
             eng = vrc.EngineArcResolver(str(mod_res), str(game))
             ok_mesh, shaders = vrc.mesh_internal_shaders(eng, dmesh)
             ok_tex, tdet = eng.resolve(dtex)
             bad = [s for s in shaders if not s[1]]
             if not ok_mesh:
-                fails.append(f'A: mesh entry unresolved under engine scoping: {dmesh}')
+                fails.append(f'A: donor mesh unresolved under engine scoping: {dmesh}')
             if bad:
-                fails.append(f'A: mesh {dmesh} internal shader(s) unresolved: '
+                fails.append(f'A: donor mesh internal shader(s) unresolved: '
                              f'{[s[0] for s in bad]}')
             if not ok_tex:
-                fails.append(f'A: baseTexture unresolved: {dtex} ({tdet})')
-            print(f"  A render: mesh={dmesh} resolvable={ok_mesh} "
-                  f"shaders={len(shaders)} bad={len(bad)}; tex={dtex} ok={ok_tex} ({tdet})")
+                fails.append(f'A: donor baseTexture unresolved: {dtex} ({tdet})')
+            print(f'  A render: {n_ok}/{len(MARKERS)} markers byte-share donor art; '
+                  f'mesh ok={ok_mesh} shaders={len(shaders)} bad={len(bad)}; '
+                  f'tex ok={ok_tex}')
         else:
-            print(f"  A render: mesh/tex byte-identity vs donor OK; "
-                  f"(art dirs absent -> engine-scoping shader check SKIPPED)")
-        print(f"  A: both rig NPCs share donor mesh={dmesh} tex={dtex}")
+            print(f'  A render: {n_ok}/{len(MARKERS)} markers byte-share donor art '
+                  f'(art dirs absent -> engine-scoping shader check SKIPPED)')
 
-    # ---- B: canonical placement invariants (UPDATED b48 round 3 WARDEN-SPLIT) ----
-    # History: PRE-P0 = "canonical places 0 rig NPCs"; the P0 hotfix PROMOTED the single
-    # svc_testhub_return into the 4 canonical areas; b48 round 3 WARDEN-SPLIT that single record
-    # (which was mute in 3 of the 4) into 5 DISTINCT per-area records. Current invariants:
-    #   - the shared svc_testhub_return.dbr is RETIRED -> 0 canonical (and 0 TESTHUB).
-    #   - the 4 canonical per-area returns (svc_testhub_return_{garden,secret,uber,sparta}) are
-    #     placed once each -> 4 canonical; Boss Arena's return is TESTHUB-only.
-    #   - the hub MASTERS (svc_testhub_master / _helos / _cave) stay TESTHUB-only -> 0 canonical
-    #     (the cave master was RETIRED entirely in round 3).
-    #   - the build37 Helos traveler hub (svc_helos_trav_* / svc_area_return_*) is TESTHUB-only
-    #     -> 0 canonical (delegated in full to gate_travel_npc_invariants.py).
-    canon = REPO / 'local' / 'Levels_merged.arc'
-    if canon.exists():
-        from arc_patcher import ArcArchive
-        from merge_levels_binary import parse_sections, parse_level_index
-        from build_section_surgery import parse_blob_sections
-        arc = ArcArchive.from_file(canon)
-        data = arc.decompress([e for e in arc.entries if e.entry_type == 3][0])
-        sec = {s['type']: s for s in parse_sections(data)}
-        levels = parse_level_index(data, sec[0x01])
-        needles = (b'svc_testhub_master', b'svc_testhub_return.dbr', b'svc_testhub_return_',
-                   b'svc_helos_trav_', b'svc_area_return_')
-        placements = {n: 0 for n in needles}
-        for L in levels:
-            blob = data[L['data_offset']:L['data_offset'] + L['data_length']]
-            if len(blob) < 4 or blob[:3] != b'LVL':
-                continue
-            bsecs, _ = parse_blob_sections(blob)
-            s05 = next((s for s in bsecs if s['type'] == 0x05), None)
-            if not s05:
-                continue
-            low = s05['data'].lower()
-            for n in needles:
-                placements[n] += low.count(n)
-        m, r0, rsplit, ht, hr = (placements[b'svc_testhub_master'],
-                                 placements[b'svc_testhub_return.dbr'],
-                                 placements[b'svc_testhub_return_'],
-                                 placements[b'svc_helos_trav_'], placements[b'svc_area_return_'])
-        print(f"  B placement: canonical places master={m} old_return={r0} "
-              f"per_area_return={rsplit} helos_trav={ht} area_return={hr}")
-        if m != 0:
-            fails.append(f'B: canonical places {m} hub-MASTER instance(s) - masters are TESTHUB-only')
-        if r0 != 0:
-            fails.append(f'B: the shared svc_testhub_return.dbr must be UNPLACED (retired; '
-                         f'warden-split); got {r0} canonical placement(s)')
-        if rsplit != 4:
-            fails.append(f'B: canonical must place the 4 per-area returns svc_testhub_return_'
-                         f'{{garden,secret,uber,sparta}} once each; got {rsplit} '
-                         f'(Boss Arena return is TESTHUB-only)')
-        if ht or hr:
-            fails.append(f'B: canonical places {ht + hr} build37 Helos-hub instance(s) - the '
-                         f'hub is TESTHUB-only (see gate_travel_npc_invariants.py)')
-    else:
-        print(f"  B placement: SKIPPED (no {canon}); check once the map is built")
+    # ---- B: variant placement census ----
+    for (label, idx, path) in (('canonical', 1, argv[2] if len(argv) > 2 else None),
+                               ('TESTHUB', 2, argv[3] if len(argv) > 3 else None)):
+        if not path:
+            continue
+        counts = census_map(path)
+        for (n, c_want, h_want) in CENSUS:
+            want = c_want if label == 'canonical' else h_want
+            got = counts[n]
+            if got != want:
+                fails.append(f'B: {label} places {got}x {n.decode()} - the R-246 '
+                             f'disposition is exactly {want}')
+        print(f'  B census {label}: ' + ' '.join(
+            f'{n.decode().rstrip("_")}={counts[n]}' for (n, _c, _h) in CENSUS))
 
     if fails:
-        print("\nGATE FAIL (TESTHUB portal rig):")
+        print(f'TESTHUB DEVICE-COURT RIG GATE: {len(fails)} FAILURE(S)')
         for f in fails:
-            print("  " + f)
+            print(f'  FAIL {f}')
         return 1
-    print("\nGATE PASS: TESTHUB portal rig render chain + Steam-inertness OK")
+    print('TESTHUB DEVICE-COURT RIG GATE: PASS')
     return 0
 
 

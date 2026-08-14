@@ -22,11 +22,15 @@
 # Will's TRAVEL LAW stripped every walk-through/proximity teleport we authored from
 # the canonical map (fix commit 0f08297), portal_olympianarena1 among them -
 # bossarena.qst opened it by record name. The portal RECORD still ships in the
-# UNCHANGED build36 arz (arz/Quests ship byte-identical this P0 - no DB/Quests
-# rebuild), so the quest's Action_UnlockFixedItem now names a door no longer placed
-# in the map. INTENDED + harmless: the engine's fixedItem name-lookup finds nothing
-# and no-ops (the same inert-record pattern the fix relies on for the return NPC);
-# cross-area travel is NPC-dialog only now, and the Secret Place / boss arena stay
-# reachable via the Helos portal-master NPC. FOLLOW-UP (out of P0 scope): a future
-# Quests.arc rebuild should drop this dead unlock action from bossarena.qst.
+# RE-EVALUATED under R-246 (2026-08-13, native-device travel): portal_olympianarena1
+# is PLACED AGAIN (canonical maze03 + catacube door entrances; the TESTHUB court), so
+# the old "names a door no longer placed" justification is DEAD. The line SURVIVES on
+# a different, disasm-proven ground: the record's class is the BORN-OPEN static
+# GridEntrance (apply_svc_patches _make_portals_born_open_gridentrance; verify hook
+# green), and Action_OpenDynGridEntrance / the unlock only drives the
+# GridEntranceDynamic state machine (SetPortalIsOpen call sites: Close/Open/activate,
+# Game.dll - docs/DYNGRID_GATE_RCA.md sec 3-5). On a static GridEntrance the action
+# finds no Dynamic state to flip and no-ops; the doors are open from raw data with or
+# without it. FOLLOW-UP (unchanged, registered in BACKLOG): a future bossarena.qst
+# rebuild should drop the dead unlock action entirely, then delete this line.
 QST-DOOR-UNLOCK bossarena.qst :: records/quests/portal_olympianarena1.dbr

@@ -1,43 +1,51 @@
 #!/usr/bin/env python3
-"""RETIRED GATE (2026-07-13): the doors+hub walk-through-portal battery.
+"""gate_doors_hub - RESURRECTED as a delegate (2026-08-13, R-246 native-device travel).
 
-Every travel mechanism this gate verified - the A1 Garden / A2 Secret Place / Sparta Crypt / Uber
-Dungeon walk-through GridEntrance "doors" and the 20-portal born-open TESTHUB hub - was REMOVED by
-the 2026-07-12 P0 hotfix (commit 0f08297). Walk-through / proximity teleport portals are now BANNED
-everywhere we author; all cross-area travel is talk-to-an-NPC boat-dialog (Model C). So this gate's
-portal sub-gates (`placement`, `hubidentity`, `crosstalk`) assert content that intentionally no
-longer exists, and its baseline-diff sub-gates (`collateral`, `c1`, `c3`, `c4`) compared the
-build25 map against long-superseded baselines (that one-time fountain-respawn / caravan / smoke
-verification shipped in build24-26 and is covered by the standing contract-suite collateral gates).
+LINEAGE (three eras, all deliberate):
+  1. build24/25: this gate verified the original invented door pairs + the 20-portal
+     born-open TESTHUB hub (sub-gates placement/hubidentity/crosstalk + baseline diffs).
+  2. 2026-07-12 P0: every authored walk-through portal was stripped ("yanked to the
+     Garden"); this file became a tombstone delegating to the boat-dialog travel-law
+     gate. Walk-through portals were BANNED.
+  3. 2026-08-13 R-246: Will's "Native devices" ruling SUPERSEDES the mechanism half of
+     that P0 - doors are BACK as the canonical travel devices (born-open GridEntrance
+     pairs, zero quest rows), because the boat-row alternative corrupts the engine's
+     stateful offer registry. The P0's PLACEMENT half survives: doors OFF every traffic
+     lane, walked into deliberately - enforced by the successor's C-block.
 
-It is retired in place (filename kept so any gate battery that still calls it gets an HONEST
-result) and DELEGATES to the post-P0 travel-law gate:
+The door world's invariants now live in ONE place:
 
-    tools/debug/gate_travel_npc_invariants.py
+    tools/gate_device_resolution.py   (D1-D7 bindings/uids/appended-host law,
+                                       C1-C5 lane/clearance, Y1/ON terrain; negtests)
 
-which asserts: 0 authored walk-through portals (canonical + TESTHUB), the build37 Helos traveler
-hub warden-clean (17 records, 0 canonical / 1 TESTHUB each), the retired Helos master, the canonical
-NPC travelers, and full map/quests/arz cross-file agreement. The original 453-line implementation is
-preserved in git history (before this commit) if the pre-P0 portal logic is ever needed.
+This file forwards to it so any battery calling gate_doors_hub gets the honest
+current answer. The build25-era implementation stays in git history.
 
-Usage: py tools/debug/gate_doors_hub.py [<canonical.arc> [<testhub.arc>]]   (args forwarded)
-Exit 0 = PASS, non-zero = FAIL.
+Usage: py tools/debug/gate_doors_hub.py [<canonical.arc> [<testhub.arc>]]
+Exit 0 = PASS (all forwarded runs green).
 """
+import subprocess
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import gate_travel_npc_invariants as G
-
-_RETIRED_SUBGATES = {'collateral', 'hubidentity', 'placement', 'c1', 'c3', 'c4', 'crosstalk', 'all'}
+REPO = Path(__file__).resolve().parents[2]
+_LEGACY_SUBGATES = {'collateral', 'hubidentity', 'placement', 'c1', 'c3', 'c4',
+                    'crosstalk', 'all'}
 
 
 def main(argv):
-    print('=== gate_doors_hub RETIRED (walk-through portals removed 2026-07-12) -> '
-          'delegating to gate_travel_npc_invariants ===')
-    # Drop a legacy sub-gate name if present (e.g. "gate_doors_hub.py placement"); forward .arc paths.
-    args = [a for a in argv[1:] if a not in _RETIRED_SUBGATES]
-    return G.main([argv[0]] + args)
+    args = [a for a in argv[1:] if a not in _LEGACY_SUBGATES]
+    if not args:
+        print('usage: gate_doors_hub.py <canonical.arc> [<testhub.arc>]  '
+              '(delegates to gate_device_resolution)')
+        return 2
+    print('=== gate_doors_hub (R-246): doors are back as native devices -> '
+          'delegating to gate_device_resolution ===')
+    gate = str(REPO / 'tools' / 'gate_device_resolution.py')
+    rc = subprocess.call([sys.executable, gate, '--map', args[0]])
+    if len(args) > 1:
+        rc |= subprocess.call([sys.executable, gate, '--map', args[1], '--hub'])
+    return rc
 
 
 if __name__ == '__main__':
