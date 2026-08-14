@@ -62,6 +62,21 @@ ALMYROS_QUEST = 'sv_commonmechanics.qst'
 ALMYROS_STEP = ('Makes it so Quest Never Completes -- '
                 'Allows for refiring on triggers')
 ALMYROS_NPC = r'records\quests\portal_master_helos.dbr'
+# (e) NO-CHURN exemption #2: the Olympus->Rhodes herald (the R-248 mechanism-(B)
+# exemplar chain, in-game proven - Will's own R-248 words name this portal working).
+# His single row rides the Q3 trigger: Condition_KillAllCreaturesFromProxy
+# isResettable=1 + canReFire - EVENT-GATED re-arming on repeat Typhon kills, the
+# urder 'PortalDude Control' precedent class, NOT the blanket level-load churn the
+# rip killed. Shipped since build31; never touch (WILL_RULINGS R-248 route 8).
+HERALD_NPC = r'records\quests\portal_master_olympus.dbr'
+# (c2) LABEL-INTEGRITY exemption: the b62 DELIBERATE cross-build divergence
+# (build_quest_files RECONCILIATION NOTE): Almyros's canonical tagSVCHelosToUber
+# lands INSIDE crypt_floor1; the TESTHUB launcher's same tag lands at the maze03
+# DOOR. Never both placed in one level (Almyros is de-duped off the TESTHUB plaza),
+# and both labels truthfully name the same area. Any OTHER split fails loud.
+C2_ALLOWED = {
+    'tagSVCHelosToUber': frozenset({(-2438, 10, -2457), (-7793, 1, -3793)}),
+}
 
 # SVC-authored boat NPCs (checks (c)+(d) scope). Everything else in the arc is
 # upstream-authentic (SV-native / base) and is frozen by the roster whitelist
@@ -428,7 +443,7 @@ def run_gate(quests_arc, map_arc=None, verbose=True, hub=False):
         if n.replace('/', BS).lower() in svc_all:
             tag_dests[t].add(xyz)
     for t, ds in sorted(tag_dests.items()):
-        if len(ds) > 1:
+        if len(ds) > 1 and ds != C2_ALLOWED.get(t):
             violations.append(f'(c2) LABEL INTEGRITY: tag {t} armed with {len(ds)} '
                               f'different dests {sorted(ds)}')
 
@@ -455,7 +470,9 @@ def run_gate(quests_arc, map_arc=None, verbose=True, hub=False):
         is_almyros_trigger = (q.lower().endswith(ALMYROS_QUEST) and s == ALMYROS_STEP
                               and nl == ALMYROS_NPC.lower())
         if is_almyros_trigger:
-            continue  # the ONE Will-ratified refire exception
+            continue  # Will-ratified refire exception #1 (the 3-route talk menu)
+        if nl == HERALD_NPC.replace('/', BS).lower():
+            continue  # exemption #2: event-gated Q3 kill trigger (see HERALD_NPC)
         if not rst or any(v != 0 for v in rst):
             violations.append(f'(e) NO-CHURN: {q} step {s!r} row {t} on '
                               f'{n.split(BS)[-1]} has isResettable={rst} - travel '
@@ -579,7 +596,8 @@ def _rows_pass(rows, hub=False):
     for q, _s, _d, n, t, xyz, _r in rows:
         if n.replace('/', BS).lower() in svc_all:
             tag_dests[t].add(xyz)
-    if any(len(ds) > 1 for ds in tag_dests.values()):
+    if any(len(ds) > 1 and ds != C2_ALLOWED.get(t)
+           for t, ds in tag_dests.items()):
         violations.append('c2')
     for q, s, _d, n, t, _xyz, rst in rows:
         nl = n.replace('/', BS).lower()
@@ -587,6 +605,8 @@ def _rows_pass(rows, hub=False):
             continue
         if (q.lower().endswith(ALMYROS_QUEST) and s == ALMYROS_STEP
                 and nl == ALMYROS_NPC.lower()):
+            continue
+        if nl == HERALD_NPC.replace('/', BS).lower():
             continue
         if not rst or any(v != 0 for v in rst):
             violations.append('e')
