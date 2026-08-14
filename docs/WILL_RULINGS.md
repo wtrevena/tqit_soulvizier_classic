@@ -6265,7 +6265,15 @@ name). Two fixes committed on `feat/charon-rework`; the Steam upload + push are 
 
 ## R-240 [2026-08-11] IMPLEMENTED (branch `fix/loot-volume-trim`, module `tools/patches/loot_volume_trim.py`) - the chests pay a RUN's worth, not a vendor's stock; the TESTHUB farm keeps its own
 
-**WILL, VERBATIM (2026-08-11):**
+> **AMENDED BY R-247.7a (2026-08-13, scope carve-out - NOT a repeal):** the three Devourer-stash
+> tables `loottable_hidden_bloodcave_{01,02,03}` (the blood-cave "Toxeus the Murderer, Devourer of
+> Blood's Stash" Majestic chest) LEAVE this ruling's trim scope and its V1 canonical ceiling
+> (`svc_loot_volume.R247_STASH_EXEMPT`); Will 2026-08-13, verbatim: "wtf did you do to all the chests
+> like toxeus the murderer devourer of blood's stash? Revert it back to what it was dropping in the
+> original sv you nerfed the fuck out of it." Their numSpawn equations are restored to the SV 0.98i
+> originals (`*3.8/*4.1`) by `tools/patches/r247_bloodcave_rulings.py`, which becomes the single
+> volume authority for exactly those three records. EVERY other surface (cage, hoards, orbs, world
+> loot) stays under this ruling unchanged. Full measurement + supersession text: R-247 part 7.
 
 > "we probably need to trip the loot-volume trim, especially on the steam version where maybe from
 > the two chests, you get guaranteed 1 legendary item. on the testhub version we can spawn more that
@@ -6843,7 +6851,12 @@ deleting a proof is not a green build.*
 
 ## R-242 [2026-08-12] IMPLEMENTED (branch `fix/orb-rates-by-difficulty`, module `tools/patches/orb_legendary_chance.py`) - uber-orb legendary/blue chance BY DIFFICULTY; Toxeus + Leinth excluded. SUPERSEDES R-241's flat 21.2% demotion and CLOSES `BL-R241-DEBT-1`.
 
-**WILL, VERBATIM (2026-08-12), part 1:**
+> **R-247.7a AUDIT NOTE (2026-08-13, measured NOT-INVOLVED - no amendment needed):** Will's stash-chest
+> nerf report named this wave as a prime suspect; measurement clears it. The Devourer-stash tables
+> `loottable_hidden_bloodcave_{01,02,03}` were NEVER in this ruling's 15-general-table calibration
+> (their loot1/2/5/6 chances sit at the pre-R-242 40.0, not the 46.5-67.2 calibrated band) and their
+> relic row (21.2) is byte-equal to the SV 0.98i original. The stash nerf was R-240's volume trim
+> alone - see the R-240 amendment + R-247 part 7. This ruling's orb treatment is untouched.
 
 > "yeah actually all the orbs that uber monsters drop should have a 50% chance of dropping a legendary item on epic, a 75% of dropping a legendary item on legendary, a 0% chance of dropping a legendary item on normal, but a 75% chance of dropping a blue item on normal (this is a sub legendary item, idk what the name of this class of item is but they show up blue)"
 
@@ -7385,3 +7398,103 @@ STATUS: implementation in this lane (feat/akremon-enhancement). Note on R-231-E:
 significantly" (with the "ultimate boss tier" context) re-anchors the Akremon durability calibration
 off the R-231-E Gaoler frame onto the measured Toxeus band; R-231-E correction 10 is SUPERSEDED on
 that one axis (durability reference frame), and charon_rework.verify()'s band gate moves with it.
+
+### R-247 PARTS 7 + 8 (2026-08-13, second orchestrator packet, appended VERBATIM same-turn)
+
+7. CHESTS + DEVOURER SPAWNS (Will 2026-08-13, ANGRY, verbatim): "wtf did you do to all the chests like toxeus the
+   murderer devourer of blood's stash? Revert it back to what it was dropping in the original sv you nerfed the fuck
+   out of it. also on normal difficulty toxeus the murderer devourer of blood wasnt even there guarding his stash, he
+   should spawn there 100% of the time on every difficulty. also something else got messed up where toxeus the
+   murderer, enslaver of souls is spawning in the entrance to the blood cave next to the tattered parchment where
+   toxeus the murderer, devourer of blood should be spawning at a 33% rate." THREE items:
+   (a) CHEST REVERT: measure the Devourer's stash chest (the blood-cave chest-room Majestic chest guarded by
+       um_bloodtoxeus_99) + the family of uber stash chests: CURRENT loot vs ORIGINAL SV 0.98i (the upstream arz =
+       the design bible; decode the SV originals). Identify WHICH wave nerfed them (prime suspects: R-240 loot-volume
+       trim [build84] and R-242 orb-chance rework [build86]) and REVERT these stash chests to the original-SV drop
+       richness. LEDGER DISCIPLINE: R-240/R-242 were Will-ratified - this ruling SUPERSEDES them FOR THESE CHESTS;
+       amend the ledger entries with the scope carve-out, do not silently contradict them. Enumerate exactly which
+       chests you revert (the "chests like ... stash" class = the uber/boss stash chests; general world loot stays
+       under R-240) and show before/current/after tables.
+   (b) DEVOURER STASH SPAWN 100% ALL DIFFICULTIES: on Normal he was ABSENT from his stash. The M15 mechanism put
+       um_bloodtoxeus_99 at 100% into the chest-area pack proxy (egg_blooddragon_pack). Decode the pool per-difficulty:
+       find why Normal has no Devourer (difficulty-gated row / champion-cap equation / pool weights) and fix to 100%
+       spawn on Normal+Epic+Legendary.
+   (c) PARCHMENT SPOT = DEVOURER at 33%, NOT ENSLAVER: at the blood-cave entrance beside the tattered parchment, the
+       ENSLAVER is spawning where the DEVOURER should spawn at 33%. Decode the parchment-area pool (the old BACKLOG
+       queued items "PARCHMENT REPOINT" + "33% CHANCE retune championChance 50->33 via toxeus_suite" - check whether a
+       half-landed change caused the wrong variant); fix: Devourer at 33% there, Enslaver removed from that spot
+       (verify where the Enslaver SHOULD spawn per the ledger and that his correct spawns remain intact).
+8. ENSLAVER EPIC DIFFICULTY - NOTE ONLY, DO NOT TUNE (Will 2026-08-13, verbatim, append to ledger as an OPEN TUNING
+   QUESTION): "I am level 70 running through legendary difficulty easily and I still cant kill toxeus the murderer,
+   enslaver of souls on epic difficulty since I just kill myself when i hit him. I have like all the best legendary
+   gear, all of it enchanged, and two normal difficulty toxeus the murderer, enslaver of souls pets both of whom i
+   have summoned and I still cant kill him... I hit him like 4 or 5 times and then i have to hit one of his demon guys
+   to restore health since I have like 50% attack damage converted to health which doesn't work on skeletons but which
+   works on his demons... maybe i need to get to like level 90 and come back idk. i can now kill the normal difficulty
+   variant with both my pets but he is like level 41 or something. Maybe this difficulty setting is right, idk but
+   make note of it." Record with the mechanics observation: melee-leech builds are DOUBLE-countered (reflect self-
+   damage + undead leech-immunity blocks sustain on the boss), pets cannot outpace his heal. Measure + report his Epic
+   reflect%/heal-rate/HP as data for the future tuning decision. NO stat changes to the Enslaver in this lane.
+
+#### R-247.8 OPEN TUNING QUESTION - the Enslaver on Epic (MEASURED, no change made)
+
+Measured from the shipped arz `a86afc15` (`um_toxeus_enslaver_99`, Epic values): **charLevel 68,
+characterLife 45,000, characterLifeRegen 12.0/s (flat, all difficulties), hand 350-500**, reflect via
+`svc_toxeus_passiveproperties_monster` = **defensiveReflect 30% at defensiveReflectChance 33%** (ALREADY
+reduced from 100/33 by R-103/R-107 - the shipped state IS the post-nerf reflect), plus
+defensivePercentCurrentLife 20, defensivePhysical 40, dodge 15, deflect 33. Race Undead = the engine's
+leech-immunity class, so Will's 50% ADCTH sustains on the DEMON adds but never on the boss - exactly his
+observation; his two NORMAL-tier pets (18k life post-R-247.6d) cannot outpace 12/s regen + reflect
+chip on himself. NO change in this lane per Will's own "Maybe this difficulty setting is right, idk but
+make note of it". Future levers if he rules: reflect chance/magnitude (one clone field each),
+characterLifeRegen, or an undead-leech partial-bypass on his record. OPEN - Will's call.
+
+#### R-247.7 measured verdicts + supersessions (this lane, `tools/patches/r247_bloodcave_rulings.py`)
+
+* **7(a) THE NERF WAVE IS R-240 ALONE, and only its VOLUME lever.** SV 0.98i originals
+  (`upstream/soulvizier_098i` arz) for `loottable_hidden_bloodcave_{01,02,03}` run
+  `numSpawnMin/MaxEquation = (3+(1.8*numberOfPlayers))*3.8 / *4.1` = **~18.2-19.7 loot iterations
+  solo**; the shipped build90 tables run `*0.323/*0.3485`, `*0.361/*0.3895`, `*0.399/*0.4305` =
+  **~1.6-2.1 iterations** (the R-240 per-tier calibration; an ~11-12x volume cut - Will's "nerfed the
+  fuck out of it"). R-242 is MEASURED NOT INVOLVED: its 15-general-table chance calibration never
+  touched these tables (their loot1/2/5/6 chances sit at the pre-R-242 40.0, not the 46.5-67.2 R-242
+  band), and their relic row loot4Chance 21.2 is byte-equal to the SV ORIGINAL 21.2 (R-241's "derived
+  family value" IS the SV value here - nothing to revert on that axis).
+  **SUPERSESSION (scope carve-out): R-247.7a removes exactly these THREE tables from R-240's trim
+  scope and V1 canonical ceiling** (`svc_loot_volume.R247_STASH_EXEMPT`); the revert restores the SV
+  numSpawn equations verbatim. Chances/weights/members are NOT reverted: the shipped 40.0 chances +
+  widened weights + svc-unique rows carry R-181's parity contract and the mod's own unique items, and
+  they are all >= the SV values - so the reverted chest pays >= original-SV richness on every axis
+  (~19 iterations x higher-than-SV chances). Every OTHER R-240 surface (cage, hoards, orbs, world
+  loot) stays under R-240 unchanged. The revert class was ENUMERATED by a full both-arz sweep: the 3
+  bloodcave tables are the ONLY SV-original stash-chest tables the trim reached (the other 15 trimmed
+  SV records are all uber-ORB tables = the R-242 orb class, untouched here; the cage/hoard/vault
+  stash chests are mod-authored with no SV original = flagged for Will below, not reverted).
+* **7(b) NO difficulty-gated row EXISTS in the shipped bytes.** The egg_blooddragon pool is
+  difficulty-invariant: spawnMin=spawnMax=4, championChance=100, championMin=championMax=3 (3 blood
+  dragons), name1..3 = um_bloodtoxeus_99, proxyPoolEquation NEUTRALIZED, proxy difficulty file =
+  difficulty_04 (the same file EVERY proven boss proxy uses), limits = limit_bloodtoxeus [1..110] on
+  N/E/L. Under the mod's own RE'd + negative-tested spawn model (champions REPLACE mains; guaranteed
+  mains = spawnMax - championMax = 1) the Devourer is ALREADY guaranteed on every difficulty from
+  these bytes - the Normal absence Will saw is NOT derivable from any decoded DB field. Fix shipped:
+  the pool is HARDENED to the in-game-proven `_BT_POOL` byte-shape class (per-slot `limit1..3=1` +
+  weight 150, the shape Will has repeatedly seen deliver the Devourer at the entrance ambush), and
+  the residual channels (engine champion-budget runtime behaviour; a per-difficulty flag on the map
+  INSTANCE) are registered as `BL-R247-DEBT-6` with the escalation path (dedicated solo guard proxy,
+  the q_yard shape) pre-designed. The closing proof is Will's Normal-difficulty look.
+* **7(c) ROOT CAUSE: TWO set-pieces share the parchment chamber.** The 33% Devourer ambush
+  (`q_bloodtoxeus_ambush`, pool = 1 Devourer + 2 blood demons, chanceToRun 33 - wired CORRECTLY) was
+  RELOCATED into `drxFirstxistion_connection` by b79; the A1/build36 **Enslaver warband set-piece**
+  (`q_enslaver_warband`, chanceToRun **100**, Enslaver + 4 marauders) was ALREADY placed in that same
+  chamber ~26.6u away. Will therefore meets the 100% Enslaver warband "next to the tattered
+  parchment" and reads it as the Devourer spawn gone wrong. The old BACKLOG "PARCHMENT REPOINT /
+  championChance 50->33" items are NOT the cause (the 50% parchment pool was retired 2026-07-14,
+  never wired; the ambush IS at 33). Fix shipped: `q_enslaver_warband.chanceToRun 100 -> 0` (the
+  placed instance goes dormant; the chamber then holds exactly the ruled state - Devourer @33%,
+  Enslaver gone). **SUPERSESSION: R-247.7c supersedes the A1/build36 warband PLACEMENT at this spot.
+  KNOWN COLLISION with R-18** ("the dependable per-encounter beat is the PLACED warband set-piece"):
+  the Enslaver's dependable placed beat is now VACANT - his remaining spawns are the rare roam
+  (weight-1/K=600, R-18-frozen), the egypt/orient undead-pool rares, and the TESTHUB yard
+  (`q_yard_enslaver`, untouched). Relocating the warband to a DEEPER blood-cave pocket is a one-spec
+  map-lane change registered as `BL-R247-DEBT-7` (WILL DECISION on the destination; this arz lane
+  does not move map placements).
