@@ -2301,6 +2301,336 @@ def _npc_awaken_actions(npc: str) -> list:
 # zero quest rows. See docs/WILL_RULINGS.md R-246 + tools/gate_boatdialog_budget.py.
 
 
+# ═════════════════════════════════════════════════════════════════════════════════════════
+# ══ R-248 PROVEN-MECHANISM TRAVEL (2026-08-14, docs/WILL_RULINGS.md R-248) ═══════════════
+# ═════════════════════════════════════════════════════════════════════════════════════════
+# Will refuted the R-246 devices in-game ("the new portals you made dont work and they lag
+# the game out and break everything ... thats why we switched to the npc traveler design").
+# The traveler routes RETURN - but NOT in the ripped construction. The rip stays law: the
+# corrupt shape was ~39 rows re-armed on ONE blanket Condition_OnLevelLoad isResettable=1
+# refire step, re-REGISTERED on every level load (churn x scale x reuse). The restored
+# arming is BASE-GAME-FAITHFUL, decoded from stock TQAE 'quest 7 - knossos.qst' /
+# 'quest 8 part i' bytes:
+#   * PER-CONNECTION steps: each travel connection gets its OWN NEW dedicated step of
+#     sv_commonmechanics (never the refire step; quest 7/8 arm max 2 rows per step).
+#   * ONE-SHOT: Condition_OnLevelLoad isResettable=0 - the registration fires ONCE per
+#     character lifetime and persists (quest 8 proves registrations survive even
+#     Action_CompleteQuestNow; the one-shot OnLevelLoad-on-a-later-step idiom is SV-proven
+#     in-game by open_bloodcave_portal 'Show OCV1/OCV2' on step[3]). The churn term of the
+#     corruption is structurally GONE.
+#   * ONE TRIGGER PER NPC (the b48 1-route:1-NPC law) leading with the b88 awakening pair
+#     (Action_ShowNpc + Action_UpdateNPCDialog('Dialog Needed') == base quest 7's own
+#     remote-boatman shape: it awakens the REMOTE Knossos boatman the same way).
+#   * <=3 armed rows per step (uber/sparta = enter 1 + return 2; Almyros's 3-row refire
+#     trigger stays the ONE Will-ratified grandfathered exception - never touched here).
+# CENSUS (enforced by-name by tools/gate_boatdialog_budget.py): canonical = 16 survivors
+# + these 10 = 26 armed rows; TESTHUB (SVC_TEST_HUB=1 Quests variant, LOCAL-ONLY) adds 25
+# = 51. The TESTHUB variant stays off Steam until the Frida boat-registry capacity probe
+# (BACKLOG R-248 lane) converts 51 from 'worry' to 'measured'.
+# Dest literals: budget-gate ROSTER + R-245-addendum values are authoritative over the
+# pre-rip tables; every dest re-verified vs the merged map's 0x0b floorCal 2026-08-14
+# (|dy|<=0.5 - the buried class): sc2 y -2->1, bossarena 27->28, tantalus -12->-9,
+# charon moved (-480,-12,-9591)->(-484,-12,-9587) (off the styx_richman NPC, R-246 survey).
+_R248 = r'records\quests'
+R248_HELOS_LANDING = (-5974, 1, 911)        # R6-moved plaza landing (R-245 addendum literal)
+R248_BLOODCAVE_LANDING = (6018, 19, 3293)   # Random09A blood-cave interior (SV swap blob)
+# Dest host-level keys (merged-map paths; consumed by tools/gate_travel_y_terrain.py to
+# re-derive floorCal on every built map - never by the .qst emission itself).
+_LK_MAZE03 = 'levels/world/greece/knossos/underground/maze03.lvl'
+_LK_CATACUBE = 'levels/world/greece/athens/underground/catacube02_floorlast.lvl'
+_LK_SC2 = 'levels/world/greece/minidungeons/spartacryptlevel2.lvl'
+_LK_CRYPT = 'levels/world/uberdungeon/crypt_floor1.lvl'
+_LK_HELOS = 'levels/world/greece/startingtownver2/startingfarmland06d.lvl'
+_LK_R09 = 'levels/world/orient/underground/random09a.lvl'
+_LK_GARDEN = 'levels/world/olympus/gardenofmerchants.lvl'
+_LK_SECRET = 'xpack/levels/secret_place/darkforestenter.lvl'
+_LK_BOSSARENA = 'levels/world/bossarena/boss_arena.lvl'
+_LK_WARBAND = 'levels/world/xbloodcave/drxfirstxistion_connection.lvl'
+_LK_DORUS = 'xpack/levels/area02_medea/undergrounds/medea_templeug_tomb03.lvl'
+_LK_TANTALUS = 'xpack/levels/area04_styx/styx_swampborder_01.lvl'
+_LK_CHARON = 'xpack/levels/area04_styx/styx_riveredge_01.lvl'
+_LK_MNEMOPHAGE = 'xpack/levels/area05_judgment/undergrounds/judgment_templeug_mnemosyne01.lvl'
+_LK_EPHIALTES = 'xpack/levels/area05_judgment/undergrounds/judgment_stonecity_exit01.lvl'
+_LK_DEVOURER = 'levels/world/xbloodcave/drxbc2.lvl'
+_LK_VASHKARR = 'levels/world/orient/underground/random05a.lvl'
+_LK_OBSIDIAN = 'levels/world/orient/typhonug/tombobs02.lvl'
+
+# Each step: (step_name, [(npc, (x,y,z), tag, dest_level_key), ...]).
+# Rows on one step that share an NPC ride ONE trigger (awakening pair + N BoatDialogs).
+R248_CANONICAL_STEPS = [
+    # 1+2. Labyrinth <-> Uber Dungeon (R-245 route; enter dest = the R6 gate-frozen
+    # (-2438,10,-2457) crypt chamber literal, SAME proven pad as Almyros's uber row;
+    # return primary = R5 return-to-entrance at the maze03 door landing).
+    ('SVC R248 Travel - Labyrinth to Uber Dungeon', [
+        (_R248 + r'\svc_area_return_uber.dbr', (-2438, 10, -2457),
+         'tagSVCEnterUberDungeon', _LK_CRYPT),
+        (_R248 + r'\svc_testhub_return_uber.dbr', (-7793, 1, -3793),
+         'tagSVCReturnToLabyrinthDoor', _LK_MAZE03),
+        (_R248 + r'\svc_testhub_return_uber.dbr', R248_HELOS_LANDING,
+         'tagSVCTestHubToHelos', _LK_HELOS),
+    ]),
+    # 3+4. Athens catacombs <-> Sparta Crypt (THE WARDEN GETS HIS ROW BACK - R-170 chain:
+    # descend-only menu, tagSVCEnterSpartaCrypt; dest y RE-DERIVED -2 -> 1 (SC2 native
+    # entities stand at local Y=1.0, corner y=0 - the R-246 unburied literal); return
+    # primary = the catacomb door landing 6u off the Warden's b63 spot).
+    ('SVC R248 Travel - Catacombs to Sparta Crypt', [
+        (_R248 + r'\svc_warden_sparta_crypt.dbr', (-5596, 1, -1410),
+         'tagSVCEnterSpartaCrypt', _LK_SC2),
+        (_R248 + r'\svc_testhub_return_sparta.dbr', (-6587, 1, -3180),
+         'tagSVCReturnToAthensCatacomb', _LK_CATACUBE),
+        (_R248 + r'\svc_testhub_return_sparta.dbr', R248_HELOS_LANDING,
+         'tagSVCTestHubToHelos', _LK_HELOS),
+    ]),
+    # 5. Garden of Merchants return (the pre-R-246 2-port menu; Garden ENTRY stays
+    # Almyros row 1 + the SV-native teleportshrine_gom rift - both untouched).
+    ('SVC R248 Travel - Garden Return', [
+        (_R248 + r'\svc_testhub_return_garden.dbr', R248_HELOS_LANDING,
+         'tagSVCTestHubToHelos', _LK_HELOS),
+        (_R248 + r'\svc_testhub_return_garden.dbr', R248_BLOODCAVE_LANDING,
+         'tagSVCTestHubToBloodCave', _LK_R09),
+    ]),
+    # 6. Secret Place return (entry stays Almyros row 2 + urder's 3 SV-native rows).
+    ('SVC R248 Travel - Secret Place Return', [
+        (_R248 + r'\svc_testhub_return_secret.dbr', R248_HELOS_LANDING,
+         'tagSVCTestHubToHelos', _LK_HELOS),
+        (_R248 + r'\svc_testhub_return_secret.dbr', R248_BLOODCAVE_LANDING,
+         'tagSVCTestHubToBloodCave', _LK_R09),
+    ]),
+]
+# TESTHUB-ONLY steps (SVC_TEST_HUB=1 Quests variant; the 25 extra rows). Launcher dests
+# per the b39-v2/R-246-surveyed door/entrance landings; each boss-area step pairs the
+# plaza launcher with its in-area 'Helos (Return)' NPC (quest 7's enter+return pairing).
+R248_TESTHUB_STEPS = [
+    ('SVC R248 TESTHUB - Launchers Established West', [
+        (_R248 + r'\svc_helos_trav_garden.dbr', (1173, -39, -4001),
+         'tagSVCHelosToGarden', _LK_GARDEN),
+        (_R248 + r'\svc_helos_trav_secret.dbr', (-2396, 2, -5790),
+         'tagSVCHelosToSecret', _LK_SECRET),
+    ]),
+    ('SVC R248 TESTHUB - Launchers Door Areas', [
+        (_R248 + r'\svc_helos_trav_sparta.dbr', (-6587, 1, -3180),
+         'tagSVCHelosToSparta', _LK_CATACUBE),
+        (_R248 + r'\svc_helos_trav_uber.dbr', (-7793, 1, -3793),
+         'tagSVCHelosToUber', _LK_MAZE03),
+    ]),
+    ('SVC R248 TESTHUB - Boss Arena', [
+        (_R248 + r'\svc_helos_trav_bossarena.dbr', (-429, 28, -3538),
+         'tagSVCTestHubToBossArena', _LK_BOSSARENA),   # y 27->28 (dais floorCal 28.11)
+        (_R248 + r'\svc_testhub_return_bossarena.dbr', R248_HELOS_LANDING,
+         'tagSVCTestHubToHelos', _LK_HELOS),
+        (_R248 + r'\svc_testhub_return_bossarena.dbr', R248_BLOODCAVE_LANDING,
+         'tagSVCTestHubToBloodCave', _LK_R09),
+    ]),
+    ('SVC R248 TESTHUB - Warband', [
+        (_R248 + r'\svc_helos_trav_warband.dbr', (5699, 1, 3315),
+         'tagSVCHelosToWarband', _LK_WARBAND),
+        (_R248 + r'\svc_area_return_warband.dbr', R248_HELOS_LANDING,
+         'tagSVCAreaReturnToHelos', _LK_HELOS),
+    ]),
+    ('SVC R248 TESTHUB - Dorus', [
+        (_R248 + r'\svc_helos_trav_dorus.dbr', (428, 1, -8113),
+         'tagSVCHelosToDorus', _LK_DORUS),
+        (_R248 + r'\svc_area_return_dorus.dbr', R248_HELOS_LANDING,
+         'tagSVCAreaReturnToHelos', _LK_HELOS),
+    ]),
+    ('SVC R248 TESTHUB - Tantalus', [
+        (_R248 + r'\svc_helos_trav_tantalus.dbr', (-346, -9, -10131),
+         'tagSVCHelosToTantalus', _LK_TANTALUS),        # y -12->-9 (floorCal -8.91, unburied)
+        (_R248 + r'\svc_area_return_tantalus.dbr', R248_HELOS_LANDING,
+         'tagSVCAreaReturnToHelos', _LK_HELOS),
+    ]),
+    ('SVC R248 TESTHUB - Charon', [
+        (_R248 + r'\svc_helos_trav_charon.dbr', (-484, -12, -9587),
+         'tagSVCHelosToCharon', _LK_CHARON),            # moved off styx_richman (R-246 survey)
+        (_R248 + r'\svc_area_return_charon.dbr', R248_HELOS_LANDING,
+         'tagSVCAreaReturnToHelos', _LK_HELOS),
+    ]),
+    ('SVC R248 TESTHUB - Mnemophage', [
+        (_R248 + r'\svc_helos_trav_mnemophage.dbr', (169, -10, -11418),
+         'tagSVCHelosToMnemophage', _LK_MNEMOPHAGE),
+        (_R248 + r'\svc_area_return_mnemophage.dbr', R248_HELOS_LANDING,
+         'tagSVCAreaReturnToHelos', _LK_HELOS),
+    ]),
+    ('SVC R248 TESTHUB - Ephialtes', [
+        (_R248 + r'\svc_helos_trav_ephialtes.dbr', (-1756, 3, -13198),
+         'tagSVCHelosToEphialtes', _LK_EPHIALTES),
+        (_R248 + r'\svc_area_return_ephialtes.dbr', R248_HELOS_LANDING,
+         'tagSVCAreaReturnToHelos', _LK_HELOS),
+    ]),
+    ('SVC R248 TESTHUB - Devourer', [
+        (_R248 + r'\svc_helos_trav_devourer.dbr', (5349, 1, 3009),
+         'tagSVCHelosToDevourer', _LK_DEVOURER),
+        (_R248 + r'\svc_area_return_devourer.dbr', R248_HELOS_LANDING,
+         'tagSVCAreaReturnToHelos', _LK_HELOS),
+    ]),
+    ('SVC R248 TESTHUB - Vashkarr', [
+        (_R248 + r'\svc_helos_trav_vashkarr.dbr', (-227, 1, 146),
+         'tagSVCHelosToVashkarr', _LK_VASHKARR),
+        (_R248 + r'\svc_area_return_vashkarr.dbr', R248_HELOS_LANDING,
+         'tagSVCAreaReturnToHelos', _LK_HELOS),
+    ]),
+    ('SVC R248 TESTHUB - Obsidian', [
+        (_R248 + r'\svc_helos_trav_obsidian.dbr', (-1827, -74, -462),
+         'tagSVCHelosToObsidian', _LK_OBSIDIAN),
+        (_R248 + r'\svc_area_return_obsidian.dbr', R248_HELOS_LANDING,
+         'tagSVCAreaReturnToHelos', _LK_HELOS),
+    ]),
+]
+# Structural laws, asserted at import time so a table edit can never drift silently:
+# per-step armed rows <=3; canonical adds exactly 10 rows; TESTHUB adds exactly 25.
+for _sn, _rows in R248_CANONICAL_STEPS + R248_TESTHUB_STEPS:
+    if len(_rows) > 3:
+        raise AssertionError(f'R248 step {_sn!r} arms {len(_rows)} rows > 3 (quest-7/8 '
+                             f'envelope; Almyros is the only ratified 3-row exception)')
+_R248_CANON_ROWS = sum(len(r) for _s, r in R248_CANONICAL_STEPS)
+_R248_HUB_ROWS = sum(len(r) for _s, r in R248_TESTHUB_STEPS)
+if _R248_CANON_ROWS != 10 or _R248_HUB_ROWS != 25:
+    raise AssertionError(f'R248 census drift: canonical adds {_R248_CANON_ROWS} rows '
+                         f'(want 10), TESTHUB adds {_R248_HUB_ROWS} (want 25) - update '
+                         f'gate_boatdialog_budget ROSTER + the BACKLOG lane record together')
+
+
+def _r248_sentinel():
+    """The step-terminator block triple-member, byte-shaped like every native
+    sv_commonmechanics step terminator (empty trigger header + 0 conditions + 0 actions)."""
+    return ('block', [
+        ('block', [
+            ('field', 'displayTag', ('int_or_empty', 0)),
+            ('field', 'displayBitmap', ('int_or_empty', 0)),
+            ('field', 'comments', ('int_or_empty', 0)),
+            ('field', 'isActive', ('int', 0)),
+            ('field', 'bRatchet', ('int', 0)),
+        ]),
+        ('block', [('field', 'conditionCount', ('int', 0))]),
+        ('block', [('field', 'actionCount', ('int', 0))]),
+    ])
+
+
+def _add_r248_travel_steps(data: bytes, testhub: bool) -> bytes:
+    """Append the R-248 per-connection ONE-SHOT arming steps to sv_commonmechanics.
+
+    Each step is a NEW step appended after the last native step (playbook 6d: extend by
+    adding steps only, never move rows between steps after ship). Each distinct NPC on a
+    step gets ONE trigger: Condition_OnLevelLoad isResettable=0 (ONE-SHOT - the no-churn
+    law) -> [ShowNpc + UpdateNPCDialog('Dialog Needed')] (b88 awakening == base quest-7's
+    remote-boatman shape) -> its Action_BoatDialog row(s). Strictly additive; fails loud
+    on any reference-count or round-trip miss."""
+    steps_spec = list(R248_CANONICAL_STEPS) + (list(R248_TESTHUB_STEPS) if testhub else [])
+
+    def _boatdialog(npc, xyz, tag):
+        x, y, z = xyz
+        return [
+            ('field', 'actionClassName', ('str', 'Action_BoatDialog')),
+            ('block', [
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'delayTime', ('int', 0)),
+                ('field', 'npc', ('str', npc)),
+                ('field', 'onOff', ('int', 1)),
+                ('field', 'x', ('int', x & 0xFFFFFFFF)),
+                ('field', 'y', ('int', y & 0xFFFFFFFF)),
+                ('field', 'z', ('int', z & 0xFFFFFFFF)),
+                ('field', 'tag', ('str', tag)),
+            ]),
+        ]
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    if not (steps_container and steps_container[0][0] == 'field'
+            and steps_container[0][1] == 'max'):
+        raise ValueError('R248: sv_commonmechanics steps container has no leading max field')
+
+    appended_steps = 0
+    for (step_name, rows) in steps_spec:
+        # group rows by NPC, order-preserving (1 trigger : 1 NPC, the b48 law)
+        by_npc = []
+        for (npc, xyz, tag, _lk) in rows:
+            key = npc.replace('/', '\\').lower()
+            if not by_npc or by_npc[-1][0] != key:
+                if any(k == key for k, _ in by_npc):
+                    raise ValueError(f'R248 step {step_name!r}: rows for NPC {npc} are not '
+                                     f'contiguous - one trigger per NPC requires grouping')
+                by_npc.append((key, []))
+            by_npc[-1][1].append((npc, xyz, tag))
+        trig_items = [('field', 'max', ('int', len(by_npc)))]
+        for (_key, npc_rows) in by_npc:
+            npc = npc_rows[0][0]
+            short = npc.rsplit('\\', 1)[-1].replace('.dbr', '')
+            header = ('block', [
+                ('field', 'displayTag', ('str', f'SVC: R248 {short}')),
+                ('field', 'displayBitmap', ('int_or_empty', 0)),
+                ('field', 'comments', ('int_or_empty', 0)),
+                ('field', 'isActive', ('int', 0)),
+            ])
+            conditions = ('block', [
+                ('field', 'conditionCount', ('int', 1)),
+                ('field', 'conditionClassName', ('str', 'Condition_OnLevelLoad')),
+                ('block', [
+                    ('field', 'comments', ('int_or_empty', 0)),
+                    ('field', 'isNot', ('int', 0)),
+                    ('field', 'isResettable', ('int', 0)),   # ONE-SHOT: the R-248 no-churn law
+                    ('field', 'isQuestCritical', ('int', 1)),
+                ]),
+            ])
+            action_items = [('field', 'actionCount',
+                             ('int', len(NPC_AWAKEN_ACTION_CLASSES) + len(npc_rows)))]
+            action_items += _npc_awaken_actions(npc)
+            for (npc_, xyz, tag) in npc_rows:
+                action_items += _boatdialog(npc_, xyz, tag)
+            trig_items.extend([header, conditions, ('block', action_items)])
+        steps_container.append(('block', [
+            ('field', 'name', ('str', step_name)),
+            ('field', 'nextTaskDescription', ('int_or_empty', 0)),
+        ]))
+        steps_container.append(('block', trig_items))
+        steps_container.append(_r248_sentinel())
+        appended_steps += 1
+
+    # bump the quest's step count
+    steps_container[0] = ('field', 'max',
+                          ('int', steps_container[0][2][1] + appended_steps))
+
+    out = qst_format.serialize(tree)
+    if qst_format.serialize(qst_format.parse(out)) != out:
+        raise ValueError('R248: patched sv_commonmechanics does not round-trip stably')
+    low = out.replace(b'/', b'\\').lower()
+    low_in = data.replace(b'/', b'\\').lower()
+
+    def _delta(needle):
+        nd = needle.replace('/', '\\').lower().encode()
+        return low.count(nd) - low_in.count(nd)
+
+    from collections import Counter
+    all_rows = [r for _s, rows in steps_spec for r in rows]
+    npc_rows_ct = Counter(npc.replace('/', '\\').lower() for npc, _x, _t, _l in all_rows)
+    n_triggers = 0
+    for (_s, rows) in steps_spec:
+        seen = []
+        for (npc, _x, _t, _l) in rows:
+            k = npc.replace('/', '\\').lower()
+            if k not in seen:
+                seen.append(k)
+        n_triggers += len(seen)
+    for npc, n_rows in npc_rows_ct.items():
+        # ShowNpc + UpdateNPCDialog + one per BoatDialog row (per step the NPC appears on)
+        n_steps_for_npc = sum(1 for (_s, rows) in steps_spec
+                              if any(p.replace('/', '\\').lower() == npc for p, _x, _t, _l in rows))
+        want = n_rows + 2 * n_steps_for_npc
+        if _delta(npc) != want:
+            raise ValueError(f'R248: NPC {npc} reference delta {_delta(npc)} != {want}')
+    if _delta(DIALOG_NEEDED_DBR) != n_triggers:
+        raise ValueError(f'R248: Dialog Needed delta {_delta(DIALOG_NEEDED_DBR)} != '
+                         f'{n_triggers} (one Action_UpdateNPCDialog per trigger)')
+    tag_ct = Counter(t for _n, _x, t, _l in all_rows)
+    for tag, want in tag_ct.items():
+        if _delta(tag) != want:
+            raise ValueError(f'R248: tag {tag} delta {_delta(tag)} != {want}')
+    n_rows_total = len(all_rows)
+    print(f'R248: {appended_steps} one-shot travel steps appended '
+          f'({n_triggers} triggers, {n_rows_total} armed BoatDialog rows; '
+          f'{"TESTHUB" if testhub else "canonical"} variant)')
+    return out
+
+
 # ── Q4 (build31, dead-content audit Lane D): surgical quest-ref fixes ────────
 # All three are string-value edits inside otherwise byte-faithful quests; each
 # helper walks the parse tree, replaces exactly the expected count of values,
@@ -2649,8 +2979,17 @@ def main():
         return
 
     # Start from SVAERA's original Quests.arc (clean)
+    import os
     svaera_quests = Path(r'reference_mods\SVAERA_customquest\Resources\Quests.arc')
-    quests_arc_path = Path(r'work\SoulvizierClassic\Resources\Quests.arc')
+    # R-248: SVC_QUESTS_OUT overrides the output (worktree/scratch builds + the
+    # LOCAL-ONLY TESTHUB Quests variant); default = the canonical deploy path.
+    quests_arc_path = Path(os.environ.get(
+        'SVC_QUESTS_OUT', r'work\SoulvizierClassic\Resources\Quests.arc'))
+    quests_arc_path.parent.mkdir(parents=True, exist_ok=True)
+    # R-248 TESTHUB Quests variant (SVC_TEST_HUB=1): arms the 25 TESTHUB traveler rows on
+    # top of the canonical 26. LOCAL-ONLY (deploy coupling: TESTHUB Quests pairs with the
+    # TESTHUB Levels variant; neither ever reaches Steam).
+    r248_testhub = os.environ.get('SVC_TEST_HUB') == '1'
 
     import shutil
     if svaera_quests.exists():
@@ -2712,17 +3051,19 @@ def main():
     if raw_cm is None:
         raise SystemExit(f'Q2: host quest missing: {HELOS_PORTAL_HOST_QUEST}')
     patched_cm = _add_helos_portal_travel(raw_cm)
-    # R-246 RIP (2026-08-13, native-device travel): the TESTHUB rig, the 25-row Helos
-    # traveler hub and the enter-offer generator are REMOVED - Almyros's single
-    # 3-route trigger above is the ONLY SVC-authored boat trigger on the refire step
-    # (the base-census envelope; enforced by tools/gate_boatdialog_budget.py). All
-    # other travel is engine-native devices placed by build_section_surgery.
+    # R-246 RIP holds (2026-08-13): the blanket-refire TESTHUB rig / 25-row hub /
+    # enter-offer generators stay REMOVED - Almyros's single 3-route trigger above is
+    # the ONLY SVC-authored boat trigger on the refire step (enforced by
+    # tools/gate_boatdialog_budget.py).
+    # R-248 (2026-08-14): the traveler ROUTES return on NEW per-connection ONE-SHOT
+    # steps (base quest-7/8 arming envelope; zero rows on any re-firing step).
+    patched_cm = _add_r248_travel_steps(patched_cm, r248_testhub)
     arc.set_file(HELOS_PORTAL_HOST_QUEST, patched_cm)
     print(f'Q2: Helos portal-master {len(HELOS_PORTAL_DESTS)}-destination '
-          f'boat-dialog appended to {HELOS_PORTAL_HOST_QUEST} '
-          f'({len(raw_cm)} -> {len(patched_cm)} bytes)')
-    print('R-246: boat-row rig RIPPED - refire step arms ONLY the Almyros trigger '
-          f'({len(HELOS_PORTAL_DESTS)} rows); travel is native devices (doors/rifts)')
+          f'boat-dialog appended to {HELOS_PORTAL_HOST_QUEST}')
+    print(f'R-248: refire step arms ONLY Almyros ({len(HELOS_PORTAL_DESTS)} rows); '
+          f'traveler rows ride dedicated one-shot steps '
+          f'(canonical +{_R248_CANON_ROWS}' + (f', TESTHUB +{_R248_HUB_ROWS}' if r248_testhub else '') + ')')
 
     # Q4-3: chimera chest double-extension retarget (arz records renamed by
     # fix_chimera_chest_double_ext in build_svc_database.py, same wave).
