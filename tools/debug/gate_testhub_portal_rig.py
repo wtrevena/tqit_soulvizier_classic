@@ -79,7 +79,7 @@ def census_map(path):
     counts = {n: 0 for (n, _c, _h) in CENSUS}
     for lv in levels:
         blob = data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
-        for (nm, _x, _y, _z, _f, _u, _i) in g.parse_0x05(blob)[0]:
+        for (nm, _x, _y, _z, _f, _u, _i) in g.parse_0x05(blob):
             nb = nm.encode()
             for (n, _c, _h) in CENSUS:
                 if n.lower() in nb:

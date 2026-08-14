@@ -20,10 +20,14 @@ if any door-class travel device is ever placed again.
   G1 ZERO portal_olympianarena1 (born-open GridEntrance entrance) instances anywhere,
      either variant. Doors remain legitimate ONLY as native single-cave-mouth
      GridEntrance art (a different record class entirely).
-  G2 portal_olympianarena2 (GridExitOneWay landing) instances: ONLY the one SV-NATIVE
-     inert prop inside crypt_floor1's own upstream blob (ships since P0; mouth uid
-     6e513e90..). Any OTHER instance is a door-class landing returning.
-  G3 ZERO map_portal_aura door swirls (the R-246 court/door FX marker).
+  G2 portal_olympianarena2 (GridExitOneWay landing) instances: ONLY the SV-NATIVE
+     inventory (inert props inside upstream SV blobs, shipped since P0):
+     crypt_floor1 x1 (mouth uid 6e513e90..) + boss_arena x2 (SV's own vestigial
+     dais return portals - the b43 comment documents them; never wired by us).
+     Any OTHER instance is a door-class landing returning.
+  G3 map_portal_aura swirls: ONLY the SV-native blood-cave connector dressing
+     (yet_another_fucking_connector x1, upstream bytes). The R-246 court/door
+     swirls were OURS and must stay gone.
 
 Usage: py tools/debug/gate_doors_hub.py <canonical.arc> [<testhub.arc>]
 Exit 0 = PASS (the graveyard holds).
@@ -37,14 +41,22 @@ sys.path.insert(0, str(REPO / 'tools' / 'contracts'))
 
 _LEGACY_SUBGATES = {'collateral', 'hubidentity', 'placement', 'c1', 'c3', 'c4',
                     'crosstalk', 'all'}
-NATIVE_LANDING_HOST = 'levels/world/uberdungeon/crypt_floor1.lvl'
+# The SV-NATIVE device-record inventory (upstream-authentic bytes inside SV blobs,
+# ships since P0 - never placed by INJECT_SPECS): (level_key, record_suffix) -> count.
+NATIVE_ALLOWED = {
+    ('levels/world/uberdungeon/crypt_floor1.lvl', 'portal_olympianarena2.dbr'): 1,
+    ('levels/world/bossarena/boss_arena.lvl', 'portal_olympianarena2.dbr'): 2,
+    ('levels/world/xbloodcave/yet_another_fucking_connector.lvl', 'map_portal_aura.dbr'): 1,
+}
 
 
 def scan(path):
     import gate_travel_y_terrain as g
+    from collections import Counter
     data, levels = g.load_map(path)
     fails = []
     n1 = n2 = n3 = 0
+    seen = Counter()
     for lv in levels:
         blob = data[lv['data_offset']:lv['data_offset'] + lv['data_length']]
         if (b'portal_olympianarena' not in blob and b'map_portal_aura' not in blob):
@@ -57,14 +69,23 @@ def scan(path):
                              f'the graveyarded device class is BACK (R-248 sec 10/10a)')
             elif nm.endswith('portal_olympianarena2.dbr'):
                 n2 += 1
-                if key != NATIVE_LANDING_HOST:
-                    fails.append(f'G2 {key}: door LANDING placed at ({x},{z}) - only '
-                                 f'the SV-native inert crypt_floor1 prop is allowed')
+                seen[(key, 'portal_olympianarena2.dbr')] += 1
+                if seen[(key, 'portal_olympianarena2.dbr')] > \
+                        NATIVE_ALLOWED.get((key, 'portal_olympianarena2.dbr'), 0):
+                    fails.append(f'G2 {key}: door LANDING placed at ({x},{z}) beyond '
+                                 f'the SV-native inventory')
             elif nm.endswith('map_portal_aura.dbr'):
                 n3 += 1
-                fails.append(f'G3 {key}: door swirl FX placed at ({x},{z})')
-    if n2 > 1:
-        fails.append(f'G2 {n2} door landings total; only the 1 native crypt prop is allowed')
+                seen[(key, 'map_portal_aura.dbr')] += 1
+                if seen[(key, 'map_portal_aura.dbr')] > \
+                        NATIVE_ALLOWED.get((key, 'map_portal_aura.dbr'), 0):
+                    fails.append(f'G3 {key}: door swirl FX placed at ({x},{z}) beyond '
+                                 f'the SV-native inventory')
+    for (k, want) in NATIVE_ALLOWED.items():
+        if seen.get(k, 0) != want:
+            fails.append(f'G2/G3 native-inventory drift: {k[0].split("/")[-1]} '
+                         f'{k[1]} x{seen.get(k, 0)}, expected exactly {want} '
+                         f'(upstream bytes changed?)')
     return fails, (n1, n2, n3)
 
 

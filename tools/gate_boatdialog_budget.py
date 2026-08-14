@@ -452,7 +452,13 @@ def run_gate(quests_arc, map_arc=None, verbose=True, hub=False):
         armed_svc = {r[3].replace('/', BS).lower() for r in rows
                      if r[3].replace('/', BS).lower() in svc_all}
         hub_only = {p.replace('/', BS).lower() for p in SVC_HUB_ONLY_NPCS}
-        expect_placed = armed_svc if hub else (armed_svc - hub_only)
+        if hub:
+            # b48 de-dup: Almyros's PLACEMENT is dropped from the TESTHUB plaza so the
+            # restored launchers (same tag+dest) are sole in-level route owners; his 3
+            # armed rows are inert there (armed-but-unplaced no-op, the D3 precedent).
+            expect_placed = armed_svc - {ALMYROS_NPC.replace('/', BS).lower()}
+        else:
+            expect_placed = armed_svc - hub_only
         counts = scan_map_placed(map_arc, expect_placed)
         for npc, c in sorted(counts.items()):
             if verbose:

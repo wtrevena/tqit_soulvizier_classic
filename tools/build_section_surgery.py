@@ -2787,10 +2787,17 @@ DRXBC2_LVL_KEY            = 'levels/world/xbloodcave/drxbc2.lvl'
 # registered as debt, per the player-surface checklist; do NOT invent unverified art).
 HELOS_HUB_PLAZA_SPECS = [
     # WEST ARC (front street mouth -> plaza west edge): the 4 established-area entrances.
-    (HELOS_TRAV_GARDEN_DBR,     59.4,  0.6, 175.6),   # OK 100/100/100
-    (HELOS_TRAV_SECRET_DBR,     63.5,  0.6, 177.5),   # OK 100/100/100
-    (HELOS_TRAV_SPARTA_DBR,     67.9,  0.6, 179.3),   # OK 100/99/97
-    (HELOS_TRAV_UBER_DBR,       64.4,  0.6, 181.6),   # CHECK 86/79/74 (west edge; >=4.19u from arc neighbours)
+    # R-248 Y-FIX (2026-08-14): secret/sparta/uber Y 0.6 -> floorCal (-1.1/-0.5/-1.1).
+    # The b62 survey set ALL 14 spots to a flat "floor Y=0.6", but the west arc slopes
+    # DOWN off the plaza pad - gate_travel_y_terrain (the migrated R-246 Y-law) read
+    # the 0x0b floorCal at these spots 1.1-2.5u BELOW the authored Y (the exact
+    # copied-not-derived class that buried tantalus). Full sweep: 8 of 14 plaza spots
+    # re-derived (west arc + west yard slope below the plaza pad); east/center spots
+    # read within 0.5u of 0.6 and keep the surveyed literal.
+    (HELOS_TRAV_GARDEN_DBR,     59.4, -1.9, 175.6),   # OK 100/100/100; R-248 unburied (floorCal -1.93)
+    (HELOS_TRAV_SECRET_DBR,     63.5, -1.1, 177.5),   # OK 100/100/100; R-248 unburied
+    (HELOS_TRAV_SPARTA_DBR,     67.9, -0.5, 179.3),   # OK 100/99/97; R-248 unburied
+    (HELOS_TRAV_UBER_DBR,       64.4, -1.1, 181.6),   # CHECK 86/79/74 (west edge; >=4.19u from arc neighbours); R-248 unburied
     # FRONT-EAST single.
     (HELOS_TRAV_BOSSARENA_DBR,  80.2,  0.6, 180.5),   # CHECK 86/82/79 (guard 3.21u)
     # EAST COLUMN (X~80.7, S->N).
@@ -2803,9 +2810,11 @@ HELOS_HUB_PLAZA_SPECS = [
     # GATE-SIDE single (east exit road).
     (HELOS_TRAV_MNEMOPHAGE_DBR, 89.0,  0.6, 188.4),   # OK 100/100/100 (gate door 3.80u)
     # WEST-YARD COLUMN (village yard W of the plaza wall gap, S->N): the 3 Hades superbosses.
-    (HELOS_TRAV_CHARON_DBR,     58.3,  0.6, 187.8),   # OK 92/91/88 (Starting_Woman 4.51u)
-    (HELOS_TRAV_EPHIALTES_DBR,  58.9,  0.6, 191.9),   # OK 97/95/92
-    (HELOS_TRAV_OBSIDIAN_DBR,   58.0,  0.6, 195.9),   # CHECK 79/75/72 (yard N end)
+    # R-248 Y-FIX: the yard sits ~1.5-2u BELOW the plaza pad; Ys re-derived from 0x0b
+    # floorCal (gate_travel_y_terrain) off the flat b62 "0.6" assumption.
+    (HELOS_TRAV_CHARON_DBR,     58.3, -1.3, 187.8),   # OK 92/91/88 (Starting_Woman 4.51u); R-248 unburied
+    (HELOS_TRAV_EPHIALTES_DBR,  58.9, -1.3, 191.9),   # OK 97/95/92; R-248 unburied
+    (HELOS_TRAV_OBSIDIAN_DBR,   58.0, -0.9, 195.9),   # CHECK 79/75/72 (yard N end); R-248 unburied
 ]
 # Min pairwise across the 14 = 4.10u (ephialtes/obsidian column steps); min landing separation =
 # 6.69u (dorus + bossarena); every quest-NPC standoff >=3.16u. Re-derive with
@@ -3080,7 +3089,11 @@ def build_hub_extra_specs():
         # return (Garden/Secret/Uber/Sparta are canonical, in base INJECT_SPECS). Coords are b43's
         # reachable comp#2 dais spot (b48's stale (131,0,40) was the unreachable comp#1 floor).
         BOSSARENA_LVL_KEY: [
-            (SVC_RETURN_BOSSARENA_DBR, 136.0, 27.0, 104.0),
+            # R-248 Y-FIX: 27.0 -> 28.1. The b43 "dais literal" 27.0 was a spawn/volume
+            # Y; the 0x0b floorCal on the dais is 28.11 (the same re-derivation R-246
+            # proved for the dais devices). Actors snap at spawn, but the Y-law holds
+            # for every placed travel NPC (gate_travel_y_terrain).
+            (SVC_RETURN_BOSSARENA_DBR, 136.0, 28.1, 104.0),
 
         ],
         # ── TESTHUB-ONLY GAOLER-CAGE LOOT-FARM DUPLICATES (Will 2026-08-08) ──────────────────
