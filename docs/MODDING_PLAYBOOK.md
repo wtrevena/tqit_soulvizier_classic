@@ -216,6 +216,16 @@ INTENDED grid neighbor abut.
 
 Recipe in Section 4.
 
+> ⚠️ **STREAMING-EDGE WARNING (R-248, 2026-08-14): a born-open GridEntrance binding is a
+> STANDING STREAMING EDGE.** Because the crossing has no load screen, the engine must keep an
+> open portal's destination cluster RESIDENT while the player is near the plane ("streams by
+> GUID/grid-edge" - the Silk Road mouth streams Random09A in as you approach). One cave mouth
+> to its ONE adjacent interior (the pattern this section documents) is what the mechanism is
+> for. N born-open doors in one host with REMOTE destinations = N remote clusters resident in
+> a 32-bit process = the ProcessRLTD heap-corruption/lag class. Door-class TRAVEL is
+> graveyarded (sec 10 + 10a, twice-bitten: doors-hub 2026-07, R-246 2026-08). Travel = boat
+> rows (one-shot armed) or FixedItemTeleport chains (no streaming edge).
+
 ### 2c. QUEST TELEPORTS (scripted)
 
 Two scripted-warp primitives, both driven from a `.qst` file:
@@ -776,11 +786,83 @@ only.
 | Raw MapCompiler output with no GROUPS/SD/QUESTS patch (Exp 6) | Crashes immediately on Custom Quest start | GROUPS/SD/QUESTS/ints_raw patching is mandatory for load |
 | SVAERA baseline deployed unmodified (Exp 7) | Worked perfectly - proved the wall came from SV merging, not the base map | Baseline-compare when a whole-map regression appears |
 | Cap a DLC controller quest by storing a capped copy at the Quests.arc ROOT (basename) | Quest identity = `md5(FULL registry path)`, not `quests\<basename>`. The map registers `xquest_controlsbossdoors.qst` under `XPack/quests/...`, which resolves to the base game's UNCAPPED `xpack/Quests.arc`; the root copy is never consulted -> the IT-cap was 100% INERT and the post-Hades "Portal to the North" leaked to vanilla Act 5 (A5, 2026-07-11). Sibling of the build22 widow-letter inert fix | A "port a vanilla DLC controller with one action removed" fix MUST land in the matching mod `Resources/xpack/`/`XPack4/` Quests.arc, re-point the map QUESTS registry, or be done at the DB-record level (A5 = `RequireNoDLC` suppression + Victory-Portal un-gate). NEVER assume the engine strips a registry path to its basename |
+| **Born-open GridEntrance doors as a travel MECHANISM (any N>1, any remote destination)** - the build25-26 doors-hub, then the R-246 device wave (14-door TESTHUB court + 2 canonical doors) | **TWICE-BITTEN (2026-07 + 2026-08).** The 0x14 dest-GUID binding is a standing streaming edge; N doors in one host = N remote clusters resident in a 32-bit process, detonating the ProcessRLTD heap path. Failed 2026-07 (born-closed/inert, doors-hub - `GridEntranceDynamic` calls `SetPortalIsOpen(0)` unconditionally, docs/DYNGRID_GATE_RCA.md sec 5) and 2026-08 (R-246: Will in-game, R-248 verbatim - "the new portals you made dont work and they lag the game out and break everything... those new portals never worked in the first place thats why we switched to the npc traveler design"). See sec 10a for the full mechanism | Doors remain legitimate ONLY as the single-cave-mouth walk-in pattern they were built for (1 host -> 1 adjacent interior, build24/25 class). Travel = boat rows (one-shot armed, quest-7/8 envelope) or FixedItemTeleport chains (no streaming edge). NEVER propose door-class travel again; if anyone ever does, run the sec 10a Frida probe FIRST |
 
 The Exp 1-7 sequence (`tools/MAP_MERGE_EXPERIMENTS.md`) chased "terrain edge mismatch"
 theories for the invisible wall before the TRUE root cause (`0x0a` never parsed) was
 found by disassembly. Do not re-run those terrain-boundary experiments; the answer is
 navmesh format, not tile geometry.
+
+### 10a. THE R-246 DEVICE-TRAVEL LAG FINDING (2026-08-14, R-248) - why door-class travel is graveyarded
+
+SYMPTOMS (Will, R-248 verbatim): "the new portals you made dont work and they lag the game out
+and break everything... those new portals never worked in the first place thats why we switched
+to the npc traveler design."
+
+BEST-SUPPORTED MECHANISM - **born-open GridEntrance bindings are STANDING STREAMING EDGES, and
+R-246 planted 16 of them (14 in one host level):**
+
+1. **The engine model** (sec 1.4/2b, disassembly-anchored): a GridEntrance's 60B `0x14` payload
+   carries the DESTINATION LEVEL GUID @44; crossing is `Region::FindCrossedPortal` (0x1020c110)
+   ray-testing every movement segment against every OPEN portal plane (`IsOpen` @portal+0xfc);
+   the transition has NO load screen, so the destination must be RESIDENT before the plane is
+   crossed - the only way the engine can guarantee that is to treat an open portal GUID link as
+   a streaming edge ("streams by GUID/grid-edge", sec 2b; the Silk Road mouth demonstrably
+   streams Random09A in as you approach). A born-open door is therefore a PERMANENT stream-in
+   edge from its host to its destination cluster.
+2. **Scale:** the TESTHUB court put 14 born-open doors at 5.0u pitch in startingfarmland06d -
+   the STARTING TOWN - with destinations scattered across the whole merged world (Styx, Orient,
+   blood cave, Hades, Knossos...). Standing in the court puts the player "near" many planes at
+   once => up to 14 remote destination levels stream, EACH dragging its own `0x0b` GUID-list
+   co-residency requirements (ProcessRLTD's live-residency gate forces neighbours resident)
+   plus meshes/textures for 14 different biomes. Canonical added 2 more (crypt_floor1 pinned
+   resident during the maze03 Minotaur fight; SC2 during the catacombs).
+3. **The 32-bit ceiling makes that fatal, not just slow:** the merged map alone decompresses
+   ~2GB against a 4GB LAA ceiling (sec 9; docs/crash_analysis_report.md classes our crashes as
+   memory exhaustion), and the streaming path is ALSO the proven corruption/crash surface - the
+   07-12 deep-dump forensic (docs/crash/DEEP_DUMP_ANALYSIS_2026-07-12.md) pins recurring
+   heap-corruption detonating INSIDE ProcessRLTD's per-tile alloc+memcpy burst during level
+   streaming, and b87/b89 add the isolation-load navOK null-deref and stream-in crash classes.
+   More standing stream edges = more transits of exactly the fragile path = "lags the game out
+   and breaks everything."
+4. **Eliminations:** arz/Text byte-unchanged in R-246 (not a DB defect); all navmeshes
+   byte-identical, 0 b89-law violations (not a navmesh defect); the quest rip REDUCED armed
+   rows 51->16 (not the boat-registry class); GROUPS shrines are the natively-proven
+   StrategicMovementTeleportShrine class (374/374 bound, no destination GUID, exit-only) - the
+   ONLY functional delta class carrying destination GUIDs is the doors. Within doors, the
+   per-frame FindCrossedPortal cost (16 extra planes) is real but minor; the streaming/memory
+   term dominates.
+5. **The "never worked" half (first bite, corroboration):** the build25-26 doors-hub RCA
+   (docs/DYNGRID_GATE_RCA.md sec 5, DOORS_HUB_LOG round 3) proved GridEntranceDynamic calls
+   SetPortalIsOpen(0) UNCONDITIONALLY at every spawn -> born-closed, invisible, inert portals;
+   the born-open static-class swap was built but the class was abandoned for travelers at the
+   07-12 P0 travel law. R-246 used the born-open static class, and its non-function residual is
+   NOT fully pinned offline: 12 of the 14 court destinations were never door-landing-proven
+   (the build24/25 proof covers exactly 2 single-door routes), and under 14-edge streaming
+   pressure a destination that fails to become resident before the plane test = a door that
+   silently does nothing - "doesn't work AND lags" is one mechanism, not two.
+
+RESIDUAL UNCERTAINTY, stated: destination pre-streaming is engine-model-supported +
+crash-doc-corroborated, NOT Frida-confirmed on the court build. The probe that would settle it
+(run it ONLY if anyone ever proposes doors again - the graveyard entry's purpose is that nobody
+does): with the court map loaded, hook `GridEntrance::Read` (0x10195240),
+`Region::FindCrossedPortal`, `ProcessRLTD` (0x101f4ba0) + the region-manager table
+(Engine+0x3743f0), log the resident-region set + stream-in events while approaching the court;
+14 remote cluster loads = confirmed.
+
+**CONTRAST - why FixedItemTeleport portals do NOT inherit this scrutiny:** a fixed portal
+teleports on ACTIVATION, like a boat dest. (a) The streamer's edges are grid adjacency + 0x14
+GUID bindings; a FixedItemTeleport has the generic 12B 0x14 and no 0x06 link - there is NO GUID
+edge for the streamer to walk. (b) Its destination lives only in a GROUPS [Any Entity] pairing,
+a game-logic binding resolved at USE (same class as shrine bindings), not a region-graph edge.
+(c) Empirical: base TQ has run Olympus->Rhodes and tomb->Olympus as cross-act
+FixedItemTeleports since 2007 inside a 2GB non-LAA 32-bit process - standing residency of a
+remote city-scale destination would have been impossible. (d) The b39-era co-residency
+forensics (Frida region dumps) never show a FixedItemTeleport dest resident pre-use. Portal
+risks are instead: (i) APPENDED-HOST UNPROVEN - both proven exemplars (xq00, q15) live in
+ORIGINAL-INDEX base levels; no FixedItemTeleport has ever been proven placed in an appended
+SV-only level; (ii) unlock-state persistence - always ship the Q1+Q3 dual-trigger shape
+(instant + retroactive-on-load), never a single unlock (Q1-alone is the proven-failed variant).
 
 ---
 
