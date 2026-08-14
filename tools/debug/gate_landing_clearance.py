@@ -142,7 +142,12 @@ def classify(dbr):
     SOFT = ('light', 'soundobject', 'sound_', '_snd', 'glyph', 'fog', 'smoke',
             'mist', 'particle', 'flare', 'ambient', 'glow', 'sparkle', 'firefly',
             '/poi/', 'poi_', '_poi', 'marker', 'fxpack', '_fx', 'fx_', 'effect',
-            'dustcloud', 'lightsource', 'godray', 'lensflare')
+            'dustcloud', 'lightsource', 'godray', 'lensflare',
+            # R-246 (2026-08-13): AI wander waypoints are invisible, unclickable,
+            # non-colliding helpers - they classified as 'npc' via the generic 'npc'
+            # token (npcwanderpoint2 tripped the device gate's clickable-standoff
+            # check on the Helos east-field court). Purely a relaxation.
+            'wanderpoint')
     if any(k in d for k in SOFT):
         # containers/monsters never carry these tokens in practice; guard anyway
         if not any(k in base for k in ('chest', 'container', 'strongbox')):

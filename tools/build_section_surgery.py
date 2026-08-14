@@ -3022,7 +3022,12 @@ TOMBOBS02_GUID   = bytes.fromhex('679799dd994a74ff77b1fdb359c1c9a5')  # tombobs0
 # snap to mesh at spawn); static devices render at authored Y, so 27.0 sank them 1.1u
 # into the dais - the exact buried class R-246 kills. Gate-proven within 0.01u.
 R246_SHRINE_SPECS = [
-    dict(label='uber',      level_key=CRYPT_FLOOR1_LEVEL_KEY,  pos=(140.0, 10.0, 217.5),  hub_only=False),
+    # uber shrine (137,10,220.5): moved off (140,217.5) 2026-08-13 - the C3 clearance gate
+    # caught bonespilegoat01 0.95u + bonespile03 1.36u INSIDE the shrine pad there (the site
+    # survey's nearest-neighbor roster skipped 'other'-class dressing - gate closes that
+    # blind spot). New spot: 3.0u margin over every CLASS_MIN, on-mesh 0x0b floorCal 10.0,
+    # 5.41u from the C4 landing (>=5 law), surveyed-cell 2-layer-grid discipline kept.
+    dict(label='uber',      level_key=CRYPT_FLOOR1_LEVEL_KEY,  pos=(137.0, 10.0, 220.5),  hub_only=False),
     dict(label='sc2',       level_key=SPARTA_LVL_KEY,          pos=(55.0, 1.0, 40.0),     hub_only=False),
     dict(label='bossarena', level_key=BOSSARENA_LVL_KEY,       pos=(138.5, 28.1, 107.5),  hub_only=True),
     dict(label='warband',   level_key=EN_WARBAND_HOST_KEY,     pos=(46.5, 10.0, 24.0),    hub_only=True),

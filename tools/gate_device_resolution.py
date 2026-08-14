@@ -23,6 +23,11 @@ CHECKS
       canonical map carries exactly the 2 canonical shrines, TESTHUB all 11.
   D7  VARIANT SEPARATION: the canonical map contains ZERO hub-only device UIDs / GROUPS
       names (the TESTHUB-never-reaches-Steam law, structurally).
+  C1-C5 TRAFFIC-LANE/CLEARANCE (the SURVIVING half of the 2026-07-12 P0; B-PORTAL-2):
+      court door planes >= 4.1u pairwise; every door plane >= 6.69u from every CLICKABLE
+      npc (R-246 mute markers excluded - they ARE the label surface); every landing +
+      shrine clear of placed collidables per the proven b44 CLASS_MIN model; shrines
+      >= 5u from their co-level landing; the catacube entrance >= 8u off stairsdown01.
   Y1  Y-VS-TERRAIN: every device instance (entrances, landings, shrines, swirls), every
       R-246 marker NPC, and every SVC-authored BoatDialog dest coord asserts
       |y - floorCal| <= 0.5u, where floorCal = the destination blob's 0x0b height at
@@ -51,6 +56,7 @@ from merge_levels_binary import parse_sections          # noqa: E402
 from contracts_map import parse_level_index, parse_blob_sections, SEC_LEVELS  # noqa: E402
 from rec02_format import parse_rec02                    # noqa: E402
 import build_section_surgery as bss                     # noqa: E402
+import gate_landing_clearance as glc                    # noqa: E402  (proven b44 collision model)
 
 BS = chr(92)
 SEC_GROUPS = 0x11
@@ -69,6 +75,22 @@ ALLOWED_ENTRANCE_HOSTS = {
 #   crypt_floor1 inert SV-native portal_olympianarena2 (mouth 6e513e90..) - ships since P0;
 #   the Garden teleportshrine_gom + RogueEncampment/Duister shrine (native TeleportShrine).
 NATIVE_LANDING_MOUTHS = {bytes.fromhex('6e513e901549b1d558db968c61bda66a')}
+
+# ── C-block: TRAFFIC-LANE / CLEARANCE (the half of the 2026-07-12 P0 that SURVIVES R-246:
+# doors OFF every traffic lane, walked into deliberately; B-PORTAL-2). Collision model =
+# the PROVEN b44 gate_landing_clearance CLASS_MIN (per-class center-to-center minimums,
+# live-calibrated by Will's land-in-chest reports) - deliberately REUSED rather than
+# minting a stricter parallel law (the brief's flat ">=3u prop" would newly outlaw the
+# b44-documented, accepted devourer pitwedge 2.83u; CLASS_MIN prop=2.5 is the ratified
+# line, and N5 proves this scanner sees that exact prop).
+COURT_MIN_PAIRWISE = 4.1     # court door planes, pairwise (R-246 court law)
+DOOR_MIN_CLICKABLE = 6.69    # any door plane to any CLICKABLE npc (Almyros law)
+SHRINE_MIN_LANDING = 5.0     # shrine standoff from its co-level landing (C5/C7/T15)
+STAIRS_MIN = 8.0             # catacube entrance off the stairsdown01 traffic funnel
+# R-246 device/marker records: excluded from clearance targets (deliberate adjacency -
+# markers ARE the label surface; post-rip they are MUTE, hence not 'clickable').
+_R246_OWN = ('portal_olympianarena', 'map_portal_aura', 'teleportshrine',
+             'svc_helos_trav', 'svc_area_return', 'svc_testhub_return', 'svc_warden')
 
 
 def load_map(path):
@@ -438,6 +460,71 @@ def run_gate(map_path, hub, arz=None, verbose=True):
                                      or spec['group_name'].encode() in groups_raw):
                 viols.append(f'D7 canonical map contains hub-only shrine {spec["label"]}')
 
+    # ── C-block: traffic-lane / clearance (the surviving half of the 07-12 P0) ─
+    def _is_own(nm):
+        return any(k in nm for k in _R246_OWN)
+
+    # C1 court pairwise: every door plane >= COURT_MIN_PAIRWISE from every other door
+    ent_pos = [(host.replace(BS, '/').lower(), x, z, f'door@{host.split(BS)[-1].split("/")[-1]}({x},{z})')
+               for (host, (x, y, z), *_r) in entrances]
+    for i in range(len(ent_pos)):
+        for j in range(i + 1, len(ent_pos)):
+            if ent_pos[i][0] != ent_pos[j][0]:
+                continue
+            d = math.hypot(ent_pos[i][1] - ent_pos[j][1], ent_pos[i][2] - ent_pos[j][2])
+            if d < COURT_MIN_PAIRWISE:
+                viols.append(f'C1 {ent_pos[i][3]} and {ent_pos[j][3]}: door planes '
+                             f'{d:.2f}u apart < {COURT_MIN_PAIRWISE} (court law)')
+
+    # C2 clickable standoff + C5 stairs funnel: per door entrance
+    for (host, (x, y, z), *_r) in entrances:
+        hk = host.replace(BS, '/').lower()
+        tag = f'door@{hk.split("/")[-1]}({x},{z})'
+        for (nm, ix, iy, iz, _f, _u, _i) in get_inst(hk):
+            if _is_own(nm):
+                continue
+            d = math.hypot(ix - x, iz - z)
+            if glc.classify(nm) == 'npc' and d < DOOR_MIN_CLICKABLE:
+                viols.append(f'C2 {tag}: clickable NPC {nm.split(BS)[-1]} at {d:.2f}u '
+                             f'< {DOOR_MIN_CLICKABLE} (a walk-through plane near a '
+                             f'clickable = the forced-teleport class)')
+            if 'stairsdown' in nm and hk == bss.CATACUBE_FLOORLAST_LVL_KEY.replace(BS, '/').lower() \
+                    and d < STAIRS_MIN:
+                viols.append(f'C5 {tag}: {d:.2f}u from the stairsdown01 traffic funnel '
+                             f'< {STAIRS_MIN} (B-PORTAL-2 lane law)')
+
+    # C3 landing/shrine clearance vs placed collidables (b44 CLASS_MIN model)
+    clr_targets = [(host.replace(BS, '/').lower(), x, z,
+                    f'landing@{host.split(BS)[-1].split("/")[-1]}({x},{z})')
+                   for (host, (x, y, z), _m) in landings]
+    clr_targets += [(s['level_key'].replace(BS, '/').lower(), s['pos'][0], s['pos'][2],
+                     f'shrine-{s["label"]}') for s in shrines]
+    for (hk, x, z, tag) in clr_targets:
+        for (nm, ix, iy, iz, _f, _u, _i) in get_inst(hk):
+            if _is_own(nm):
+                continue
+            k = glc.classify(nm)
+            mn = glc.CLASS_MIN.get(k, 0.0)
+            if mn <= 0:
+                continue
+            d = math.hypot(ix - x, iz - z)
+            if d < mn:
+                viols.append(f'C3 {tag}: {k} {nm.split(BS)[-1]} at {d:.2f}u < class '
+                             f'minimum {mn} (the land-in-chest class)')
+
+    # C4 shrine standoff from its co-level landing
+    land_by_level = {}
+    for (host, (x, y, z), _m) in landings:
+        land_by_level.setdefault(host.replace(BS, '/').lower(), []).append((x, z))
+    for s in shrines:
+        hk = s['level_key'].replace(BS, '/').lower()
+        for (lx, lz) in land_by_level.get(hk, []):
+            d = math.hypot(s['pos'][0] - lx, s['pos'][2] - lz)
+            if d < SHRINE_MIN_LANDING:
+                viols.append(f'C4 shrine-{s["label"]}: {d:.2f}u from the landing at '
+                             f'({lx},{lz}) < {SHRINE_MIN_LANDING} (arrive-inside-the-'
+                             f'shrine class)')
+
     # ── Y1 for marker NPCs + SVC boat dests ───────────────────────────────────
     markers = [
         ('marker-uber-greeter', bss.MAZE03_LVL_KEY, 278.0, 1.0, 147.5),
@@ -480,8 +567,8 @@ def run_gate(map_path, hub, arz=None, verbose=True):
         return False
     print(f'DEVICE-RESOLUTION GATE ({"TESTHUB" if hub else "canonical"}): PASS - '
           f'{len(entrances)} door entrances + {len(landings)} landings + {len(shrines)} '
-          f'shrines all resolve, pair, sit on-mesh at floorCal Y (+{len(markers)} '
-          f'marker/dest Y checks green)')
+          f'shrines all resolve, pair, sit on-mesh at floorCal Y with C1-C5 lane/'
+          f'clearance green (+{len(markers)} marker/dest Y checks)')
     return True
 
 
@@ -538,6 +625,20 @@ def negtest(map_path, hub):
     bss.R246_SHRINE_SPECS[0]['group_name'] = saved_n
     print(f'  [{"RED   OK" if not r else "FAIL"}] shrine missing its GROUPS member')
     ok &= (not r)
+
+    # N5 clearance scanner is LIVE (hub only): raising the 'other' minimum to 3.0 must
+    # trip C3 on the b44-documented devourer pitwedge (classify='other', min 1.5) at
+    # 2.83u from the drxbc2 landing - proves the scan path sees real placed scenery,
+    # and pins the 2.83u fact structurally.
+    if hub:
+        import gate_landing_clearance as _glc
+        saved_p = _glc.CLASS_MIN['other']
+        _glc.CLASS_MIN['other'] = 3.0
+        r = run_quiet()
+        _glc.CLASS_MIN['other'] = saved_p
+        print(f'  [{"RED   OK" if not r else "FAIL"}] clearance scanner live '
+              f'(other-min 3.0 trips the 2.83u devourer pitwedge)')
+        ok &= (not r)
 
     return ok
 
