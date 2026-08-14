@@ -7700,3 +7700,77 @@ characterLifeRegen, or an undead-leech partial-bypass on his record. OPEN - Will
   deviation dissolves instead of being ratified).
 - The Almyros 3-row refire-step exception (Will-ratified in R-246) is UNCHANGED - the ONLY
   rows allowed on a re-firing step, grandfathered.
+
+## R-249 [2026-08-14] IMPLEMENTED (branch `feat/warden-fix-almyros-trim`) - REMOVE ALMYROS'S SECRET-PLACE + UBER-DUNGEON TRAVELERS FROM THE STEAM BUILD; FIX THE WARDEN DESCEND USING THE CURRENT BOAT-TRAVELER METHOD (NOT the fixed-portal / Typhon-Rhodes fix)
+
+**WILL'S RULING, VERBATIM (2026-08-14):**
+
+> "no steam should not have a traveler from helos to the secret place or the uber place. remove those from the steam
+> build now. no we dont want to do the typhon-style fix, the current method we are using is getting much closer, we
+> just need to fix the issue with the warden."
+
+**WHAT THIS RULES (design law):**
+
+1. **(A) ALMYROS TRIM (CANONICAL/STEAM ONLY):** on the Steam build, remove `portal_master_helos`
+   (Almyros) boat rows for **The Secret Place** + **The Uber Dungeon**; **KEEP Garden of Merchants**.
+   Almyros is placed ONLY on canonical/Steam (0x on TESTHUB, de-duped by
+   `merge_hub_into_inject_specs`), so editing his `HELOS_PORTAL_DESTS` menu is Steam-scoped by
+   construction. His per-record BoatDialog count drops 3 -> 1 (Garden only). Both removed menu tags
+   (`tagSVCHelosToSecret`, `tagSVCHelosToUber`) STAY MINTED - still armed by the TESTHUB-only
+   launchers `svc_helos_trav_secret` / `svc_helos_trav_uber` - so `validate_tags` stays green
+   (RETIREMENT PROTOCOL satisfied). Reachability without Almyros's rows: UBER DUNGEON stays reachable
+   on canonical via the Labyrinth-of-Knossos entrance NPC `svc_area_return_uber` (maze03, both
+   variants) -> the SAME `(-2438,10,-2457)` crypt landing via `tagSVCEnterUberDungeon`; SECRET PLACE
+   stays reachable via the SV-native Garden->rift shrine network (Almyros's KEPT Garden row +
+   urder's native portal rows), with the rift's entry-vs-return-only behavior flagged for in-game
+   confirmation (`BL-R249-DEBT-1`).
+
+2. **(B) WARDEN DESCEND FIX = FIX THE CURRENT METHOD, DO NOT SWITCH MECHANISMS.** Will explicitly
+   REJECTED the fixed-portal fix ("the typhon-style fix") and the born-open GridEntrance door - the
+   current boat-traveler method "is getting much closer," it just needs the Warden bug fixed. ROOT
+   CAUSE (forensic, from the deployed TESTHUB build 37c33fb0/1764c3a2 Will played): the descend
+   BoatDialog popup OPENS on click, then AUTO-DISMISSES before he can answer, then goes MUTE on
+   re-click. The Warden's awakening `Action_UpdateNPCDialog("Dialog Needed")` carried `delayTime` =
+   uint32 `0x40000000` (IEEE float **2.0s**), inherited byte-for-byte from the Leinth exit vortex
+   (only ever reached on foot). Because the Warden is reached by TELEPORT (`svc_testhub_return_sparta`
+   / `svc_helos_trav_sparta` land you ~6u away in `CataCube02_FloorLast`), the player clicks WITHIN
+   that 2s window; the delayed `UpdateNPCDialog` then lands while the freshly-opened boat menu is up,
+   re-assigns the empty "Dialog Needed" placeholder pak (closing the popup) and leaves it as the
+   Warden's active dialog (mute on re-click). The proven-working `svc_area_return_uber` carries the
+   BYTE-IDENTICAL triple and only "gets away with it" because maze03 is reached by WALKING (the 2s
+   elapses before any click). **FIX:** set the awakening `UpdateNPCDialog` `delayTime` to **0**
+   (`build_quest_files._AWAKEN_DIALOG_DELAY`) - the base-game quest-7 knossos REMOTE-boatman value -
+   so the pak is assigned at level load, BEFORE any click, and no delayed re-assignment can ever
+   race/close the descend popup. The change is in the SHARED `_npc_awaken_actions` helper, so it
+   applies uniformly to every R-248 traveler (all equally teleport-exposed). `isResettable` stays 0
+   (the R-248 no-churn law is UNTOUCHED - a re-fire flip would reintroduce the ripped churn term).
+   The Warden's `messageDialogTag` greeting is KEPT byte-identical to the proven-working
+   `svc_area_return_uber` (whose own greeting demonstrably does not block its boat menu - a competing
+   chat is NOT the defect; the delayed pak re-assignment is).
+
+**SUPERSESSION (recorded per the ledger law):**
+- **R-246 / R-248 Almyros menu:** Almyros's ratified talk menu is TRIMMED from 3 routes (Garden /
+  Secret / Uber) to **Garden ONLY**. The 3-row refire-step grandfathered exception becomes a
+  **1-row** exception (`gate_boatdialog_budget.ALMYROS_ALLOWED` 3 -> 1); the refire-step no-churn
+  law is otherwise untouched. The PR-5 / b62 "Almyros KEEPS Garden / Secret / Uber" note is
+  superseded (Garden only).
+- **b88 / R-248 awakening delay:** the "preserve the vortex 2.0s delay verbatim" instruction is
+  SUPERSEDED - the 2.0s was the mute-Warden defect on the teleport path; the awakening
+  `UpdateNPCDialog` delay is now 0 (base quest-7 boatman value). Everything else about the b88
+  awakening pair (ShowNpc + UpdateNPCDialog("Dialog Needed"), one trigger per NPC, one-shot arming)
+  is UNCHANGED.
+- **R-170 chain (Warden identity/placement/descend-only menu):** UNCHANGED - name "Warden of the
+  Spartan Crypt", catacomb placement, single "Descend into the Sparta Crypt" option all stand; only
+  the awakening timing is fixed.
+- Fixed-portal design (R-248 mechanism (B)) is explicitly NOT used for the Warden by this ruling.
+
+**DEBT:**
+- `BL-R249-DEBT-1` (WILL / in-game): confirm the Garden->Secret-Place teleport-shrine rift admits
+  ENTRY (not return-only) on canonical now that Almyros's Secret row is gone; if it is return-only,
+  add a canonical Secret-Place entrance NPC mirroring the uber-laby Labyrinth-entrance pattern.
+- `BL-R249-DEBT-2` (in-game A/B): re-test the descend on the Warden AND on `svc_area_return_uber`
+  via the teleport-onto-then-immediate-click path to confirm `delayTime=0` is load-bearing and the
+  descend BoatDialog is the sole dialog that opens. If a dismiss still occurs, the sanctioned
+  fallbacks are (secondary) `isResettable=1` on the per-connection awakening step and (tertiary)
+  dropping the Warden's `messageDialogTag` - both deliberately withheld here to keep the A/B clean
+  and the no-churn law intact.

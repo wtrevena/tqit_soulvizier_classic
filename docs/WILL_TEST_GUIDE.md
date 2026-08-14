@@ -1,6 +1,46 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> # 🚢 R-248 PROVEN-MECHANISM TRAVEL (2026-08-14) - READ THIS SECTION FIRST; it SUPERSEDES the R-246 device section and every travel section below
+> # 🛠️ R-249 WARDEN FIX + ALMYROS TRIM (2026-08-14) - READ THIS FIRST; it amends the R-248 section below
+>
+> **Your ruling, verbatim:** "no steam should not have a traveler from helos to the secret place or the
+> uber place. remove those from the steam build now. no we dont want to do the typhon-style fix, the
+> current method we are using is getting much closer, we just need to fix the issue with the warden."
+>
+> **Two changes shipped this build:**
+>
+> 1. **ALMYROS is now GARDEN-ONLY (Steam).** Talk to **Almyros in the Helos plaza**: his menu offers
+>    **ONLY "Garden of Merchants"** now - **"The Secret Place" and "The Uber Dungeon" are GONE** from
+>    his menu, per your ruling. (Those two areas are still reachable other ways - see below.) This
+>    change is Steam-only; the TESTHUB plaza launchers for Secret/Uber are unchanged on your DEV map.
+>
+> 2. **THE WARDEN DESCEND IS FIXED - and it is still the boat traveler, NOT a portal or a door.** Your
+>    report was: you clicked the Warden, a "descend into the spartan crypt" popup came up, then the
+>    question **vanished before you could click it**, and clicking him again did **nothing**. Root
+>    cause: a 2-second delay on the NPC's "wake up" step let a late command **close the descend popup
+>    you'd just opened** (you reach the Warden by teleport, so you click within those 2 seconds; the
+>    uber-labyrinth traveler dodged it only because you WALK to him). The fix removes that delay
+>    (sets it to 0, the base-game boatman value), so the popup can never be closed out from under you.
+>    Nothing else about him changed - same name, same spot, same single "Descend into the Sparta
+>    Crypt" option, same boat-traveler mechanism.
+>
+> **THE HEADLINE TEST (do this on the Steam build after promote, and on TESTHUB now):** deepest Athens
+> catacomb (`CataCube02_FloorLast`) -> click the **Warden of the Spartan Crypt** by the stairs-down ->
+> **PASS = the "Descend into the Sparta Crypt" popup opens AND STAYS OPEN until you answer; clicking
+> "yes" drops you into the crypt on the floor; clicking him again re-opens it.** Do it on an existing
+> char AND a fresh Custom Quest char. FAIL = the popup still auto-dismisses, or he goes mute. Also
+> re-test the **Labyrinth -> Uber Dungeon** traveler the same way (it shared the same latent timing).
+>
+> **Reachability check (Steam), now that Almyros dropped Secret + Uber:**
+> - **Uber Dungeon:** still entered from the **Labyrinth of Knossos** - kill the Minotaur Lord, through
+>   the secret door, click the pocket traveler -> "Enter the Uber Dungeon". (Same fix as the Warden.)
+> - **Secret Place:** reached from the **Garden of Merchants** (Almyros's kept Garden route) via the
+>   native shrine/rift network. ⚠️ If you find the Garden rift will NOT take you INTO the Secret Place
+>   (only back out), tell me - there is a registered follow-up to add a dedicated Secret-Place entrance
+>   traveler (BL-R249-DEBT-1); it could not be confirmed from the files alone.
+
+# WILL'S TEST GUIDE (continued)
+
+> # 🚢 R-248 PROVEN-MECHANISM TRAVEL (2026-08-14) - READ THE R-249 SECTION ABOVE FIRST; this section is otherwise current and SUPERSEDES the R-246 device section and every travel section below
 >
 > **Your ruling is implemented verbatim:** "why cant we just get the npc traveler to work as
 > intended or the portals like the one that you use to travel after you kill typhon to get to
@@ -18,7 +58,8 @@
 >   the Olympus summit portal + the Keryx herald both stay exactly as you know them.
 >
 > **CANONICAL (ships to Steam) - the routes:**
-> 1. **Helos -> Garden / Secret / Uber:** Almyros's 3-route menu (unchanged).
+> 1. **Helos -> Garden:** Almyros's menu - GARDEN ONLY since R-249 (Secret + Uber removed; see the
+>    R-249 section above). Uber is reached from the Labyrinth (route 2); Secret from the Garden rifts.
 > 2. **Labyrinth -> Uber Dungeon:** the "Enter the Uber Dungeon" traveler in maze03's treasure
 >    pocket (behind the Minotaur Lord's secret door, at the corrected R-245 spot) has his MENU
 >    BACK - one route, into crypt_floor1.
