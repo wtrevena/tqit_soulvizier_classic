@@ -1,5 +1,114 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
+## LANE RECORD - R-246 NATIVE-DEVICE TRAVEL (branch `feat/native-device-travel` from f9f213b, 2026-08-13; Levels+Quests coupled wave, arz/Text byte-unchanged; BUILT + GATED in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
+
+**THE RULING (docs/WILL_RULINGS.md R-246, verbatim there):** replace the boat-NPC route rig with
+engine-native devices (born-open GridEntrance door pairs + wired teleport-shrine rifts), zero quest
+rows; Almyros keeps his 3-route menu. Root cause (hunt-proven): the sv_commonmechanics blanket
+OnLevelLoad refire step armed 39 Action_BoatDialog rows (15 sharing one tag+dest, 17 NPCs remote)
+vs a base-game envelope of max 2/step, zero reuse - a stateful-registry corruption: clicks execute
+OTHER rows (labels included), cross-bound NPCs go fully MUTE (the Steam Warden). Also killed: the
+buried-NPC class (Y copied from landing literals, never re-derived from 0x0b terrain).
+
+**THE RIP (Quests):** HELOS_HUB_TRAVEL 25 rows + entire TESTHUB rig (12 rows + tables + per-area
+return generator + b88 awakening arming for those rows) + empty enter-offer generator REMOVED.
+Armed census: **BEFORE 51 global / refire step 38 -> AFTER 16 global / refire step 3 (Almyros
+ONLY)**. The 16 survivors, frozen BY NAME in tools/gate_boatdialog_budget.py: Almyros 3 (his ruled
+menu) + urder portal-dudes 3 + Leinth vortex-exit 5 (SV-native, one step - recorded PRECEDENT) +
+base-game 4 (Knossos 2 + Greece->Egypt 2) + Olympus-Rhodes herald 1. Records/tags ALL KEPT
+(shared-record law); placements become named MUTE markers beside the devices.
+
+**THE DEVICES (Levels; every Y re-derived from 0x0b floorCal, gate-enforced |dy|<=0.5):**
+- C4 canonical door maze03 treasure-pocket (280,1,150.5) -> crypt_floor1 (140,10,225);
+  svc_area_return_uber kept beside as greeter (R-245 do-not-regress).
+- C5 canonical rift shrine crypt_floor1 **(137,10,220.5)** (moved off two bone piles the C3
+  clearance gate caught at 0.95u/1.36u; 3.0u margin over every CLASS_MIN; 5.41u from landing).
+- C6 THE STEAM WARDEN FIX: canonical door catacube02_floorlast (20,1,44) (11.3u off the
+  stairsdown01 funnel; build25 candidate (29.1,41.3) REJECTED - 56% clearance, 4.7u from stairs)
+  -> spartacryptlevel2 (48.9,1.0,34.7) (Y re-derived: -1.6 was BURIED). Warden stays at (25,1,32)
+  as named greeter.
+- C7 canonical rift shrine SC2 (55,1,40). Native-0x06 two-way stretch NOT bundled (DEBT-2).
+- TESTHUB: 14-door EAST-FIELD court in startingfarmland06d (x 96-123.5, z 189.5-207 local; the
+  plaza measured too crowded for 14 planes at >=6.69u from clickables - stated deviation), grid
+  pitch 5.0 (>=4.1u pairwise), doors >=7.3u from clickables, each with aura swirl + named mute
+  marker 3.54u diagonal; 14 one-way landings at the v2 area-entrance approach points (charon
+  landing moved off styx_richman: (40,-11.9,110); bossarena landing+shrine Y RE-DERIVED 27->28.1,
+  the b43 "dais literal" was a spawn Y - static devices sank 1.1u). T15: 9 hub return shrines.
+- Buried-Y fixes even where devices replace rows: tantalus marker -12 -> -9.3 (Will-confirmed
+  buried), SC2 marker -1.6 -> 1.0, warband/testhub-secret verified green by the Y gate.
+- GROUPS: 1-member 'TeleportShrine' records (Garden/Duister byte-law), canonical 2 / TESTHUB 11;
+  all UIDs md5('SVC-R246-*'), byte-scanned collision-free, D4-gated globally unique.
+
+**NEW GATES (no-new-surface-without-a-gate):**
+- tools/gate_boatdialog_budget.py: (a) per-step armed <=2 except named Almyros ==3; (b) global
+  roster == by-name whitelist of 16; (c) zero SVC tag/dest reuse; (d) armed=>placed (canonical).
+  Negtests N1-N3 RED. PASS on b6ce47b5 + c7dcc812.
+- tools/gate_device_resolution.py: D1-D7 (0x14 bindings vs minted constants, landing pairing,
+  dest-GUID resolution, minted-UID global uniqueness, APPENDED-HOST LAW structural allowlist,
+  shrine 0x05 flags=1+uid+GROUPS byte-law, TESTHUB-vs-canonical variant separation) + C1-C5
+  lane/clearance (court >=4.1u pairwise; doors >=6.69u from clickables; landings/shrines vs
+  placed collidables per the proven b44 CLASS_MIN model; shrines >=5u from landings; catacube
+  door >=8u off stairs) + Y1/ON (0x0b floorCal |dy|<=0.5, on-mesh) for every device + marker +
+  SVC boat dest. Inventory DERIVED from the build tables (no drift). Negtests 5/5 RED (buried Y /
+  dangling GUID / appended-host entrance / missing GROUPS / clearance-scanner-live), positive
+  control GREEN. PASS both variants.
+- STALE-GATE RETIREMENT: gate_travel_npc_invariants REWRITTEN (spec-based R-246 law: rip-holds +
+  device-table consistency + shared-record law; records BOTH halves of the 07-12 P0 supersession);
+  gate_traveler_responds retired-in-place -> budget gate; gate_doors_hub delegate ->
+  device-resolution; gate_testhub_portal_rig REWRITTEN (32-marker render chain vs the boatman
+  donor 32/32 + variant placement census canonical 0/0/4/0/1/1, TESTHUB 0/0/5/14/10/1);
+  gate_boat_npc_awakening rewritten to the post-rip contract (in-build, PASS); QST-DOOR-UNLOCK
+  whitelist line re-justified (born-open class no-ops the Dynamic unlock - record placed again).
+- classifier fix-upstream: 'wanderpoint' added to gate_landing_clearance SOFT tokens (AI
+  waypoints are invisible/unclickable; pure relaxation).
+
+**FINAL ARTIFACTS + PROOFS (commands in the lane worktree, PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1,
+scratch SVC_OUT_DIR; baselines = fresh f9f213b builds a585d793/canon 051b_pre-fix lineage):**
+- CANONICAL Levels_merged.arc = **c7dcc812d1a9d35e526c0b4e52b5b31c** (det-2x: 2 builds identical).
+  Diff vs f9f213b baseline: EXACTLY 4 changed blobs (maze03, catacube02_floorlast,
+  spartacryptlevel2, crypt_floor1), all 0x05+0x14 sections ONLY, **all navmeshes byte-identical
+  (b89 law: 0 violations)**; GROUPS +241B (the 2 shrine records); QUESTS section IDENTICAL
+  (256-window parity untouched); BITMAPS same-size dword-offset shift (+241) - explained.
+- TESTHUB Levels_merged_TESTHUB.arc = **6832bb1cddbfaced0d57260bf0e63a5f** (det-2x). Diff vs
+  baseline: EXACTLY 17 changed blobs (4 canonical + court host + 12 dest/shrine levels), 0x05+0x14
+  only, 0 navmesh deltas; GROUPS +1364B (11 shrine records).
+- Quests.arc = **b6ce47b5fc9dca6ad640f3c66e1e4fd1** (det-2x; in-build quest-record contract 107
+  OK + awakening contract PASS). arz/Text: BYTE-UNCHANGED (no records/tags minted; couplings
+  Levels+Quests satisfied IN-WAVE, arz+Text not touched).
+- Battery: verify_merged_bc_navmeshes 24/24 BOTH variants; contracts run_contracts --only
+  map,quests GATE PASS both variants (0 P0 / 0 P1; pre-existing P2 placeholder notes only);
+  device gate + budget gate + rig gate + travel-invariants all PASS with negatives RED.
+
+**DEBTS + UNPROVEN-OFFLINE (register; W = needs Will's walk, see WILL_TEST_GUIDE top section):**
+- **BL-R246-DEBT-1**: devourer (drxbc2) T15 return shrine NOT sited - chamber prop-dense every
+  1-3u; walk-out via blood-cave chain / warband shrine. Needs a surveyed spot or Will's waiver.
+- **BL-R246-DEBT-2**: C7 stretch (SC2 native dangling-0x06 repurpose = fully native two-way door,
+  exact R5 return-to-entrance) designed 07-08, unimplemented; own gated mini-lane + Will walk.
+- **BL-R246-DEBT-3**: door art uniformity - every door is the same Olympian-Arena portal + swirl;
+  labels only via adjacent named markers + the guide's court map. No invented assets allowed.
+- **BL-R246-DEBT-4**: rift rides have NO recorded in-game confirmation (B-PORTAL-3 was an
+  instruction, not a result) - W#1. FALLBACK if a wired shrine does not open the portal window on
+  stock AE: minimal per-area NPC returns, budget-gated (the gate's roster is the extension point).
+- **BL-R246-DEBT-5**: shrines are EXIT-ONLY (portal-window list = base teleportmap.dbr zones; SV's
+  override stripped for AE-UI breakage). R-245 part 5's return-to-entrance is NOT met by shrine
+  returns - deviation explicitly recorded for Will's ratification (guide item 7).
+- **BL-R246-DEBT-6**: residual armed rows (13 non-Almyros survivors) are upstream-authentic but
+  the stateful-registry mechanism exists at N~16. Roster frozen by the budget gate. If corruption
+  recurs on Steam post-rip, suspects IN ORDER: vortex 5 (shared-step), urder 3.
+- **BL-R246-DEBT-7**: greeter visibility (b88 class): markers render per the in-repo mechanism
+  (ShowNpc affects CLICKABILITY, not rendering - build_quest_files b88 block) and mute-but-named
+  is the accepted floor, but rendering is W-confirmed only; record-side startVisible fix + the
+  retained _npc_awaken_actions ShowNpc-only trigger are the sanctioned fallbacks.
+- **BL-R246-DEBT-8**: crypt_floor1 2-layer grid - the new shrine cell (137,220.5) is on the
+  surveyed layer (floorCal 10.0, 3.0u margins) but layer selection is not gate-modeled; flagged
+  for the crypt walk.
+- W-list consolidated in WILL_TEST_GUIDE (a)-(g): canonical doors, shrine ride, court, greeters,
+  unburied markers, existing+fresh char, Steam build after promote.
+- DEVIATIONS (stated, per brief): east-field court instead of plaza (measured impossibility);
+  C3 clearance uses the proven b44 CLASS_MIN per-class model instead of the brief's flat >=3u
+  NPC/prop line (flat rule would newly outlaw the b44-accepted devourer pitwedge at 2.83u; the
+  scanner's liveness on that exact prop is a planted negative).
+
 ## LANE RECORD - R-245 UBER-LABYRINTH ENTRANCE (branch `fix/uber-labyrinth-entrance`, 2026-08-13; Levels+Quests coupled wave, arz/Text/Creatures byte-unchanged; BUILT + GATED in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
 
 ### R2 ADDENDUM (same lane, same day) - R6 FORENSIC HYGIENE (wf_46ee9772 verified findings) FOLDED IN; FINAL ARTIFACT MD5s SUPERSEDE THE ONES BELOW
