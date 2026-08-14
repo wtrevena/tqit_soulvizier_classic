@@ -18,6 +18,12 @@
 
 **BL-W0814-7 SECRET PLACE GIFT BOX +3x ITEMS:** "the gift box in the secret places need to increase the number of items dropped by 3x." Identify the Secret Place (darkforestenter) gift-box chest record + its loot table; triple the item COUNT it drops (numSpawn* / loot slot count, not just chance). Same chest-generosity class as BL-W0814-2/5 (obsidian + aphoryteus hoards) + the R-247.7a stash reverts - candidate to batch into one chest-tuning lane.
 
+**BL-W0814-8 UBER DUNGEON INTERIOR (crypt_floor1) LOOKS UNFINISHED** (Will 2026-08-14, first play now that the labyrinth entrance is CONFIRMED WORKING). Level = `levels/world/uberdungeon/crypt_floor1.lvl`; entrance lands at chamber (-2438,10,-2457). Three symptoms Will reported in-game, verbatim:
+  - **(a) Minimap misaligned with the map.** "the minimap is misaligned with the map in the uber dungeon." NOTE: this is a REGRESSION/incomplete of the b46/b46r2/b46r3 minimap lane (Will 2026-07-13) which set crypt_floor1's LEVELS zone dbr -> _ZONE_GREECE_DELPHI in svaera_plus_portals.py:291 specifically to fix "the drawn minimap does not line up with the level." Either the fix never landed in the shipped CANONICAL map, was TESTHUB-only, or was insufficient. Forensic must confirm the shipped canonical crypt_floor1 zone binding.
+  - **(b) No chests / no loot / no star (champion) or boss monsters found.** "there are also no chests or anything in the uber dungeon and no star / boss monsters that i have found so far."
+  - **(c) Invisible walls in some passageways.** "there are also some invisible walls in some of the passage ways. it seems like this area never got finished."
+  FORK TO RESOLVE (drives fix scope): was crypt_floor1 ALWAYS an empty/unfinished stub in source SV/base, or was it populated in the reference source and DROPPED in our Levels.arc merge (the known MERGE-DROPPED failure mode, cf. el_boss_audit.md)? Read-only forensic launched 2026-08-14 to answer. If merge-dropped -> restore from source (map lane). If never finished -> full content-population lane (chests + champion/boss spawns + navmesh/collision pass for the invisible walls). Invisible walls = navmesh/collision mismatch (blocked passages with no walkable mesh, or props with collision where floor should be).
+
 **Also queued from the R-247 wave (Will veto flags, one-constant each):** orb name 'Akremon's Essence', skeletal Huntsmen summons, tier suffixes Ascendant/Unbound + x1.5/x1.75 multipliers, EoAT formula ungated-by-difficulty, Hunt texture pairing; mod-wide soul tiering (2,095 records - Will decision).
 
 ---
