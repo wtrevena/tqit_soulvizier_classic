@@ -1,6 +1,6 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## LANE RECORD - R-247 AKREMON ENHANCEMENT WAVE (2026-08-13, branch `feat/akremon-enhancement`, base `34b014e` = build90 ship) - arz + COUPLED Text; BUILT det-2x + GATES; NOT INTEGRATED, NOT DEPLOYED, NOT ON STEAM
+## LANE RECORD - R-247 AKREMON ENHANCEMENT WAVE (2026-08-13, branch `feat/akremon-enhancement`, base `34b014e` = build90 ship) - arz + COUPLED Text; ROUND 2 IN FLIGHT: round-1 build REDDED at module 61/66 (orb_loot_breadth SCOPE COLLAPSED - the orb-rename clone chain left the donor Charon chests as outside referrers of the shared tables; fixed round 2 via svc_orb_breadth.DONOR_TWINS byte-gated carve-out); det-2x + gates + md5s below are only valid once this record says so; NOT INTEGRATED, NOT DEPLOYED, NOT ON STEAM
 
 **Scope (all 8 R-247 parts; ledger `docs/WILL_RULINGS.md` R-247 + R-240 amendment; report
 `docs/reports/r247_akremon_wave.md`):**

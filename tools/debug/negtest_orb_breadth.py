@@ -58,6 +58,11 @@ LADDER_PROXIES = tuple(r'records\item\containers\new\genericbossorb_%02d.dbr' % 
                        for i in range(1, 6))
 # The base-game Telkine orb: same collapsed weapon row, ZERO uber carriers, so it
 # is out of scope today (P2) and must come INTO scope the moment an uber names it (N6).
+
+# The R-247.1 donor-twin pair (N10): the story Charon's own chest and the byte-gated
+# Akremon clone that shares its loot tables. Only present on R-247+ builds.
+TWIN_DONOR = r'records\xpack\item\containers\bosschest02_charon_01.dbr'
+TWIN_CLONE = r'records\xpack\item\containers\svc_akremon_orb_01.dbr'
 AKTAIOS = r'records\item\containers\boss\proxy\bosschestproxy11_aktaios.dbr'
 NEW_UBER = r'records\creature\monster\skeleton\um_negtest_orbless_99.dbr'
 UBER_DONOR = r'records\creature\monster\skeleton\um_gorrahk_99.dbr'
@@ -264,6 +269,28 @@ def main(argv):
         return lambda: RUO._restore_field(d, pool_e, 'fixedItemName1', saved)
     run("N9 one orb table reached at TWO difficulties (first-wins narrowing)",
         _two_difficulties_one_table, expect=('O4b',))
+
+    # ── N10 a DONOR TWIN drifts from its R-247.1 clone (same-bytes law) ─────
+    # The rename carve-out (svc_orb_breadth.DONOR_TWINS) keeps the story Charon's
+    # chests exempt from the shared-table refusal ONLY while byte-identical to
+    # the Akremon clone chests outside `description`. Planted: one non-allowed
+    # field on donor _01 drifts -> ITS pin dies (per-donor granularity, MEASURED
+    # on the shipped arz): exactly its own table boss_charon_n01b goes back to
+    # shared/refused (O6) and the scope drops 18 -> 17 under the floor (O4).
+    # Only exercisable on an R-247+ build (the clone chain must be in scope);
+    # on a pre-R-247 arz this is ANNOUNCED as not exercised, never a silent pass.
+    lk_twin = SLB.Lookup(db)
+    if lk_twin.real(TWIN_CLONE) is not None:
+        def _drift_donor_twin(d):
+            real = lk_twin.real(TWIN_DONOR)
+            saved = RUO._snapshot_field(d, real, 'lootClassification')
+            d.set_field(real, 'lootClassification', 'Boss')   # donor ships 'Hero'
+            return lambda: RUO._restore_field(d, real, 'lootClassification', saved)
+        run("N10 a donor twin drifts from its R-247 clone (same-bytes law dies)",
+            _drift_donor_twin, expect=('O6', 'O4'))
+    else:
+        print("  [-- ] N10 NOT EXERCISED: pre-R-247 arz (no %s). Not a pass."
+              % TWIN_CLONE.rsplit('\\', 1)[-1])
 
     # ── P2 scope boundary: that same collapsed orb, with no uber, is GREEN ──
     run("P2 the base-boss Aktaios orb with no uber carrier stays out of scope",

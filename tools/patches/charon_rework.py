@@ -762,16 +762,29 @@ _FX_BLOOM_DEATH = _FX + r'\ascacophus_deathfx.dbr'
 # (ProxyAccessoryPool) -> bosschest02_charon_0{1,2,3} (FixedItemContainer,
 # description = xtagChest18 "Charon's Essence") -> tables boss_charon_{n,e,l}01b.
 # xtagChest18 and every record in that chain are SHARED with the base-game
-# Charon (boss_charon_39/41/43) - shared-record law: CLONE, never edit. The
-# clone chain below duplicates proxy + 3 pools + 3 containers VERBATIM and
-# changes exactly ONE field per container: `description` -> the minted
-# `tagSVCChestAkremon`. The containers' `tables` pointers are KEPT at
-# boss_charon_{n,e,l}01b, so the R-242 orb-rate treatment, the b84 breadth
-# widenings and every loot number are byte-identical to the shipped orb - only
-# the on-screen name changes. CORRECTION 4's hard gate moves with the constant:
-# svc_orb_breadth derives its scope as "every proxy an UBER names", so the
-# clone (naming the SAME tables) keeps the 6-proxy / 18-table floors green,
-# and red_uber_orbs' terminal exemption condition ("carries a treasureProxyName
+# Charon (boss_charonform2_39/41/43 name the donor proxy - MEASURED on the
+# shipped a86afc15 arz) - shared-record law: CLONE, never edit. The clone chain
+# below duplicates proxy + 3 pools + 3 containers VERBATIM and changes exactly
+# ONE field per container: `description` -> the minted `tagSVCChestAkremon`.
+# The containers' `tables` pointers are KEPT at boss_charon_{n,e,l}01b, so the
+# R-242 orb-rate treatment, the b84 breadth widenings and every loot number are
+# byte-identical to the shipped orb - only the on-screen name changes.
+#
+# THE PROVEN SCOPE MECHANISM (round-1 vet finding, fixed round 2). The naive
+# claim "the clone names the SAME tables, so the 6-proxy / 18-table floors stay
+# green" is FALSE: once the terminal names the clone proxy, the DONOR containers
+# bosschest02_charon_01..03 sit outside every uber chain while still naming
+# boss_charon_{n,e,l}01b for the story Charon - so svc_orb_breadth's
+# shared-table refusal drops those 3 tables and the R-220 floor collapses
+# 18 -> 15 (SCOPE COLLAPSED, exit 1 at module 61/66 - reproduced by the vet's
+# cold gated build). The fix is the pinned DONOR-TWIN carve-out in
+# `svc_orb_breadth.DONOR_TWINS`: a donor container is exempt from the refusal
+# ONLY while byte-identical to its clone twin outside `description`, verified
+# per build, announced in the log, and negtested (negtest_orb_breadth N10).
+# That keeps the shipped sharing (uber orb + story Charon on the same widened
+# tables - the ratified a86afc15 state) instead of either nerfing the story
+# Charon's chest (table-clone route) or redding the build forever.
+# red_uber_orbs' terminal exemption condition ("carries a treasureProxyName
 # that RESOLVES") holds on the clone exactly as it did on the original.
 _ORB_DONOR = r'records\xpack\item\containers\proxies\bosschest02_charon.dbr'
 _ORB = r'records\xpack\item\containers\proxies\svc_akremon_orb.dbr'

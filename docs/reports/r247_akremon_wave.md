@@ -95,7 +95,9 @@ above the shell's; the core's menace is its dream-kit, not its swing).
   identity AND his own pack's skin; cross-pair inside the one skeleton texture
   family, the class the Devourer proves in-game) + **anm_skeleton01** (the
   family rig) + race **Undead** + actorHeight 2.0 (the rig constant, R-126).
-  All ~100 inline foreign-rig `.anm` rows cleared (the A9/Dagon-frozen class).
+  All 67 inline foreign-rig `.anm` rows cleared (the A9/Dagon-frozen class;
+  the module counts and prints the exact number at apply time - 67 measured in
+  the round-2 build, correcting round 1's "~100" estimate).
   The Legendary `_l` variant inherits everything at clone time (ordering gated).
 * **5(b) summons:** blood hounds -> **Huntsmen of the Endless Hunt**
   (`svc_hunt_huntsman_99`, in `devourer_kit.py`, the summon's owner): cloned

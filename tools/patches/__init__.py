@@ -1031,7 +1031,13 @@ REGISTRY = [
                             # to. MEASURED: 51 uber carriers -> 7 proxies (6 IN REACH) -> 18 tables =
                             # genericbossorb_01..05 (the mystical-orb ladder, tagEndChest02)
                             # plus bosschest02_charon, whose terminal Ferryman IS a red uber
-                            # and whose 3 tables carry the identical collapse. The 6 proxies
+                            # and whose 3 tables carry the identical collapse. (R-247.1:
+                            # the terminal - now Akremon - names the clone proxy
+                            # svc_akremon_orb instead; SAME 3 tables, kept in scope via
+                            # svc_orb_breadth.DONOR_TWINS - the story Charon's donor
+                            # chests are exempt from the shared-table refusal only while
+                            # byte-identical to the clone chests outside `description`;
+                            # negtest N10 plants the drift.) The 6 proxies
                             # consumed only by BASE act/quest bosses (Aktaios, Typhon, Black
                             # Widow, coldworm, the wanddrop test proxy) stay OUT - the same
                             # boundary R-200 drew - and are registered as BL-R220-DEBT-1.
