@@ -7403,7 +7403,19 @@ variants, 6.96u in FRONT of Almyros, satisfying part 5's "beside the entrance NP
 Garden/Secret), with the 14 TESTHUB plaza travelers re-laid to >=4.10u pairwise around it.
 Full proofs + debts: BACKLOG "R2 ADDENDUM" under LANE RECORD R-245.
 
-## R-246 [2026-08-13] IN FLIGHT (branch `feat/native-device-travel`) - NATIVE-DEVICE TRAVEL: replace most boat-NPC routes with engine-native zero-quest-row devices (teleport-shrine rifts + GridEntrance doors); Almyros keeps his 3-route talk menu
+## R-246 [2026-08-13] DEVICE HALF SUPERSEDED BY R-248 [2026-08-14]; THE RIP SURVIVES (branch `feat/native-device-travel`, merged 057a605) - NATIVE-DEVICE TRAVEL: replace most boat-NPC routes with engine-native zero-quest-row devices (teleport-shrine rifts + GridEntrance doors); Almyros keeps his 3-route talk menu
+
+> **SUPERSESSION NOTE (2026-08-14, R-248 below):** Will played the R-246 device build and
+> IN-GAME REFUTED the device half - "the new portals you made dont work and they lag the game
+> out and break everything." The R-246 doors + rift shrines are REVERTED by
+> `feat/proven-mechanism-travel`; travel returns to the two IN-OUR-MOD-PROVEN mechanisms
+> (boat-traveler rows with base-game one-shot arming; fixed-portal FixedItemTeleport chains).
+> WHAT SURVIVES R-246 (do not revert): the RIP of the blanket-refire boat-row tables
+> (build_quest_files c128be3 - the 51->16 armed-row reduction IS the corruption bug fix),
+> tools/gate_boatdialog_budget.py (roster extends), the Y-vs-terrain law + buried-Y fixes,
+> placement hygiene (b44 CLASS_MIN / R6 landing moves / plaza >=4.1u relay), and the
+> gate_landing_clearance wanderpoint soft-token classifier fix. The device class itself goes
+> to the MODDING_PLAYBOOK failure graveyard (twice-bitten: doors-hub build25-26, R-246).
 
 **WILL'S RULING, VERBATIM (2026-08-13, AskUserQuestion + follow-up):**
 
@@ -7631,3 +7643,60 @@ characterLifeRegen, or an undead-leech partial-bypass on his record. OPEN - Will
   (`q_yard_enslaver`, untouched). Relocating the warband to a DEEPER blood-cave pocket is a one-spec
   map-lane change registered as `BL-R247-DEBT-7` (WILL DECISION on the destination; this arz lane
   does not move map placements).
+
+## R-248 [2026-08-14] IMPLEMENTED (branch `feat/proven-mechanism-travel`) - PROVEN-MECHANISM TRAVEL ONLY: revert the R-246 devices (in-game refuted: lag + breakage + non-function); travel = the boat-traveler design (Almyros/Garden pattern, one-shot armed) and the fixed-portal design (post-Typhon->Rhodes pattern); the R-246 rip stays
+
+**WILL'S RULING, VERBATIM (2026-08-14):**
+
+> "why cant we just get the npc traveler to work as intended or the portals like the one that
+> you use to travel after you kill typhon to get to rhodes. also the traveler to take you to
+> the garden of merchants works why cant we just use that design. also the new portals you
+> made dont work and they lag the game out and break everything. those new portals you made
+> never worked in the first place thats why we switched to the npc traveler design."
+
+**WHAT THIS RULES (design law):**
+
+1. The R-246 doors + rift shrines are IN-GAME REFUTED (lag + breakage + non-function) AND this
+   device class had already failed once before (the build25-26 doors-hub, pre-2026-07-12 - the
+   very reason travelers exist). TWICE-BITTEN => the born-open-GridEntrance travel-device class
+   goes to the MODDING_PLAYBOOK failure graveyard PERMANENTLY (Section 10 + the Section 2b
+   streaming-edge warning; best-supported mechanism recorded there: born-open GridEntrance
+   bindings are standing streaming edges - 14 court doors + 2 canonical = massive
+   streaming/memory pressure in a 32-bit process = the lag/crash class).
+2. ONLY two travel mechanisms are allowed, both proven IN OUR MOD IN-GAME:
+   - **(A) THE BOAT-TRAVELER DESIGN** (Almyros/Garden pattern - "the traveler to take you to
+     the garden of merchants works"). Arming must be BASE-GAME-FAITHFUL: per-connection rows on
+     dedicated ONE-SHOT steps (Condition_OnLevelLoad isResettable=0, the quest-7/8 envelope:
+     max 2-3 rows/step, armed once per character lifetime, registrations SURVIVE quest
+     completion). NEVER again the blanket-refire construction (39 rows re-registered on EVERY
+     level load = the proven corruption source). The R-246 RIP (51->16 armed rows) SURVIVES as
+     the bug fix; restored rows ride NEW one-shot steps, never the refire step.
+   - **(B) THE FIXED-PORTAL DESIGN** (post-Typhon -> Rhodes pattern - a placed
+     FixedItemTeleport + GROUPS [Any Entity] pairing + the Q1+Q3 dual-trigger
+     Action_UnlockFixedItem chain, proven working in OUR mod). Zero armed rows, no streaming
+     edge (generic 12B 0x14, no dest GUID). ENVELOPE: both proven exemplars live in
+     ORIGINAL-INDEX base levels; no portal ships in an APPENDED SV-only host until one in-game
+     appended-host proof lands (own gated lane); unlocks ship ONLY as the Q1+Q3 dual-trigger
+     shape (Q1-alone is the proven-failed variant).
+3. KEEP from R-246 (do NOT revert): the rip + gate_boatdialog_budget, the Y-vs-terrain
+   fixes/gate, placement hygiene, the stale-gate rewrites where still coherent. REVERT: all 45
+   device instances + their GROUPS additions + aura/marker entities on BOTH map variants;
+   gate_device_resolution retires (Y checks migrate); each retirement ledgered.
+
+**SUPERSESSION (recorded per the ledger law):**
+- **R-246's DEVICE half is DEAD** (doors, rift shrines, the east-field court, the
+  re-authorization of born-open GridEntrance doors as travel devices). Its RIP half SURVIVES
+  as law: the blanket-refire boat-row construction stays dead forever.
+- The 2026-07-12 P0 TRAVEL-LAW's mechanism half ("all travel is NPC boat-dialog") is
+  RESTORED for entrances/returns, now upgraded with the one-shot arming model; its placement
+  half was never rescinded. R-246's supersession of it is itself superseded.
+- **R-170 chain (Warden identity/placement/descend-only menu):** the Warden gets his
+  boat-dialog descend row BACK (one-shot armed, b88-awakened); the device beside him is gone.
+  Name, catacomb placement, descend-only menu all unchanged.
+- **R-245 route/spot halves are UNTOUCHED** (maze03 corrected treasure-pocket spot, crypt
+  landing (-2438,10,-2457), plaza de-crowding, R6 landing moves): the restored boat rows serve
+  exactly those surveyed spots. R-245 part 5 (return-to-entrance) is RESTORED where it was
+  deviated: the crypt/SC2 returns land at their entrance doors again (the R-246 recorded
+  deviation dissolves instead of being ratified).
+- The Almyros 3-row refire-step exception (Will-ratified in R-246) is UNCHANGED - the ONLY
+  rows allowed on a re-firing step, grandfathered.

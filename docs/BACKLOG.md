@@ -1,6 +1,141 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## LANE RECORD - R-246 NATIVE-DEVICE TRAVEL (branch `feat/native-device-travel` from f9f213b, 2026-08-13; Levels+Quests coupled wave, arz/Text byte-unchanged; BUILT + GATED in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
+## LANE RECORD - R-248 PROVEN-MECHANISM TRAVEL (branch `feat/proven-mechanism-travel` from 057a605, 2026-08-14; Levels+Quests coupled wave, arz/Text byte-unchanged; BUILT det-2x + ALL GATES GREEN in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
+
+**THE RULING (docs/WILL_RULINGS.md R-248, verbatim there):** Will played the R-246 device build
+and refuted it in-game ("the new portals you made dont work and they lag the game out and break
+everything... thats why we switched to the npc traveler design"). The device class is
+GRAVEYARDED (MODDING_PLAYBOOK sec 10 row + sec 10a mechanism: born-open GridEntrance bindings =
+standing streaming edges; 16 of them vs the 32-bit ceiling = the ProcessRLTD lag/crash class;
+second bite after the 2026-07 doors-hub). Travel returns to the two in-our-mod-proven designs:
+(A) boat-traveler rows with BASE-GAME ONE-SHOT arming (quest-7/8 envelope, decoded from stock
+bytes), (B) the Olympus->Rhodes FixedItemTeleport chain (untouched exemplar). The R-246 RIP of
+the blanket-refire tables SURVIVES as the corruption bug fix.
+
+**SHIPPED IN THIS LANE (commits ec9e928..):**
+- LEDGER FIRST (ec9e928): R-248 verbatim + R-246 heading re-statused + graveyard row + sec 10a
+  lag finding + sec 2b streaming-edge warning.
+- MAP REVERT (e72989e): ALL R-246 device instances/GROUPS off BOTH variants (canonical -8
+  instances + 2 GROUPS; TESTHUB -51 more + 9 GROUPS); maze03 traveler restored to the R-245
+  spot (280,1,150.5); 14 plaza travelers + 9 boss-area returns restored (devourer at its
+  b44-nudged spot); b48 Almyros de-dup restored; KEEP list honored (SC2/tantalus Y fixes,
+  Warden b63 spot, all records/tags - shared-record law).
+- QUESTS (baec6a3): R248 per-connection ONE-SHOT steps appended to sv_commonmechanics
+  (Condition_OnLevelLoad isResettable=0, 1 trigger : 1 NPC, b88 awakening pair, <=3 rows/step,
+  ZERO rows on any re-firing step). Canonical 4 steps / 10 rows; TESTHUB (SVC_TEST_HUB=1
+  Quests variant, LOCAL-ONLY) +12 steps / 25 rows. Dest literals floorCal-verified: SC2 warden
+  dest y -2->1, bossarena 27->28, tantalus -12->-9, charon moved off styx_richman to
+  (-484,-12,-9587); Helos landing = R6 (-5974,1,911) everywhere.
+- GATES (02021e5, 383ad79, 1a832a4): gate_boatdialog_budget roster 26 canonical /
+  51 TESTHUB (--hub) + check (e) NO-CHURN (one-shot-only; named exceptions: the Almyros refire
+  trigger, the herald's event-gated Q3 kill trigger) + (c2) label integrity (b62
+  tagSVCHelosToUber divergence allowed by name) + per-variant placed-check; negatives N1-N5
+  incl. THE PLANTED CHURN ROW (traveler row on the refire step REDS via (a)+(e)) and the
+  FLIPPED ONE-SHOT (REDS via (e)). gate_device_resolution RETIRED (ledgered; device class
+  dead); its Y1/ON law MIGRATED to gate_travel_y_terrain (every placed travel NPC + every SVC
+  boat dest at |dy|<=0.5 + on-mesh, world->local via grid corner; negatives buried/off-mesh).
+  gate_doors_hub = THE GRAVEYARD TOMBSTONE GATE (zero door-class devices ever again; SV-native
+  inventory pinned exactly). gate_testhub_portal_rig re-rewritten (traveler world; census
+  unchanged); gate_travel_npc_invariants rewritten (rip-holds + R248 step spec + armed<=>placed
+  + zero placed devices + shared-record law). QST-DOOR-UNLOCK whitelist re-evaluated (both
+  no-op grounds hold again).
+- PROOF-DRIVEN Y FIXES (1a832a4): the migrated Y gate caught 8 buried literals the flat b62
+  "0.6" plaza assumption hid (garden -1.9, secret -1.1, sparta -0.5, uber -1.1, charon -1.3,
+  ephialtes -1.3, obsidian -0.9 - the west arc/yard slopes below the plaza pad; bossarena
+  return 27->28.1 = the dais floorCal). All TESTHUB-only placements.
+
+**ARMED COUNTS (gate_boatdialog_budget census):** 057a605 post-rip baseline = 16 global.
+Canonical NOW = 26 (16 survivors + 10 restored: uber enter 1 + uber return 2 + Warden descend 1
++ sparta return 2 + garden return 2 + secret return 2), every new row one-shot, ZERO on the
+refire step. TESTHUB = 51 (+14 launchers, +9 boss-area Helos-returns, +2 bossarena returns) -
+LOCAL-ONLY until the Frida registry-capacity probe (BL-R248-DEBT-2 below).
+
+**ARTIFACTS (det-2x, scratch SVC_OUT_DIR; PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1):**
+- Quests.arc canonical  md5 `176bf545e3b44a1f2eac990db3b02d4d`
+- Quests.arc TESTHUB    md5 `1764c3a261ecfc7a0fe9346f6f4df595` (SVC_TEST_HUB=1, LOCAL-ONLY)
+- Levels_merged.arc canonical  md5 `61aaf3e4ac4f68fd33a62052a988ab11`
+- Levels_merged_TESTHUB.arc    md5 `37c33fb072d248cdc57b8c293b0d7bf8` (LOCAL-ONLY)
+- DEPLOY COUPLING: canonical Levels pairs with canonical Quests; TESTHUB with TESTHUB. arz +
+  Text BYTE-UNTOUCHED by this lane.
+
+**DIFF PROOFS (vs local/ pre-R-245-lineage baselines; every delta named):** canonical = EXACTLY
+2 blobs, 0x05-only (Maze03 +1 traveler instance = the R-245 promotion the baseline predates;
+SpartaCryptLevel2 = the kept Y fix); TESTHUB = EXACTLY 6 blobs, 0x05-only (those 2 +
+StartingFarmland06D plaza relay/Y, Styx_SwampBorder tantalus Y, boss_arena return Y,
+HadesPalace_Floor04_01 = the R-240 hub-cage chest fold that was awaiting a TESTHUB rebuild -
+main-lineage, not this lane). ALL navmeshes BYTE-IDENTICAL both variants (b89 law: 0 diffs);
+GROUPS/SD/QUESTS/BITMAPS/DATA2 sections byte-identical (256-window parity holds).
+
+**GATES, all green on the built artifacts:** budget (canonical 26 == roster + placed-check;
+TESTHUB 51 == roster + placed-check w/ the b48 Almyros armed-but-unplaced exception; N1-N5 RED
+x2 variants) | Y-vs-terrain (canonical 7 NPCs + 13 dests; TESTHUB 30 NPCs + 38 dests; negatives
+RED) | graveyard (0 door-class devices, native inventory exact, both variants) | rig (render
+32/32 donor-identical; census exact both variants) | travel-npc-invariants (spec) PASS |
+boat-npc-awakening contract PASS in-build + planted suite green.
+
+**R-246 DEBT DISPOSITIONS (per the retirement protocol):**
+- BL-R246-DEBT-1 (devourer shrine unsited) DISSOLVED - the devourer return TRAVELER is back at
+  its proven b44-nudged spot; no shrine needed.
+- BL-R246-DEBT-2 (SC2 native 0x06 two-way door stretch) CARRIES FORWARD as BL-R248-DEBT-1 - the
+  long-term fully-native option for the sparta return, own gated lane.
+- BL-R246-DEBT-3 (door art uniformity) DISSOLVED - no doors exist.
+- BL-R246-DEBT-4 (rift ride unproven) DISSOLVED as a debt - shrines are gone; the surviving
+  question (do the restored travelers ride clean in-game) IS the walk list.
+- BL-R246-DEBT-5 (shrine returns deviate from R-245 part 5) DISSOLVED - the deviation's whole
+  reason is gone: crypt/SC2 returns land at their entrance doors again (return-to-entrance
+  restored, primary menu rows).
+- BL-R246-DEBT-6 (residual armed suspects) CARRIES FORWARD as BL-R248-DEBT-3, updated: if
+  corruption EVER recurs post-restore, suspects IN ORDER: the 5-row Leinth vortex (OUR b48/b94
+  replication of an upstream ONE-SHOT single row - restoring the pristine SV shape is the ready
+  fix), urder 3, then count.
+- BL-R246-DEBT-7 (greeter visibility) FOLDED into the walk list (guide items 1-5: every
+  traveler must render AND respond; the b88 awakening pair now rides every trigger).
+- BL-R246-DEBT-8 (crypt 2-layer grid) DISSOLVED - the crypt shrine is gone; the crypt boat
+  landing is the long-proven pad.
+
+**NEW DEBTS:**
+- **BL-R248-DEBT-1** (was R246-DEBT-2): SC2 native dangling-0x06 two-way door stretch - fully
+  native sparta return; own gated mini-lane + Will walk.
+- **BL-R248-DEBT-2 (THE PROBE)**: Frida boat-registry probe - hook the Game.dll
+  Action_BoatDialog registration handler + the NPC-click offer lookup (locate via the RTTI/
+  dispatch the b48 trace used), dump the registry structure (CAPACITY, keying per-NPC vs
+  global, collision behavior), assert each one-shot row registers exactly once across
+  save/load cycles, then click all 14 TESTHUB launchers + the Warden. HONEST RESIDUAL: 51
+  equals the count that corrupted once, but that corruption re-registered ~39 rows EVERY level
+  load; one-shot arming registers once per character. What the forensic cannot discriminate is
+  CAPACITY vs churn - if the offer registry is a fixed-size table, 51 static rows could still
+  overflow it. THE LINE: canonical 26 ships (each pair structurally = a proven base pair; base
+  global census ~12-16); TESTHUB 51 stays LOCAL-ONLY until the probe converts 51 from "worry"
+  to "measured". Registry keying + capacity is the fact that settles it.
+- **BL-R248-DEBT-3** (was R246-DEBT-6): residual armed suspects order (vortex 5 -> urder 3).
+- **BL-R248-DEBT-4 (MECHANISM-(B) FORWARD PATH, recorded not dropped)**: once ONE appended-host
+  FixedItemTeleport proof lands (recommended pilot: crypt_floor1 -> maze03 door landing,
+  born-open-clone AND quest-unlocked variants A/B on DEV), the one-way returns (uber return,
+  sparta return, the 9 TESTHUB boss-area returns) become zero-row portals: armed census drops
+  26 -> ~19 canonical / 51 -> ~25 TESTHUB. Portals cleared the pre-stream/lag question
+  (sec 10a contrast: no streaming edge) but NOT the appended-host question - both proven
+  exemplars (xq00, q15) live in original-index base levels; every candidate one-way link here
+  EXITS an appended SV-only level. Unlocks ship ONLY as the Q1+Q3 dual-trigger shape
+  (Q1-alone is the proven-failed variant). Hence traveler-heavy round 1.
+
+**RISKS, stated honestly:** (1) THE WARDEN BINDING IS PLAUSIBLE, NOT PROVEN - no remote boat
+NPC has ever been in-game confirmed clickable-and-correct in our mod (the b88 caveat stands);
+one-shot small-table + b88 awakening + base quest-7's identical remote-boatman shape are the
+best-supported design, and his click is walk item #1 on existing AND fresh chars. (2) EXISTING-
+SAVE REGISTRY STATE: Will's chars played the blanket-refire and device builds; stale
+registrations in a save could interact with one-shot re-arming of the same NPC+tag rows -
+unmeasurable offline; tags/dests unchanged (shared-record law), the probe covers it, the
+fresh-char walk isolates it. (3) STEP-CONCURRENCY: one-shot rows on NEW steps rely on all
+steps evaluating concurrently - SV-proven in-game (open_bloodcave_portal step[3] one-shot
+OnLevelLoad; urder steps 1-2) but not engine-source-proven; the dev build's first boot should
+verify one new-step row arms before the wave rides to Steam. Never MOVE rows between steps
+after ship; extend by adding steps only (playbook 6d). (4) STRANDING WINDOW: the shrine
+reverts removed the crypt/SC2 exits - this SAME wave restores the return rows (Levels+Quests
+coupled deploy law); gate (d) armed<=>placed catches any split deploy.
+
+---
+
+## LANE RECORD - R-246 NATIVE-DEVICE TRAVEL - DEVICE HALF SUPERSEDED BY R-248 (above); the RIP + Y-law + hygiene survive (branch `feat/native-device-travel` from f9f213b, 2026-08-13; Levels+Quests coupled wave, arz/Text byte-unchanged; BUILT + GATED in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
 
 **THE RULING (docs/WILL_RULINGS.md R-246, verbatim there):** replace the boat-NPC route rig with
 engine-native devices (born-open GridEntrance door pairs + wired teleport-shrine rifts), zero quest

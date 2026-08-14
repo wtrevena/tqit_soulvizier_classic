@@ -1,70 +1,66 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> # 🚪🌀 R-246 NATIVE-DEVICE TRAVEL (2026-08-13) - READ THIS SECTION FIRST; it SUPERSEDES every travel section below
+> # 🚢 R-248 PROVEN-MECHANISM TRAVEL (2026-08-14) - READ THIS SECTION FIRST; it SUPERSEDES the R-246 device section and every travel section below
 >
-> **Your ruling ("Native devices") is implemented.** The 39-row boat-dialog rig that corrupted the
-> engine's travel registry (wrong labels, other rows firing, the mute Warden on Steam) is RIPPED.
-> Travel now uses two engine-native mechanisms with **zero quest rows**:
-> - **DOORS** (born-open portal pairs, the build24/25 mechanism): walk into the glowing
->   Olympian-Arena portal + swirl -> instant teleport. Deliberate walk-in, off every traffic lane.
-> - **RIFT SHRINES** (the Garden/Secret mechanism): **click** the teleport shrine pad -> the
->   base-game portal window opens -> pick a town (Helos is on the Greece list). One-way OUT.
-> - **Almyros in the Helos plaza keeps his 3-route talk menu** (Garden / Secret Place / Uber
->   Dungeon) - the one surviving boat menu, matching the base-game boatman envelope.
-> - The old traveler NPCs are still there as **NAMED, MUTE MARKERS** beside each device (they are
->   the label surface - clicking them does nothing now; that is intended, not a bug).
+> **Your ruling is implemented verbatim:** "why cant we just get the npc traveler to work as
+> intended or the portals like the one that you use to travel after you kill typhon to get to
+> rhodes... the traveler to take you to the garden of merchants works why cant we just use that
+> design." The R-246 doors + rift shrines are GONE from both maps (they lagged and broke the
+> game - that device class is permanently graveyarded). Travel is back to the TWO designs you
+> named, both proven in our mod:
+> - **THE BOAT-TRAVELER DESIGN** (the Almyros/Garden pattern): click a named traveler ->
+>   travel menu -> pick a destination. The FIX under the hood: the old rig re-registered ~39
+>   routes on EVERY level load (that churn is what corrupted the travel registry - wrong
+>   labels, other rows firing, the mute Warden). The restored routes arm ONE-SHOT, exactly the
+>   way the base game arms its Athens/Knossos/Egypt boatmen: registered once per character,
+>   max 2-3 per step, never on a re-firing step. The corruption mechanism is structurally gone.
+> - **THE FIXED-PORTAL DESIGN** (the post-Typhon -> Rhodes pattern): unchanged, untouched -
+>   the Olympus summit portal + the Keryx herald both stay exactly as you know them.
 >
 > **CANONICAL (ships to Steam) - the routes:**
-> 1. **Helos -> Garden / Secret / Uber:** Almyros's menu (unchanged surface).
-> 2. **Labyrinth -> Uber Dungeon (C4):** in maze03's treasure pocket (behind the Minotaur Lord's
->    secret door), the portal + swirl stands at the R-245 spot; the old "Enter the Uber Dungeon"
->    greeter stands beside it as the named marker. Walk in -> you land in `crypt_floor1`.
-> 3. **Uber Dungeon return (C5):** a **rift shrine** in the crypt near the landing chamber ->
->    click -> portal window -> Helos.
-> 4. **Catacombs -> Sparta Crypt (C6, THE STEAM WARDEN FIX):** in the deepest Athens catacomb
->    (CataCube02_FloorLast) a portal + swirl stands ~13u from the Warden (who stays as the named
->    greeter - his menu is gone, the DOOR is the descend). Walk in -> `spartacryptlevel2`.
-> 5. **Sparta Crypt return (C7):** a **rift shrine** in SC2 -> portal window -> Helos.
-> 6. Garden return = its native shrine; Secret return = the RogueEncampment shrine; blood cave =
->    walk-in chain. All untouched.
-> 7. **DEVIATION RATIFICATION ASK:** shrine returns land at **Helos/portal-zone towns**, not back
->    at the area's entrance door (the R-245 "return lands at the entrance NPC" pattern is only
->    possible where a door return is legal - appended-level hosts kill return doors). Ruled
->    acceptable under R-246's device mandate; flagging it explicitly for you.
+> 1. **Helos -> Garden / Secret / Uber:** Almyros's 3-route menu (unchanged).
+> 2. **Labyrinth -> Uber Dungeon:** the "Enter the Uber Dungeon" traveler in maze03's treasure
+>    pocket (behind the Minotaur Lord's secret door, at the corrected R-245 spot) has his MENU
+>    BACK - one route, into crypt_floor1.
+> 3. **Uber Dungeon return:** the in-crypt return traveler - menu: "The Labyrinth Door
+>    (Return)" (back to the maze03 pocket) or Helos.
+> 4. **Catacombs -> Sparta Crypt (THE HEADLINE):** the Warden of the Spartan Crypt (deepest
+>    Athens catacomb, by the stairs-down) has his DESCEND MENU BACK - one route, down into the
+>    crypt. See the walk list: HIS CLICK IS THE WHOLE TEST.
+> 5. **Sparta Crypt return:** the in-crypt return traveler - "Athens Catacomb (Return)" or Helos.
+> 6. **Garden / Secret Place returns:** their in-area return travelers - Helos or Blood Cave.
+>    (Garden/Secret ENTRY stays Almyros + the native shrines/portal-dudes, untouched.)
+> 7. **Olympus -> Rhodes:** the portal you named. Untouched.
 >
-> **TESTHUB (your DEV map only, never Steam): the EAST-FIELD PORTAL COURT.** The plaza could not
-> hold 14 walk-through planes at safe standoff from the villagers, so the court sits in the open
-> field just EAST of the Helos gate (walk out the east gate, ~10-30u): a 3-row grid of portals,
-> each with its named mute marker NPC diagonal to it. Fixed layout (west->east per row, rows
-> north->south):
-> ```
->   row 1 (nearest gate road): Garden | Secret | Sparta(catacomb door) | Uber(labyrinth door)
->   row 2:                     BossArena | Warband | Dorus | Tantalus | Charon
->   row 3:                     Mnemophage | Ephialtes | Devourer | Vashkarr
->   east edge, own spot:       Obsidian
-> ```
-> Landings are the same v2 area-entrance approach points as before (tables below). Each boss-area
-> landing has its own **return rift shrine** nearby (devourer's chamber is too prop-dense - walk
-> out via the blood-cave chain or the warband shrine; registered debt BL-R246-DEBT-1).
+> **TESTHUB (your DEV map only, never Steam):** the 14 plaza travelers are BACK in the Helos
+> plaza at their spread-out spots (>=4.1u apart; the east-field portal court is gone), one
+> named person per area: Garden, Secret, Sparta(catacomb door), Uber(labyrinth door),
+> BossArena, Warband, Dorus, Tantalus, Charon, Mnemophage, Ephialtes, Devourer, Vashkarr,
+> Obsidian. Each boss area has its in-area "Helos (Return)" traveler again (devourer's is back
+> at its proven spot). NOTE: the TESTHUB build arms 51 routes vs Steam's 26; it stays
+> LOCAL-ONLY until a registry-capacity probe clears the bigger number - by design, not an
+> accident.
 >
-> **YOUR WALK LIST (nothing below can be proven offline; in priority order):**
-> - (a) **Both canonical doors fire**: maze03 pocket -> crypt lands on solid ground; catacomb ->
->   SC2 lands on solid ground (its Y was re-derived: you reported the old marker buried).
-> - (b) **A rift-shrine ride actually works in-game**: click the crypt shrine (or Garden/Secret
->   shrine) -> the portal window opens -> Helos is selectable -> you arrive. **No recorded in-game
->   shrine ride exists yet - this is walk item #1's twin and the architecture's keystone.**
-> - (c) **The east-field court**: every portal reachable; walking the gate road/plaza NEVER yanks
->   you anywhere (the 07-12 P0 class); each portal lands at its area entrance.
-> - (d) **Greeters visible**: the Warden (catacombs) and the pocket greeter (maze03) render and
->   show their names; they are MUTE by design.
-> - (e) **No buried NPCs**: tantalus swamp marker, warband marker, SC2 marker all stand ON the
->   ground now (Y re-derived from the navmesh).
-> - (f) **Both your existing char AND a fresh char** travel clean (registry state re-arms from the
->   quest file each load - post-rip loads should be clean on both).
-> - (g) After promote: the same checks on the **Steam build** (TESTHUB never uploads).
-
+> **YOUR WALK LIST (in priority order - the registry fix cannot be proven offline):**
+> - (1) **THE WARDEN CLICK, existing character:** catacombs -> click the Warden -> his dialog
+>   MUST open -> "Descend into the Sparta Crypt" -> you land in the crypt ON the floor. He was
+>   the cross-binding victim; under one-shot arming his dialog should finally bind. This
+>   single click is the best probe of the root-cause fix.
+> - (2) **THE WARDEN CLICK, fresh character:** same test on a brand-new Custom Quest char
+>   (isolates any stale registry state baked into old saves).
+> - (3) **Labyrinth -> Uber + return:** kill the Minotaur Lord, through the secret door, click
+>   the pocket traveler -> "Enter the Uber Dungeon" -> crypt; click the in-crypt return ->
+>   "The Labyrinth Door (Return)" -> back at the pocket.
+> - (4) **Garden + Secret returns:** enter via Almyros; the in-area return travelers offer
+>   Helos + Blood Cave and both work.
+> - (5) **TESTHUB plaza sweep (DEV only):** all 14 plaza travelers respond with the RIGHT
+>   label and land at the RIGHT area; nothing yanks you while walking the plaza.
+> - (6) **Label integrity everywhere:** every menu row does what its label says (the
+>   corruption-era "labels were wrong too" class must be gone).
+> - (7) After promote: items (1)-(4) + (6) again on the **Steam build** (TESTHUB never uploads).
+>
 > ## 🆕 UBER-LABYRINTH ENTRANCE (2026-08-13): THE UBER DUNGEON IS NOW ENTERED FROM THE LABYRINTH OF KNOSSOS (canonical/Steam) - AND THE GUY BEHIND THE DOOR WAS MOVED + FIXED
-> ### ⚠️ R-246 SUPERSESSION NOTE (same day, later): the SPOT and the greeter's placement survive exactly as below, but the MECHANISM half is superseded - the greeter's "Enter the Uber Dungeon" MENU is gone; the walk-in DOOR beside him is the entrance now (see the R-246 section above).
+> ### ⚠️ R-248 RE-SUPERSESSION (2026-08-14): the R-246 device note that stood here is DEAD - the door is gone and the greeter's "Enter the Uber Dungeon" MENU IS BACK (one-shot armed). The spot and everything below survive exactly as written.
 > **This is a CANONICAL/Steam change (it ships), Levels + Quests together** - no database, no text
 > change. Per your three decisions: (1) the Uber Dungeon entrance goes in the Labyrinth of Knossos on
 > the STEAM build (Almyros in Helos stays as a second route); (2) the traveler you found "literally

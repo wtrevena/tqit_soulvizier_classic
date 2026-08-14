@@ -2787,10 +2787,17 @@ DRXBC2_LVL_KEY            = 'levels/world/xbloodcave/drxbc2.lvl'
 # registered as debt, per the player-surface checklist; do NOT invent unverified art).
 HELOS_HUB_PLAZA_SPECS = [
     # WEST ARC (front street mouth -> plaza west edge): the 4 established-area entrances.
-    (HELOS_TRAV_GARDEN_DBR,     59.4,  0.6, 175.6),   # OK 100/100/100
-    (HELOS_TRAV_SECRET_DBR,     63.5,  0.6, 177.5),   # OK 100/100/100
-    (HELOS_TRAV_SPARTA_DBR,     67.9,  0.6, 179.3),   # OK 100/99/97
-    (HELOS_TRAV_UBER_DBR,       64.4,  0.6, 181.6),   # CHECK 86/79/74 (west edge; >=4.19u from arc neighbours)
+    # R-248 Y-FIX (2026-08-14): secret/sparta/uber Y 0.6 -> floorCal (-1.1/-0.5/-1.1).
+    # The b62 survey set ALL 14 spots to a flat "floor Y=0.6", but the west arc slopes
+    # DOWN off the plaza pad - gate_travel_y_terrain (the migrated R-246 Y-law) read
+    # the 0x0b floorCal at these spots 1.1-2.5u BELOW the authored Y (the exact
+    # copied-not-derived class that buried tantalus). Full sweep: 8 of 14 plaza spots
+    # re-derived (west arc + west yard slope below the plaza pad); east/center spots
+    # read within 0.5u of 0.6 and keep the surveyed literal.
+    (HELOS_TRAV_GARDEN_DBR,     59.4, -1.9, 175.6),   # OK 100/100/100; R-248 unburied (floorCal -1.93)
+    (HELOS_TRAV_SECRET_DBR,     63.5, -1.1, 177.5),   # OK 100/100/100; R-248 unburied
+    (HELOS_TRAV_SPARTA_DBR,     67.9, -0.5, 179.3),   # OK 100/99/97; R-248 unburied
+    (HELOS_TRAV_UBER_DBR,       64.4, -1.1, 181.6),   # CHECK 86/79/74 (west edge; >=4.19u from arc neighbours); R-248 unburied
     # FRONT-EAST single.
     (HELOS_TRAV_BOSSARENA_DBR,  80.2,  0.6, 180.5),   # CHECK 86/82/79 (guard 3.21u)
     # EAST COLUMN (X~80.7, S->N).
@@ -2803,9 +2810,11 @@ HELOS_HUB_PLAZA_SPECS = [
     # GATE-SIDE single (east exit road).
     (HELOS_TRAV_MNEMOPHAGE_DBR, 89.0,  0.6, 188.4),   # OK 100/100/100 (gate door 3.80u)
     # WEST-YARD COLUMN (village yard W of the plaza wall gap, S->N): the 3 Hades superbosses.
-    (HELOS_TRAV_CHARON_DBR,     58.3,  0.6, 187.8),   # OK 92/91/88 (Starting_Woman 4.51u)
-    (HELOS_TRAV_EPHIALTES_DBR,  58.9,  0.6, 191.9),   # OK 97/95/92
-    (HELOS_TRAV_OBSIDIAN_DBR,   58.0,  0.6, 195.9),   # CHECK 79/75/72 (yard N end)
+    # R-248 Y-FIX: the yard sits ~1.5-2u BELOW the plaza pad; Ys re-derived from 0x0b
+    # floorCal (gate_travel_y_terrain) off the flat b62 "0.6" assumption.
+    (HELOS_TRAV_CHARON_DBR,     58.3, -1.3, 187.8),   # OK 92/91/88 (Starting_Woman 4.51u); R-248 unburied
+    (HELOS_TRAV_EPHIALTES_DBR,  58.9, -1.3, 191.9),   # OK 97/95/92; R-248 unburied
+    (HELOS_TRAV_OBSIDIAN_DBR,   58.0, -0.9, 195.9),   # CHECK 79/75/72 (yard N end); R-248 unburied
 ]
 # Min pairwise across the 14 = 4.10u (ephialtes/obsidian column steps); min landing separation =
 # 6.69u (dorus + bossarena); every quest-NPC standoff >=3.16u. Re-derive with
@@ -2956,244 +2965,27 @@ INJECT_SPECS[CATACUBE_FLOORLAST_LVL_KEY] = [
 # the HELOS_HUB_RETURN_SPECS copy above was removed -> single placement = warden-law-safe).
 UBER_LABYRINTH_ENTRANCE_SPOT = (280.0, 1.0, 150.5)
 
-# ═════════════════════════════════════════════════════════════════════════════════════════
-# ══ R-246 NATIVE-DEVICE TRAVEL (2026-08-13, docs/WILL_RULINGS.md R-246) ══════════════════
-# ═════════════════════════════════════════════════════════════════════════════════════════
-# The boat-row rig is RIPPED (build_quest_files; tools/gate_boatdialog_budget.py freezes the
-# surviving ~16-row roster). Travel is now engine-native devices with ZERO quest rows:
-#   * DOORS  = the build24/25 invented pair: born-open static GridEntrance
-#     portal_olympianarena1 (60B prefixed 0x14: 12B (2,0,1) + mouth+exit+destGUID) +
-#     GridExitOneWay portal_olympianarena2 landing (48B 0x14: mouth(=entrance.exit)+zeros).
-#     APPENDED-HOST LAW: entrances ONLY in original-index hosts; landings work anywhere.
-#   * RIFTS  = StrategicMovementTeleportShrine wired byte-exactly like the native Garden
-#     shrine: NEW 0x05 instance of teleportshrineorient01 with flags=1 + 16B UniqueId +
-#     one 1-member 'TeleportShrine' GROUPS record (uid+levelGUID+localpos+16B tail+u32 0).
-#     EXIT-only device: the portal window's destination list = base teleportmap zones.
-# Every device Y is RE-DERIVED from the destination blob's 0x0b heights + per-level native
-# -entity calibration (the buried-NPC class killer; scratchpad r246_sites.json survey,
-# 2026-08-13, vs the f9f213b baseline maps). All minted UIDs are md5('SVC-R246-<label>'),
-# byte-scanned 0x present in BOTH f9f213b baseline maps (collision-free); global uniqueness
-# is re-asserted on the BUILT artifacts by tools/gate_device_resolution.py.
-import hashlib as _r246_hashlib
 
-
-def _r246_uid(label):
-    """Deterministic minted 16-byte UID (md5 of 'SVC-R246-<label>'). Collision-checked
-    0x vs both f9f213b baseline maps at design time; the device-resolution gate
-    re-asserts global uniqueness on every built map."""
-    return _r246_hashlib.md5(('SVC-R246-' + label).encode('ascii')).digest()
-
-
-CRYPT_FLOOR1_GUID = bytes.fromhex('dbc245c358434e0bb54760b234293cc5')  # == A1 dest_guid
-# ── C4: Labyrinth (maze03) -> Uber Dungeon (crypt_floor1) door pair ──────────────────────
-R246_UBER_M1 = _r246_uid('uber-door-mouth')   # fd8dbfc6cd82...
-R246_UBER_X1 = _r246_uid('uber-door-exit')    # c55eb3461633...
-R246_UBER_DOOR_0x14 = R246_UBER_M1 + R246_UBER_X1 + CRYPT_FLOOR1_GUID   # entrance (48->60 prefixed)
-R246_UBER_LAND_0x14 = R246_UBER_X1 + b'\x00' * 32                        # crypt landing
-# ── C6: Athens catacombs (catacube02_floorlast) -> Sparta Crypt L2 door pair ─────────────
-# Reuses the 07-08 minted SPARTA_M1/X1 pair (collision-checked then; byte-scanned 0x in
-# both f9f213b baselines now - the retired placement never shipped them).
-# Entrance 0x14 = SPARTA_P1_0x14 (M1+X1+SC2 GUID, defined in the Sparta block above).
-R246_SPARTA_LAND_0x14 = SPARTA_X1 + b'\x00' * 32                         # SC2 landing
-for _p in (R246_UBER_DOOR_0x14, R246_UBER_LAND_0x14, R246_SPARTA_LAND_0x14):
-    assert len(_p) == 48
-
-# ── Court/landing destination GUIDs (merged-world LEVELS index, f9f213b baseline) ─────────
-BOSSARENA_GUID   = bytes.fromhex('6112638db5442534f7fb909aee415f7a')  # boss_arena.lvl
-WARBAND_GUID     = bytes.fromhex('57d83343434046b28f37ab8bb046af0c')  # drxfirstxistion_connection.lvl
-DORUS_TOMB_GUID  = bytes.fromhex('f174eb67c0473804bb31f78ee2578170')  # medea_templeug_tomb03.lvl
-TANTALUS_SB_GUID = bytes.fromhex('fa6fa89ebb4ad6f4516f36a7f2832a0f')  # styx_swampborder_01.lvl
-CHARON_RE_GUID   = bytes.fromhex('cd5940e8b1401fe7acce73965dc5a150')  # styx_riveredge_01.lvl
-MNEMOSYNE_GUID   = bytes.fromhex('1b5dee6915442d1a8a263993bfb949aa')  # judgment_templeug_mnemosyne01.lvl
-STONECITY_GUID   = bytes.fromhex('9fc63c43ff4b75d0ef4040bfe57556a7')  # judgment_stonecity_exit01.lvl
-DRXBC2_GUID      = bytes.fromhex('159a1a7f7c45e136b414cf95fa74f1dd')  # drxbc2.lvl
-RANDOM05A_GUID   = bytes.fromhex('9454801ef647f739446a3d9d86deb14e')  # random05a.lvl
-TOMBOBS02_GUID   = bytes.fromhex('679799dd994a74ff77b1fdb359c1c9a5')  # tombobs02.lvl
-
-# ── R-246 SHRINES (canonical C5/C7 + TESTHUB T15) ────────────────────────────────────────
-# Each entry mints a NEW flags=1+uid 0x05 instance of teleportshrineorient01 AND one
-# 1-member 'TeleportShrine' GROUPS record (level GUID resolved from the merged LEVELS index
-# at build time by svaera_plus_portals step 2c-r246 - fails loud if the level is missing).
-# pos = the 0x05 LEVEL-LOCAL position (GROUPS member pos must equal it, Duister law).
-# Y = 0x0b-derived floorCal (r246_sites.json). hub_only=True entries exist ONLY in the
-# TESTHUB build (flag-OFF byte-identity preserved).
-# NOTE boss_arena Y=28.1: RE-DERIVED from 0x0b (floorCal 28.11; naive read 28.2 agrees,
-# per-level calibration ~-0.1). The b43 "dais literal" 27.0 was a SPAWN/volume Y (actors
-# snap to mesh at spawn); static devices render at authored Y, so 27.0 sank them 1.1u
-# into the dais - the exact buried class R-246 kills. Gate-proven within 0.01u.
-R246_SHRINE_SPECS = [
-    # uber shrine (137,10,220.5): moved off (140,217.5) 2026-08-13 - the C3 clearance gate
-    # caught bonespilegoat01 0.95u + bonespile03 1.36u INSIDE the shrine pad there (the site
-    # survey's nearest-neighbor roster skipped 'other'-class dressing - gate closes that
-    # blind spot). New spot: 3.0u margin over every CLASS_MIN, on-mesh 0x0b floorCal 10.0,
-    # 5.41u from the C4 landing (>=5 law), surveyed-cell 2-layer-grid discipline kept.
-    dict(label='uber',      level_key=CRYPT_FLOOR1_LEVEL_KEY,  pos=(137.0, 10.0, 220.5),  hub_only=False),
-    dict(label='sc2',       level_key=SPARTA_LVL_KEY,          pos=(55.0, 1.0, 40.0),     hub_only=False),
-    dict(label='bossarena', level_key=BOSSARENA_LVL_KEY,       pos=(138.5, 28.1, 107.5),  hub_only=True),
-    dict(label='warband',   level_key=EN_WARBAND_HOST_KEY,     pos=(46.5, 10.0, 24.0),    hub_only=True),
-    dict(label='dorus',     level_key=DORUS_HOST_KEY,          pos=(81.5, 1.0, 55.0),     hub_only=True),
-    dict(label='tantalus',  level_key=TANTALUS_OUTDOOR_HOST_KEY, pos=(50.0, -7.7, 72.5),  hub_only=True),
-    dict(label='charon',    level_key=GOLDENBOUGH_HOST_KEY,    pos=(50.0, -12.6, 108.5),  hub_only=True),
-    dict(label='mnemophage', level_key=MNEMOPHAGE_HOST_KEY,    pos=(48.5, 3.0, 91.0),     hub_only=True),
-    dict(label='ephialtes', level_key=DREAD_HOST_KEY,          pos=(94.5, 3.0, 122.0),    hub_only=True),
-    # devourer (drxbc2): NO shrine sited in round 1 - the chamber is prop-dense (pit
-    # boulders/wedges/vessels every 1-3u); registered as BL-R246-DEBT-1. Walk-out via the
-    # blood-cave chain / warband shrine remains.
-    dict(label='vashkarr',  level_key=VASHKARR_HOST_KEY,       pos=(41.5, 1.0, 52.0),     hub_only=True),
-    dict(label='obsidian',  level_key=BROODNEST_HOST_KEY,      pos=(157.0, 1.0, 30.5),    hub_only=True),
-]
-for _s in R246_SHRINE_SPECS:
-    _s['uid'] = _r246_uid('shrine-' + _s['label'])
-    _s['tail'] = _r246_uid('shrine-' + _s['label'] + '-tail')
-    _s['group_name'] = 'SVCShrineTeleport_R246_' + _s['label']
-
-
-def build_r246_shrine_group_record(spec, level_guid):
-    """One 1-member 'TeleportShrine' GROUPS record for an R-246 shrine, mirroring the
-    Garden/Duister byte-shape exactly (sub_count=2; member = uid+levelGUID+pos(3f);
-    20B tail = opaque unique id(16) + u32 0)."""
-    assert len(level_guid) == 16
-    raw = (spec['uid'] + level_guid + struct.pack('<3f', *spec['pos'])
-           + spec['tail'] + struct.pack('<I', 0))
-    assert len(raw) == 64
-    return {'sub_count': 2, 'name': spec['group_name'],
-            'category': 'TeleportShrine', 'member_count': 1, 'raw_data': raw}
-
-
-def r246_shrine_inject_spec(spec):
-    """The 0x05 injection tuple for an R-246 shrine (flags=1 + minted UniqueId)."""
-    x, y, z = spec['pos']
-    return (TELEPORTSHRINEORIENT01_DBR, x, y, z, {'flags': 1, 'uniqueid': spec['uid']})
-
-
-# ── R-246 TESTHUB COURT: 14 doors + swirls + named marker NPCs (SVC_TEST_HUB=1 only) ─────
-# HOST = StartingFarmland06D (v0x11 shared ORIGINAL-INDEX -> entrances fire; v0x11 door
-# hosting live-proven by the retired Helos H1 door). SITE = the open field EAST of the
-# Helos gate (x 96-123.5, z 189.5-207 local) - the plaza itself cannot hold 14 walk-through
-# planes at >=6.69u from every clickable (villagers/Almyros/PortalMan/shrine exclusion
-# discs cover it; measured 2026-08-13), so the court sits through the east gate on open
-# mesh: every door clr>=85%x3 (one CHECK at 85), >=4.1u pairwise (grid pitch 5.0),
-# >=6.69u from every clickable NPC (nearest: Starting_Shepherd1 7.3u), planes off the
-# gate-road walk lane (z>=194.5 rows are >=5u north of the road line; c13 sits east of it).
-# Each door: portal_olympianarena1 + map_portal_aura swirl + its svc_helos_trav_* NPC
-# 3.54u diagonal as the NAMED mute marker (record-name tags = the label surface).
-# Y per spot = 0x0b floorCal (the field slopes 0.7 -> 5.9).
-# (label, marker_dbr, door(x,y,z), marker(x,y,z), dest_level_key, dest_guid, landing(x,y,z))
-R246_COURT = [
-    ('garden',    HELOS_TRAV_GARDEN_DBR,     (96.0, 0.7, 194.5),  (98.5, 1.3, 197.0),
-     GARDEN_LVL_KEY, GOM_GUID, (130.0, -39.0, 73.0)),
-    ('secret',    HELOS_TRAV_SECRET_DBR,     (101.0, 1.7, 194.5), (103.5, 2.3, 197.0),
-     SECRET_LVL_KEY, DFE_GUID, (24.0, 2.3, 30.0)),
-    ('sparta',    HELOS_TRAV_SPARTA_DBR,     (106.0, 2.5, 194.5), (108.5, 3.1, 197.0),
-     CATACUBE_FLOORLAST_LVL_KEY, CATACUBE_FLOORLAST_GUID, (25.0, 1.0, 38.0)),
-    ('uber',      HELOS_TRAV_UBER_DBR,       (116.0, 4.3, 194.5), (113.5, 3.7, 192.0),
-     MAZE03_LVL_KEY, MAZE03_GUID, (283.0, 1.0, 150.0)),
-    ('bossarena', HELOS_TRAV_BOSSARENA_DBR,  (96.0, 1.1, 199.5),  (98.5, 1.7, 202.0),
-     BOSSARENA_LVL_KEY, BOSSARENA_GUID, (132.0, 28.1, 104.0)),
-    ('warband',   HELOS_TRAV_WARBAND_DBR,    (101.0, 1.9, 199.5), (103.5, 2.7, 202.0),
-     EN_WARBAND_HOST_KEY, WARBAND_GUID, (40.0, 10.0, 24.0)),
-    ('dorus',     HELOS_TRAV_DORUS_DBR,      (106.0, 2.9, 199.5), (108.5, 3.5, 202.0),
-     DORUS_HOST_KEY, DORUS_TOMB_GUID, (75.0, 1.0, 55.0)),
-    ('tantalus',  HELOS_TRAV_TANTALUS_DBR,   (111.0, 3.7, 199.5), (113.5, 4.5, 202.0),
-     TANTALUS_OUTDOOR_HOST_KEY, TANTALUS_SB_GUID, (50.0, -8.9, 78.0)),
-    ('charon',    HELOS_TRAV_CHARON_DBR,     (116.0, 4.7, 199.5), (118.5, 4.9, 197.0),
-     GOLDENBOUGH_HOST_KEY, CHARON_RE_GUID, (40.0, -11.9, 110.0)),
-    ('mnemophage', HELOS_TRAV_MNEMOPHAGE_DBR, (96.0, 1.5, 204.5), (98.5, 2.1, 207.0),
-     MNEMOPHAGE_HOST_KEY, MNEMOSYNE_GUID, (42.0, 3.0, 91.0)),
-    ('ephialtes', HELOS_TRAV_EPHIALTES_DBR,  (101.0, 2.3, 204.5), (103.5, 3.1, 207.0),
-     DREAD_HOST_KEY, STONECITY_GUID, (88.0, 3.0, 122.0)),
-    ('devourer',  HELOS_TRAV_DEVOURER_DBR,   (106.0, 3.3, 204.5), (108.5, 3.9, 207.0),
-     DRXBC2_LVL_KEY, DRXBC2_GUID, (74.0, 28.0, 54.0)),
-    ('vashkarr',  HELOS_TRAV_VASHKARR_DBR,   (111.0, 4.1, 204.5), (113.5, 4.7, 207.0),
-     VASHKARR_HOST_KEY, RANDOM05A_GUID, (35.0, 1.0, 52.0)),
-    ('obsidian',  HELOS_TRAV_OBSIDIAN_DBR,   (121.0, 5.3, 192.0), (123.5, 5.9, 189.5),
-     BROODNEST_HOST_KEY, TOMBOBS02_GUID, (151.0, 1.0, 28.0)),
-]
-# LANDING NOTES (r246_sites.json evals; all on-mesh d<=0.14, same-component as the area):
-#  * charon MOVED (44,-12,106)->(40,-11.9,110): the old spot stood 1.46u from the placed
-#    styx_richman NPC (the R6 landing-on-NPC class); new spot >=5.6u from everything.
-#  * devourer kept at the b44-nudged (74,28,54): pitwedge01 scenery at 2.83u documented
-#    (accepted - the b44 rule targeted the DEADLY burstvessle class, >=4.4u here).
-#  * bossarena kept at the b43 dais literal (132,27,104), comp#1 == the fight dais.
-#  * tantalus Y -12 -> -8.9 and charon Y -12 -> -11.9: 0x0b floorCal (the buried class).
-R246_COURT_UIDS = {lbl: (_r246_uid(f'court{i:02d}-mouth'), _r246_uid(f'court{i:02d}-exit'))
-                   for i, (lbl, *_rest) in enumerate(R246_COURT)}
-
-
-def build_r246_court_specs():
-    """TESTHUB court fold: returns {level_key: [specs]} with the 14 door entrances +
-    swirls + named markers in the Helos east field, plus the 14 one-way landings in the
-    destination levels. Doors carry their own 60B (prefixed) 0x14; landings 48B."""
-    out = {}
-    helos = []
-    for (lbl, marker_dbr, door, marker, dest_key, dest_guid, landing) in R246_COURT:
-        m_uid, x_uid = R246_COURT_UIDS[lbl]
-        dx, dy, dz = door
-        helos.append((PORTAL_OLYMPIANARENA1_DBR, dx, dy, dz,
-                      {'x14_payload': m_uid + x_uid + dest_guid}))
-        helos.append((PORTAL_FX_MAP_AURA_DBR, dx, dy, dz))
-        mx, my, mz = marker
-        helos.append((marker_dbr, mx, my, mz))
-        lx, ly, lz = landing
-        out.setdefault(dest_key, []).append(
-            (PORTAL_OLYMPIANARENA2_DBR, lx, ly, lz, {'x14_payload': x_uid + b'\x00' * 32}))
-    out[HELOS_HOST_KEY] = helos
-    return out
-
-
-assert MAZE03_LVL_KEY not in INJECT_SPECS, \
-    f'uber-labyrinth entrance host key collision with INJECT_SPECS: {MAZE03_LVL_KEY}'
-# ── R-246 C4 (canonical, BOTH variants): the Labyrinth->Uber DOOR beside the greeter ─────
-# Door at the R-245 corrected treasure-pocket spot (280,1,150.5) (surveyed clr 100%x3,
-# 9.0u past the Minotaur secret door); svc_area_return_uber KEPT PLACED as the named
-# greeter, moved 3.6u SW to (278,1,147.5) (clr 49% CHECK - the pocket is ~9.6x7.4u with
-# walls; mute marker, precedent = R6 talk-NPC CHECKs) - "never drop the maze03 placement"
-# (R-245 do-not-regress) holds; his boat row is DEAD (R-246 rip), the door travels.
-# Swirl co-located (M4 visibility recipe). T4-landing (283,1,150) stays the arrival pad
-# (3.0u off the door plane, 5.6u off the greeter).
+# ── R-248 REVERT (2026-08-14, docs/WILL_RULINGS.md R-248) ─────────────────────────────────────────
+# The R-246 NATIVE-DEVICE TRAVEL block that lived here (commit 4dd9df2: _r246_uid minting,
+# the C4/C6 door 0x14 constants, 10 court-destination GUIDs, R246_SHRINE_SPECS x11 +
+# build_r246_shrine_group_record + r246_shrine_inject_spec, R246_COURT x14 +
+# build_r246_court_specs, and the canonical C4-C7 door/swirl/landing/shrine INJECT_SPECS
+# appends on maze03/catacube02_floorlast/crypt_floor1/spartacryptlevel2) is DELETED.
+# Will played the device build and refuted it in-game (R-248 verbatim: "the new portals you
+# made dont work and they lag the game out and break everything"). The device class is
+# graveyarded (MODDING_PLAYBOOK sec 10/10a: born-open GridEntrance bindings are standing
+# streaming edges; 16 of them = 32-bit memory/streaming detonation). Retirement ledgered in
+# WILL_RULINGS R-248; travel returns to boat-traveler rows (one-shot armed in
+# build_quest_files) + the proven Olympus->Rhodes FixedItemTeleport chain (untouched).
+# WHAT SURVIVES of R-246 here: the Y-vs-terrain fixes (SC2 return Y=1.0, tantalus return
+# Y=-9.3), placement hygiene, and the maze03 greeter's R-245 corrected treasure-pocket spot
+# UBER_LABYRINTH_ENTRANCE_SPOT (280,1,150.5) - restored below as the sole maze03 injection
+# (the device wave had nudged him to (278,1,147.5) to make room for the door; the door is
+# gone, so the R-245 "never drop / never regress the maze03 placement" literal returns).
+assert MAZE03_LVL_KEY not in INJECT_SPECS,     f'uber-labyrinth entrance host key collision with INJECT_SPECS: {MAZE03_LVL_KEY}'
 INJECT_SPECS[MAZE03_LVL_KEY] = [
-    (AREA_RETURN_UBER_DBR, 278.0, 1.0, 147.5),
-    (PORTAL_OLYMPIANARENA1_DBR,) + UBER_LABYRINTH_ENTRANCE_SPOT + (
-        {'x14_payload': R246_UBER_DOOR_0x14},),
-    (PORTAL_FX_MAP_AURA_DBR,) + UBER_LABYRINTH_ENTRANCE_SPOT,
-]
-
-# ── R-246 C6 (canonical, BOTH variants): THE WARDEN DESCEND DOOR (the Steam-broken route
-# this wave exists to fix). Entrance in catacube02_floorlast at (20,1,44) - surveyed clr
-# 98%x3, 11.3u from the stairsdown01 traffic funnel (>=8u law; the build25 candidate
-# (29.1,41.3) read clr 56% obstructed and 4.7u from the stairs - rejected), 7.8u from the
-# T3 forecourt landing (25,38), amid the beastmen (Gorgon proxy 5.4u, trap proxy 6.0u -
-# Will's own "amid the beastmen" pattern for this entrance; documented). The WARDEN stays
-# at his b63 spot (25,1,32) as the named greeter (13u across the same chamber - R-170
-# identity/placement law kept; the >=8u-from-stairs door law and his by-the-stairs law
-# cannot both put them side-by-side). 0x14 = SPARTA_P1_0x14 (dest SpartaCryptLevel2).
-INJECT_SPECS[CATACUBE_FLOORLAST_LVL_KEY] = INJECT_SPECS[CATACUBE_FLOORLAST_LVL_KEY] + [
-    (PORTAL_OLYMPIANARENA1_DBR, 20.0, 1.0, 44.0, {'x14_payload': SPARTA_P1_0x14}),
-    (PORTAL_FX_MAP_AURA_DBR, 20.0, 1.0, 44.0),
-]
-# ── R-246 C4 landing + C5 return rift (canonical, BOTH variants) in crypt_floor1 ─────────
-# Landing at the R6-proven chamber spot (140,10,225) (clr 100%x3; 4.0u off the in-crypt
-# marker NPC, 6.9u off the inert SV-native portal prop, urns >=5.7u) - the SAME spot both
-# Almyros routes land, so every way into the crypt arrives at one proven pad. The C5
-# return RIFT stands 7.5u down-chamber at (140,10,217.5) (clr 100%x3; minotaur statue
-# 5.2u, statue base 5.4u, urns >=8u; the bone piles within 1-3u are non-colliding floor
-# decor - navmesh walks through them). Exit via the portal window -> Helos/base zones
-# (door return impossible: crypt_floor1 is APPENDED SV-only - appended-host law).
-INJECT_SPECS[CRYPT_FLOOR1_LEVEL_KEY] = INJECT_SPECS[CRYPT_FLOOR1_LEVEL_KEY] + [
-    (PORTAL_OLYMPIANARENA2_DBR, 140.0, 10.0, 225.0, {'x14_payload': R246_UBER_LAND_0x14}),
-    r246_shrine_inject_spec(R246_SHRINE_SPECS[0]),
-]
-# ── R-246 C6 landing + C7 return rift (canonical, BOTH variants) in SpartaCryptLevel2 ────
-# Landing at (48.9,1.0,34.7) - the 07-08 recon spot with Y RE-DERIVED -1.6 -> 1.0 (the
-# navmesh datum reads 2.6u low in SC2; native entities stand at 1.0 - r246_sites.json).
-# On-mesh d=0.0, clr 74% (CHECK: SC2 is a cramped crypt; nearest collider 6.0u). The C7
-# return RIFT at (55,1,40) (clr 100%x3; urn 5.6u, landing 8.1u, marker NPC 10.2u; the
-# ug_undead skeleton spawn 3.3u is a monster, not a prop - amid-mobs pattern, documented).
-# C7 STRETCH (native SC2 0x06 two-way door) NOT bundled - its own gated mini-lane
-# (BL-R246-DEBT-2), per the brief's "never bundled silently".
-INJECT_SPECS[SPARTA_LVL_KEY] = INJECT_SPECS[SPARTA_LVL_KEY] + [
-    (PORTAL_OLYMPIANARENA2_DBR, 48.9, 1.0, 34.7, {'x14_payload': R246_SPARTA_LAND_0x14}),
-    r246_shrine_inject_spec(R246_SHRINE_SPECS[1]),
+    (AREA_RETURN_UBER_DBR,) + UBER_LABYRINTH_ENTRANCE_SPOT,
 ]
 
 
@@ -3256,12 +3048,15 @@ def build_hub_extra_specs():
         # (inert - no placement); the blood-cave 7-port master (..._cave, below) is unchanged. The 11
         # travelers cluster in the plaza; RE-SURVEYED + NUDGED 2026-07-13 (survey_uberboss_spots.py,
         # ext=3.0): 10/11 on-mesh d<=0.14u / comp#1 / clr 100% (Dorus 99%) all 3 tilesets, Garden an
-        # accepted CHECK at 93% (obstructed west edge, still walkable).
-        # ── R-246 (2026-08-13): the 14 plaza TRAVELER placements are RETIRED from this fold
-        # (HELOS_HUB_PLAZA_SPECS kept above as the historical record). Their boat rows are
-        # RIPPED; the records now stand as the COURT's named markers beside their doors in
-        # the east field (build_r246_court_specs, folded in below). The plaza itself could
-        # not hold 14 walk-through door planes at >=6.69u from every clickable.
+        # accepted CHECK at 93% (obstructed west edge, still walkable). See HELOS_HUB_PLAZA_SPECS for
+        # the per-spot clearances + the before/after coords.
+        # ── R-248 RESTORE (2026-08-14): the 14 plaza traveler placements return (the R-246
+        # device court that replaced them is in-game refuted + graveyarded). Positions are the
+        # R-245-addendum relay (HELOS_HUB_PLAZA_SPECS above: >=4.10u pairwise, >=6.69u off the
+        # (-5974,1,911) landing, quest-NPC standoffs >=3.16u) - kept current through R-246 as
+        # the historical record, now live again. Their boat rows come back ONE-SHOT armed
+        # (build_quest_files R-248 arming model), never on the refire step.
+        HELOS_HOST_KEY: list(HELOS_HUB_PLAZA_SPECS),
         # Blood-cave mouth (random09a SV swap blob): svc_testhub_master_cave was placed here but had
         # NO boat-dialog trigger targeting it (its 7-port menu was never wired; the round-1 change
         # dropped the separate svc_testhub_master trigger, and the A6 cave master never got its own).
@@ -3294,7 +3089,11 @@ def build_hub_extra_specs():
         # return (Garden/Secret/Uber/Sparta are canonical, in base INJECT_SPECS). Coords are b43's
         # reachable comp#2 dais spot (b48's stale (131,0,40) was the unreachable comp#1 floor).
         BOSSARENA_LVL_KEY: [
-            (SVC_RETURN_BOSSARENA_DBR, 136.0, 27.0, 104.0),
+            # R-248 Y-FIX: 27.0 -> 28.1. The b43 "dais literal" 27.0 was a spawn/volume
+            # Y; the 0x0b floorCal on the dais is 28.11 (the same re-derivation R-246
+            # proved for the dais devices). Actors snap at spawn, but the Y-law holds
+            # for every placed travel NPC (gate_travel_y_terrain).
+            (SVC_RETURN_BOSSARENA_DBR, 136.0, 28.1, 104.0),
 
         ],
         # ── TESTHUB-ONLY GAOLER-CAGE LOOT-FARM DUPLICATES (Will 2026-08-08) ──────────────────
@@ -3360,18 +3159,12 @@ def build_hub_extra_specs():
     for _rk, _rspec in HELOS_HUB_RETURN_SPECS:
         specs.setdefault(_rk, [])
         specs[_rk] = list(specs[_rk]) + [_rspec]
-    # ── R-246 (2026-08-13): the TESTHUB device surface - the 14-door east-field court
-    # (+ swirls + named markers) with its 14 one-way landings, and the T15 per-area
-    # return RIFT shrines. All TESTHUB-only by construction (this function only folds
-    # when SVC_TEST_HUB=1); the matching TESTHUB-only GROUPS records are appended by
-    # svaera_plus_portals step 2c-r246 under the same flag.
-    for _k, _v in build_r246_court_specs().items():
-        specs.setdefault(_k, [])
-        specs[_k] = list(specs[_k]) + list(_v)
-    for _s in R246_SHRINE_SPECS:
-        if _s['hub_only']:
-            specs.setdefault(_s['level_key'], [])
-            specs[_s['level_key']] = list(specs[_s['level_key']]) + [r246_shrine_inject_spec(_s)]
+    # ── R-248 (2026-08-14): the R-246 TESTHUB device folds (14-door east-field court +
+    # swirls + court markers + 14 one-way landings + T15 hub_only return rift shrines)
+    # are DELETED - in-game refuted, graveyarded (MODDING_PLAYBOOK sec 10/10a). The 14
+    # svc_helos_trav_* records are placed by the restored plaza fold above; the 9
+    # boss-area svc_area_return_* NPCs by the HELOS_HUB_RETURN_SPECS loop just above
+    # (devourer back at its b44-nudged (72,28,57) spot - BL-R246-DEBT-1 dissolves).
     return specs
 
 
@@ -3469,11 +3262,22 @@ def merge_hub_into_inject_specs(base_specs):
         if k == R09_LVL_KEY:
             continue  # applied via the swap path (SV blood-cave blob), not the normal loop
         base_for_k = list(out.get(k, []))
-        # R-246 (2026-08-13): the b48 Almyros de-dup is REMOVED. It existed because the
-        # TESTHUB plaza travelers duplicated Almyros's routes (same tag+dest => in-level
-        # route collision => mutes). Post-rip the court markers carry NO routes at all, so
-        # Almyros keeps his canonical placement on BOTH variants - TESTHUB QA now exercises
-        # the same ruled 3-route talk menu Steam ships.
+        # R-248 RESTORE (2026-08-14): the b48 Almyros de-dup RETURNS with the restored
+        # plaza traveler rows. The TESTHUB plaza travelers again own live routes that
+        # duplicate Almyros's (same tag+dest, e.g. tagSVCHelosToGarden) - two placed NPCs
+        # in the SAME level offering the same route makes the later-registered one MUTE
+        # (the b48 sparta-mute class). Canonical/Steam is untouched (flag-OFF never folds).
+        if k == HELOS_HOST_KEY:
+            def _spec_npc(s):
+                return bytes(s) if isinstance(s, (bytes, bytearray)) else bytes(s[0])
+            before = len(base_for_k)
+            base_for_k = [s for s in base_for_k if _spec_npc(s) != PORTAL_MASTER_NPC_DBR]
+            if len(base_for_k) == before:
+                raise ValueError(
+                    'b48 SPARTA-MUTE FIX: expected the canonical Almyros placement '
+                    f'({PORTAL_MASTER_NPC_DBR!r}) in the Helos plaza base specs to de-dup, but '
+                    'none was found. The route-collision de-dup is now a no-op - review why '
+                    'PORTAL_MASTER_SPEC left HELOS_HOST_KEY before shipping the TESTHUB hub.')
         out[k] = base_for_k + list(specs)
     return out
 
