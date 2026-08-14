@@ -1,6 +1,6 @@
 # BACKLOG - Open issues (as of 2026-07-08, from Will's live TESTHUB play session)
 
-## LANE RECORD - R-247 AKREMON ENHANCEMENT WAVE (2026-08-13, branch `feat/akremon-enhancement`, base `34b014e` = build90 ship) - arz + COUPLED Text; ROUND 2 IN FLIGHT: round-1 build REDDED at module 61/66 (orb_loot_breadth SCOPE COLLAPSED - the orb-rename clone chain left the donor Charon chests as outside referrers of the shared tables; fixed round 2 via svc_orb_breadth.DONOR_TWINS byte-gated carve-out); det-2x + gates + md5s below are only valid once this record says so; NOT INTEGRATED, NOT DEPLOYED, NOT ON STEAM
+## LANE RECORD - R-247 AKREMON ENHANCEMENT WAVE (2026-08-13, branch `feat/akremon-enhancement`, base `34b014e` = build90 ship) - arz + COUPLED Text; ROUND 3: the round-2 build REDDED one gate deeper (`toxeus_hunt_encounter.verify`, 14 problems - r247_boss_forms' bare anm-row clear left the Hunt's spear kit unbound + kept `toxeus_bladestorm` uncastable [anm_skeleton01 binds AoE360 only on sHanded/dHanded rows] + the R-94 quarrysmark soul pin contradicted ruling 6c); FIXED round 3: spear + unarmed rows REBOUND INLINE from the rig table's own clips + AoE360 on both (adfda67 both-surfaces law) + retirement-protocol gate reconciliation (soul pin -> summon per R-247.6c; Maenad-clip provenance -> RIG-COMPAT law); round-2 history: round-1 build REDDED at module 61/66 (orb_loot_breadth SCOPE COLLAPSE, fixed via svc_orb_breadth.DONOR_TWINS byte-gated carve-out); det-2x + gates + md5s below are from the ROUND-3 build; NOT INTEGRATED, NOT DEPLOYED, NOT ON STEAM
 
 **Scope (all 8 R-247 parts; ledger `docs/WILL_RULINGS.md` R-247 + R-240 amendment; report
 `docs/reports/r247_akremon_wave.md`):**
@@ -19,7 +19,12 @@
 5. ENDLESS HUNT identity (`r247_boss_forms.py` + `devourer_kit.py`): SkeletonRumorBoss +
    NewSkeleton_White + anm_skeleton01 + race Undead (b98 demon body superseded); summons =
    Huntsmen of the Endless Hunt (skeletal spear hoplites; coursers retired-but-built);
-   spear chain byte-VERIFIED correct (no fix needed - Will's softened report was right).
+   SHIPPED spear chain byte-VERIFIED correct (Will's softened report was right); ROUND 3:
+   on the NEW rig the spear + unarmed rows are rebound INLINE from anm_skeleton01's own
+   clips + 'AoE360' on both rows (adfda67 both-surfaces law; bladestorm castable), the
+   round-2 zero-inline law RETIRED (3498/3807 shipped table-carriers bind inline rows);
+   `toxeus_hunt_encounter` gates reconciled under the retirement protocol (R-94 soul pin ->
+   summon_toxeus_hunt per 6c; Maenad provenance -> RIG-COMPAT).
 6. Kill-chain + tiered souls: EoAT formula -> Legendary classification (visibility; the 100% drop
    wiring was measured CORRECT); Hunt soul now SUMMONS him (pets toxeus_hunt_1/2/3, granted 1/2/3);
    family tier ladders x1.5/x1.75 + per-tier display names (", Ascendant"/", Unbound");
@@ -33,6 +38,28 @@
    roll again (R-18 collision -> BL-R247-DEBT-7).
 8. Enslaver Epic: MEASURED ONLY (45k life / 12 regen / reflect 30@33 / Undead leech-immunity),
    ledger open tuning question. NO change.
+R3. ROUND-3 FIRST-EVER-EXECUTION SWEEP: fixing the round-2 red let the verify phase run past
+   slot 24 for the first time; FOUR latent round-1 defects then surfaced one build at a time,
+   each fixed + negative-tested before the next cold build:
+   (a) `champion_mesh`'s R-102 Hunt pin (ShadowStalker, grandfathered) MOVED the Hunt back off
+   the skeleton AFTER r247_boss_forms fixed him - pin RETIRED under the retirement protocol,
+   HUNT_MESH -> SkeletonRumorBoss.msh (measured: all 20 core bones; embedded FX = the base
+   game's own Boss Aura, q4_giantskeleton-confirmed, grandfather list updated); the Hunt family
+   gains summons=[summon_toxeus_hunt] so the 6c pet tiers are roster-derived + mesh-gated like
+   his brothers' (negtest 14/14, 2 new plants);
+   (b) `r247_boss_forms`' Lethaeus kit sentinels were the SHELL's skills (um_mnemophage_99
+   skillName17/18/19/23: sandsofsleep/distortreality/epiales_summon2/ondeath_voidnova) - the
+   CORE never carried them; corrected to the core's real byte-decoded kit (chainconvert/
+   cascade + mindshroud + breach_shadowgrasp + distortionfield; negtest 15/15);
+   (c) `charon_rework`'s own round-5 MANA gate caught the R-247.2 kit merge putting THE STYX
+   UNDERTOW into phase 1's rotation without re-funding it (measured 562.0/cycle vs 16.0 regen
+   funding 320.0) - `_ORM_MANA_REGEN` 16.0 -> 30.0, derived from the gate's own arithmetic
+   (562/20 = 28.1 minimum + headroom, under shipped Charon's 50.0 ceiling); terminal untouched
+   (its Emberfall DISPLACES a filler cast);
+   (d) `charon_rework`'s NAME-COLLISION census redded on the wave's OWN svc_akremon_* children
+   (orb proxy + 3 pools + 3 chests + 2 kit clones) - added to the census's owned-records set.
+   After (a)-(d): ALL 58 registry verify hooks GREEN in one cold gated build - the first
+   complete verify pass in this lane's history (build-3 log; zero OFFENDER/FAILED lines).
 
 **BUILD + PROOFS (FILLED-AFTER-BUILD):** arz md5 `FILLED-AFTER-BUILD` det-2x; record-diff vs
 shipped `a86afc15` = intended records only; Text.arc built + validate_tags green; contracts;
