@@ -273,12 +273,17 @@ SHARED_TABLES_ACKNOWLEDGED = {}
 # for the uber chain) would strip the treatment from the story Charon's chest -
 # a silent base-game loot nerf, the exact R-247.7 offence class.
 #
-# THE BYTE GATE: a donor is exempt ONLY while it is field-for-field identical to
-# its clone twin outside DONOR_TWIN_ALLOWED_DIFFS (`description` - the renamed
-# chest tag - is the single authored delta of the R-247.1 clone). The moment
-# either record drifts, the exemption dies, the tables return to shared/refused,
-# the floors collapse and the build reds loudly with the diverged field names
-# printed - drift is a human decision, never a quiet pass. Negative:
+# THE FIELD GATE: a donor is exempt ONLY while it is field-for-field identical
+# to its clone twin outside DONOR_TWIN_ALLOWED_DIFFS (`description` - the
+# renamed chest tag - is the single authored delta of the R-247.1 clone).
+# String values are compared CASE-NORMALIZED (`_twin_cmp` - the engine resolves
+# record refs case-insensitively, and the pipeline lowercases refs it writes
+# while untouched records keep upstream mixed case; a case variant of the same
+# path is not drift). The moment either record REALLY drifts (different target
+# record, different number, added/removed field, dtype change), the exemption
+# dies, the tables return to shared/refused, the floors collapse and the build
+# reds loudly with the diverged fields AND both values printed - drift is a
+# human decision, never a quiet pass. Negative:
 # `tools/debug/negtest_orb_breadth.py` N10 plants exactly that divergence.
 DONOR_TWINS = {
     r'records\xpack\item\containers\bosschest02_charon_01.dbr':
@@ -305,11 +310,38 @@ def _twin_fields(db, rec):
     return out
 
 
+def _twin_cmp(vals):
+    """Comparable form of one field's values: strings are compared
+    case-normalized (`_n`), everything else exact.
+
+    WHY (MEASURED, round-2 build 1): the upstream arzs carry MIXED-case
+    reference paths (`Records\\Item\\...\\BossGoldGenerator.dbr`); modules that
+    WRITE a reference write it `_n`-lowercased. So a record that has ever been
+    written carries lowercase refs while an untouched one keeps upstream case -
+    the shipped a86afc15 donor itself shows both in one record (mesh mixed-case,
+    the 4 ref fields lowercase). The clone is written (description) and so gets
+    re-encoded; the donor is untouched in the R-247 build - a case-only,
+    semantics-free divergence on goldGenerator/levelEquationFile/openSound/
+    tables that redded build 1 at slot 59. The engine resolves record refs
+    case-insensitively, so the twin law compares what the engine sees. Every
+    REAL drift (different target record, different number, added/removed field,
+    dtype change) still differs after normalization - negtest N10 proves it."""
+    return [_n(v) if isinstance(v, str) else v for v in vals]
+
+
 def twin_field_diffs(db, donor, clone):
-    """Field names on which donor and clone differ, ignoring the allowed set."""
+    """Field names on which donor and clone differ SEMANTICALLY (strings
+    case-normalized - see `_twin_cmp`), ignoring the allowed set."""
     a, b = _twin_fields(db, donor), _twin_fields(db, clone)
     allowed = {f.lower() for f in DONOR_TWIN_ALLOWED_DIFFS}
-    return sorted(k for k in (set(a) | set(b)) - allowed if a.get(k) != b.get(k))
+    out = []
+    for k in sorted((set(a) | set(b)) - allowed):
+        ta, tb = a.get(k), b.get(k)
+        if ta is None or tb is None:
+            out.append(k)
+        elif ta[1] != tb[1] or _twin_cmp(ta[0]) != _twin_cmp(tb[0]):
+            out.append(k)
+    return out
 
 
 def _twin_exempt(db, lk, referrer, chest_set):
@@ -331,12 +363,16 @@ def _twin_exempt(db, lk, referrer, chest_set):
     if diffs:
         if key not in _TWIN_ANNOUNCED:
             _TWIN_ANNOUNCED.add(key)
+            a, b = _twin_fields(db, referrer), _twin_fields(db, twin)
+            detail = '; '.join('%s: donor=%r clone=%r' % (f, a.get(f), b.get(f))
+                               for f in diffs)
             print("  ORB BREADTH: DONOR-TWIN PIN VOID - %s has drifted from its "
-                  "R-247 clone %s on field(s) %s. The same-bytes law is broken, "
-                  "so the shared-table refusal is BACK ON for its tables (expect "
-                  "the scope floor to red). Re-decide the pin; never widen blind."
+                  "R-247 clone %s on field(s) %s [%s]. The same-bytes law is "
+                  "broken, so the shared-table refusal is BACK ON for its tables "
+                  "(expect the scope floor to red). Re-decide the pin; never "
+                  "widen blind."
                   % (ref_l.rsplit('\\', 1)[-1], twin_l.rsplit('\\', 1)[-1],
-                     ', '.join(diffs)))
+                     ', '.join(diffs), detail))
         return False
     if key not in _TWIN_ANNOUNCED:
         _TWIN_ANNOUNCED.add(key)

@@ -779,8 +779,10 @@ _FX_BLOOM_DEATH = _FX + r'\ascacophus_deathfx.dbr'
 # 18 -> 15 (SCOPE COLLAPSED, exit 1 at module 61/66 - reproduced by the vet's
 # cold gated build). The fix is the pinned DONOR-TWIN carve-out in
 # `svc_orb_breadth.DONOR_TWINS`: a donor container is exempt from the refusal
-# ONLY while byte-identical to its clone twin outside `description`, verified
-# per build, announced in the log, and negtested (negtest_orb_breadth N10).
+# ONLY while field-identical to its clone twin outside `description` (string
+# values compared case-normalized - the pipeline lowercases refs it writes,
+# untouched records keep upstream mixed case; see svc_orb_breadth._twin_cmp),
+# verified per build, announced in the log, negtested (negtest_orb_breadth N10).
 # That keeps the shipped sharing (uber orb + story Charon on the same widened
 # tables - the ratified a86afc15 state) instead of either nerfing the story
 # Charon's chest (table-clone route) or redding the build forever.
