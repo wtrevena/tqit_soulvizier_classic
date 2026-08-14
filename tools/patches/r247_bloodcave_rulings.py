@@ -147,15 +147,25 @@ def apply(db, tags):
             raise SystemExit("[r247_bloodcave] stash table MISSING: %s" % rec)
         mn = str(_gv(db, rec, 'numSpawnMinEquation', ''))
         mx = str(_gv(db, rec, 'numSpawnMaxEquation', ''))
-        want_mn, want_mx = _TRIMMED[rec]
-        if not (mn.endswith(want_mn) and mx.endswith(want_mx)
-                and mn.startswith(_BRACKET) and mx.startswith(_BRACKET)):
+        # Two legal pre-states, both measured: (i) the SV originals - a FRESH build,
+        # where R247_STASH_EXEMPT already kept the trim off these tables and the SV
+        # donor values flowed through untouched (the monolith's hoard standardization
+        # HARD-EXCLUDES the esti chest); (ii) the R-240-trimmed per-tier values - a
+        # replay over an already-trimmed db (e.g. the shipped build90 arz). Anything
+        # else = an unmeasured writer; refuse.
+        trim_mn, trim_mx = _TRIMMED[rec]
+        is_sv = (mn == _SV_MIN_EQ and mx == _SV_MAX_EQ)
+        is_trimmed = (mn.startswith(_BRACKET) and mx.startswith(_BRACKET)
+                      and mn.endswith(trim_mn) and mx.endswith(trim_mx))
+        if not (is_sv or is_trimmed):
             raise SystemExit(
                 "[r247_bloodcave] 7(a) PRE-STATE DRIFT on %s: numSpawn = %r/%r, "
-                "expected the R-240-trimmed %s/%s. Either the trim moved, a new "
-                "writer appeared, or this module is mis-ordered (it must run AFTER "
+                "expected the SV originals (%s/%s, fresh build under the carve-out) "
+                "or the R-240-trimmed %s/%s (replay). A third value means a new "
+                "writer appeared or this module is mis-ordered (it must run AFTER "
                 "loot_volume_trim). Refusing to overwrite an unmeasured state."
-                % (rec.rsplit('\\', 1)[-1], mn, mx, want_mn, want_mx))
+                % (rec.rsplit('\\', 1)[-1], mn, mx, _SV_MIN_EQ, _SV_MAX_EQ,
+                   trim_mn, trim_mx))
         for f, want in list(_KEPT_CHANCES.items()) + [_RELIC_ROW]:
             got = _gv(db, rec, f)
             if not _close(got, want):
