@@ -85,9 +85,14 @@ MODULE_NAME = 'Aithon, the Ember-Crowned (Olympian Arena boss finish)'
 S, F, I = M.DATA_TYPE_STRING, M.DATA_TYPE_FLOAT, M.DATA_TYPE_INT
 
 # ── The arena chain (all present in build38; ref-scan proved the containment) ──
-_PROXY = r'records\proxies custom\bossarena\boss_satyrshaman.dbr'          # quest-spawned Proxy (standard invisible spawner)
+_PROXY = r'records\proxies custom\bossarena\boss_satyrshaman.dbr'          # the arena spawner Proxy (R-250: now MAP-PLACED, not quest-spawned)
 _POOL = r'records\proxies custom\bossarena\pools\satyr_shaman_01.dbr'      # ProxyPool (spawned 3 bosses)
 _BOSS = r'records\creature\monster\bossarena\boss_satyrshaman_55.dbr'      # the apex (upgraded in place)
+
+# ── R-250 (BL-W0814-12): spawn-eligibility records ────────────────────────────
+_LIMIT = r'records\proxies custom\bossarena\limit_bossarena.dbr'           # NEW: our own always-on ProxyLimits [1..110]
+_HOARD_PREFIX = 'aithon'                                                   # -> svc_aithonhoard_{01,02,03}
+_HOARD_TAG = 'tagSVCAithonHoard'
 
 # ── The arena's own Elysium portals (SV-native; hidden this wave - see 1b) ─────
 _PORTAL_ENTRANCE = r'records\quests\portal_olympianarena1.dbr'             # GridEntrance (quest-opened; the ONE that renders a mesh)
@@ -104,6 +109,25 @@ _SHROUD_FXPAK = r'records\effects\earth\ringofflame\ringofflame_charfx.dbr'
 _SK_FIRE_AURA = r'records\skills\monster skills\auras\damage_arenafirebonus.dbr'
 _SK_FLAMESURGE = r'records\skills\monster skills\attack_projectile\arena_flamesurge.dbr'
 _SK_ARMOR = r'records\skills\monster skills\defense\armor_passive.dbr'
+
+# ── R-250 SPAWN-GUARANTEE DECLARATION (read by tools/gate_arena_spawn_guarantee.py) ──
+# The machine-readable contract this module promises about the arena spawn chain. The
+# gate asserts (a) that these declared values are UNCONDITIONAL (no player-level window,
+# no sub-100 chance, no quest flag, >=1 guaranteed main) and (b) that a built arz matches
+# them exactly. Keeping it as DATA rather than a comment is what makes "the arena boss
+# spawns on every visit" checkable without a build.
+SPAWN_GUARANTEE = {
+    'label': 'Olympian Arena (Aithon, the Ember-Crowned)',
+    'proxy': _PROXY,
+    'pool': _POOL,
+    'main_monster': _BOSS,
+    'limit': _LIMIT,
+    'quest_flag': 0,             # 0 = a world-placed spawner, not a quest-only proxy
+    'chance_to_run': 100.0,      # spawns every time the level streams in
+    'limit_window': (1, 110),    # min/max PLAYER level, all three difficulties
+    'pool_equation': '',         # empty => the literal spawnMin/Max are the runtime counts
+    'min_guaranteed_mains': 1,   # spawnMax - championMax
+}
 
 # ── Soul design (amgoz1 voice) ────────────────────────────────────────────────
 _SOUL_BASE = 'aithon_embercrown'
@@ -135,6 +159,44 @@ def apply(db, tags):
     sf(_PROXY, 'invisibleInWorld', 1)
     sf(_PROXY, 'maxTransparency', 1.0)
     sf(_PROXY, 'castsShadows', 0)
+    db._modified.add(_PROXY)
+
+    # ── 1c. R-250 (BL-W0814-12): SPAWN 100%, EVERY VISIT ──────────────────────
+    # Will 2026-08-14: "when i went to the boss arena this time there was no boss
+    # there. does he not spawn 100% of the time? the boss arena needs more work."
+    # THREE stacked defects, all measured against the shipped arz + the built
+    # Quests.arc (not guessed). Two are DB-side and are fixed here:
+    #
+    #   (2) PLAYER-LEVEL WINDOW. difficultyLimitsFile was the base quest-proxy
+    #       limit records\xpack\quests\proxies\limit_quest.dbr, whose windows are
+    #       min/max PLAYER level [29..36] Normal, [41..55] Epic, [60..75] Legendary.
+    #       A character outside that band gets NO spawn - an empty arena with a
+    #       perfectly healthy quest and pool. Repointed to our own always-on
+    #       limit_bossarena [1..110] on all three difficulties, minted by the same
+    #       _svc_widen_limit that every placed uber uses (limit_tantalus precedent),
+    #       so no player level can ever suppress the arena boss again.
+    #   (3) QUEST-PROXY CONFIG. quest=1 and NO chanceToRun field, versus the shipped
+    #       placed-uber exemplar q_tantalus_lone (quest=0, chanceToRun=100.0,
+    #       difficulty_04 budget). Now matched exactly: the proxy is a normal
+    #       world-placed spawner. difficulty_quest's budget (averagePlayerLevel*3.5)
+    #       is also replaced by difficulty_04's (*6), the budget every placed uber
+    #       of ours runs on - a 3-member L55+ pool is affordable under *6 and can be
+    #       starved under *3.5.
+    #   (1) THE ONE-SHOT QUEST SPAWN is fixed OUTSIDE this module (it is not a DB
+    #       defect): the proxy is now a STATIC 0x05 placement in boss_arena.lvl
+    #       (build_section_surgery ARENA_BOSS_PROXY_DBR, flags=0 -> re-spawns on
+    #       every level stream) and build_quest_files _neutralize_bossarena_spawn
+    #       drops the quest's duplicate Action_SpawnEntityAtLocation. COUPLED SHIP:
+    #       Levels + Quests + arz together.
+    if not M._svc_widen_limit(db, M._SVC_LIMIT_DONOR, _LIMIT):
+        raise SystemExit(
+            f'BOSSARENA: cannot mint {_LIMIT} - the ProxyLimits donor '
+            f'{M._SVC_LIMIT_DONOR} is missing, so the arena boss would keep the '
+            f'[29..36]/[41..55]/[60..75] player-level window that made him a no-show.')
+    sf(_PROXY, 'quest', 0)
+    sf(_PROXY, 'chanceToRun', 100.0, F)          # NEW field -> explicit dtype (the FLOAT-chance trap)
+    sf(_PROXY, 'difficultyLimitsFile', _LIMIT)
+    sf(_PROXY, 'difficultyEquationFile', M._SVC_DIFFICULTY04)
     db._modified.add(_PROXY)
 
     # ── 1b. GRAY PLANES + GREEN GLOW: hide the vestigial Elysium arena portals ─
@@ -235,6 +297,53 @@ def apply(db, tags):
             f'BOSSARENA: champion-crowd-out - guaranteed main slots = '
             f'{_spawn_max - _champ_max} (spawnMax={_spawn_max}, championMax={_champ_max}); '
             f'the apex would never spawn. Need spawnMax - championMax >= 1.')
+    # R-250: exactly ONE apex (the shipped q_tantalus_lone pool's limit1=1 shape) and
+    # NO spawn-count equation. The inherited proxypoolequation_quest is identity
+    # (poolValue*1), but an equation present at all means the literal spawnMin/Max are
+    # not what the gate can reason about - _svc_neutralize_pool_equation empties it, so
+    # the counts asserted just above are the counts that spawn. This is also what makes
+    # the pool eligible for the mod-wide spawn-eligibility invariant registered below
+    # (check (C) reds on any non-empty proxyPoolEquation).
+    sf(P, 'limit1', 1, I)                        # NEW field -> explicit dtype
+    M._svc_neutralize_pool_equation(db, P)
+    db._modified.add(P)
+
+    # ── 4b. R-250: register the arena chain in the MOD-WIDE spawn-eligibility gate ──
+    # b43 deliberately kept this pool OUT of _verify_mod_spawn_proxies_eligible because
+    # check (B) (main charLevel <= the limit window max) would false-fail against the
+    # base quest window [29..36]. That reason is now GONE: 1c repointed the proxy at
+    # limit_bossarena [1..110] and emptied the pool equation, so all three checks
+    # ((A) champion-crowd-out, (B) limit containment for charLevel [55,69,75],
+    # (C) no spawn-count equation) are satisfiable and MEANINGFUL here. Registering it
+    # turns "the arena boss spawns" from an inline assert into the same build invariant
+    # every other placed uber carries - the whole point of BL-W0814-12.
+    M._MOD_AUTHORED_SPAWN_PROXIES.append(
+        {'proxy': _PROXY, 'pool': _POOL, 'main_monster': _BOSS,
+         'name': 'Aithon, the Ember-Crowned (Olympian Arena)'})
+
+    # ── 4c. R-250 POLISH: the arena finally PAYS (b43 RCA sec 6 item 5) ───────────
+    # "the arena has no loot and no chest (verified: 0 chest/loot strings in the blob)."
+    # A hub destination whose apex is a stat-wall with no hoard is exactly the
+    # "underbaked" Will flagged. Build the standard dedicated Boss-locked hoard chain
+    # (loot table -> FixedItemContainer -> ProxyAccessoryPool per difficulty, cloned
+    # from the proven hidden-bloodcave mega-chest donors) and wire it as the arena
+    # proxy's accessory tiers, so ONE chest spawns with the encounter and unlocks when
+    # Aithon dies (LockedClassification Boss). This is the general_guardians pattern
+    # (accessory hoard on the proxy), NOT the b42 world-chest pattern - the arena boss
+    # is not in _SVC_FIXED_UBER_CHESTS, whose invariant requires EMPTY accessory tiers.
+    # ONE chest, per R-108 (Will: "he has three chests ... where he should only have
+    # one"). Content is region-tuned by _svc_standardize_boss_chests: 'svc_aithonhoard'
+    # is registered in _SVC_CHEST_STD (Aithon charLevel [55,69,75] -> 55-57/63-65/63-65),
+    # and that battery runs AFTER this registry module, so the tuning applies.
+    _hoard = M._svc_build_dedicated_hoard(db, _HOARD_PREFIX, _HOARD_TAG)
+    if not _hoard:
+        raise SystemExit(
+            'BOSSARENA: the dedicated-hoard donors are missing, so the Olympian Arena '
+            'would ship reward-less again - the exact defect BL-W0814-12 (b) is about.')
+    sf(_PROXY, 'accessory1', _hoard['01'], S)
+    sf(_PROXY, 'accessoryEpic1', _hoard['02'], S)
+    sf(_PROXY, 'accessoryLegendary1', _hoard['03'], S)
+    db._modified.add(_PROXY)
 
     # ── 5. THE SOUL: {^F}Aithon, the Ember-Crowned Soul (amgoz1 signature) ────
     # His own fire-nova proc, wired to ERUPT when he is struck (temperament-matched
@@ -283,7 +392,13 @@ def apply(db, tags):
     tags[_MON_TAG] = 'Aithon, the Ember-Crowned'
     tags[_CHAMP_TAG] = 'Satyr ~ Ember Warden'
     tags[_SOUL_TAG] = '{^F}Aithon, the Ember-Crowned Soul'
+    tags[_HOARD_TAG] = "Ember-Crowned Hoard"       # R-250: the arena's reward chest
 
+    print("  Olympian Arena R-250 (BL-W0814-12): spawn made UNCONDITIONAL - proxy "
+          "quest=0 + chanceToRun=100 + limit_bossarena [1..110] (was the base quest "
+          "window [29-36]/[41-55]/[60-75]) + difficulty_04 budget + pool limit1=1 and "
+          "no spawn-count equation; registered in the mod-wide spawn-eligibility gate; "
+          "Ember-Crowned Hoard (Boss-locked, region-tuned) wired as the accessory chest")
     print("  Olympian Arena: Aithon, the Ember-Crowned (satyr fire apex, scale 1.9, "
           "HP [42k,54k,66k], fire/burn wall, ring-of-flame shroud) + 2 Ember Satyr "
           "Warden honor guard (pool 1 apex + 2 champions) + proxy hardened invisible "

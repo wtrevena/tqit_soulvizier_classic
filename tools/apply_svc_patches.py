@@ -17074,6 +17074,13 @@ _SVC_CHEST_STD = {
     # is satisfied by measurement, not by hope.
     'svc_mnemophagehoard': ('45-47', '63-65', '63-65'),    # Mnemophage[46,68,100] Pools of Mnemosyne (Act5/Judgment)
     'svc_diadochihoard':   ('57-59', '63-65', '63-65'),    # Helepolis [58,80,97]  Fields of the Diadochi (Act6/Elysian)
+    # R-250 (BL-W0814-12 (b), Will "the boss arena needs more work"): the Olympian
+    # Arena apex guarded NOTHING (b43 RCA sec 6 item 5 - 0 chest/loot strings in the
+    # whole blob). Aithon now carries the same dedicated Boss-locked hoard as every
+    # other apex (tools/patches/bossarena.py), on the identical region-tuned chain.
+    # Bracket derived the same way as every row above: his charLevel per difficulty
+    # snapped to the nearest base bracket, capped at 63-65 (the top loot tier).
+    'svc_aithonhoard':     ('55-57', '63-65', '63-65'),    # Aithon    [55,69,75]  Olympian Arena (Olympus)
 }
 _SVC_BOSS_DEFAULT_TABLE = r'records\item\containers\defaultloot\boss_default_%s.dbr'
 
