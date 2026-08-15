@@ -6,18 +6,21 @@
 
 **BL-W0814-1 ENSLAVER BLACK SMOKE (mesh?):** "toxeus the enslaver still doesnt have the black smoke around him that his summoned demons do (I think we need to use the mesh i think)". The Enslaver himself lacks the black-smoke shroud FX his summoned demons carry. Will's hypothesis: it's on the MESH. Investigate the demon summons' mesh/FX vs the Enslaver's; give the Enslaver the same shroud. (Long-running "demon shroud" ask - never landed on the Enslaver himself.)
 
-**BL-W0814-2 OBSIDIAN HOARD CHESTS over-nerfed + RECORD SEPARATION:** "the obsidian hoard chests that we have added in the game in locations such as the obsidian halls are still nerfed too much. if these share the same record as the chest - toxeus the murderer, devourer of blood hidden's chest we need to seperate those records since those should be tuned differently." => obsidian-halls chests (svc_obsidianhoard_*) drop too little; if they share a loot record with the Devourer's hidden chest, CLONE-and-separate so each tunes independently; then bump the obsidian hoards toward SV richness. (Note: prior recon flagged svc_obsidianhoard_loot_02/03 as orphaned pattern-clones - re-verify against LIVE placements now that Will sees them in-game.)
+**BL-W0814-2 OBSIDIAN HOARD CHESTS over-nerfed + RECORD SEPARATION - ✅ ADDRESSED BY R-250** (branch `fix/chest-generosity-shared-cause`, awaiting integration + Will's in-game confirm `BL-R250-DEBT-3`). The recon note below was RIGHT about the symptom and 6x small about the scope: 18 of the 27 `svc_*hoard_loot_0N` records were orphans, not just obsidian's `02/03`. Will's sharing suspicion was also right, with one correction - the obsidian tables never shared with the Devourer's stash; the **Propontis** chest (`svc_dorushoard_*`, a clone of the Obsidian Hoard chest that even carries `description = tagSVCObsidianHoard`) is what shared with THEM. It now has its own family. See the R-250 lane record. Original report kept verbatim below.
+> "the obsidian hoard chests that we have added in the game in locations such as the obsidian halls are still nerfed too much. if these share the same record as the chest - toxeus the murderer, devourer of blood hidden's chest we need to seperate those records since those should be tuned differently." => obsidian-halls chests (svc_obsidianhoard_*) drop too little; if they share a loot record with the Devourer's hidden chest, CLONE-and-separate so each tunes independently; then bump the obsidian hoards toward SV richness. (Note: prior recon flagged svc_obsidianhoard_loot_02/03 as orphaned pattern-clones - re-verify against LIVE placements now that Will sees them in-game.)
 
 **BL-W0814-3 ENDLESS HUNT NO EQUIPMENT/WEAPON:** "toxeus the murderer the endless hunt is not wearing any equipment and i dont think he has a weapon." DESPITE the R-247 spear-RIG work (anim rows bound), he is not actually EQUIPPED - no armor, likely no weapon in hand. Distinct from the rig fix: this is equip chance/slot on um_toxeus_hunt_99 (+ his equipment loadout). Give him the spear + armor the family wears.
 
 **BL-W0814-4 DEATH PENALTY -50% MORE:** "lets reduce the penalty for dying by another 50% from what it currently is at." Halve the current death penalty again (measure current value first; the tombstone recovery = death loss coupling from R-109 must stay consistent).
 
-**BL-W0814-5 APHORYTEUS (sp?) DREAD HOARD chest over-nerfed:** "Another terrible chest aphoryteus (spelled wrong) dread hoard is a terrible chest, it got nerfed somewhere along the way and needs to drop more items." Identify the real record (name ~ "Aphoryteus/Amphitryos Dread Hoard"); it got trimmed (likely R-240/R-242); restore toward SV richness (same class as BL-W0814-2 + the R-247.7a stash reverts).
+**BL-W0814-5 APHORYTEUS (sp?) DREAD HOARD chest over-nerfed - ✅ ADDRESSED BY R-250** (branch `fix/chest-generosity-shared-cause`; in-game confirm = `BL-R250-DEBT-3`). RECORD IDENTIFIED: "aphoryteus dread hoard" = **`tagSVCEphialtesHoard` = "Ephialtes's Dread-Hoard"** (`svc_ephialteshoard_*`, the Dread Halls uber). Cause was the shared one, not a per-chest nerf: all three tiers opened base-game `boss_default_*` and their own tables were orphans. Original report kept verbatim below.
+> "Another terrible chest aphoryteus (spelled wrong) dread hoard is a terrible chest, it got nerfed somewhere along the way and needs to drop more items." Identify the real record (name ~ "Aphoryteus/Amphitryos Dread Hoard"); it got trimmed (likely R-240/R-242); restore toward SV richness (same class as BL-W0814-2 + the R-247.7a stash reverts).
 
-**BL-W0814-6 SPARTA CRYPT TRAVELER / WARDEN STILL BROKEN (P1, on canonical+Steam) — WARDEN AUTO-DISMISS (part a) FIXED BY R-249 (branch `feat/warden-fix-almyros-trim`, awaiting integration + in-game confirm BL-R249-DEBT-2):** the ship-relevant symptom (a) — the descend popup opens then AUTO-DISMISSES before the click, then mute on re-click — is root-caused to the awakening `Action_UpdateNPCDialog` `delayTime` = 2.0s (0x40000000) inherited from the Leinth vortex: reached by teleport, the player clicks inside the 2s window and the delayed pak re-assignment closes the just-opened boat menu. R-249 sets `delayTime=0` (base quest-7 boatman value) in the shared `_npc_awaken_actions` helper, so the pak assigns at level load before any click — KEEPING the boat-traveler method (Will explicitly REJECTED the fixed-portal/Typhon-style conversion this item previously proposed: R-249 "no we dont want to do the typhon-style fix... we just need to fix the issue with the warden"). Parts (b) no-pets/can't-move and (c) cross-binding are TESTHUB-ONLY plaza-launcher symptoms (golden-bough/garden-court, NOT on canonical/Steam) and remain open under the R-248 TESTHUB capacity-probe debt. Original report kept verbatim below.
+**BL-W0814-6 SPARTA CRYPT TRAVELER / WARDEN STILL BROKEN (P1, on canonical+Steam) - WARDEN AUTO-DISMISS (part a) FIXED BY R-249 (branch `feat/warden-fix-almyros-trim`, awaiting integration + in-game confirm BL-R249-DEBT-2):** the ship-relevant symptom (a) - the descend popup opens then AUTO-DISMISSES before the click, then mute on re-click - is root-caused to the awakening `Action_UpdateNPCDialog` `delayTime` = 2.0s (0x40000000) inherited from the Leinth vortex: reached by teleport, the player clicks inside the 2s window and the delayed pak re-assignment closes the just-opened boat menu. R-249 sets `delayTime=0` (base quest-7 boatman value) in the shared `_npc_awaken_actions` helper, so the pak assigns at level load before any click - KEEPING the boat-traveler method (Will explicitly REJECTED the fixed-portal/Typhon-style conversion this item previously proposed: R-249 "no we dont want to do the typhon-style fix... we just need to fix the issue with the warden"). Parts (b) no-pets/can't-move and (c) cross-binding are TESTHUB-ONLY plaza-launcher symptoms (golden-bough/garden-court, NOT on canonical/Steam) and remain open under the R-248 TESTHUB capacity-probe debt. Original report kept verbatim below.
 > Will's verbatim in-game sequence (TESTHUB): "the spartan crypt traveler isnt working still. i was able to travel from helos via the traveler to athena catacombs level 3 where you see the npc that takes you to the spartan crypt, when i clicked on him a pop up came up that said something like do you want to descend into the spartan crypt and before i could click on it the question went away and then when i clicked the warden of the spartan crypt again nothing happened." + "when i clicked on the traveler from helos to travel to the golden bough, after i traveled back to helos... when i clicked on the guy to travel to the golden bough then it teleported me to what i think is the spartan crypt but my pets did not come with me and i cant move in the spartan crypt... i teleported back to helos, then when i clicked on the traveler again to go to the golden bough, nothing happened... then... i clicked on the guy to travel me to the garden of merchants, and he sent me to the river styx (the area where the boss monster is that summons the briarwood)." => NEW SIGNATURES beyond the b63 mute: (a) Warden descend popup FIRES then AUTO-DISMISSES before click (competing OnLevelLoad refire? churn re-arm cancelling the dialog?); (b) golden-bough->sparta-crypt with NO PETS + CAN'T MOVE (off-mesh landing OR a teleport type that strands + drops pets); (c) residual CROSS-BINDING at 51 TESTHUB rows under churn (golden-bough->sparta, garden->river-styx = still executing other rows after heavy travel/death churn). NOTE: all of (b)(c) involve TESTHUB-ONLY plaza launchers (golden-bough/garden-court) = NOT on canonical/Steam; (a) the Warden IS on canonical => the auto-dismiss is the ship-relevant one. Root-cause the popup auto-dismiss + the churn residual; the definitive fix for the whole class = FIXED-PORTAL conversion (R-248 DEBT-4, mechanism B, Typhon->Rhodes style) which removes per-click quest rows entirely.
 
-**BL-W0814-7 SECRET PLACE GIFT BOX +3x ITEMS:** "the gift box in the secret places need to increase the number of items dropped by 3x." Identify the Secret Place (darkforestenter) gift-box chest record + its loot table; triple the item COUNT it drops (numSpawn* / loot slot count, not just chance). Same chest-generosity class as BL-W0814-2/5 (obsidian + aphoryteus hoards) + the R-247.7a stash reverts - candidate to batch into one chest-tuning lane.
+**BL-W0814-7 SECRET PLACE GIFT BOX +3x ITEMS - ✅ ADDRESSED BY R-250** (branch `fix/chest-generosity-shared-cause`; in-game confirm = `BL-R250-DEBT-3`). CHAIN IDENTIFIED from the merged map + arz: `proxyspawner_sp_chest` world-placed **5x** (DarkForestEnter x1, SecretForest2 x2, PillagedVillage x2 - hence "the secret **places**") -> `poolspawner_sp` -> `sp_chest_marker_deco` (`tagSecretPresentSpawner`) -> `proxy_sp_chest` -> `pool_sp_0N` -> `sp_chest_0N` (`tagSecretPresentBOX`) -> **`loottable_sp_0N`**, taken from `*1.8/*2.1` to `*5.4/*6.3` = exactly 3x the item COUNT, composition untouched. Original report kept verbatim below.
+> "the gift box in the secret places need to increase the number of items dropped by 3x." Identify the Secret Place (darkforestenter) gift-box chest record + its loot table; triple the item COUNT it drops (numSpawn* / loot slot count, not just chance). Same chest-generosity class as BL-W0814-2/5 (obsidian + aphoryteus hoards) + the R-247.7a stash reverts - candidate to batch into one chest-tuning lane.
 
 **BL-W0814-8 UBER DUNGEON INTERIOR (crypt_floor1) LOOKS UNFINISHED** (Will 2026-08-14, first play now that the labyrinth entrance is CONFIRMED WORKING). Level = `levels/world/uberdungeon/crypt_floor1.lvl`; entrance lands at chamber (-2438,10,-2457). Three symptoms Will reported in-game, verbatim:
   - **(a) Minimap misaligned with the map.** "the minimap is misaligned with the map in the uber dungeon." NOTE: this is a REGRESSION/incomplete of the b46/b46r2/b46r3 minimap lane (Will 2026-07-13) which set crypt_floor1's LEVELS zone dbr -> _ZONE_GREECE_DELPHI in svaera_plus_portals.py:291 specifically to fix "the drawn minimap does not line up with the level." Either the fix never landed in the shipped CANONICAL map, was TESTHUB-only, or was insufficient. Forensic must confirm the shipped canonical crypt_floor1 zone binding.
@@ -29,15 +32,145 @@
 
 **BL-W0814-10 DEVOURER OF BLOOD DID NOT DROP HIS SOUL** (Will 2026-08-14): "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul." The Devourer (`um_bloodtoxeus_99`) killed, but his named SOUL item did not drop despite an intended 100% guaranteed drop. Fix = audit the Devourer's loot table / lootMasterTable chain for the soul entry: confirm the soul item is present in his drop pool AND that its drop CHANCE is 100% (not gated by difficulty, championChance, or a percentage roll). Check whether the drop is on the base record vs a difficulty/uber variant and whether the killed instance is the one carrying the loot ref. RELATED to the R-247 soul/summon wave (tiered souls, Enslaver-summon, EoAT forge formula visibility) and BL-W0814-9 (Devourer bow) - same boss; candidate to batch into the Devourer/boss-equipment+loot lane.
 
-**BL-W0814-11 GREAT HALL OF PROPONTIS UBER-BOSS CHEST OVER-NERFED (only 2 items)** (Will 2026-08-14, "are you kidding me. this is outrageous"): the chest in the Great Hall of Propontis that is locked behind that area's uber boss "literally just dropped two items one thing of gold and incarnation of guan-yu's grace." An uber-boss-gated chest dropping gold + ONE relic is absurdly stingy. SAME OVER-NERF CLASS as BL-W0814-2 (obsidian hoard chests), BL-W0814-5 (Aphoryteus Dread Hoard), and the R-247.7a Devourer-stash reverts. Fix = identify the Propontis uber-boss chest record + its loot table, and restore it to proper uber-tier generosity (multiple guaranteed high-tier items, not a 1-item roll). BATCH with the other over-nerfed-chest items into ONE chest-generosity audit lane (also covers BL-W0814-7 Secret Place gift box +3x). Root question for the lane: was there a mod-wide chest nerf that hit all these uber chests at once? If so, find + fix the shared cause, not one chest at a time.
+**BL-W0814-11 GREAT HALL OF PROPONTIS UBER-BOSS CHEST OVER-NERFED (only 2 items) - ✅ ADDRESSED BY R-250** (branch `fix/chest-generosity-shared-cause`; in-game confirm = `BL-R250-DEBT-3`). RECORD = `svc_dorushoard_01/02/03` (Kroisos the Coin-Drowned / Dorus). It was the WORST case of the shared cause: it had **no bespoke loot family at all**, it opened base-game `boss_default_*` with `loot3Chance=10` (no guaranteed row - hence literally gold + one relic), and before the b42 repoint it SHARED the Obsidian Hoard's tables. R-250 authors it its own `svc_dorushoard_loot_0N` family and wires it. Its item-answer to "was there a mod-wide chest nerf that hit all these uber chests at once?" is YES and it is named in the R-250 lane record. Its chest NAME is still "Obsidian Hoard" - `BL-R250-DEBT-2`, a Will decision. Original report kept verbatim below.
+> the chest in the Great Hall of Propontis that is locked behind that area's uber boss "literally just dropped two items one thing of gold and incarnation of guan-yu's grace." An uber-boss-gated chest dropping gold + ONE relic is absurdly stingy. SAME OVER-NERF CLASS as BL-W0814-2 (obsidian hoard chests), BL-W0814-5 (Aphoryteus Dread Hoard), and the R-247.7a Devourer-stash reverts. Fix = identify the Propontis uber-boss chest record + its loot table, and restore it to proper uber-tier generosity (multiple guaranteed high-tier items, not a 1-item roll). BATCH with the other over-nerfed-chest items into ONE chest-generosity audit lane (also covers BL-W0814-7 Secret Place gift box +3x). Root question for the lane: was there a mod-wide chest nerf that hit all these uber chests at once? If so, find + fix the shared cause, not one chest at a time.
 
 **BL-W0814-12 BOSS ARENA - NO BOSS SPAWNED (spawn not 100%?) + needs more work** (Will 2026-08-14): "when i went to the boss arena this time there was no boss there. does he not spawn 100% of the time? the boss arena needs more work." Player traveled to the Boss Arena (the Helos boat-hub destination; level bossarena/boss_arena) and found it EMPTY - no boss. Two parts:
   - **(a) SPAWN 100%:** the arena boss must spawn on EVERY visit. Audit the boss proxy/spawn: check spawnChance / championChance / difficulty gate / whether the spawn is one-shot-consumed after a prior kill (persisted). Set to guaranteed spawn. (Note: "this time" implies it spawned before - possible one-shot/consumed spawn or a random spawnChance<100.)
   - **(b) NEEDS MORE WORK (general):** Will flags the Boss Arena overall as underbaked. Scope TBD when the lane runs - likely encounter design, loot, atmosphere. RELATED to el_boss_audit.md (E/L boss spawn-chain failure modes incl proxy championChance + MERGE-DROPPED). Fold the specific spawn fix + a boss-arena polish pass into one lane.
 
-**BL-W0814-13 TANTALUS-GUARDED CHEST OVER-NERFED** (Will 2026-08-14, "same problem with the chest guarded by tantalus"): the chest guarded by Tantalus (in the Den of Tantalus; Tantalus was relocated into the Den in b45) drops far too little - SAME over-nerf as BL-W0814-11 (Propontis). This is now the FIFTH gutted uber/boss chest: obsidian hoards (-2), Aphoryteus Dread Hoard (-5), Propontis uber chest (-11), Tantalus chest (-13), plus the Devourer's stash (already reverted in R-247.7a). FIVE chests nerfed identically = STRONG evidence of ONE shared upstream cause (a common loot table, a global drop-count/quality multiplier, or a batch chest edit). The chest-generosity lane's FIRST task = find that shared cause and fix it once; enumerate ALL boss/uber chests and check each, rather than patching named chests one at a time (there are likely more Will hasn't visited yet). Also folds in BL-W0814-7 (Secret Place gift box +3x).
+**BL-W0814-13 TANTALUS-GUARDED CHEST OVER-NERFED - ✅ ADDRESSED BY R-250** (branch `fix/chest-generosity-shared-cause`; in-game confirm = `BL-R250-DEBT-3`). RECORD = `svc_tantalushoard_01/02/03`. **The "FIVE chests nerfed identically = ONE shared upstream cause" call below was CORRECT, and the lane's first task is done: the cause is named, measured and fixed once** - a b42 finalization pass repointed 21 of 30 uber chests at base-game `boss_default_*` and orphaned 18 of the 27 bespoke hoard tables. The full enumeration Will asked for ("there are likely more Will hasn't visited yet") found **five more** un-reported families in the same state (Charon/Golden Bough, the Mnemophage, the Helepolis/Diadochi, and the three general-guard hoards), all fixed by the same edit. Original report kept verbatim below.
+> the chest guarded by Tantalus (in the Den of Tantalus; Tantalus was relocated into the Den in b45) drops far too little - SAME over-nerf as BL-W0814-11 (Propontis). This is now the FIFTH gutted uber/boss chest: obsidian hoards (-2), Aphoryteus Dread Hoard (-5), Propontis uber chest (-11), Tantalus chest (-13), plus the Devourer's stash (already reverted in R-247.7a). FIVE chests nerfed identically = STRONG evidence of ONE shared upstream cause (a common loot table, a global drop-count/quality multiplier, or a batch chest edit). The chest-generosity lane's FIRST task = find that shared cause and fix it once; enumerate ALL boss/uber chests and check each, rather than patching named chests one at a time (there are likely more Will hasn't visited yet). Also folds in BL-W0814-7 (Secret Place gift box +3x).
 
 **Also queued from the R-247 wave (Will veto flags, one-constant each):** orb name 'Akremon's Essence', skeletal Huntsmen summons, tier suffixes Ascendant/Unbound + x1.5/x1.75 multipliers, EoAT formula ungated-by-difficulty, Hunt texture pairing; mod-wide soul tiering (2,095 records - Will decision).
+
+---
+
+
+## LANE RECORD - R-250 UBER/BOSS CHEST GENEROSITY (branch `fix/chest-generosity-shared-cause` from 0ea001a/build92-ship, 2026-08-14; **arz-only**, 0 new Text tags, Levels/Quests BYTE-UNCHANGED by construction; SOURCE + STATIC GATES ONLY, NOT BUILT, NOT DEPLOYED, NO TAG - the Ship phase owns builds)
+
+**MERGES `BL-W0814-2`, `-5`, `-7`, `-11`, `-13`.** Ruling appended VERBATIM at
+`docs/WILL_RULINGS.md` -> **R-250**; player-facing note at the top of `docs/WILL_TEST_GUIDE.md`.
+
+**THE ONE SHARED CAUSE - FOUND AND MEASURED, NOT GUESSED.** BACKLOG line 38 asked this lane to find
+one cause rather than patch five chests. It is one cause, and it is a WIRE, not a number:
+
+> `apply_svc_patches._svc_standardize_boss_chests` - a **b42-round-2 implementer scope decision**
+> (`docs/reports/b42_fixedboss_dedup.md` S3.3), **never a Will ruling** - ran at finalization and
+> repointed EVERY placed-uber hoard chest's `tables` field at a base-game
+> `defaultloot\boss_default_<lo>-<hi>.dbr`. Its own report says the consequence out loud:
+> *"The old bespoke guaranteed-unique loot tables are left unreferenced."*
+
+**MEASURED ON THE SHIPPED build92 ARZ `b888f022`** (reproduce:
+`py tools/gate_uber_hoard_generosity.py <arz> --calibrate`):
+
+| fact | value |
+| --- | --- |
+| uber/boss hoard chests naming a BASE-GAME table | **21 of 30** |
+| `svc_*hoard_loot_0N` records with ZERO references in 51,312 records | **18 of 27** |
+| families with NO bespoke loot table at all | **1** - `svc_dorushoard_*` (the Propontis chest) |
+| what the player actually opened | S = 7.36 iterations, chances 14/27/10/21/25/14 (sum 1.11), **`loot3Chance` = 10** |
+| the chest Will calls correct (Devourer's stash, R-247.7a) | S = 18.96, chances 40/40/-/21/40/40 (sum 1.81), **`loot3Chance` = 100** |
+| the one family still wired to its own loot (general-guards) | R-240-trimmed to `*0.2188/*0.25` - the most starved gear surface in the mod |
+
+So **R-180 / R-181 / R-220 tuned dead records for three waves behind four green gates.** The R-240
+gate record's own "hoards 1.730 gear/open" line is a measurement of records nobody could open. The
+prior recon note that `svc_obsidianhoard_loot_02/03` were "orphaned pattern-clones" was right about
+the symptom and 6x too small about the scope.
+
+**BL-W0814-2 (record separation) ANSWERED EXACTLY, AND WILL WAS RIGHT.** `svc_dorushoard_*` is a
+`clone_record` of the Obsidian Hoard chest, so before the repoint it **shared**
+`svc_obsidianhoard_loot_0N` - and it still carries `description = tagSVCObsidianHoard`, so the chest
+in the **Great Hall of Propontis is LABELLED "Obsidian Hoard" in game**. That is why he wrote "the
+obsidian hoard chests ... in locations such as the obsidian halls". CORRECTION to his hypothesis:
+they never shared with the **Devourer's stash** - `loottable_hidden_bloodcave_0N` has been on its
+own records throughout and R-247.7a's revert is untouched here.
+
+**BL-W0814-7 (the gift box) IDENTIFIED FROM THE MAP, NOT GUESSED.** Chain decoded from
+`local/Levels_merged.arc` + the arz: `proxyspawner_sp_chest` is world-placed **5x** (DarkForestEnter
+x1, SecretForest2 x2, PillagedVillage x2 - hence "the secret **places**") ->
+`poolspawner_sp` -> `sp_chest_marker_deco` (`tagSecretPresentSpawner`) -> `proxy_sp_chest` ->
+`pool_sp_0N` -> `sp_chest_0N` (`tagSecretPresentBOX`) -> **`loottable_sp_0N`**, measured at
+`*1.8/*2.1` on all three tiers.
+
+**SHIPPED IN THIS LANE (commits 89cc312, 272dad5, + this docs commit):**
+
+| half | where | what |
+| --- | --- | --- |
+| 1. WIRING | `tools/apply_svc_patches.py` | `_svc_standardize_boss_chests` -> **`_svc_wire_boss_hoard_chests`**: every `svc_<fam>hoard_<tier>` chest names its OWN `svc_<fam>hoard_loot_<tier>`; scope DERIVED from the house name shape (not the `_SVC_CHEST_STD` roster) so a future family is covered the moment it is named; fail-loud if any chest's own table is missing. `_create_propontis_superboss` authors the missing `svc_dorushoard_loot_0N` family **in the CONTENT pass** (load-bearing: the loot-breadth/armour-parity registry modules run between the content pass and finalization). The three `*2.4/*2.8` literals collapse to `_SVC_HOARD_MIN_EQ/_MAX_EQ`, imported from `svc_uber_hoards` so the authoring sites and the gate cannot drift. |
+| 2. VOLUME | `tools/svc_loot_volume.py` | `_r250_exempt` (membership imported from `svc_uber_hoards.is_hoard_table`, never re-typed) + `_exempt()`; `scope_tables` and the V1 per-surface ceiling both consult it. Same Will-ratified mechanism as R-247.7(a). **R-240 scope 84 -> 57 surfaces** (66 -> 39 canonical; the 18 TESTHUB twins untouched). |
+| 3. GIFT BOX | `tools/patches/uber_hoard_generosity.py` (NEW registry module) | `loottable_sp_0{1,2,3}` `*1.8/*2.1` -> **`*5.4/*6.3`** = exactly 3x, VOLUME ONLY with a scope proof; `apply()` also fails loud unless the hoard family came through `loot_volume_trim` UNTRIMMED (the live proof the carve-out fired). Registered after `r247_bloodcave_rulings`, before `visuals`. |
+| GATE | `tools/svc_uber_hoards.py` + `tools/gate_uber_hoard_generosity.py` + the module's `verify()` | H1 wiring / H2 no orphans / H3 exact authored volume / H4 form + never-empty floor / H5 guaranteed 100% row / H6 the 3x gift box / H7 no shared records (Will's separation ask as an invariant). |
+| NEGATIVES | `tools/debug/negtest_uber_hoards.py` | 8 plants (one per check + both H7 shapes), **8/8 caught**, with an ANTI-INERT control proving the healthy fixture is green first. Also reachable as `py tools/patches/uber_hoard_generosity.py --negtest`. |
+| PROOF HARNESS | `tools/debug/dryrun_r250_uber_hoards.py` | applies the whole wave IN MEMORY to a built arz and runs the coexisting battery. Writes nothing; not imported by the pipeline. |
+| OWNERSHIP | `tools/svc_loot_breadth.py` `EXEMPT` | the 3 SV/DRX-original `loottable_sp_0N` tables, with the written reason the escape hatch costs. Not ungoverned: H6 pins their volume exactly and N6 proves the check fires. |
+
+**GATES GREEN (static; `py tools/debug/dryrun_r250_uber_hoards.py <arz>` and `--before`):**
+
+| contract | BEFORE (shipped `b888f022`) | AFTER (wave applied in memory) |
+| --- | --- | --- |
+| R-250 uber hoard generosity (H1-H7) | **RED - 83 findings** (21 H1 + 18 H2 + 27 H3 + H6 + H7) | **GREEN** |
+| R-240 loot volume (V1-V7b) | GREEN | **GREEN** |
+| R-181 loot distribution (D1-D9, incl. D7/D7X2) | GREEN | **GREEN** |
+| R-181 loot ownership (OWN1/OWN2) | GREEN | **GREEN** |
+| R-180 chest loot breadth | GREEN | **GREEN** |
+| R-240 chest artifacts | GREEN | **GREEN** |
+
+Also re-run standalone on the shipped arz with the carve-out in place: `gate_loot_volume` PASS (39
+canonical surfaces), `gate_loot_distribution` PASS, `gate_orb_loot_breadth` PASS,
+`gate_chest_loot_breadth` PASS, `gate_relic_difficulty_tiers` PASS, `gate_chest_artifacts` PASS.
+`py -m py_compile` clean on every touched module; `patches.selfcheck()` OK (67 modules, order hash
+`c9af6ef6...`).
+
+**THE D7X2 GOTCHA THE BRIEF WARNED ABOUT DID NOT BITE, BY DESIGN.** `gate_loot_distribution`'s
+`ARMOR_SLOT_FLOOR_REF_SPAWN = 1.3100` is anchored to the **polis-vault cage's** post-trim volume.
+R-250 does not touch the cage - only the hoard family leaves the trim - so the anchor is still
+derived from an unchanged surface and D7/D7X2 measure GREEN before and after. `BL-R240-DEBT-8`
+(make D7/D7X2 two-era) is therefore NOT paid here and NOT needed here; it stays open on its own
+terms.
+
+**SCOPE HELD (what this lane deliberately did not touch, each with a reason):** the 21 polis-vault
+cage tables (R-240's trim there IS Will's own ask, and it is what keeps D7X2 valid); every orb table
+(R-242 shipped 0/50/75 by difficulty with a frozen apex - Will's five reports are CHESTS); the
+Devourer's stash (R-247.7a is its volume authority); monster records (that is
+`toxeus-boss-equipment-and-soul`); and COMPOSITION anywhere - members, weights, group chances and
+the guaranteed row belong to R-180/R-181/R-220. This lane moves a `tables` pointer and a `numSpawn`
+multiplier, and the scope proofs fail the build if anything else drifts.
+
+**FOR THE SHIP LANE:**
+- arz-only. **0 new Text tags** -> no arz+Text coupling; Levels/Quests need no rebuild.
+- Expect the record-diff vs shipped `b888f022` to show, and nothing else: **30** hoard chests'
+  `tables`, **27** hoard tables' `numSpawnMin/MaxEquation`, **3** NEW `svc_dorushoard_loot_0N`
+  records (+ their breadth widening), **3** `loottable_sp_0N` `numSpawnMin/MaxEquation`.
+- `gate_uber_hoard_generosity` REDS on every PRE-R-250 artifact by design (83 findings). Read a
+  pre-R-250 red as the anchor PASSING, exactly like `BL-R240-DEBT-8`'s D7X2 note. Run it on a
+  POST-R-250 arz.
+- Build-log line to look for: `R-250 hoard wiring: 30 uber/boss hoard chest(s) now open their OWN
+  ...; zero chests left on base-game Cyclops loot.`
+
+**DEBTS (all registered in the ruling too):**
+- `BL-R250-DEBT-1` - ACCEPTED LOSS, stated: the retired repoint gave each chest a REGION-banded base
+  table (Dorus Normal `boss_default_41-43` vs Ephialtes's `57-59`). The bespoke tables are
+  DIFFICULTY-tiered (01/02/03) but not region-banded, so within Normal an Act2 hoard now pays the
+  same tier pool as an Act5 one. Confined to Normal and one Epic row - every other bracket in the
+  roster was already the shared `63-65` cap.
+- `BL-R250-DEBT-2` - 🚨 **WILL DECISION** (arz+Text coupled; deliberately NOT taken here to keep this
+  lane arz-only): the Great Hall of Propontis chest is named **"Obsidian Hoard"**. Every sibling has
+  its own name. Minting `tagSVCDorusHoard` forces the Text coupling; the open question is the name
+  itself, in the amgoz1 voice, for Kroisos the Coin-Drowned.
+- `BL-R250-DEBT-3` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof. The
+  closing evidence is Will opening the Propontis / Tantalus / Ephialtes / Obsidian chests and a
+  Secret Present box on the next build (the WILL_TEST_GUIDE section names the exact PASS line).
+- `BL-R250-DEBT-4` - MEASURED, NOT A DEFECT: `svc_obsidianhoard_loot_02/03` name `01_act4_relics` in
+  their guaranteed relic slot where every sibling names `02_/03_act4_relics`.
+  `gate_relic_difficulty_tiers` is GREEN on it (the act-4 relic tables carry difficulty-indexed
+  arrays), so it is recorded rather than "fixed" blind - but these tables are LIVE now and it is
+  worth one measured look in a composition lane.
+- `BL-R250-DEBT-5` - the `diadochi` registry module still falls back to the SHARED
+  `_SVC_HOARD_POOL` (the Obsidian accessory pool) if a donor is missing. That degradation path
+  predates R-250 and does not fire in any observed build, but it is the one route left by which two
+  ubers could end up on one chest record. H7 would not catch it (it is a POOL fallback, so no second
+  chest record exists to compare). Cheap follow-up: make the fallback fail loud instead.
 
 ---
 
