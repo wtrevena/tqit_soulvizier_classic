@@ -1232,10 +1232,18 @@ REGISTRY = [
                             # no sense" + "i killed toxeus the murderer devourer of blood and he
                             # did not drop his soul even though he should have 100% chance".
                             # MEASURED: a base-game census (6,085 Monster.tpl records, one tick
-                            # per record per class its hand can yield) proves LeftHand is the
-                            # shield / two-handed-ranged slot (Bow 0-to-49, Staff 0-to-113,
-                            # Shield 0-to-144) and RightHand the one-handed melee slot (Spear
-                            # 122-to-0) - so the Devourer's LeftHand pool bleed_affix_high_{n,l},
+                            # per record per class its hand can yield, references resolved
+                            # CASE-INSENSITIVELY) proves LeftHand is the shield /
+                            # two-handed-ranged slot (Shield 0-to-805, Bow 17-to-514, Staff
+                            # 17-to-710) and RightHand the one-handed melee slot (Spear
+                            # 493-to-0). Two of those are absolute zeros; the Bow/Staff 17 are
+                            # ONE shared set of hand-less monsters (tombrot / creeping slime /
+                            # earth elemental) using lootRightHandItem1 as a generic drop chute,
+                            # i.e. the very anti-pattern this lane removes. ROUND-3: the census
+                            # published at rounds 1-2 (Bow 0-to-49, Shield 0-to-144, Spear
+                            # 122-to-0) was this module's own exact-case has_record() bug and is
+                            # RETRACTED - see the module docstring.
+                            # So the Devourer's LeftHand pool bleed_affix_high_{n,l},
                             # which contains a BOW, is exactly an archer wiring, and the Hunt
                             # simply has NO lootTorso/LowerBody/Forearm fields at all with four
                             # more slots at chance 0. Writes: the Devourer's two hand slots (the
@@ -1254,6 +1262,11 @@ REGISTRY = [
                             # (the R-250 enslaver_shroud lane owns that on the Toxeus roster)
                             # and NO chanceToEquipFinger2 (R-243's pin is asserted only, so
                             # verify_soul_drop_rates stays green by construction).
+                            # EVERY gate arm resolves record references CASE-INSENSITIVELY and
+                            # compares class stems CASE-FOLDED, so a violating row cannot hide
+                            # behind a mixed-case reference (2,436 of those resolve only
+                            # case-insensitively in the shipped arz) and a legitimate item
+                            # spelled with a lowercase template stem cannot red the build.
                             # Standalone twin: py tools/gate_toxeus_boss_equipment.py [arz]
                             # Negative test: py tools/patches/toxeus_boss_equipment.py --negtest
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST

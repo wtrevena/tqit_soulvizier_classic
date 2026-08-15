@@ -9,8 +9,12 @@
 >
 > **What was actually wrong (measured in the shipped build, not guessed):**
 >
-> - **The bow was real.** In this engine the LEFT hand is the shield / two-handed-ranged slot (I
->   counted every base-game monster: 144 shields and 49 bows ride the left hand, zero ride the right).
+> - **The bow was real.** In this engine the LEFT hand is the shield / two-handed-ranged slot. I
+>   counted every base-game monster (all 6,085 of them): **805 carry a shield in the left hand and
+>   exactly ZERO carry one in the right**; bows ride the left hand **514 times against 17** on the
+>   right, and those 17 are all the same handful of hand-less things (rot piles, creeping slimes,
+>   earth elementals) using the slot as a plain drop chute rather than as a hand - which is precisely
+>   the mistake this fix removes from the Devourer.
 >   The Devourer's left hand was pointed at a "high bleed gear" pool that had been picked by AFFIX
 >   instead of by weapon type - and one of its three entries on Normal and on Legendary is a BOW. So
 >   he equipped one and fought as an archer. The bows are now removed from that pool outright.
@@ -28,7 +32,7 @@
 >   or a bow, that is a bug - tell me.
 > - **The Hunt really was naked - but he DID have his spear.** His record had no torso, legs or arm
 >   equipment fields at all, and his ring/potion/relic/amulet slots were all switched off. His spear
->   was fine the whole time (right hand, 100%, the Runbreaker) - spears ride the right hand 122-to-0
+>   was fine the whole time (right hand, 100%, the Runbreaker) - spears ride the right hand **493-to-0**
 >   in the base game - so what you were seeing was a spearman in no armour. He now wears **torso,
 >   greaves and armbands at 100%** from his own loot bracket, plus the ring / potion / relic / amulet
 >   rolls his two brothers have. He stays **bare-headed on purpose** (so does the Enslaver and so does

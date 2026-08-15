@@ -70,7 +70,7 @@ def main(argv):
         print("gate_toxeus_boss_equipment: FAIL (%d problem(s))" % len(problems))
         return 1
     print("gate_toxeus_boss_equipment: PASS (%d 100%%-pinned Finger2 carrier(s) all deliver "
-          "a ring; %d pre-existing offender(s) waived by name - BL-R251-DEBT-4)"
+          "a ring; %d pre-existing offender(s) waived by name - BL-R251-DEBT-5)"
           % (checked, waived))
     return 0
 

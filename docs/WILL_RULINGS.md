@@ -7788,33 +7788,52 @@ characterLifeRegen, or an undead-leech partial-bypass on his record. OPEN - Will
 > (BL-W0814-10) "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul"
 
 **THE MEASUREMENT THAT DECIDES ALL THREE (base-game census over `database.arz`).**
-**COUNTING RULE, stated so this is re-derivable and does not read as a contradiction when someone
-re-runs it:** over all **6,085 `Monster.tpl` records**, a record is counted **once per class its
-hand can yield** - every armed row of that hand (`chanceToEquip<Hand>` > 0, row weight > 0) is
-expanded through the loot chain to leaf `templateName` stems, the per-record class sets are unioned,
-and each class gets one tick.
+**COUNTING RULE, stated so this is re-derivable:** over all **6,085 `Monster.tpl` records**, a
+record is counted **once per class its hand can yield** - every armed row of that hand
+(`chanceToEquip<Hand>` > 0, row weight > 0) is expanded through the loot chain to leaf
+`templateName` stems, the per-record class sets are unioned, and each class gets one tick.
+**References are resolved CASE-INSENSITIVELY and class stems compared CASE-FOLDED** - see the
+round-3 retraction below, which is the whole reason this table changed.
 
-| class | RightHand | LeftHand |
+| class stem (as spelled in the data) | RightHand | LeftHand |
 |---|---|---|
-| `Weapon_Spear` | **122** | 0 |
-| `Weapon_Sword` | 144 | 24 |
-| `Weapon_Axe` | 78 | 27 |
-| `Weapon_Mace` | 94 | 11 |
-| `weapon_rangedonehand` | 125 | 10 |
-| `Weapon_Bow` | 0 | **49** |
-| `Weapon_Staff` | 0 | **113** |
-| `WeaponArmor_Shield` | 0 | **144** |
+| `Weapon_Spear` | **493** | **0** |
+| `Weapon_Sword` | 1164 | 244 |
+| `Weapon_Axe` / `weapon_axe` | 1074 / 132 | 221 / 36 |
+| `Weapon_Mace` / `weapon_mace` | 1069 / 105 | 172 / 33 |
+| `weapon_rangedonehand` | 127 | 12 |
+| `Weapon_Bow` | 17 | **514** |
+| `Weapon_Staff` | 17 | **710** |
+| `WeaponArmor_Shield` | **0** | **805** |
 
 In this engine **LeftHand is the shield / two-handed-ranged slot and RightHand is the one-handed
-melee slot.** That one table is the design law this ruling rests on.
+melee slot.** That table is the design law this ruling rests on.
 
-> ⚠️ **THE COUNTING RULE MATTERS FOR THE NON-ZEROS ONLY.** Counting once per **armed ROW** instead
-> of once per **record** shifts every non-zero figure (Spear 196/0, Sword 166/27, Axe 78/27, Mace
-> 111/11, `weapon_rangedonehand` 270/16, Bow 0/55, Staff 0/113, Shield 0/160) and changes **not one
-> zero**. The law lives entirely in the zeros - `Weapon_Bow` / `Weapon_Staff` / `WeaponArmor_Shield`
-> never in RightHand, `Weapon_Spear` never in LeftHand - so the ruling is rule-independent. (The
-> first draft of this ruling published a third set of numbers with no rule stated; corrected here at
-> round 2 after an independent re-derivation disagreed on the counts and agreed on every zero.)
+> ⚠️ **WHAT IS ABSOLUTE AND WHAT IS MERELY OVERWHELMING - stated precisely, because rounds 1-2 of
+> this ruling claimed four zeros and only two of them are real.**
+> **Two zeros hold outright:** `WeaponArmor_Shield` NEVER rides RightHand, `Weapon_Spear` NEVER
+> rides LeftHand. **`Weapon_Bow` and `Weapon_Staff` are 514 / 710 on the left against 17 / 17 on the
+> right**, and the 17 are the SAME 17 records for both classes: the tombrot / creeping-slime /
+> repugnant-decay pile and the three earth elementals, none of which has a humanoid hand, all
+> reaching a bow AND a staff through one shared chain (`...\MasterTables\All_Dyn_N0{1b,2,3}.dbr`).
+> They are using `lootRightHandItem1` as a **generic drop chute**, not as an equipment slot - which
+> is exactly the anti-pattern this ruling removes from the Devourer, so they corroborate the design
+> rather than weaken it. They are not zero, and this ruling no longer says they are.
+
+> 🔁 **ROUND-3 RETRACTION, recorded rather than quietly overwritten.** The census published at
+> rounds 1 and 2 (`Weapon_Spear` 122/0, `Weapon_Sword` 144/24, `Weapon_Bow` 0/49,
+> `WeaponArmor_Shield` 0/144, and the round-2 note "the law lives entirely in the zeros, so the
+> ruling is rule-independent") was **WRONG, and it was wrong because of a bug in this lane's own
+> module.** `db.has_record()` is an exact-case dict lookup; the arz stores record **names**
+> lowercase (0 of the base game's 74,013 contain an uppercase letter) but its internal
+> **references** mixed-case, so every mixed-case chain resolved to nothing, was filed as an
+> "unresolved leaf", and was dropped by every caller. The old table was therefore a census of the
+> ~1/8 of chains whose reference spelling happened to be lowercase. Round 2 was asked to re-derive
+> the census and instead hardened the false half of it. The DESIGN conclusion is unchanged and if
+> anything stronger (805-to-0 on shields, 514-to-17 on bows); the EVIDENCE is corrected. Fix:
+> `toxeus_boss_equipment._resolve()` plus case-folded class comparison, negtested both ways (a
+> violating row hidden behind a mixed-case reference is now CAUGHT; a legitimate item spelled with a
+> lowercase template stem no longer reds the build).
 
 **WHAT THIS RULES (design law):**
 
@@ -7873,7 +7892,7 @@ melee slot.** That one table is the design law this ruling rests on.
    `chanceToEquipFinger1 / Misc1 / Misc2 / Misc3` all sit at **0.0** - three worn slots missing
    outright and four more switched off. He is literally naked, exactly as Will described. His SPEAR
    is correct and is **asserted, never written**: RightHand 100% -> `runbreaker_guaranteed_{n,e,l}`
-   -> exactly one `Weapon_Spear` (`svc_{t}_runbreaker`), and spears ride RightHand 122-to-0 in the
+   -> exactly one `Weapon_Spear` (`svc_{t}_runbreaker`), and spears ride RightHand 493-to-0 in the
    base game, so R-247's round-3 animation work has a real weapon under it.
    **RULED:** he wears the family's armour - `Torso` / `LowerBody` / `Forearm` at 100% on **his own
    tier-02 loot family** (the bracket his record already uses for `finger_n02`, `amulet_n02`,
@@ -7913,8 +7932,15 @@ melee slot.** That one table is the design law this ruling rests on.
    channels", which implied a coverage that did not exist. **Every arm walks all three difficulty
    tables of every row**: the shipped bug was Normal+Legendary-only (`bleed_affix_high_l`'s Nemesis
    recurve is a Legendary-only bow), so a tier-N-only sweep is precisely the blind spot that
-   produced it. Enforced in-build by `tools/patches/toxeus_boss_equipment.py::verify` and standalone
-   by `tools/gate_toxeus_boss_equipment.py`.
+   produced it. **And every arm resolves record references CASE-INSENSITIVELY and compares class
+   stems CASE-FOLDED** (round 3): a violating row can otherwise hide behind a mixed-case table
+   reference - 2,436 references in the shipped arz resolve only case-insensitively - and a
+   legitimate item spelled with a lowercase template stem would otherwise red the build. **A hand
+   is also policed as a hand, not only as a set of rows:** `chanceToEquipRightHand` /
+   `chanceToEquipLeftHand` are asserted at 100 and a hand with nothing selectable fails, because
+   the class arms skip a slot switched off and a boss holding nothing must not report "armed 100%".
+   Enforced in-build by `tools/patches/toxeus_boss_equipment.py::verify` and standalone by
+   `tools/gate_toxeus_boss_equipment.py`.
 
 **WHAT THIS RULING DOES NOT TOUCH (asserted, never written):** `chanceToEquipFinger2` anywhere
 (R-243's pin - so `tools/verify_soul_drop_rates.py --gate` stays green by construction), the Hunt's
@@ -7928,11 +7954,19 @@ problems**, naming the Devourer's bow rows, his 36.97%-armed weapon hand and the
 missing armour slots - it reproduces all three of Will's reports as artifact facts, so it is not a
 gate that can only ever be green. `py tools/gate_toxeus_boss_equipment.py <arz> --dryrun` proves
 RED -> GREEN (**45 -> 0**) by running the module's own `apply()` in memory over that same arz.
-Planted negatives: **26/26 caught + positive control green**
-(`py tools/patches/toxeus_boss_equipment.py --negtest`), including the four round-2 additions that
-cover this ruling's own failure modes - the set table moved back into the weapon hand, the
-guaranteed row diluted without losing dominance, the off-hand shield share collapsed, an
-Epic-only / Legendary-only class violation - and the allowlist guard.
+Planted negatives: **39/39 clean** (`py tools/patches/toxeus_boss_equipment.py --negtest`) - 34
+planted defects caught plus 5 positive controls. The round-2 additions cover this ruling's own
+failure modes (the set table moved back into the weapon hand, the guaranteed row diluted without
+losing dominance, the off-hand shield share collapsed, an Epic-only / Legendary-only class
+violation, the allowlist guard). **The round-3 additions cover eight defects the round-2 gate
+MISSED** - the Devourer's weapon hand switched off entirely, his shield hand switched off, either
+hand's rows all zeroed, a bow and a wrong-class row reached through MIXED-CASE references, a
+100%-pinned carrier with no Finger2 loot at all, a 100%-pinned carrier pointing at a non-ring
+class, and a non-lowercase entry in a case-folded class set. Four of them were re-planted on the
+REAL post-apply arz, not only on the stub, and all four are now caught. The **five positive
+controls** prove the case fix did not go fail-closed: a lowercase `weapon_axe`, a
+`Weapon_RangedOneHand`, a lowercase `armor_upperbody`, a clean table referenced in mixed case, and
+the untouched control - none of which may red the build.
 
 **WILL DECISIONS FLAGGED (each one constant, veto-friendly):**
 1. The Devourer's off-hand is a **shield** rather than a second blade. Alternative: a class-correct
@@ -7967,3 +8001,14 @@ fix. It closes in-game or not at all - lead with that, never with the two that l
   Turning the Devourer's `Head` on (his helm tables are present and switched off at chance 0) would
   give all three worn set pieces a class-correct home and let the mixed row retire - one constant,
   but it changes his silhouette, so it is Will's call, not the lane's.
+- `BL-R251-DEBT-5` (**pre-existing, outside this ruling's surface, measured at round 3**): seven
+  records mod-wide sit at `chanceToEquipFinger2` = 100 and cannot deliver a ring, so their pin is
+  decorative. `quest_celtheano_19` / `_20` (harpy quest bosses) have `lootFinger2Item1` **EMPTY**;
+  the five `drxcreatures\bloodwitch` reavers point Finger2 at **WAND** master tables. E5 names all
+  seven individually in `_E5_PREEXISTING` rather than narrowing itself, so an eighth reds the build.
+  Disposition needed: wire a real soul or zero the pin.
+- `BL-R251-DEBT-6` (integration sequencing, not a defect): `_MIN_ARMED_HAND_PCT` = 100 and E2
+  class-checks every armed row of all four champions over the FINAL assembled db, which includes the
+  Hunt's tier-02 armour tables. The in-flight loot-BREADTH lanes widen exactly those tables, so an
+  off-class addition there fails R-251's gate at INTEGRATION rather than in its own lane. That is
+  the correct direction to fail; the offender line names the table and the class.

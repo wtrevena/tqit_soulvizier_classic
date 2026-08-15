@@ -68,7 +68,7 @@ so 63.0% of shipped Devourer spawns roll a piece of armour into the sword hand.
 whatsoever, and `chanceToEquipFinger1/Misc1/Misc2/Misc3` are all 0.0 - three worn slots
 missing outright and four more switched off. He is literally naked. His WEAPON, though, is
 correct and stays untouched: RightHand 100% -> `runbreaker_guaranteed_{n,e,l}` -> exactly
-one `Weapon_Spear` (`svc_{t}_runbreaker`), and spears ride RightHand 122-to-0 in the base
+one `Weapon_Spear` (`svc_{t}_runbreaker`), and spears ride RightHand 493-to-0 in the base
 game. R-247 round 3 bound the spear + unarmed animation rows; the missing half was the
 loadout, exactly as Will described it ("not wearing any equipment").
 His mesh can wear armour: `SkeletonRumorBoss.msh` has 18 base-game carriers and the
@@ -184,7 +184,7 @@ the shipped mod arz resolve only case-insensitively) or behind a lowercase templ
      chain that resolves to a Jewelry_Ring - a 100% pin pointing at nothing, or at a class
      the ring slot cannot hold, is the "did not drop his soul" bug in its purest form. The
      seven PRE-EXISTING offenders measured in b888f022 (outside this lane's surface) are
-     named individually in `_E5_PREEXISTING` and registered as BL-R251-DEBT-4, so the arm is
+     named individually in `_E5_PREEXISTING` and registered as BL-R251-DEBT-5, so the arm is
      live for anything NEW without this lane reding the build on someone else's records.
 Standalone twin: `py tools/gate_toxeus_boss_equipment.py [arz]`
 Negative test:   `py tools/patches/toxeus_boss_equipment.py --negtest`
@@ -311,7 +311,7 @@ _MIN_SHIELD_PCT = 85.0          # the off hand is a shield, bar the set-drop rol
 # E5's PRE-EXISTING offenders, measured in the shipped b888f022 and named individually so
 # the arm stays LIVE for anything new. All seven are outside this lane's surface (harpy
 # quest bosses and the DRX bloodwitch reavers), all seven predate R-251, and all seven are
-# registered as BL-R251-DEBT-4. An entry here is a dated exception, not a blessing.
+# registered as BL-R251-DEBT-5. An entry here is a dated exception, not a blessing.
 _E5_PREEXISTING = {
     'records\\creature\\monster\\harpy\\quest_celtheano_19.dbr':
         'pinned 100% with lootFinger2Item1 EMPTY (base-game harpy quest boss)',
@@ -986,7 +986,7 @@ def _check_modwide(db):
       * a chain whose leaves are not Jewelry_Ring              -> FAIL
     The seven offenders that already exist in b888f022 sit outside this lane's surface, so
     each is named individually in `_E5_PREEXISTING` with its reason and registered as
-    BL-R251-DEBT-4. Naming them one by one (rather than narrowing the arm) keeps it LIVE:
+    BL-R251-DEBT-5. Naming them one by one (rather than narrowing the arm) keeps it LIVE:
     an eighth offender, or a change to one of the seven, still reds the build.
 
     Returns (problems, checked, waived) where `checked` counts the carriers actually held to
@@ -1047,7 +1047,7 @@ def verify(db, tags):
           "torso/legs/arms at 100%% and keep the Runbreaker spear + the EoAT rite; all 4 "
           "champions hold R-243's 100%% soul pin on a soul that resolves to a real ring; "
           "%d mod-wide 100%%-pinned Finger2 carrier(s) all deliver a ring (%d pre-existing "
-          "offender(s) waived by name, BL-R251-DEBT-4). BL-W0814-10 remains OPEN pending "
+          "offender(s) waived by name, BL-R251-DEBT-5). BL-W0814-10 remains OPEN pending "
           "Will's next kill (BL-R251-DEBT-1)."
           % (armed, signature, shield, checked, waived))
 
