@@ -12,12 +12,24 @@ WILL, VERBATIM (three reports, one boss family, one system):
 WHAT THE BYTES SAID (measured against the SHIPPED build91/92 arz b888f022, read-only)
 -------------------------------------------------------------------------------------
 THE SLOT LAW, proven by a full base-game census. COUNTING RULE, stated so the numbers can
-be re-derived: over all 6,085 `Monster.tpl` records in the base-game `database.arz`, a
-record is counted ONCE per class its hand can yield - every armed row of that hand
-(chanceToEquip<Hand> > 0, row weight > 0) is expanded through the loot chain to leaf
-`templateName` stems, the per-record class sets are unioned, and each class gets one tick.
-Item template stems are spelled inconsistently in the game data, so BOTH spellings are
-listed and the module folds case everywhere.
+be re-derived: over all 5,556 records in the base-game `database.arz` whose `templateName`
+BASENAME is exactly `Monster.tpl`, a record is counted ONCE per class its hand can yield -
+every armed row of that hand (chanceToEquip<Hand> > 0, row weight > 0) is expanded through
+the loot chain to leaf `templateName` stems, the per-record class sets are unioned, and each
+class gets one tick. Item template stems are spelled inconsistently in the game data, so
+BOTH spellings are listed and the module folds case everywhere.
+ROUND-4 CORRECTION TO THE DENOMINATOR, recorded rather than quietly overwritten: rounds 1-3
+published this denominator as "6,085 Monster.tpl records". 6,085 is what you get from
+`templateName.lower().endswith('monster.tpl')`, which additionally sweeps in 411
+`ControllerMonster.tpl` + 53 `FixedItemSkill_SpawnMonster.tpl` + 34
+`Skill_SpawnPetMonster.tpl` + 31 `ControllerStationaryMonster.tpl` = 529 controllers and
+skill records that are not monsters and carry no `chanceToEquip*` fields at all
+(5556 + 529 = 6085). Measured on `database.arz`: 74,013 records total, 5,556 by basename,
+5,561 by `Class == 'Monster'`. Every per-class tally below re-derives EXACTLY as published -
+the 529 extras contributed nothing to any of them - so only the stated denominator was
+wrong. It is corrected here because round 3 of this lane exists to retract a census
+published under an explicitly "stated so this is re-derivable" rule, and publishing an
+unreproducible denominator inside that correction is the same defect class.
 
     class stem (as spelled)   RightHand   LeftHand
     Weapon_Spear                  493          0    <- the Hunt's Runbreaker is CORRECT
@@ -133,6 +145,39 @@ OFF hand, where a mis-class roll costs a shield instead of the sword Will went l
   i.e. 63.03% of shipped Devourer spawns roll ARMOUR into the sword hand. Will filed
   "i dont think he has a weapon" about the Hunt; the Devourer had the same disease.
 
+  ⚠️ DISCLOSED SIDE EFFECT (round 4) - THE CRIMSON VERDICT ARMOUR DROPS 6.1x LESS OFTEN.
+  Rounds 1-3 stated the post-state numbers and never stated the DELTA, which made a
+  player-visible balance change ride silently inside a bug-fix lane. Stated plainly now,
+  measured on b888f022 and re-derived by gate arm E2d on every build:
+      shipped   RightHand = crimson@100 + unique_sword@19 (119)  -> the set table wins
+                84.0336% of that hand, so EACH of its 4 equal-weight members dropped at
+                21.0084% per kill (the 3 armour members combined 63.03%).
+      after     LeftHand  = shield@100 + crimson@19 + unique_shield@19 (138) -> the set
+                table wins 13.7681%, so each member drops at 3.4420% (armour combined
+                10.3261%).
+  A full reverse-reference scan of the shipped arz confirms `crimsonverdict_guaranteed_*`
+  is the ONLY drop path in the whole db for the helm / cuirass / armband (its single
+  referrer is this record's `lootRightHandItem1`; the only other mention anywhere is
+  `svc_crimsonverdict.dbr` setMembers, which is the set DEFINITION, not a drop). So this
+  is a 6.1x slowdown on farming three pieces of a hand-designed 4-piece set. THE FOURTH
+  member goes the other way: Vein Render 21.0084% -> 72.4638% wielded AND dropped.
+  WHY THE CHEAP RESTORATION WAS NOT TAKEN, measured rather than assumed. The obvious
+  remedy is a drop chute on a slot `_SLOT_CLASSES` does not govern, but the Devourer has
+  no free one - all 12 slots are wired except `Head`, which is 0 by the family's
+  bare-skull design:
+      Misc2 is an 18%-chance slot (relics@88 + arcane formulae@12), so its per-member
+        ceiling is 0.18/4 = 4.5% even at infinite weight. It CANNOT reach 21% at all.
+      Misc4 is 100% chance but its single row is `svc_devourer_misc4_master`, a 50/50
+        between the Toxeus rant scroll and the End-of-All-Things formula. Restoring 21.01%
+        per member there needs weight 526 against 100, which cuts BOTH of those from 50%
+        to 7.99% - trading this lane's undisclosed nerf for a fresh undisclosed nerf on
+        R-247.6a content.
+  Every remaining option (turn `Head` on, split the set table into class-correct rows on
+  Torso/Forearm, or fatten the off-hand row and give up the shield share) is a BALANCE
+  decision on content Will hand-designed and never asked this lane to touch. So the rate
+  change is DISCLOSED, GATED (E2d) and REGISTERED as BL-R251-DEBT-7 with all three options
+  costed, for Will to ratify - it is not decided here.
+
 THE HUNT (`um_toxeus_hunt_99` + `um_toxeus_hunt_l_99`), 2 records, 0 new tables:
   * Torso / LowerBody / Forearm wired at 100 with the tier-02 loot family his own record
     already uses everywhere else (finger_n02, amulet_n02, relic_15-21), common @5000 +
@@ -158,8 +203,9 @@ registered earlier, and apply() FAILS LOUD on any pre-state it did not measure.
 
 GATE (verify, post-finalization, over the FINAL assembled db). EVERY arm resolves record
 references CASE-INSENSITIVELY via `_resolve` and compares class stems CASE-FOLDED, so a
-violating row can no longer hide behind a mixed-case table reference (2,435 references in
-the shipped mod arz resolve only case-insensitively) or behind a lowercase template stem:
+violating row can no longer hide behind a mixed-case table reference (2,436 reference
+occurrences in the shipped mod arz, spanning 402 distinct reference strings, resolve only
+case-insensitively) or behind a lowercase template stem:
   E1 no Toxeus champion slot's loot chain yields Weapon_Bow or Weapon_Staff anywhere, on
      ANY difficulty (the shipped bug was Normal+Legendary-only, so every arm below walks
      all three difficulty tables of every row, never just tier N);
@@ -176,6 +222,16 @@ the shipped mod arz resolve only case-insensitively) or behind a lowercase templ
      that makes the player-facing claim falsifiable. A hand whose selectable distribution is
      EMPTY (slot on, every row weight 0) is reported as DEAD and fails; it is never scored
      as a vacuous 100%;
+  E2d the MEASURED per-kill drop share of each Crimson Verdict ARMOUR member, summed over
+     EVERY equip slot of the Devourer (not just the one this lane wires) and minimised over
+     the three difficulties, must equal the published `_CRIMSON_MEMBER_PCT` within
+     `_CRIMSON_MEMBER_TOL`. TWO-SIDED ON PURPOSE: the floor catches further dilution or a
+     deleted channel, and the CEILING catches a silent restoration - because the number is
+     published in four Will-visible places and a change that leaves those stale is the exact
+     defect this arm exists to prevent (a balance change riding inside a bug-fix lane). The
+     arm walks the MONSTER RECORD only, so a container-side channel (BL-R251-DEBT-3 parks
+     the helm's natural home in the Devourer's stash chest, owned by the chest-generosity
+     lane) does not trip it;
   E3 both Hunt records wear Torso + LowerBody + Forearm at 100 on class-correct tables,
      and still carry the Runbreaker spear at RightHand 100 and the Misc4 rite at 100;
   E4 all four R-48 champions keep `chanceToEquipFinger2` = 100 with a soul table that
@@ -306,6 +362,27 @@ _SLOTS = ('Head', 'Torso', 'LowerBody', 'Forearm', 'LeftHand', 'RightHand',
 _MIN_ARMED_HAND_PCT = 100.0     # every armed RightHand row is a one-handed melee weapon
 _MIN_SIGNATURE_PCT = 70.0       # ... and most of them are his own sword
 _MIN_SHIELD_PCT = 85.0          # the off hand is a shield, bar the set-drop roll
+
+# THE DISCLOSED SET-DROP RATE (see the ⚠️ block in the docstring). The three worn Crimson
+# Verdict pieces have exactly ONE drop path in the whole db, and this lane moves it from the
+# weapon hand @100 to the off hand @19: 21.0084% -> 3.4420% per piece per kill, a 6.1x
+# slowdown on a hand-designed 4-piece set. That is a BALANCE change inside a bug-fix lane,
+# so it is published in four Will-visible places, registered as BL-R251-DEBT-7 for Will to
+# ratify, and pinned here by gate arm E2d.
+# TWO-SIDED, and the ceiling is the important half: a later lane that RESTORES the rate
+# (any of DEBT-7's three costed options) must update this constant and the four documents
+# in the same commit, exactly as a lane that dilutes it further must. A drop rate that can
+# move without the docs moving is how round 1-3 shipped the nerf silently in the first
+# place. Derivation, so it re-derives by hand: 19/(100+19+19) x 1/4 = 3.44203%.
+_CRIMSON_MEMBER_PCT = 3.4420
+_CRIMSON_MEMBER_TOL = 0.05
+# The three WORN members of the set (the fourth, svc_{t}_veinrender, is covered by
+# _MIN_SIGNATURE_PCT instead - it is the one member this lane makes commoner, not rarer).
+_CRIMSON_ARMOUR = {
+    'helm (Armor_Head)': _t('records\\item\\equipmenthelm\\svc_%s_crimsonverdict.dbr'),
+    'cuirass (Armor_UpperBody)': _t('records\\item\\equipmentarmor\\svc_%s_crimsonverdict.dbr'),
+    'armband (Armor_Forearm)': _t('records\\item\\equipmentarmband\\svc_%s_crimsonverdict.dbr'),
+}
 
 
 # E5's PRE-EXISTING offenders, measured in the shipped b888f022 and named individually so
@@ -817,6 +894,38 @@ def _hand_metrics(db):
     return armed, signature, shield, dead
 
 
+def _set_piece_shares(db):
+    """{piece label: expected drops per 100 kills} for the three worn Crimson Verdict pieces.
+
+    Summed over EVERY equip slot of the Devourer, not only the row this lane wires: the point
+    of the arm is to notice a channel appearing or disappearing anywhere on the record, so a
+    later lane that restores the rate (or dilutes it further) cannot leave the four published
+    documents stale. `chanceToEquip<Slot>` is the slot's own gate and the row weights are a
+    weighted pick WITHIN the slot, so the per-slot contribution is chance x share.
+
+    The set's item records are per-difficulty (`svc_{n,e,l}_crimsonverdict`), so each
+    difficulty is scored against ITS OWN tier's record and the reported value is the MINIMUM
+    over the three - the same "worst difficulty wins" convention `_hand_metrics` uses.
+    """
+    out = {}
+    for label, per_tier in sorted(_CRIMSON_ARMOUR.items()):
+        worst = None
+        for diff in range(3):
+            want = {_norm(per_tier[diff])}
+            acc = 0.0
+            for slot in _SLOTS:
+                chance = _f(_gv(db, _DEVOURER, 'chanceToEquip%s' % slot, 0))
+                if chance <= 0:
+                    continue
+                chance = min(chance, 100.0) / 100.0
+                for path, q in _slot_dist(db, _DEVOURER, slot, diff).items():
+                    if _norm(path) in want:
+                        acc += 100.0 * chance * q
+            worst = acc if worst is None else min(worst, acc)
+        out[label] = worst or 0.0
+    return out
+
+
 def _check(db):
     """The R-251 contract over the FINAL db. Returns a list of problem strings."""
     out = []
@@ -931,6 +1040,26 @@ def _check(db):
         if shield + 1e-6 < _MIN_SHIELD_PCT:
             out.append("E2c Devourer's off hand holds a shield only %.2f%% of spawns "
                        "(floor %.2f%%)" % (shield, _MIN_SHIELD_PCT))
+        # E2d - the DISCLOSED set-drop rate. Two-sided: the published number must match the
+        # bytes in BOTH directions, because it is the number four Will-visible documents say.
+        lo = _CRIMSON_MEMBER_PCT - _CRIMSON_MEMBER_TOL
+        hi = _CRIMSON_MEMBER_PCT + _CRIMSON_MEMBER_TOL
+        for label, pct in sorted(_set_piece_shares(db).items()):
+            if lo <= pct <= hi:
+                continue
+            out.append(
+                "E2d Crimson Verdict %s drops on %.4f%% of Devourer kills, but "
+                "_CRIMSON_MEMBER_PCT publishes %.4f%% (+/-%.2f). This table is the ONLY drop "
+                "path for that piece in the whole db, so this IS the farm rate. %s If the "
+                "change is intended, update _CRIMSON_MEMBER_PCT and the four documents that "
+                "quote it IN THE SAME COMMIT (this module's docstring, "
+                "tools/patches/__init__.py, docs/WILL_RULINGS.md R-251, "
+                "docs/WILL_TEST_GUIDE.md) and re-state the delta for Will - see "
+                "BL-R251-DEBT-7. A drop rate that moves without the docs moving is exactly "
+                "how rounds 1-3 shipped a 6.1x nerf silently."
+                % (label, pct, _CRIMSON_MEMBER_PCT, _CRIMSON_MEMBER_TOL,
+                   'The channel has been DILUTED or DELETED.' if pct < lo
+                   else 'The channel has been WIDENED.'))
 
     # E1b - no bow row survives anywhere in the bleed tables.
     for tab in _BLEED:
@@ -1053,6 +1182,12 @@ def verify(db, tags):
           "offender(s) waived by name, BL-R251-DEBT-5). BL-W0814-10 remains OPEN pending "
           "Will's next kill (BL-R251-DEBT-1)."
           % (armed, signature, shield, checked, waived))
+    print("  [toxeus_boss_equipment] DISCLOSED BALANCE DELTA, re-measured this build: each "
+          "worn Crimson Verdict piece drops on %s of Devourer kills, against 21.0084%% in "
+          "the shipped b888f022 - a 6.1x slowdown on the set's ONLY drop path, published "
+          "and pinned by E2d, awaiting Will's ratification as BL-R251-DEBT-7."
+          % ', '.join('%.4f%% (%s)' % (v, k)
+                      for k, v in sorted(_set_piece_shares(db).items())))
 
 
 # ── planted negatives (stub db) ─────────────────────────────────────────────
@@ -1112,8 +1247,18 @@ def _negtest():
         for i, t in enumerate(_VEINRENDER_TAB):
             db.d[_VEINRENDER_ITEM[i]] = item('Weapon_Sword')
             db.d[t] = table([_VEINRENDER_ITEM[i]])
+        # the set table's real shape: 1 Vein Render + the THREE REAL worn-piece records at
+        # equal weight. They must be the real paths, because E2d measures those paths by name.
+        _armour_class = {'helm (Armor_Head)': 'Armor_Head',
+                         'cuirass (Armor_UpperBody)': 'Armor_UpperBody',
+                         'armband (Armor_Forearm)': 'Armor_Forearm'}
+        for label, per_tier in _CRIMSON_ARMOUR.items():
+            for path in per_tier:
+                db.d[path] = item(_armour_class[label])
         for i, t in enumerate(_CRIMSON_SET):
-            db.d[t] = table([_VEINRENDER_ITEM[i], 'i\\helm.dbr', torso, arms])
+            members = [_VEINRENDER_ITEM[i]]
+            members += [per_tier[i] for _l, per_tier in sorted(_CRIMSON_ARMOUR.items())]
+            db.d[t] = table(members)
         for t in _BLEED:
             db.d[t] = table(['i\\axe.dbr', 'i\\axe.dbr'])
         for t in _SHIELD_COMMON + _SHIELD_UNIQUE:
@@ -1281,6 +1426,13 @@ def _negtest():
          lambda d: d.d[_DEVOURER].__setitem__('chanceToEquipLeftHandItem2', 5000)),
         ("the set table's ONLY drop channel deleted (orphaned content)",
          lambda d: d.d[_DEVOURER].__setitem__('lootLeftHandItem2', list(_SHIELD_UNIQUE))),
+        # E2d - the DISCLOSED set-drop rate, both directions
+        ("the set's drop channel quietly THINNED below the published farm rate",
+         lambda d: d.d[_DEVOURER].__setitem__('chanceToEquipLeftHandItem2', 5)),
+        ("the set's drop rate quietly RESTORED on an ungoverned slot, docs left stale",
+         lambda d: d.d[_DEVOURER].update({'chanceToEquipMisc1': 100.0,
+                                          'lootMisc1Item1': list(_CRIMSON_SET),
+                                          'chanceToEquipMisc1Item1': 100})),
         # tier asymmetry - the exact blind spot that produced this bug
         ("an EPIC-ONLY class violation on a Hunt armour row",
          lambda d: d.d.__setitem__(_HUNT_ARMOUR['Torso'][0][1], table(['i\\sword.dbr']))),
@@ -1353,6 +1505,40 @@ def _negtest():
     finally:
         _BANNED_CLASSES = _saved
 
+    # ARM-SPECIFIC PROOF for E2d. The plant list above only asserts that SOMETHING went red,
+    # which is not enough for an arm whose whole job is to notice a number moving: a plant
+    # that happens to trip E2c would score as "caught" while E2d slept. These assert that the
+    # E2d text itself appears, in BOTH directions, and that its measurement is right.
+    for label, plant, direction in (
+            ("E2d specifically fires when the channel is THINNED",
+             lambda d: d.d[_DEVOURER].__setitem__('chanceToEquipLeftHandItem2', 5), 'DILUTED'),
+            ("E2d specifically fires when the channel is WIDENED on an ungoverned slot",
+             lambda d: d.d[_DEVOURER].update({'chanceToEquipMisc1': 100.0,
+                                              'lootMisc1Item1': list(_CRIMSON_SET),
+                                              'chanceToEquipMisc1Item1': 100}), 'WIDENED')):
+        db = healthy()
+        plant(db)
+        hits = [p for p in full(db) if p.startswith('E2d')]
+        if len(hits) == 3 and direction in hits[0]:
+            print("  negtest OK  (caught): %s (all 3 worn pieces named)" % label)
+        else:
+            print("  negtest FAIL (missed): %s -> %d E2d problem(s): %s"
+                  % (label, len(hits), hits[:1]))
+            bad += 1
+
+    # ... and that the healthy baseline measures the number the docs publish. A gate whose
+    # published constant does not match its own clean state is a gate that will be edited
+    # into silence the first time it fires.
+    shares = _set_piece_shares(healthy())
+    off = sorted(k for k, v in shares.items() if abs(v - _CRIMSON_MEMBER_PCT) > 1e-3)
+    if off:
+        print("  negtest FAIL: _CRIMSON_MEMBER_PCT %.4f does not match the clean stub %r"
+              % (_CRIMSON_MEMBER_PCT, {k: round(v, 4) for k, v in shares.items()}))
+        bad += 1
+    else:
+        print("  negtest OK  (measurement): all 3 worn set pieces measure %.4f%% on the "
+              "clean stub, matching the published _CRIMSON_MEMBER_PCT" % _CRIMSON_MEMBER_PCT)
+
     # POSITIVE CONTROLS - the other half of a case-folded comparison. Round 2 listed
     # 'weapon_rangedonehand' and not 'Weapon_RangedOneHand' (10 records in the mod arz), and
     # omitted the lowercase stems the base game really uses (weapon_axe 50 records,
@@ -1384,7 +1570,9 @@ def _negtest():
         bad += 1
     else:
         print("  negtest OK  (positive control stays green)")
-    total = len(plants) + 2 + 4
+    # plants + 2 import-time guards + 2 E2d arm-specific proofs + 1 E2d measurement check
+    # + 4 positive controls + 1 untouched positive control
+    total = len(plants) + 2 + 3 + 4 + 1
     print("negtest: %d/%d checks clean" % (total - bad, total))
     return 1 if bad else 0
 
