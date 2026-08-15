@@ -1225,6 +1225,33 @@ REGISTRY = [
                             # fields, the egg pool's limits/weights and the warband's
                             # chanceToRun. Negative test:
                             # py tools/patches/r247_bloodcave_rulings.py --negtest
+    'toxeus_boss_equipment',  # R-251 (Will 2026-08-14, THREE reports in one sitting, one
+                            # boss family, one system): "toxeus the murderer the endless hunt
+                            # is not wearing any equipment and i dont think he has a weapon" +
+                            # "toxeus the murderer devourer of blood is using a bow which makes
+                            # no sense" + "i killed toxeus the murderer devourer of blood and he
+                            # did not drop his soul even though he should have 100% chance".
+                            # MEASURED: a base-game census (6,085 Monster.tpl records) proves
+                            # LeftHand is the shield / two-handed-ranged slot (Bow 0-to-48,
+                            # Staff 0-to-60, Shield 0-to-123) and RightHand the one-handed melee
+                            # slot (Spear 130-to-0) - so the Devourer's LeftHand pool
+                            # bleed_affix_high_{n,l}, which contains a BOW, is exactly an archer
+                            # wiring, and the Hunt simply has NO lootTorso/LowerBody/Forearm
+                            # fields at all with four more slots at chance 0. Writes: the
+                            # Devourer's two hand slots (shield array + a NEW guaranteed
+                            # veinrender table, the set + bleed tables demoted to drop rows) and
+                            # both Hunt records' three armour slots + four family chances.
+                            # ORDER IS LOAD-BEARING: this must be the LAST writer of these equip
+                            # fields, so it runs after EVERY other writer of the two records
+                            # (toxeus_hunt_encounter, enslaver_shroud, devourer_kit,
+                            # r247_boss_forms, toxeus_hunt_endless, champion_mesh,
+                            # toxeus_champion_kits, r247_bloodcave_rulings); apply() FAILS LOUD
+                            # on any pre-state it did not measure. Writes NO 'controller' field
+                            # (the R-250 enslaver_shroud lane owns that on the Toxeus roster)
+                            # and NO chanceToEquipFinger2 (R-243's pin is asserted only, so
+                            # verify_soul_drop_rates stays green by construction).
+                            # Standalone twin: py tools/gate_toxeus_boss_equipment.py [arz]
+                            # Negative test: py tools/patches/toxeus_boss_equipment.py --negtest
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
