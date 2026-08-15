@@ -1231,16 +1231,20 @@ REGISTRY = [
                             # "toxeus the murderer devourer of blood is using a bow which makes
                             # no sense" + "i killed toxeus the murderer devourer of blood and he
                             # did not drop his soul even though he should have 100% chance".
-                            # MEASURED: a base-game census (6,085 Monster.tpl records) proves
-                            # LeftHand is the shield / two-handed-ranged slot (Bow 0-to-48,
-                            # Staff 0-to-60, Shield 0-to-123) and RightHand the one-handed melee
-                            # slot (Spear 130-to-0) - so the Devourer's LeftHand pool
-                            # bleed_affix_high_{n,l}, which contains a BOW, is exactly an archer
-                            # wiring, and the Hunt simply has NO lootTorso/LowerBody/Forearm
-                            # fields at all with four more slots at chance 0. Writes: the
-                            # Devourer's two hand slots (shield array + a NEW guaranteed
-                            # veinrender table, the set + bleed tables demoted to drop rows) and
-                            # both Hunt records' three armour slots + four family chances.
+                            # MEASURED: a base-game census (6,085 Monster.tpl records, one tick
+                            # per record per class its hand can yield) proves LeftHand is the
+                            # shield / two-handed-ranged slot (Bow 0-to-49, Staff 0-to-113,
+                            # Shield 0-to-144) and RightHand the one-handed melee slot (Spear
+                            # 122-to-0) - so the Devourer's LeftHand pool bleed_affix_high_{n,l},
+                            # which contains a BOW, is exactly an archer wiring, and the Hunt
+                            # simply has NO lootTorso/LowerBody/Forearm fields at all with four
+                            # more slots at chance 0. Writes: the Devourer's two hand slots (the
+                            # weapon hand goes MELEE-ONLY behind a NEW guaranteed veinrender
+                            # table, the off hand gets the shield array plus the 4-piece set's
+                            # only drop row) and both Hunt records' three armour slots + four
+                            # family chances. The gate measures the resulting rolls, so the
+                            # player-facing claim cannot drift: armed 100.00%, Vein Render
+                            # 72.46%, shield 86.23% (shipped: 36.97 / 21.01 / 15.97).
                             # ORDER IS LOAD-BEARING: this must be the LAST writer of these equip
                             # fields, so it runs after EVERY other writer of the two records
                             # (toxeus_hunt_encounter, enslaver_shroud, devourer_kit,

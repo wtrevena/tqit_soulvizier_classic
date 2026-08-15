@@ -11,17 +11,24 @@ WILL, VERBATIM (three reports, one boss family, one system):
 
 WHAT THE BYTES SAID (measured against the SHIPPED build91/92 arz b888f022, read-only)
 -------------------------------------------------------------------------------------
-THE SLOT LAW, proven by a full base-game census (6,085 Monster.tpl records, every hand
-slot's loot chain expanded to leaf templateNames):
+THE SLOT LAW, proven by a full base-game census. COUNTING RULE, stated so the numbers can
+be re-derived: over all 6,085 `Monster.tpl` records in the base-game `database.arz`, a
+record is counted ONCE per class its hand can yield - every armed row of that hand
+(chanceToEquip<Hand> > 0, row weight > 0) is expanded through the loot chain to leaf
+`templateName` stems, the per-record class sets are unioned, and each class gets one tick.
+(A per-ARMED-ROW rule instead of a per-RECORD rule shifts every non-zero count - Spear
+196/0, Sword 166/27, Bow 0/55, Shield 0/160 - and changes NO zero. The law lives in the
+zeros, so it is rule-independent.)
 
     class                RightHand   LeftHand
-    Weapon_Spear             130          0      <- the Hunt's Runbreaker is CORRECT
-    Weapon_Sword             100         21
-    Weapon_Axe                68         26
-    Weapon_Mace               88          8
-    Weapon_Bow                 0         48      <- LeftHand IS the bow slot
-    Weapon_Staff               0         60
-    WeaponArmor_Shield         0        123      <- LeftHand IS the shield slot
+    Weapon_Spear             122          0      <- the Hunt's Runbreaker is CORRECT
+    Weapon_Sword             144         24
+    Weapon_Axe                78         27
+    Weapon_Mace               94         11
+    weapon_rangedonehand     125         10
+    Weapon_Bow                 0         49      <- LeftHand IS the bow slot
+    Weapon_Staff               0        113
+    WeaponArmor_Shield         0        144      <- LeftHand IS the shield slot
 
 So in this engine LeftHand is the shield / two-handed-ranged slot and RightHand is the
 one-handed melee slot. That single table explains two of the three reports.
@@ -33,14 +40,17 @@ shield row at weight 19). Those three tables were curated by AFFIX, not by class
 **u_l_nemesis'recurve (Weapon_Bow)** + 2 axes (`_e` is 3 axes, no bow). LeftHand is
 exactly where the engine expects a bow, so ~28% of Devourer spawns wield one and fight as
 an archer. Written by `apply_svc_patches._wire_blood_toxeus_loot`, which used the two hand
-slots as generic "guaranteed drop" channels rather than as equipment slots.
+slots as generic "guaranteed drop" channels rather than as equipment slots - the same
+mistake put `crimsonverdict_guaranteed_*` in his WEAPON hand at weight 100, and 3 of that
+table's 4 equal-weight members are ARMOUR (Armor_Head / Armor_UpperBody / Armor_Forearm),
+so 63.0% of shipped Devourer spawns roll a piece of armour into the sword hand.
 
 (-3) THE HUNT HAS NO ARMOUR AT ALL. `um_toxeus_hunt_99` / `um_toxeus_hunt_l_99` carry NO
 `lootTorso*`, `lootLowerBody*`, `lootForearm*`, `lootHead*` or `lootLeftHand*` fields
 whatsoever, and `chanceToEquipFinger1/Misc1/Misc2/Misc3` are all 0.0 - three worn slots
 missing outright and four more switched off. He is literally naked. His WEAPON, though, is
 correct and stays untouched: RightHand 100% -> `runbreaker_guaranteed_{n,e,l}` -> exactly
-one `Weapon_Spear` (`svc_{t}_runbreaker`), and spears ride RightHand 130-to-0 in the base
+one `Weapon_Spear` (`svc_{t}_runbreaker`), and spears ride RightHand 122-to-0 in the base
 game. R-247 round 3 bound the spear + unarmed animation rows; the missing half was the
 loadout, exactly as Will described it ("not wearing any equipment").
 His mesh can wear armour: `SkeletonRumorBoss.msh` has 18 base-game carriers and the
@@ -50,40 +60,66 @@ Forearm 50 / LeftHand 100 / RightHand 100 - the pairing is base-game-proven, not
 (-10) THE 100% SOUL PIN IS INTACT; THE ANOMALY IS THE HANDS. Verified in the shipped arz:
 `chanceToEquipFinger2` = 100.0 (R-243's pin, byte-unchanged), `lootFinger2Item1` =
 `blood_toxeus_soul_{n,e,l}`, all three resolve, all three are `Jewelry_Ring` /
-`itemClassification Magical` / `itemLevel 40` - structurally IDENTICAL to the Enslaver and
-Hunt souls that have never been reported missing. Exactly ONE record in the whole DB
-carries `tagMonsterHemorrheus` and every spawn pool (`q_bloodtoxeus_lone`,
-`egg_blooddragon`, the ambush) names that same record, so "the killed instance was a
-different variant" is refuted. The ONLY structural difference between the Devourer's equip
-block and his three siblings' is the cross-class hand wiring above - his RightHand rolls
-`crimsonverdict_guaranteed_*`, which is 3/4 ARMOUR (helm/torso/armband) in the weapon hand,
-and his LeftHand rolls weapons. This module removes that anomaly. HONEST LIMIT: the engine
-path from a class-mismatched hand roll to a skipped Finger2 equip is NOT provable from the
-bytes, so -10 closes on Will's next kill, not on this gate - `BL-R251-DEBT-1`, with the
-escalation lever pre-designed (move the soul onto the Misc4 channel, which R-247.6a proved
-delivers in-game: "Will's kill DID drop it").
+`itemClassification Magical` / `itemLevel 40 / 68 / 100` per difficulty - field-for-field
+the same shape as the Enslaver and Hunt souls (also Ring / Magical / 40-68-100) that have
+never been reported missing. Exactly ONE record in the whole DB carries
+`tagMonsterHemorrheus` and every spawn pool (`q_bloodtoxeus_lone`, `egg_blooddragon`, the
+ambush) names that same record, so "the killed instance was a different variant" is
+refuted. The ONLY structural difference between the Devourer's equip block and his three
+siblings' is the cross-class hand wiring above. This module removes that anomaly.
+HONEST LIMIT, AND IT IS THE HEADLINE: the engine path from a class-mismatched hand roll to
+a skipped Finger2 equip is NOT provable from the bytes, so **-10 IS NOT CLOSED BY THIS
+LANE**. It closes on Will's next kill - `BL-R251-DEBT-1`, with the escalation lever
+pre-designed (move the soul onto the Misc4 channel, which R-247.6a proved delivers
+in-game: "Will's kill DID drop it").
 
 WHAT THIS MODULE WRITES (and nothing else)
 ------------------------------------------
-THE DEVOURER (`um_bloodtoxeus_99`), 1 record + 2 table edits + 3 new tables:
+THE DEVOURER (`um_bloodtoxeus_99`), 8 fields on 1 record + 2 table edits + 3 new tables.
+The governing idea: THE WEAPON HAND IS FOR WEAPONS. Every armed row of his RightHand
+yields a one-handed melee weapon and nothing else, so the sword hand can never come up
+empty; the one deliberately mixed row - the 4-piece set's drop channel - lives in the
+OFF hand, where a mis-class roll costs a shield instead of the sword Will went looking for.
   * LeftHand item1  `bleed_affix_high_*` -> `shields\commondynamic\shield_{n01b,e01,l01}`
-    - the Enslaver's byte-identical shield array. The off-hand can now only ever hold a
-    shield. THE BOW IS GONE.
+    @100 - the Enslaver's byte-identical shield array. THE BOW IS GONE.
+  * LeftHand item2 = `crimsonverdict_guaranteed_{n,e,l}` @19 - the 4-piece set table keeps
+    a drop channel (RETIREMENT PROTOCOL: it has exactly ONE referrer in the whole db, so
+    dropping the row would orphan the entire set). This is the module's ONE allowlisted
+    mixed row and the gate names it explicitly.
+  * LeftHand item5 (`shields\unique\shield_{n,e,l}01` @19) is ASSERTED, never written.
   * RightHand item1 `crimsonverdict_guaranteed_*` -> NEW `veinrender_guaranteed_{n,e,l}`
     (FixedWeight, one row: `svc_{t}_veinrender` @100) - the Runbreaker pattern, so his
-    signature sword is both wielded and guaranteed-dropped.
-  * RightHand item2 = `crimsonverdict_guaranteed_{n,e,l}` @ weight 19 - the 4-piece set
-    table KEEPS a drop channel (no reachability regression; R-247.6a's Misc4 evidence says
-    a rolled item drops even when its class cannot be worn).
-  * RightHand item3 = `bleed_affix_high_{n,e,l}` @ weight 19 - the high-bleed uniques move
-    to the slot their class belongs in instead of being retired.
+    signature sword is wielded and guaranteed-dropped whenever that row wins.
+  * RightHand item2 = the de-bowed `bleed_affix_high_{n,e,l}` @19 - the high-bleed uniques
+    move to the slot their class belongs in instead of being retired.
+  * RightHand item5 (`weapons\unique\sword_{n,e,l}01` @19) is ASSERTED, never written.
   * `bleed_affix_high_n` / `_l` are DE-BOWED: the Weapon_Bow row is dropped and the two
     Weapon_Axe rows compact to lootName1/2 (row 3 blanked, weight 0). `_e` is asserted
     bow-free and left byte-untouched.
+
+  THE RESULTING ROLLS, computed by the gate itself over the real arz (not asserted by
+  hand - `verify()` prints them every build):
+    RightHand, weights 100/19/19 = 138 total, EVERY row one-handed melee ->
+        armed 100.0000%   his own Vein Render 72.4638%   bleed-affix axe 13.77%
+        unique sword 13.77%.  The weapon hand can never be empty.
+    LeftHand,  weights 100/19/19 = 138 total ->
+        shield 86.2319%.  The other 13.7681% is the Crimson Verdict set roll: it DROPS
+        the rolled piece (R-247.6a proved a rolled item drops even when its class cannot
+        be worn) but leaves the off hand bare - 10.33% a set armour piece, 3.44% a second
+        Vein Render.
+  The gate re-derives these from the final db and fails below the named floors
+  `_MIN_ARMED_HAND_PCT` / `_MIN_SIGNATURE_PCT` / `_MIN_SHIELD_PCT`, so the sentence in
+  `docs/WILL_TEST_GUIDE.md` cannot drift away from the bytes.
+  FOR CONTRAST, the SHIPPED b888f022 numbers the gate reports on the same arz:
+        armed 36.97%   Vein Render 21.01%   shield 15.97%
+  i.e. 63.03% of shipped Devourer spawns roll ARMOUR into the sword hand. Will filed
+  "i dont think he has a weapon" about the Hunt; the Devourer had the same disease.
+
 THE HUNT (`um_toxeus_hunt_99` + `um_toxeus_hunt_l_99`), 2 records, 0 new tables:
   * Torso / LowerBody / Forearm wired at 100 with the tier-02 loot family his own record
     already uses everywhere else (finger_n02, amulet_n02, relic_15-21), common @5000 +
-    unique @19 - his brothers' exact weight shape.
+    unique @19 - his brothers' exact weight shape. All 18 tables measured class-pure on
+    all three difficulties.
   * `chanceToEquipFinger1` 0 -> 100, `Misc1` 0 -> 100, `Misc2` 0 -> 18, `Misc3` 0 -> 50:
     the family values, on loot tables ALREADY present and dead on his record.
   * Head and LeftHand stay OFF by design: both brothers ship Head 0 (the family's bare
@@ -103,9 +139,16 @@ records (`toxeus_hunt_encounter`, `toxeus_hunt_endless`, `enslaver_shroud`, `dev
 registered earlier, and apply() FAILS LOUD on any pre-state it did not measure.
 
 GATE (verify, post-finalization, over the FINAL assembled db):
-  E1 no Toxeus champion slot's loot chain yields Weapon_Bow or Weapon_Staff anywhere;
-  E2 the Devourer's LeftHand yields only shields, his RightHand's dominant row yields only
-     one-handed melee, and the two mixed-class drop rows are exactly the allowlisted pair;
+  E1 no Toxeus champion slot's loot chain yields Weapon_Bow or Weapon_Staff anywhere, on
+     ANY difficulty (the shipped bug was Normal+Legendary-only, so every arm below walks
+     all three difficulty tables of every row, never just tier N);
+  E2 every armed row of every class-governed slot yields ONLY classes that slot can wear,
+     except the single row named in `_MIXED_DROP_ROWS` - an allowlist that is validated at
+     import time to contain nothing but governed slots, so it can neither be widened
+     silently nor accumulate entries the gate never consults;
+  E2c the MEASURED roll arithmetic of the Devourer's two hands (armed / signature / shield
+     shares, minimum over the three difficulties) clears the named floors - this is the arm
+     that makes the player-facing claim falsifiable;
   E3 both Hunt records wear Torso + LowerBody + Forearm at 100 on class-correct tables,
      and still carry the Runbreaker spear at RightHand 100 and the Misc4 rite at 100;
   E4 all four R-48 champions keep `chanceToEquipFinger2` = 100 with a soul table that
@@ -124,8 +167,8 @@ if str(_TOOLS) not in sys.path:
     sys.path.insert(0, str(_TOOLS))
 
 MODULE_NAME = ("R-251 Toxeus boss equipment - the Endless Hunt wears the family's armour, "
-               "the Devourer of Blood carries sword-and-shield instead of a bow, and every "
-               "champion hand slot holds a class that slot can wear")
+               "the Devourer of Blood carries a melee weapon and a shield instead of a bow, "
+               "and every champion hand slot holds a class that slot can wear")
 
 # ── the records ─────────────────────────────────────────────────────────────
 _DEVOURER = 'records\\xpack\\creatures\\monster\\skeleton\\um_bloodtoxeus_99.dbr'
@@ -135,6 +178,7 @@ _HUNT_L = 'records\\creature\\monster\\shadowstalker\\um_toxeus_hunt_l_99.dbr'
 _HUNTS = (_HUNT, _HUNT_L)
 # The four R-48 champions pinned at 100% soul by R-243 (asserted, never written).
 _CHAMPIONS = (_DEVOURER, _ENSLAVER, _HUNT, _HUNT_L)
+
 
 # ── the tables ──────────────────────────────────────────────────────────────
 def _t(fmt):
@@ -153,7 +197,10 @@ _RITE = [_LOOT + 'svc\\svc_rite_guaranteed.dbr'] * 3
 _SHIELD_COMMON = [_LOOT + 'shields\\commondynamic\\shield_n01b.dbr',
                   _LOOT + 'shields\\commondynamic\\shield_e01.dbr',
                   _LOOT + 'shields\\commondynamic\\shield_l01.dbr']
+# the Devourer's SHIPPED unique rows on both hands - asserted, never written, because the
+# measured roll arithmetic below depends on them.
 _SHIELD_UNIQUE = _t(_LOOT + 'shields\\unique\\shield_%s01.dbr')
+_SWORD_UNIQUE = _t(_LOOT + 'weapons\\unique\\sword_%s01.dbr')
 
 # the Hunt's own tier-02 loot family (matches finger_n02 / amulet_n02 already on his record)
 _HUNT_ARMOUR = {
@@ -164,8 +211,8 @@ _HUNT_ARMOUR = {
     'Forearm': (_t(_LOOT + 'arms\\commondynamic\\armband_%s02.dbr'),
                 _t(_LOOT + 'arms\\unique\\armband_%s02.dbr')),
 }
-# the family (Enslaver + Devourer) weight shape for a worn armour slot
-_W_COMMON, _W_UNIQUE = 5000, 19
+# the family (Enslaver + Devourer) weight vocabulary for an equipment slot
+_W_COMMON, _W_UNIQUE, _W_GUARANTEED = 5000, 19, 100
 # the family chances the Hunt's dead slots are switched on to
 _HUNT_MISC_CHANCES = {'Finger1': 100.0, 'Misc1': 100.0, 'Misc2': 18.0, 'Misc3': 50.0}
 
@@ -197,30 +244,49 @@ _SLOT_CLASSES = {
     'Finger2': {'Jewelry_Ring'},
     'Misc3': {'Jewelry_Amulet'},
 }
-# Classes that must never appear in ANY Toxeus champion slot: the two-handed ranged
-# families. This is Will's -9 defect class, stated as an invariant.
+# Classes that must never appear in ANY Toxeus champion slot, governed or not: the
+# two-handed ranged families. This is Will's -9 defect class, stated as an invariant.
 _BANNED_CLASSES = {'Weapon_Bow', 'Weapon_Staff'}
-# The mixed-class rows this lane deliberately KEEPS as pure drop channels (a rolled item
-# still drops when its class cannot be worn - R-247.6a's Misc4 evidence). Owner-accepted,
-# named here so the gate can never be silently widened.
+
+# THE ALLOWLIST. Exactly one row in this lane is deliberately mixed-class: the 4-piece
+# Crimson Verdict set's only drop channel, parked in the OFF hand so a mis-class roll can
+# never cost the Devourer his weapon. Slots with no entry in _SLOT_CLASSES (Misc1 potions,
+# Misc2 relics/formulae, Misc4 the EoAT rite) have no single wearable class and are NOT
+# class-governed at all - they are covered by the E1 banned-class arm only, so listing them
+# here would be dead weight that reads like coverage. `_validate_allowlist` enforces that.
 _MIXED_DROP_ROWS = {
-    (_DEVOURER, 'RightHand', 2): 'crimsonverdict_guaranteed - the 4-piece set drop row',
-    (_DEVOURER, 'Misc4', 1): 'svc_devourer_misc4_master - rant + EoAT rite (R-247.6a)',
-    (_HUNT, 'Misc4', 1): 'svc_rite_guaranteed - the EoAT formula (R-247.6a)',
-    (_HUNT_L, 'Misc4', 1): 'svc_rite_guaranteed - the EoAT formula (R-247.6a)',
-    (_ENSLAVER, 'Misc4', 1): 'svc_rite_guaranteed - the EoAT formula (R-247.6a)',
-    (_DEVOURER, 'Misc2', 2): 'arcane formulae row (shipped, base-game shape)',
-    (_ENSLAVER, 'Misc2', 2): 'arcane formulae row (shipped, base-game shape)',
-    (_HUNT, 'Misc2', 1): 'relic row (shipped, base-game shape)',
-    (_HUNT_L, 'Misc2', 1): 'relic row (shipped, base-game shape)',
-    (_DEVOURER, 'Misc1', 1): 'potion row', (_DEVOURER, 'Misc1', 2): 'potion row',
-    (_ENSLAVER, 'Misc1', 1): 'potion row', (_ENSLAVER, 'Misc1', 2): 'potion row',
-    (_HUNT, 'Misc1', 1): 'potion row', (_HUNT, 'Misc1', 2): 'potion row',
-    (_HUNT_L, 'Misc1', 1): 'potion row', (_HUNT_L, 'Misc1', 2): 'potion row',
-    (_DEVOURER, 'Misc2', 1): 'relic row', (_ENSLAVER, 'Misc2', 1): 'relic row',
+    (_DEVOURER, 'LeftHand', 2): 'crimsonverdict_guaranteed_{n,e,l} - the 4-piece set drop '
+                                'row; it is the set table\'s ONLY referrer in the db, so '
+                                'the row cannot be dropped without orphaning the set',
 }
 _SLOTS = ('Head', 'Torso', 'LowerBody', 'Forearm', 'LeftHand', 'RightHand',
           'Finger1', 'Finger2', 'Misc1', 'Misc2', 'Misc3', 'Misc4')
+
+# The measured floors the Devourer's hands must clear, minimum over all three difficulties.
+# Computed by the gate from the final db, never asserted by hand. Shipped values with the
+# 100/19/19 weight shape: armed 100.00, Vein Render 72.46, shield 86.23.
+_MIN_ARMED_HAND_PCT = 100.0     # every armed RightHand row is a one-handed melee weapon
+_MIN_SIGNATURE_PCT = 70.0       # ... and most of them are his own sword
+_MIN_SHIELD_PCT = 85.0          # the off hand is a shield, bar the set-drop roll
+
+
+def _validate_allowlist(rows):
+    """Every allowlisted row must name a slot the gate actually class-governs.
+
+    Without this, an entry for an ungoverned slot (Misc1/Misc2/Misc4) sits in the dict
+    looking like a sanctioned exception while the checker never reaches it - an allowlist
+    that overstates what it governs is worse than no allowlist.
+    """
+    bad = sorted({slot for (_rec, slot, _idx) in rows if slot not in _SLOT_CLASSES})
+    if bad:
+        raise AssertionError(
+            "_MIXED_DROP_ROWS names slot(s) %s that _SLOT_CLASSES does not govern, so the "
+            "gate can never consult those entries. Either govern the slot or drop the "
+            "entry." % ', '.join(bad))
+    return True
+
+
+_validate_allowlist(_MIXED_DROP_ROWS)
 
 
 # ── tiny db helpers (work on the real ArzDatabase and on the negtest stub) ──
@@ -274,7 +340,10 @@ def _set(db, rec, field, value, dtype_if_new=None):
 
     The dtype-preservation law both ways: never pass a dtype to an existing field
     (silent INT/FLOAT corruption), always pass one to a field that does not exist yet
-    (the sanctioned arm - a brand-new field has no dtype to preserve).
+    (the sanctioned arm - a brand-new field has no dtype to preserve). EVERY write in
+    this module goes through here, including the ones that author new records: a table
+    this module authored on a previous pass is an EXISTING record, and its fields must
+    then be written dtype-free like any other.
     """
     if db.get_field_value(rec, field) is None and dtype_if_new is not None:
         db.set_field(rec, field, value, dtype_if_new)
@@ -282,42 +351,70 @@ def _set(db, rec, field, value, dtype_if_new=None):
         db.set_field(rec, field, value)
 
 
-def _leaf_classes(db, table, depth=0, seen=None, out=None):
-    """Expand a loot chain to the set of leaf item templateName stems.
-
-    Records that are not in `db` are base-game records that exist at runtime but not in
-    the mod arz; they resolve to the sentinel '' and every caller IGNORES them (an
-    unresolved leaf is never a violation - that would cry wolf on half the base game).
-    """
-    if seen is None:
-        seen, out = set(), set()
-    if not table or depth > 6:
-        return out
-    key = _norm(table)
-    if key in seen:
-        return out
-    seen.add(key)
-    if not db.has_record(table):
-        out.add('')
-        return out
-    fields = db.get_fields(table) or {}
-    kids = []
-    for k in fields:
-        kk = str(k).split('###')[0].lower()
-        if kk.startswith(('lootname', 'itemname', 'bothname')):
-            for x in _gl(db, table, str(k).split('###')[0]):
-                if x.lower().endswith('.dbr'):
-                    kids.append(x)
-    if not kids:
-        tpl = str(_gv(db, table, 'templateName', '') or '')
-        stem = tpl.replace('/', '\\').rsplit('\\', 1)[-1]
-        if stem.lower().endswith('.tpl'):
-            stem = stem[:-4]
-        out.add(stem)
-        return out
-    for c in kids:
-        _leaf_classes(db, c, depth + 1, seen, out)
+def _base_fields(db, rec):
+    """Field base-names of a record, '###' suffixes stripped and de-duplicated."""
+    out = []
+    seen = set()
+    for k in (db.get_fields(rec) or {}):
+        kk = str(k).split('###')[0]
+        if kk not in seen:
+            seen.add(kk)
+            out.append(kk)
     return out
+
+
+def _leaf_items(db, table, weight=1.0, depth=0, seen=(), out=None):
+    """Expand a loot chain to {leaf record path: probability}, honouring lootWeightN.
+
+    The class SET alone cannot answer "how often is his hand empty" - that needs the
+    per-member weights, because the Crimson Verdict table is 1 sword + 3 armour at equal
+    weight. Records not in `db` are base-game records that exist at runtime but not in the
+    mod arz; they come back as leaves whose class resolves to the sentinel '' and every
+    caller IGNORES them (an unresolved leaf is never a violation - that would cry wolf on
+    half the base game). Measured on b888f022: ZERO of the tables this lane touches has an
+    unresolved leaf, so the shares below are exact, not lower bounds.
+    """
+    if out is None:
+        out = {}
+    if not table or weight <= 0 or depth > 6 or _norm(table) in seen:
+        return out
+    if not db.has_record(table):
+        out[table] = out.get(table, 0.0) + weight
+        return out
+    kids = []
+    for kk in _base_fields(db, table):
+        low = kk.lower()
+        if not low.startswith(('lootname', 'itemname', 'bothname')):
+            continue
+        idx = ''.join(ch for ch in kk if ch.isdigit())
+        w = _f(_gv(db, table, 'lootWeight%s' % idx, 0)) if idx else 0.0
+        paths = [x for x in _gl(db, table, kk) if x.lower().endswith('.dbr')]
+        for p in paths:
+            kids.append((p, w / len(paths)))
+    if not kids:
+        out[table] = out.get(table, 0.0) + weight
+        return out
+    total = sum(w for _p, w in kids)
+    if total <= 0:                     # unweighted table: treat members as equiprobable
+        kids = [(p, 1.0) for p, _w in kids]
+        total = float(len(kids))
+    nxt = tuple(seen) + (_norm(table),)
+    for p, w in kids:
+        _leaf_items(db, p, weight * w / total, depth + 1, nxt, out)
+    return out
+
+
+def _class_of(db, path):
+    """The item's templateName stem, or '' when the record is not in this db."""
+    if not db.has_record(path):
+        return ''
+    stem = str(_gv(db, path, 'templateName', '') or '').replace('/', '\\').rsplit('\\', 1)[-1]
+    return stem[:-4] if stem.lower().endswith('.tpl') else stem
+
+
+def _leaf_classes(db, table):
+    """Set of leaf item class stems for a loot chain ('' = unresolved, always ignored)."""
+    return {_class_of(db, p) for p in _leaf_items(db, table)}
 
 
 def _slot_rows(db, rec, slot):
@@ -331,24 +428,66 @@ def _slot_rows(db, rec, slot):
     return rows
 
 
+def _slot_dist(db, rec, slot, diff):
+    """{leaf item path: probability} for one slot on one difficulty, given it equips."""
+    rows = _slot_rows(db, rec, slot)
+    total = sum(w for _i, w, _t in rows)
+    if total <= 0:
+        return {}
+    dist = {}
+    for _i, w, tabs in rows:
+        tab = tabs[diff] if diff < len(tabs) else tabs[0]
+        for path, q in _leaf_items(db, tab).items():
+            dist[path] = dist.get(path, 0.0) + q * w / total
+    return dist
+
+
+def _pct_class(db, dist, classes):
+    return 100.0 * sum(q for p, q in dist.items() if _class_of(db, p) in classes)
+
+
+def _pct_items(dist, items):
+    want = {_norm(x) for x in items}
+    return 100.0 * sum(q for p, q in dist.items() if _norm(p) in want)
+
+
 # ── apply ───────────────────────────────────────────────────────────────────
 def _fixedweight(db, path, members, desc):
-    """Author a LootItemTable_FixedWeight in the shape apply_svc_patches uses."""
+    """Author a LootItemTable_FixedWeight in the shape apply_svc_patches uses.
+
+    Every write routes through `_set`, so a re-apply over a db where this table already
+    exists writes dtype-free instead of re-declaring dtypes on existing fields.
+    """
     from apply_svc_patches import (_ensure_record, DATA_TYPE_STRING, DATA_TYPE_INT,
                                    DATA_TYPE_FLOAT)
     S, I, F = DATA_TYPE_STRING, DATA_TYPE_INT, DATA_TYPE_FLOAT
     _ensure_record(db, path, 'Database\\Templates\\LootItemTable_FixedWeight.tpl')
     db._record_types[path] = 'LootItemTable_FixedWeight'
-    db.set_field(path, 'Class', 'LootItemTable_FixedWeight', S)
-    db.set_field(path, 'templateName', 'Database\\Templates\\LootItemTable_FixedWeight.tpl', S)
-    db.set_field(path, 'FileDescription', desc, S)
-    db.set_field(path, 'brokenRandomizerChance', 0.0, F)
-    db.set_field(path, 'prefixRandomizerChance', 0.0, F)
-    db.set_field(path, 'suffixRandomizerChance', 0.0, F)
+    _set(db, path, 'Class', 'LootItemTable_FixedWeight', S)
+    _set(db, path, 'templateName', 'Database\\Templates\\LootItemTable_FixedWeight.tpl', S)
+    _set(db, path, 'FileDescription', desc, S)
+    for f in ('brokenRandomizerChance', 'prefixRandomizerChance', 'suffixRandomizerChance'):
+        _set(db, path, f, 0.0, F)
     for i, m in enumerate(members, start=1):
-        db.set_field(path, 'lootName%d' % i, m, S)
-        db.set_field(path, 'lootWeight%d' % i, 100, I)
+        _set(db, path, 'lootName%d' % i, m, S)
+        _set(db, path, 'lootWeight%d' % i, _W_GUARANTEED, I)
+    # idempotency: blank any stale member row a previous pass may have left behind
+    for i in range(len(members) + 1, 7):
+        if db.get_field_value(path, 'lootName%d' % i) is not None:
+            _set(db, path, 'lootName%d' % i, '')
+            _set(db, path, 'lootWeight%d' % i, 0)
     db._modified.add(path)
+
+
+def _assert_row(db, rec, slot, idx, want, why):
+    got = _gl(db, rec, 'loot%sItem%d' % (slot, idx))
+    if not _same(got, want):
+        raise SystemExit(
+            "[toxeus_boss_equipment] PRE-STATE DRIFT: %s loot%sItem%d = %r, expected %r "
+            "(%s). This row is ASSERTED, never written - the measured roll arithmetic in "
+            "the gate depends on it, so a different value means another writer appeared "
+            "or this module is mis-ordered."
+            % (rec.rsplit('\\', 1)[-1], slot, idx, got, want, why))
 
 
 def apply(db, tags):
@@ -372,13 +511,17 @@ def apply(db, tags):
         raise SystemExit("[toxeus_boss_equipment] PRE-STATE DRIFT: Devourer "
                          "chanceToEquipLeftHand = %r, expected 100.0"
                          % _gv(db, _DEVOURER, 'chanceToEquipLeftHand'))
+    _assert_row(db, _DEVOURER, 'LeftHand', 5, _SHIELD_UNIQUE, 'the shipped unique-shield row')
+    _assert_row(db, _DEVOURER, 'RightHand', 5, _SWORD_UNIQUE, 'the shipped unique-sword row')
     _set(db, _DEVOURER, 'lootLeftHandItem1', list(_SHIELD_COMMON), S)
-    _set(db, _DEVOURER, 'chanceToEquipLeftHandItem1', 100)
-    _set(db, _DEVOURER, 'lootLeftHandItem5', list(_SHIELD_UNIQUE), S)
-    _set(db, _DEVOURER, 'chanceToEquipLeftHandItem5', _W_UNIQUE)
+    _set(db, _DEVOURER, 'chanceToEquipLeftHandItem1', _W_GUARANTEED)
+    # the 4-piece set table keeps its ONLY drop channel, in the hand where a mis-class
+    # roll costs a shield rather than the sword (the module's one allowlisted mixed row)
+    _set(db, _DEVOURER, 'lootLeftHandItem2', list(_CRIMSON_SET), S)
+    _set(db, _DEVOURER, 'chanceToEquipLeftHandItem2', _W_UNIQUE)
     db._modified.add(_DEVOURER)
 
-    # ── 2. his weapon hand: a guaranteed Vein Render, the Runbreaker pattern ──
+    # ── 2. his weapon hand: melee only, led by a guaranteed Vein Render ──────
     rh = _gl(db, _DEVOURER, 'lootRightHandItem1')
     if not _same(rh, _CRIMSON_SET):
         raise SystemExit(
@@ -389,13 +532,10 @@ def apply(db, tags):
             raise SystemExit("[toxeus_boss_equipment] Vein Render item MISSING: %s" % item)
         _fixedweight(db, tab, [item], 'Vein Render guaranteed - the Devourer of Blood (%s)' % tier)
     _set(db, _DEVOURER, 'lootRightHandItem1', list(_VEINRENDER_TAB), S)
-    _set(db, _DEVOURER, 'chanceToEquipRightHandItem1', 100)
-    # the 4-piece set table keeps a drop channel (allowlisted mixed row)
-    _set(db, _DEVOURER, 'lootRightHandItem2', list(_CRIMSON_SET), S)
-    _set(db, _DEVOURER, 'chanceToEquipRightHandItem2', _W_UNIQUE)
+    _set(db, _DEVOURER, 'chanceToEquipRightHandItem1', _W_GUARANTEED)
     # the high-bleed uniques move to the slot their class belongs in
-    _set(db, _DEVOURER, 'lootRightHandItem3', list(_BLEED), S)
-    _set(db, _DEVOURER, 'chanceToEquipRightHandItem3', _W_UNIQUE)
+    _set(db, _DEVOURER, 'lootRightHandItem2', list(_BLEED), S)
+    _set(db, _DEVOURER, 'chanceToEquipRightHandItem2', _W_UNIQUE)
 
     # ── 3. de-bow the two bleed tables ──────────────────────────────────────
     debowed = 0
@@ -423,15 +563,18 @@ def apply(db, tags):
                              "got %r" % (tab, kept))
         for i, m in enumerate(kept, start=1):
             _set(db, tab, 'lootName%d' % i, m)
-            _set(db, tab, 'lootWeight%d' % i, 100)
+            _set(db, tab, 'lootWeight%d' % i, _W_GUARANTEED)
         _set(db, tab, 'lootName%d' % (len(kept) + 1), '')
         _set(db, tab, 'lootWeight%d' % (len(kept) + 1), 0)
         db._modified.add(tab)
         debowed += 1
-    print("  [-9] Devourer: LeftHand -> the Enslaver's shield array (common@100 + "
-          "unique@%d), RightHand -> veinrender_guaranteed@100 + the set table@%d + the "
-          "bleed uniques@%d; %d bleed table(s) de-bowed. He can no longer hold a bow in "
-          "any slot." % (_W_UNIQUE, _W_UNIQUE, _W_UNIQUE, debowed))
+    print("  [-9] Devourer: RightHand is now MELEE-ONLY (veinrender_guaranteed@%d + the "
+          "de-bowed bleed uniques@%d + the shipped unique-sword row@%d) so the weapon hand "
+          "can never come up empty; LeftHand -> the Enslaver's shield array@%d + the "
+          "4-piece set's drop row@%d + the shipped unique-shield row@%d; %d bleed table(s) "
+          "de-bowed. He can no longer hold a bow in any slot."
+          % (_W_GUARANTEED, _W_UNIQUE, _W_UNIQUE, _W_GUARANTEED, _W_UNIQUE, _W_UNIQUE,
+             debowed))
 
     # ── 4. the Hunt puts on the family's armour ─────────────────────────────
     for rec in _HUNTS:
@@ -473,15 +616,36 @@ def apply(db, tags):
           "Misc2 18 / Misc3 50 - the family shape. Spear, soul pin and Misc4 rite asserted "
           "and untouched; Head + LeftHand stay off by design (bare skull, two-handed spear)."
           % (_W_COMMON, _W_UNIQUE))
+    print("  [-10] NOT CLOSED HERE: the 100% soul pin is asserted intact and the equip "
+          "anomaly is gone, but the engine link is unprovable from the bytes - it closes on "
+          "Will's next kill (BL-R251-DEBT-1).")
     print("=== toxeus_boss_equipment done ===\n")
 
 
 # ── the gate ────────────────────────────────────────────────────────────────
+def _hand_metrics(db):
+    """Measured roll shares for the Devourer's two hands, minimum over difficulties."""
+    armed = signature = shield = 100.0
+    for diff in (0, 1, 2):
+        rh = _slot_dist(db, _DEVOURER, 'RightHand', diff)
+        lh = _slot_dist(db, _DEVOURER, 'LeftHand', diff)
+        if rh:
+            armed = min(armed, _pct_class(db, rh, _ONE_HAND_MELEE))
+            signature = min(signature, _pct_items(rh, _VEINRENDER_ITEM))
+        if lh:
+            shield = min(shield, _pct_class(db, lh, _SLOT_CLASSES['LeftHand']))
+    return armed, signature, shield
+
+
 def _check(db):
     """The R-251 contract over the FINAL db. Returns a list of problem strings."""
     out = []
+    _validate_allowlist(_MIXED_DROP_ROWS)
 
-    # E1 + E2 + E4: per-champion slot-class integrity.
+    # E1 + E2 + E4: per-champion slot-class integrity, on ALL THREE difficulty tables of
+    # every row. The shipped bug was Normal+Legendary-only (bleed_affix_high_l's Nemesis
+    # recurve is a Legendary-only bow), so a tier-N-only sweep is exactly the blind spot
+    # that produced it.
     for rec in _CHAMPIONS:
         if not db.has_record(rec):
             out.append("E1 champion record MISSING: %s" % rec)
@@ -492,14 +656,14 @@ def _check(db):
                 continue
             allowed = _SLOT_CLASSES.get(slot)
             for idx, _w, tabs in _slot_rows(db, rec, slot):
-                for tab in tabs[:1]:                    # tier N is representative
+                for tier, tab in zip('NEL', tabs):
                     classes = {c for c in _leaf_classes(db, tab) if c}
                     banned = classes & _BANNED_CLASSES
                     if banned:
-                        out.append("E1 %s %s item%d -> %s yields %s - a two-handed ranged "
-                                   "weapon on a Toxeus champion (Will's 'using a bow which "
-                                   "makes no sense')"
-                                   % (short, slot, idx, tab.rsplit('\\', 1)[-1],
+                        out.append("E1 %s %s item%d [%s] -> %s yields %s - a two-handed "
+                                   "ranged weapon on a Toxeus champion (Will's 'using a "
+                                   "bow which makes no sense')"
+                                   % (short, slot, idx, tier, tab.rsplit('\\', 1)[-1],
                                       '/'.join(sorted(banned))))
                     if allowed is None:
                         continue
@@ -507,10 +671,10 @@ def _check(db):
                         continue
                     wrong = classes - allowed
                     if wrong:
-                        out.append("E2 %s %s item%d -> %s yields %s, which %s cannot wear "
-                                   "(allowed: %s). Either fix the table or allowlist the "
-                                   "row in _MIXED_DROP_ROWS with a reason."
-                                   % (short, slot, idx, tab.rsplit('\\', 1)[-1],
+                        out.append("E2 %s %s item%d [%s] -> %s yields %s, which %s cannot "
+                                   "wear (allowed: %s). Either fix the table or allowlist "
+                                   "the row in _MIXED_DROP_ROWS with a reason."
+                                   % (short, slot, idx, tier, tab.rsplit('\\', 1)[-1],
                                       '/'.join(sorted(wrong)), slot,
                                       '/'.join(sorted(allowed))))
         # E4 - the R-243 pin and a soul that resolves to a real ring.
@@ -525,11 +689,10 @@ def _check(db):
             if not db.has_record(s):
                 out.append("E4 %s soul reference does NOT resolve: %s" % (short, s))
                 continue
-            tpl = _norm(_gv(db, s, 'templateName', ''))
-            if 'jewelry_ring' not in tpl:
+            if 'jewelry_ring' not in _norm(_gv(db, s, 'templateName', '')):
                 out.append("E4 %s soul %s is templateName %r, not a Jewelry_Ring - the "
                            "engine cannot equip it into Finger2, so it never drops"
-                           % (short, s.rsplit('\\', 1)[-1], tpl))
+                           % (short, s.rsplit('\\', 1)[-1], _gv(db, s, 'templateName', '')))
 
     # E2b - the Devourer's hands, spelled out.
     if db.has_record(_DEVOURER):
@@ -539,17 +702,37 @@ def _check(db):
         if not _same(_gl(db, _DEVOURER, 'lootRightHandItem1'), _VEINRENDER_TAB):
             out.append("E2 Devourer lootRightHandItem1 = %r, must be the guaranteed Vein "
                        "Render array" % (_gl(db, _DEVOURER, 'lootRightHandItem1'),))
+        if not _same(_gl(db, _DEVOURER, 'lootLeftHandItem2'), _CRIMSON_SET):
+            out.append("E2 Devourer lootLeftHandItem2 = %r, must be the Crimson Verdict set "
+                       "table - it is the set's ONLY drop channel in the db, and it lives "
+                       "in the OFF hand on purpose"
+                       % (_gl(db, _DEVOURER, 'lootLeftHandItem2'),))
         dom = max(_slot_rows(db, _DEVOURER, 'RightHand') or [(0, 0, [])],
                   key=lambda r: r[1])
         if dom[0] != 1:
             out.append("E2 Devourer's dominant RightHand row is item%d, must be item1 "
-                       "(the guaranteed Vein Render) so he always has a sword in hand"
+                       "(the guaranteed Vein Render) so his own sword is the usual roll"
                        % dom[0])
         for tab in _VEINRENDER_TAB:
             classes = {c for c in _leaf_classes(db, tab) if c}
             if classes != {'Weapon_Sword'}:
                 out.append("E2 %s yields %r, must be exactly one Weapon_Sword"
                            % (tab.rsplit('\\', 1)[-1], sorted(classes)))
+        # E2c - the MEASURED arithmetic behind the player-facing claim.
+        armed, signature, shield = _hand_metrics(db)
+        if armed + 1e-6 < _MIN_ARMED_HAND_PCT:
+            out.append("E2c Devourer's weapon hand holds a one-handed melee weapon only "
+                       "%.2f%% of spawns (floor %.2f%%) - the remaining %.2f%% roll a class "
+                       "the hand cannot wear, i.e. Will sees an EMPTY hand ('i dont think "
+                       "he has a weapon')" % (armed, _MIN_ARMED_HAND_PCT, 100.0 - armed))
+        if signature + 1e-6 < _MIN_SIGNATURE_PCT:
+            out.append("E2c Devourer wields his own Vein Render only %.2f%% of spawns "
+                       "(floor %.2f%%) - the guaranteed row has been diluted"
+                       % (signature, _MIN_SIGNATURE_PCT))
+        if shield + 1e-6 < _MIN_SHIELD_PCT:
+            out.append("E2c Devourer's off hand holds a shield only %.2f%% of spawns "
+                       "(floor %.2f%%)" % (shield, _MIN_SHIELD_PCT))
+
     # E1b - no bow row survives anywhere in the bleed tables.
     for tab in _BLEED:
         if not db.has_record(tab):
@@ -628,12 +811,15 @@ def verify(db, tags):
             print("  R-251 OFFENDER: %s" % p)
         raise SystemExit("[toxeus_boss_equipment] verify FAILED: %d problem(s)"
                          % len(problems))
-    print("  [toxeus_boss_equipment] verify OK: no Toxeus champion can hold a bow or "
-          "staff in any slot; the Devourer carries a guaranteed Vein Render + a shield; "
-          "both Endless Hunt records wear torso/legs/arms at 100%% and keep the Runbreaker "
-          "spear + the EoAT rite; all 4 champions hold R-243's 100%% soul pin on a soul "
-          "that resolves to a real ring; %d 100%%-pinned soul carrier(s) mod-wide all "
-          "resolve." % checked)
+    armed, signature, shield = _hand_metrics(db)
+    print("  [toxeus_boss_equipment] verify OK: no Toxeus champion can hold a bow or staff "
+          "in any slot on any difficulty; the Devourer's weapon hand is a one-handed melee "
+          "weapon %.2f%% of spawns (his own Vein Render %.2f%%) and his off hand a shield "
+          "%.2f%%; both Endless Hunt records wear torso/legs/arms at 100%% and keep the "
+          "Runbreaker spear + the EoAT rite; all 4 champions hold R-243's 100%% soul pin on "
+          "a soul that resolves to a real ring; %d 100%%-pinned soul carrier(s) mod-wide all "
+          "resolve. BL-W0814-10 remains OPEN pending Will's next kill (BL-R251-DEBT-1)."
+          % (armed, signature, shield, checked))
 
 
 # ── planted negatives (stub db) ─────────────────────────────────────────────
@@ -665,7 +851,7 @@ def _negtest():
     def item(tpl):
         return {'templateName': 'Database\\Templates\\%s.tpl' % tpl}
 
-    def table(members, desc='t'):
+    def table(members):
         r = {'templateName': 'Database\\Templates\\LootItemTable_FixedWeight.tpl'}
         for i, m in enumerate(members, start=1):
             r['lootName%d' % i] = m
@@ -674,7 +860,6 @@ def _negtest():
 
     def healthy():
         db = _Stub()
-        # leaf items
         sword, shieldi, torso, legs, arms, ring, amulet = (
             'i\\sword.dbr', 'i\\shield.dbr', 'i\\torso.dbr', 'i\\legs.dbr',
             'i\\arms.dbr', 'i\\ring.dbr', 'i\\amulet.dbr')
@@ -689,14 +874,19 @@ def _negtest():
         db.d['i\\axe.dbr'] = item('Weapon_Axe')
         db.d['i\\helm.dbr'] = item('Armor_Head')
         db.d['i\\formula.dbr'] = item('ItemArtifactFormula')
-        for t in _VEINRENDER_TAB:
-            db.d[t] = table([sword])
-        for t in _CRIMSON_SET:
-            db.d[t] = table([sword, 'i\\helm.dbr', torso, arms])
+        # the real shape: each difficulty's veinrender table holds THAT tier's sword, and
+        # the crimson set is 1 Vein Render + 3 armour at equal weight
+        for i, t in enumerate(_VEINRENDER_TAB):
+            db.d[_VEINRENDER_ITEM[i]] = item('Weapon_Sword')
+            db.d[t] = table([_VEINRENDER_ITEM[i]])
+        for i, t in enumerate(_CRIMSON_SET):
+            db.d[t] = table([_VEINRENDER_ITEM[i], 'i\\helm.dbr', torso, arms])
         for t in _BLEED:
             db.d[t] = table(['i\\axe.dbr', 'i\\axe.dbr'])
         for t in _SHIELD_COMMON + _SHIELD_UNIQUE:
             db.d[t] = table([shieldi])
+        for t in _SWORD_UNIQUE:
+            db.d[t] = table([sword])
         for t in _RUNBREAKER:
             db.d[t] = table(['i\\spear.dbr'])
         for t in set(_RITE):
@@ -727,18 +917,26 @@ def _negtest():
             return r
 
         dev = champ(_DEVOURER)
-        dev.update({'chanceToEquipLeftHand': 100.0, 'lootLeftHandItem1': list(_SHIELD_COMMON),
-                    'chanceToEquipLeftHandItem1': 100,
-                    'lootLeftHandItem5': list(_SHIELD_UNIQUE), 'chanceToEquipLeftHandItem5': 19,
+        dev.update({'chanceToEquipLeftHand': 100.0,
+                    'lootLeftHandItem1': list(_SHIELD_COMMON),
+                    'chanceToEquipLeftHandItem1': _W_GUARANTEED,
+                    'lootLeftHandItem2': list(_CRIMSON_SET),
+                    'chanceToEquipLeftHandItem2': _W_UNIQUE,
+                    'lootLeftHandItem5': list(_SHIELD_UNIQUE),
+                    'chanceToEquipLeftHandItem5': _W_UNIQUE,
                     'chanceToEquipRightHand': 100.0,
-                    'lootRightHandItem1': list(_VEINRENDER_TAB), 'chanceToEquipRightHandItem1': 100,
-                    'lootRightHandItem2': list(_CRIMSON_SET), 'chanceToEquipRightHandItem2': 19,
-                    'lootRightHandItem3': list(_BLEED), 'chanceToEquipRightHandItem3': 19})
+                    'lootRightHandItem1': list(_VEINRENDER_TAB),
+                    'chanceToEquipRightHandItem1': _W_GUARANTEED,
+                    'lootRightHandItem2': list(_BLEED),
+                    'chanceToEquipRightHandItem2': _W_UNIQUE,
+                    'lootRightHandItem5': list(_SWORD_UNIQUE),
+                    'chanceToEquipRightHandItem5': _W_UNIQUE})
         ens = champ(_ENSLAVER)
         ens.update({'chanceToEquipLeftHand': 100.0, 'lootLeftHandItem1': list(_SHIELD_COMMON),
-                    'chanceToEquipLeftHandItem1': 100,
+                    'chanceToEquipLeftHandItem1': 5000,
                     'chanceToEquipRightHand': 100.0,
-                    'lootRightHandItem1': list(_VEINRENDER_TAB), 'chanceToEquipRightHandItem1': 100})
+                    'lootRightHandItem1': list(_SWORD_UNIQUE),
+                    'chanceToEquipRightHandItem1': 5000})
         for rec in _HUNTS:
             h = champ(rec)
             h.update({'chanceToEquipRightHand': 100.0,
@@ -763,9 +961,13 @@ def _negtest():
         for p in full(base):
             print("   ", p)
         return 1
+    a, s, sh = _hand_metrics(base)
+    print("  negtest baseline shares: armed=%.2f%% signature=%.2f%% shield=%.2f%%"
+          % (a, s, sh))
 
     def plant_bow(d):
         d.d[_BLEED[0]]['lootName3'] = 'i\\bow.dbr'
+        d.d[_BLEED[0]]['lootWeight3'] = 100
         d.d['i\\bow.dbr'] = item('Weapon_Bow')
 
     def plant_lefthand_bow(d):
@@ -782,8 +984,24 @@ def _negtest():
             d.d[_DEVOURER].__setitem__('lootLeftHandItem1', ['t\\stafftab.dbr'] * 3))),
         ("armour back in the Devourer's weapon hand as the dominant row",
          lambda d: d.d[_DEVOURER].__setitem__('lootRightHandItem1', list(_CRIMSON_SET))),
-        ("the dominant weapon row demoted below a mixed row",
+        ("the dominant weapon row demoted below another row",
          lambda d: d.d[_DEVOURER].__setitem__('chanceToEquipRightHandItem2', 5000)),
+        # E2c - the arithmetic behind the player-facing sentence
+        ("the 3/4-ARMOUR set table moved back into the weapon hand (empty-hand spawns)",
+         lambda d: (d.d[_DEVOURER].__setitem__('lootRightHandItem3', list(_CRIMSON_SET)),
+                    d.d[_DEVOURER].__setitem__('chanceToEquipRightHandItem3', _W_UNIQUE))),
+        ("the guaranteed Vein Render row diluted below its floor without losing dominance",
+         lambda d: d.d[_DEVOURER].__setitem__('chanceToEquipRightHandItem1', 30)),
+        ("the off-hand shield share collapsed by a fat mixed row",
+         lambda d: d.d[_DEVOURER].__setitem__('chanceToEquipLeftHandItem2', 5000)),
+        ("the set table's ONLY drop channel deleted (orphaned content)",
+         lambda d: d.d[_DEVOURER].__setitem__('lootLeftHandItem2', list(_SHIELD_UNIQUE))),
+        # tier asymmetry - the exact blind spot that produced this bug
+        ("an EPIC-ONLY class violation on a Hunt armour row",
+         lambda d: d.d.__setitem__(_HUNT_ARMOUR['Torso'][0][1], table(['i\\sword.dbr']))),
+        ("a LEGENDARY-ONLY bow in the Devourer's weapon hand", lambda d: (
+            d.d.__setitem__('i\\bow.dbr', item('Weapon_Bow')),
+            d.d.__setitem__(_BLEED[2], table(['i\\bow.dbr'])))),
         ("the Vein Render table stops being a sword", lambda d: (
             d.d.__setitem__('i\\notasword.dbr', item('Armor_Head')),
             d.d.__setitem__(_VEINRENDER_TAB[0], table(['i\\notasword.dbr'])))),
@@ -795,7 +1013,7 @@ def _negtest():
             d.d.__setitem__('t\\wrong.dbr', table(['i\\sword.dbr'])),
             d.d[_HUNT].__setitem__('lootForearmItem1', ['t\\wrong.dbr'] * 3))),
         ("Hunt armour weight drift",
-         lambda d: d.d[_HUNT]. __setitem__('chanceToEquipTorsoItem1', 1)),
+         lambda d: d.d[_HUNT].__setitem__('chanceToEquipTorsoItem1', 1)),
         ("Hunt lost the Runbreaker spear",
          lambda d: d.d[_HUNT].__setitem__('lootRightHandItem1', list(_VEINRENDER_TAB))),
         ("Hunt spear chance dropped",
@@ -829,13 +1047,23 @@ def _negtest():
         else:
             print("  negtest FAIL (missed): %s" % label)
             bad += 1
+
+    # the allowlist guard is import-time, so it is negtested by calling it directly
+    try:
+        _validate_allowlist({(_DEVOURER, 'Misc1', 1): 'a slot the gate never class-checks'})
+        print("  negtest FAIL (missed): an allowlist entry naming an ungoverned slot")
+        bad += 1
+    except AssertionError:
+        print("  negtest OK  (caught): an allowlist entry naming an ungoverned slot")
+
     # positive control: an untouched healthy stub must still pass at the end
     if full(healthy()):
         print("  negtest FAIL: positive control went red")
         bad += 1
     else:
         print("  negtest OK  (positive control stays green)")
-    print("negtest: %d/%d plants caught" % (len(plants) - bad, len(plants)))
+    total = len(plants) + 1
+    print("negtest: %d/%d plants caught" % (total - bad, total))
     return 1 if bad else 0
 
 
