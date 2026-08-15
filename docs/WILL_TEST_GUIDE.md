@@ -119,7 +119,93 @@
 > - The **Endless Hunt** already has this smoke built into his model. Nothing to do.
 > - **Toxeus, End of All Things** (the crafted supra pet) - still your call whether he gets his own look.
 
-> # 🛠️ R-249 WARDEN FIX + ALMYROS TRIM (2026-08-14) - READ THIS FIRST; it amends the R-248 section below
+> # ⚔️ R-252 TOXEUS BOSS EQUIPMENT (2026-08-14) - the Hunt gets dressed, the Devourer drops the bow
+>
+> **Your three reports, verbatim:** "toxeus the murderer the endless hunt is not wearing any equipment
+> and i dont think he has a weapon" + "toxeus the murderer devourer of blood is using a bow which
+> makes no sense" + "i killed toxeus the murderer devourer of blood and he did not drop his soul even
+> though he should have 100% chance of dropping his soul."
+>
+> **What was actually wrong (measured in the shipped build, not guessed):**
+>
+> - **The bow was real.** In this engine the LEFT hand is the shield / two-handed-ranged slot. I
+>   counted every base-game monster (all 5,556 of them): **805 carry a shield in the left hand and
+>   exactly ZERO carry one in the right**; bows ride the left hand **514 times against 17** on the
+>   right, and those 17 are all the same handful of hand-less things (rot piles, creeping slimes,
+>   earth elementals) using the slot as a plain drop chute rather than as a hand - which is precisely
+>   the mistake this fix removes from the Devourer.
+>   The Devourer's left hand was pointed at a "high bleed gear" pool that had been picked by AFFIX
+>   instead of by weapon type - and one of its three entries on Normal and on Legendary is a BOW. So
+>   he equipped one and fought as an archer. The bows are now removed from that pool outright.
+> - **And while I was in there I found something you did NOT report: he was often standing there with
+>   NOTHING in his sword hand.** His weapon hand was pointed at his 4-piece Crimson Verdict set
+>   table, and 3 of those 4 entries are ARMOUR - a helm, a cuirass, an armband. The engine cannot put
+>   a helm in a hand, so **63% of Devourer spawns in the shipped build had an empty weapon hand.**
+>   That is the same bug you filed against the Endless Hunt, on the boss you only mentioned the bow
+>   for. Fixed: **his weapon hand now only ever rolls one-handed melee weapons, so he is armed 100%
+>   of the time** - about **72%** of spawns it is his own **Vein Render**, the rest a bleed-affix axe
+>   or a unique sword. His off hand holds a **shield about 86%** of the time; the other ~14% is the
+>   Crimson Verdict set roll, which still DROPS the set piece for you but leaves that hand bare. So:
+>   **always a weapon, usually a shield** - if you catch him without a shield once in a while that is
+>   expected, and it means a set piece just dropped. If you ever see him with an empty WEAPON hand,
+>   or a bow, that is a bug - tell me.
+> - 🔴 **A NERF YOU DID NOT ASK FOR, AND I NEED YOU TO RULE ON IT.** Moving that set table out of his
+>   sword hand is what fixes the empty hand, but it also makes the set **6.1x harder to farm**, and
+>   that table is the **only** place those pieces drop in the entire game. Per kill of the Devourer:
+>
+>   | Crimson Verdict piece | before | now |
+>   |---|---|---|
+>   | helm | 21.0% | **3.4%** |
+>   | cuirass | 21.0% | **3.4%** |
+>   | armband | 21.0% | **3.4%** |
+>   | Vein Render (the sword) | 21.0% | **72.5%** - and he actually wields it now |
+>
+>   The sword got much commoner; the three armour pieces got much rarer. **I did not "fix" this back
+>   on my own, because every way to do it is a balance call on content you designed:** his only free
+>   equipment slot is his head, and using it would mean he visibly wears the Crimson Verdict helm
+>   about 1 spawn in 4 (that would actually give the BEST rate, 25% a piece, and costs nothing else);
+>   the alternatives are hanging two of the three pieces on his chest/arm rolls (the helm still has
+>   nowhere to go), or fattening the off-hand row and giving up most of the shield. **Tell me which
+>   you want and it is a one-line change** (`BL-R252-DEBT-7`). If you would rather leave it as is,
+>   say so and I will mark it ratified. Until then the build has a gate that refuses to let this
+>   number move again without telling you.
+> - **The Hunt really was naked - but he DID have his spear.** His record had no torso, legs or arm
+>   equipment fields at all, and his ring/potion/relic/amulet slots were all switched off. His spear
+>   was fine the whole time (right hand, 100%, the Runbreaker) - spears ride the right hand **493-to-0**
+>   in the base game - so what you were seeing was a spearman in no armour. He now wears **torso,
+>   greaves and armbands at 100%** from his own loot bracket, plus the ring / potion / relic / amulet
+>   rolls his two brothers have. He stays **bare-headed on purpose** (so does the Enslaver and so does
+>   the Devourer - that skull is deliberate) and carries no shield (his spear is two-handed).
+> - **The soul: his 100% is genuinely still set.** I re-read the shipped bytes: the Devourer's soul
+>   chance is 100%, the soul item exists, it is a proper ring, and there is exactly ONE Devourer
+>   record in the game with every spawn pointing at it - so it is not a "wrong copy of the boss"
+>   problem. The one thing that WAS wrong on his record and on nobody else's in the family is the
+>   cross-wired hands above, which is the same system the soul is equipped through. That is now
+>   clean. **I cannot prove from the files that this was the cause, so this one closes on your next
+>   kill, not on my gate** (BL-R252-DEBT-1). If it still does not drop, tell me and I move the soul
+>   onto the drop channel that provably works in-game (the same one that delivered your End of All
+>   Things formula).
+>
+> **STILL OPEN - READ THIS FIRST.** Two of your three reports are fixed with proof in the files. The
+> **soul is NOT one of them.** I could not find anything wrong with it, so there is nothing I can
+> point at and call the fix. Your next kill is the test. If it still does not drop, say so and I move
+> it onto the drop channel that provably works.
+> **And one decision is yours, not mine:** the Crimson Verdict armour now drops 6.1x more slowly (the
+> red block above). I left it that way deliberately rather than quietly picking a new number for a
+> set you designed. Ratify it, or name which restoration you want, and it lands in one line.
+>
+> **THE TEST (fully quit TQ + restart Steam first):**
+> 1. **Devourer of Blood** (blood cave, his stash / the parchment ambush): he must have a **melee
+>    weapon in his weapon hand every single time - never a bow, never an empty hand**. A shield in
+>    the off hand most of the time (roughly 6 spawns in 7); no shield now and then is expected and
+>    means a Crimson Verdict set piece dropped instead. Kill him: **the thing I need to know is
+>    whether his soul drops.** FAIL = a bow, an empty weapon hand, or still no soul.
+> 2. **Toxeus the Murderer, the Endless Hunt:** he must be **wearing armour** (chest, legs, arms) and
+>    still carrying his spear. FAIL = still naked, or the spear is gone.
+> 3. Kill each of them a couple of times if you can - the armour and weapon rolls are per-spawn, so a
+>    second look tells us whether it is consistent.
+
+> # 🛠️ R-249 WARDEN FIX + ALMYROS TRIM (2026-08-14) - it amends the R-248 section below
 >
 > **Your ruling, verbatim:** "no steam should not have a traveler from helos to the secret place or the
 > uber place. remove those from the steam build now. no we dont want to do the typhon-style fix, the
