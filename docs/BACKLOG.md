@@ -4,7 +4,8 @@
 
 **WIN Will confirmed:** "all the portals from helos are consistenly working now, i think your fix has addressed the major issues." + "now the portals from helos consistently send you to the same location" (deterministic, not random) => R-248 one-shot-arming ADDRESSED the major scramble. He greenlit shipping this approach to Steam (build91 = canonical, 26 rows).
 
-**BL-W0814-1 ENSLAVER BLACK SMOKE (mesh?):** "toxeus the enslaver still doesnt have the black smoke around him that his summoned demons do (I think we need to use the mesh i think)". The Enslaver himself lacks the black-smoke shroud FX his summoned demons carry. Will's hypothesis: it's on the MESH. Investigate the demon summons' mesh/FX vs the Enslaver's; give the Enslaver the same shroud. (Long-running "demon shroud" ask - never landed on the Enslaver himself.)
+**BL-W0814-1 ENSLAVER BLACK SMOKE (mesh?): ✅ CLOSED, SHIPPED build93 (R-250, arz `db314143`, DEV + Steam 2026-08-14).** Will's mesh hypothesis was CORRECT and the branch proved it: the demons' shroud was never a field, it is `CreateEntity{attach="SpecialHit01"; entity="...ShadowStalker_Smoke.dbr"}` compiled into `ShadowStalker.msh`, which is why they smoke standing still and why no `.dbr` scan ever saw it. The Enslaver now carries a field-for-field mirror of the demons' own EffectEntity at their own attach point, fired by SVC-owned controller clones at `BuffSelfBehavior=WheneverPossible` (ON out of combat), on the monster + all 3 pet tiers. In-game confirmation still owed: `BL-R250-DEBT-1`. Gate record: BUILD93 GATE RECORD at the tail of this file. Original report kept verbatim below.
+> "toxeus the enslaver still doesnt have the black smoke around him that his summoned demons do (I think we need to use the mesh i think)". The Enslaver himself lacks the black-smoke shroud FX his summoned demons carry. Will's hypothesis: it's on the MESH. Investigate the demon summons' mesh/FX vs the Enslaver's; give the Enslaver the same shroud. (Long-running "demon shroud" ask - never landed on the Enslaver himself.)
 
 **BL-W0814-2 OBSIDIAN HOARD CHESTS over-nerfed + RECORD SEPARATION:** "the obsidian hoard chests that we have added in the game in locations such as the obsidian halls are still nerfed too much. if these share the same record as the chest - toxeus the murderer, devourer of blood hidden's chest we need to seperate those records since those should be tuned differently." => obsidian-halls chests (svc_obsidianhoard_*) drop too little; if they share a loot record with the Devourer's hidden chest, CLONE-and-separate so each tunes independently; then bump the obsidian hoards toward SV richness. (Note: prior recon flagged svc_obsidianhoard_loot_02/03 as orphaned pattern-clones - re-verify against LIVE placements now that Will sees them in-game.)
 
@@ -14871,3 +14872,129 @@ controller at `BuffSelfBehavior = WheneverPossible`.
   in any of their `tools/` diffs. But at FILE level all five touch `docs/BACKLOG.md`,
   `docs/WILL_RULINGS.md` and `tools/patches/__init__.py` (four also touch `docs/WILL_TEST_GUIDE.md`), so
   textual conflicts are expected and the registry order hash changes for whichever lands second.
+
+
+---
+
+## BUILD93 GATE RECORD (2026-08-14) - R-250 THE ENSLAVER OF SOULS GETS HIS DEMONS' BLACK SHADOW SHROUD; **arz-ONLY**; DEPLOYED TO DEV **AND** SHIPPED TO STEAM. **STEAM = DEV = main.**
+
+**Closes `BL-W0814-1`** (Will, verbatim: *"toxeus the enslaver still doesnt have the black smoke
+around him that his summoned demons do (I think we need to use the mesh i think)"*) - the **third**
+filing of this sentence (R-95 2026-07-28, R-102 second amendment, R-250 now). **His mesh hypothesis
+was right**, and that is why two waves of field edits could not land it.
+
+**ARTIFACTS.** `Database/SoulvizierClassic.arz` = **`db31414339f008792ea03aa8531f5002`**
+(55,601,571 B, 51,315 records; **+1,089 B / +3 records** over the shipped build92
+`b888f02254e93ea4044b8b25e1cec39d`, 55,600,482 B, 51,312 records). **arz-ONLY, both couplings
+SATISFIED not waived** - `Text.arc e1d9592a` / canonical `Levels.arc 61aaf3e4` / `Quests.arc 6bad2ea7`
+/ `Creatures.arc 8c0d8d53` **md5-proven BYTE-UNCHANGED**; **0 new tags authored**, so `validate_tags`
+passes against the EXISTING Text.arc and no Text rebuild was needed.
+
+**INTEGRATION.** `main` `0ea001a` (build92-ship) -> `2f48eea` (`git merge --no-ff fix/toxeus-shroud`).
+The lane's merge-base was `7459e22` (build83-era, **9 builds behind**). **2 conflicts, both doc
+appends, resolved keep-both with a mechanical zero-content-dropped proof** (every non-blank line of
+BOTH sides asserted present in the result): `docs/WILL_RULINGS.md` (tail ledger: shipped R-231..R-249
+first, then R-250) and `docs/WILL_TEST_GUIDE.md` (newest-first: R-250 on top, then R-249).
+`docs/BACKLOG.md` and `tools/patches/__init__.py` **auto-merged**; `tools/mesh_assets.py` and
+`tools/patches/enslaver_shroud.py` are branch-only (main never touched either since the merge base,
+so the feared R-247 `champion_mesh`/Hunt-rig collision in `mesh_assets.py` did not exist).
+
+**REGISTRY COUNT + ORDER HASH RE-DERIVED** as `BL-R250-DEBT-7` required (the lane's 59 /
+`ba6fde28...` was measured against a build83-era main): `_check_registry.py` **OK, 66 modules**,
+order `4a257dc7f55a3055a7e4983439f9c35806b77e6cbe19803ff6742cfc90c53080`.
+
+**RECORD-DIFF vs the SHIPPED build92 arz `b888f022`: ADDED 3 / REMOVED 0 / MODIFIED 6, ZERO
+unexplained.** Record count 51,312 -> 51,315.
+- **ADDED 3:** `svc_enslaver_shroud_fx.dbr`, `svc_alwayson_controller_skeleton_toxeus.dbr`,
+  `svc_alwayson_controller_skelly_aggressive.dbr` - exactly the three the lane predicted.
+- **MODIFIED 6:** the pak (2 fields: `particleEffectNames` -> our EffectEntity,
+  `particleEffectAttachPoints` -> `SpecialHit01`); the skill (2: `FileDescription`, and the
+  `empusamerc_enchantment` residue `particleEffectAttachPoint1='R Hand'` **DELETED**);
+  `um_toxeus_enslaver_99` (**exactly 1 field, `controller`**); and the 3 pet tiers (4 fields each).
+- ⚠️ **THE ONE DEVIATION FROM THE LANE'S PREDICTION, MEASURED NOT ASSUMED.** The lane predicted
+  "exactly one field (`controller`) on each of the 4 roster surfaces"; against build92 the three PET
+  tiers show **4** because the shroud moves `skillName13` -> `skillName18`. New probe
+  `tools/debug/b93_shroud_slot_probe.py` explains it from the artifacts: slots **13/14/16/17 carry
+  orphan `skillLevel` arrays** (SV-donor residue) and 15 is a live skill, so **18 is the lowest slot
+  free in BOTH namespaces**. That is **`BL-R250-DEBT-4` working as designed**: build92 shipped the
+  shroud NAME on top of a live per-difficulty array because the old freeness test looked at
+  `skillName` alone. The probe asserts **every OTHER skill in each kit is identical (13 skills)** and
+  that **no slot below 18 was free and unused**. RESULT: EXPLAINED.
+
+**det byte identity (det-2x):** **`db31414339f008792ea03aa8531f5002` across two independent COLD
+builds** (`SVC_NO_CACHE=1`, `PYTHONHASHSEED=0`, `SVC_RELEASE_DROPS=1`, `SVC_REQUIRE_GATES=1`),
+**exit 0 and "Done." both**, and byte-compared in full (55,601,571 B, **first-differing-byte scan
+clean**). run2 built into a scratch dir with a junction to work's `Resources/`, so the location-only
+render/asset gates ran GREEN in run2 as well. **Zero `FAIL` / `Traceback` / `OFFENDER` lines in
+either build log.**
+
+**GATES GREEN:**
+- Full `run_contracts.py` on the built artifact: **0 P0 / 0 P1 / 4510 P2** across 6 modules = the
+  build87..92 baseline EXACTLY. **SET-DIFFED, not merely counted:** the same suite run on the shipped
+  `b888f022` with identical siblings gives 4510 distinct `(contract, severity, subject)` rows and the
+  delta is **0 only-in-build93 / 0 only-in-baseline**.
+- `validate_tags` **PASS**: 383 referenced mod tags all present in the UNCHANGED `Text.arc`, **0 new
+  tags**, 454/454 authoritative tags present, the 2 documented pre-existing base/SV WARN
+  (`tagNewMonster66`, `tagNewMonster46`).
+- `enslaver_shroud --negtest` **30/30 plants caught** and `--selftest` **OK against the real
+  archives**, both re-run on the MERGED tree rather than the lane tree.
+- In-build `enslaver_shroud.verify()` **OK** on all 4 surfaces; the module reports **9 records
+  modified, 0 tags**, matching the record-diff exactly. All **58 verify hooks OK**.
+- **ANTI-INERT, measured in BOTH directions on artifacts that actually shipped**
+  (`tools/debug/b93_shroud_antiinert.py`): against the **shipped build92 arz `b888f022`** the gate
+  **FAILS with 13 problems**, reproducing Will's bug as an artifact fact; against the new arz it
+  **PASSES**. Per `BL-R240-DEBT-8` the control was deliberately run on a **POST-R-240** artifact, so
+  the red is the gate condemning the real defect and not the pre-R-240 baseline drift.
+- A9 render resolution PASS: `Effects\MonsterFX\ShadowStalker_Smoke01.pfx` -> the game's
+  `Effects.arc`, **1,824 bytes**.
+- **SHARED-RECORD LAW held:** `controller_skeleton_toxeus` (6 carriers incl. the Devourer) and
+  `controller_skelly_aggressive` (**148** carriers) are ABSENT from the record-diff = byte-identical.
+
+**DEV:** targeted **arz-only** copy while **TQ.exe was NOT running** (nothing killed, Steam not
+restarted). md5 **source == dest = `db314143`**. DEV folder md5-inventoried before and after:
+**1 of 62 files changed, 0 added, 0 removed**, the other 61 byte-identical. **DEV `Levels.arc` stays
+TESTHUB `37c33fb0`** (Will's play surface, untouched); DEV `Text`/`Quests`/`Creatures` byte-unchanged.
+
+**STEAM:** Workshop item **3759792705**, `-Update -Visibility 0`, VDF read back `"visibility" "0"`
+(stays PUBLIC). steamcmd: `Committing update...Success.` / workshop log
+`[2026-08-14 23:25:45] [AppID 475150] Upload finished for workshop item 3759792705 : OK`,
+**ManifestID `800835105345340110`**. Push-gate before upload: **dist==work all 5 artifacts PASS**,
+**TESTHUB guard PASS** (packaged canonical `61aaf3e4`, NOT the local-only TESTHUB `37c33fb0`),
+single `SoulvizierClassic` wrapper, 56 files / 1188.4 MB. Changenote 1,170 chars, VDF-safe (no
+double-quote, no backslash). Tag **`build93-ship`**.
+
+**ROLLBACK (one step, uncoupled):** `local/DEV_arz_deployed_prev.arz` = build92 `b888f022` -> copy
+back over `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz`. Nothing else moves (no Text
+coupling). This build's arz kept at `local/build93_run1.arz`; the baseline also preserved verbatim at
+`local/build92_shipped_b888f022.arz`. Evidence: `local/build93_run{1,2}.log`,
+`build93_record_diff_vs_b92.txt`, `build93_slot_probe.txt`, `build93_contracts_{new,base}.{log,json}`,
+`build93_validate_tags.log`, `build93_DEV_inventory_{before,after}.txt`, `build93_upload.log`.
+
+### DEBT REGISTER (carried forward; nothing silently dropped)
+
+- ⚠️ **`BL-R250-DEBT-1` (P1, LAUNCH-GATED, WILL'S EYE) - NOT PROVEN IN GAME.** Everything above is
+  database + archive evidence. **Will's check (fully quit TQ + restart Steam first): find Toxeus the
+  Murderer, Enslaver of Souls, and look at him STANDING STILL - he should be wearing the same black
+  shroud his shadow marauders wear, out of combat, and so should every tier he summons.** The one
+  thing worth reporting back: is an always-on shroud **too thick / too much** now that it never
+  switches off. That is a one-line change.
+- **`BL-R250-DEBT-2` (P1, OPEN WILL DECISION):** the **Devourer of Blood has no shroud either**.
+  Not changed on our authority: he did not ask, his Blood Demons have no shadow shroud to copy, and
+  crimson is that boss's design. **Ask him: does the Devourer want a shroud, and in what colour?**
+- **`BL-R250-DEBT-3` (P2, WILL DECISION):** the **End of All Things** was deliberately left without
+  the shroud (R-102's sixth amendment already left its look to Will).
+- **`BL-R250-DEBT-4` (P3, HYGIENE) - now has a LIVE WITNESS.** The orphan `skillLevel` arrays on
+  `pets\toxeus_enslaver_1..3` and `pets\bloodtoxeus_1..3` are real, and build92 is the proof: a
+  name-only freeness test put a skill name on slot 13 while an orphan `skillLevel13=[1]` sat under it.
+  build93 stops doing that. **Any other module using a name-only freeness test is still exposed.**
+- **`BL-R250-DEBT-5` (P2, PROCESS):** every future "give X the FX that Y has" lane **starts by
+  reading Y's MESH binary**, not the `.dbr` field layer. `enslaver_shroud._demon_embedded_fx()` is
+  the pattern.
+- **`BL-R250-DEBT-6` (P1, PROCESS):** **a probe's silence is not evidence of absence until the probe
+  is shown to find a known-positive case.** Round 1 of this lane measured the mesh with a
+  NUL-anchored scanner, asked it about names that carry no NUL, believed the empty answer, and wrote
+  it into `docs/WILL_RULINGS.md` as law. `--selftest` is the pattern that closes this.
+- **`BL-R250-DEBT-7` (MERGE ORDER) - DISCHARGED** by this ship: the registry count and order hash
+  were re-derived on the merged tree (66 / `4a257dc7...`).
+- ⚠️ Still open and NOT touched by this build: `BL-R249-DEBT-1` / `BL-R249-DEBT-2` (build92's two
+  in-game debts), and Will's live-play queue `BL-W0814-2/3/4/5/7/8/9/10/11/12/13`.

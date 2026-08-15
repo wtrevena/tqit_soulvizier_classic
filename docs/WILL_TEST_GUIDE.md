@@ -1,7 +1,9 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
 > ## 🆕 R-250 (2026-08-11): THE ENSLAVER OF SOULS NOW WEARS HIS DEMONS' BLACK SHROUD, ALL THE TIME
-> **⚠️ BUILT, NOT YET DEPLOYED** (branch `fix/toxeus-shroud`; it goes out with the next build).
+> **✅ LIVE ON DEV *AND* STEAM as `build93` (arz `db31414339f008792ea03aa8531f5002`).** arz-only:
+> no map, no quest, no Text, no mesh and no texture change (all four sibling artifacts md5-proven
+> byte-identical to build92). Closes `BL-W0814-1`, your third filing of this sentence.
 > **Fully quit TQ and restart Steam before testing** (standing rule).
 >
 > **First, the name.** You wrote *"toxeus the murderer, devourer of souls"*. There is no Devourer of
