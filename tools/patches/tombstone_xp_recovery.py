@@ -372,8 +372,11 @@ def apply(db, tags):
                          % ', '.join(sorted(newly - {GAMEENGINE})))
 
     _eq, divisor, mn, mx = _current_penalty_knobs(db)
-    lost85 = xp_lost(85, 2, divisor, mx)
-    print('    tombstone_xp_recovery: %s %s %.1f -> %.1f  (L85 Legendary: lose %.0f XP, '
+    # The INTEGER the engine actually subtracts - not the real-valued equation
+    # result. Printing the latter made the line read "lose 23883, recover 23882",
+    # which slanders the very equality this module exists to hold.
+    lost85 = xp_lost_int(85, 2, divisor, mx, mn)
+    print('    tombstone_xp_recovery: %s %s %.1f -> %.1f  (L85 Legendary: lose %d XP, '
           'recover %d XP; was %d)'
           % ('ALREADY RULED (no-op)' if already else 'applied', FIELD, MULT_OLD,
              MULT_NEW, lost85, xp_recoverable(lost85, MULT_NEW),
@@ -497,13 +500,23 @@ def _load(arz):
     return ArzDatabase.from_arz(Path(arz))
 
 
-def _table(arz):
+def _table(arz, applied=False):
     """R-109's 'report the measured before/after BOTH WAYS' clause, computed from
-    the arz's own knobs rather than from constants in this file."""
+    the arz's own knobs rather than from constants in this file.
+
+    `applied=True` runs the two registry modules in memory first, so the table
+    reports what the NEXT build will ship rather than what this (older) artifact
+    holds. Which one you are reading is printed, never implied."""
     db = _load(arz)
+    if applied:
+        dxp.apply(db, {})
+        apply(db, {})
     eq, divisor, mn, mx = _current_penalty_knobs(db)
     mult = float(_val(db, GAMEENGINE, FIELD))
     print('\nARZ: %s' % arz)
+    print('  STATE: %s' % ('the arz AS IT WILL SHIP (death_xp_penalty + '
+                           'tombstone_xp_recovery applied in memory)' if applied
+                           else 'the artifact ON DISK, unmodified'))
     print('  deathPenaltyEquation : %s' % eq)
     print('  deathPenaltyMin/Max  : %d / %d' % (mn, mx))
     print('  %-20s : %.2f' % (FIELD, mult))
@@ -519,6 +532,7 @@ def _table(arz):
     print('  ' + hdr)
     print('  ' + '-' * len(hdr))
     worst_ratio = None
+    halved = True
     for lvl in (10, 25, 40, 55, 70, 85, 100):
         for dv, nm in ((0, 'Normal'), (1, 'Epic'), (2, 'Legendary')):
             van_lost = xp_lost_int(lvl, dv, dxp.DIV_VANILLA, dxp.MAX_VANILLA, 0)
@@ -528,13 +542,20 @@ def _table(arz):
             ratio = (back / float(new_lost)) if new_lost else float('nan')
             if new_lost and (worst_ratio is None or abs(ratio - 1.0) > abs(worst_ratio - 1.0)):
                 worst_ratio = ratio
+            if abs(new_lost - b92_lost / 2.0) > 0.5:
+                halved = False
             print('  %-6d %-11s | %11d %11d %11d | %11d %11d %8.4f'
                   % (lvl, nm, van_lost, b92_lost, new_lost,
                      xp_recoverable(new_lost, 0.5), back, ratio))
     print('\n  RATIO recovered/lost at the SHIPPED multiplier %.2f: worst %.4f over the'
           % (mult, worst_ratio if worst_ratio is not None else float('nan')))
     print('  rows above (R-109 requires exactly 1.0000 - equality, not <=).')
-    print('  LOST b92 -> LOST now is R-251 ("another 50%"): every row is exactly half.')
+    # MEASURED, not asserted: an artifact built before R-251 will say so here.
+    print('  LOST b92 -> LOST now: %s'
+          % ('every row is exactly half - this is R-251 ("another 50%")' if halved
+             else 'NOT halved (divisor %g / cap %d) - this artifact predates R-251; '
+                  're-run with --applied to see what the next build ships'
+                  % (divisor, mx)))
     print('  Every LOST / BACK column above is an INTEGER because the engine rounds '
           '(x + 0.5, chop) before the clamp; the recovery then multiplies that integer.')
 
@@ -657,7 +678,10 @@ if __name__ == '__main__':
                    / 'work' / 'SoulvizierClassic' / 'Database' / 'SoulvizierClassic.arz')
     if '--table' in args:
         i = args.index('--table')
-        _table(args[i + 1] if len(args) > i + 1 else DEFAULT_ARZ)
+        target = DEFAULT_ARZ
+        if len(args) > i + 1 and not args[i + 1].startswith('--'):
+            target = args[i + 1]
+        _table(target, applied='--applied' in args)
     elif '--negtest' in args:
         i = args.index('--negtest')
         raise SystemExit(_negtest(args[i + 1] if len(args) > i + 1 else DEFAULT_ARZ))
