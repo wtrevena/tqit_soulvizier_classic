@@ -1,5 +1,47 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> ## 🆕 R-250 (2026-08-11): THE ENSLAVER OF SOULS NOW WEARS HIS DEMONS' BLACK SHROUD, ALL THE TIME
+> **⚠️ BUILT, NOT YET DEPLOYED** (branch `fix/toxeus-shroud`; it goes out with the next build).
+> **Fully quit TQ and restart Steam before testing** (standing rule).
+>
+> **First, the name.** You wrote *"toxeus the murderer, devourer of souls"*. There is no Devourer of
+> Souls - the mod has a **Devourer of BLOOD** and an **Enslaver of SOULS**. What decided it was your
+> other clause, *"the same one that his demon summon guys have"*: the **Enslaver's** shadow marauders
+> wear that black shroud (you confirmed it yourself - *"the demons that he summons have the proper
+> black shroud"*), while the **Devourer's** minions are Blood Demons with red blood effects and no
+> shroud to copy. So this went on the **ENSLAVER OF SOULS**. If you meant the other one, say so - it
+> moves in one line.
+>
+> **Why you were right to file it a third time.** His demons' shroud is not a setting we could copy;
+> it is **built into their model**, which is why they smoke constantly, even standing still. What he
+> had instead was (a) smoke that only plays while he is RUNNING, and he is a caster who stands still,
+> (b) a version that only switched on once a fight started, and (c) both of those came out of his
+> **hands**, not from around him. On top of that, the fix that removed his green glow last week moved
+> him onto a model with no built-in smoke at all - so he ended up with nothing. All three are fixed.
+>
+> **THE TEST - two places, because there are two of him:**
+> 1. **The summon.** Summon the Enslaver and just **stand there, out of combat, doing nothing**. That
+>    is the whole point of this fix: black smoke should be wrapping his body **immediately and
+>    constantly**, not only once something attacks. Compare him side by side with his own Enslaved
+>    Shadow Marauders - it should be the same smoke.
+> 2. **The world boss.** Fight the Enslaver of Souls himself; same look, standing and moving.
+>
+> **It is literally their smoke, in their spot.** Not a lookalike: he now carries a copy of the demons'
+> own effect entry, field for field, hung on the **same attach point their model uses** - which his
+> skeleton turns out to have too, in the identical place. So standing side by side, he and a marauder
+> should be wearing the same thing.
+>
+> **WHAT TO WATCH FOR, honestly flagged:** nobody has seen this in game - your eye is the only test
+> that counts. The one thing worth reporting: is it **too thick / always-on annoying** now that it never
+> switches off. That is a one-line change.
+>
+> **NOT CHANGED, on purpose - and one of them is a question for you:**
+> - The **Devourer of Blood** has **no shroud either** (his only effect is two small black-poison puffs
+>   on his hands). We did not touch him, because you did not ask and crimson is his design.
+>   **Do you want him shrouded too, and in what colour?**
+> - The **Endless Hunt** already has this smoke built into his model. Nothing to do.
+> - **Toxeus, End of All Things** (the crafted supra pet) - still your call whether he gets his own look.
+
 > # 🛠️ R-249 WARDEN FIX + ALMYROS TRIM (2026-08-14) - READ THIS FIRST; it amends the R-248 section below
 >
 > **Your ruling, verbatim:** "no steam should not have a traveler from helos to the secret place or the
@@ -282,7 +324,6 @@
 > onto their own records that keep the OLD, rich volume, so DEV farming stays fast while the Steam build
 > trims. That needs the TESTHUB map rebuilt to take effect; until then the DEV cage trims with canonical
 > (under-pays rather than over-pays, which is the safe direction).
-
 
 > ## 🆕 R-211 (2026-08-11): ATLANTIS IS UNREACHABLE NOW, THE SHIP TOO (not just the portal page)
 > **✅ LIVE ON DEV as `build82` (arz `09a0f51d`).** arz-only (no map / quest / Text change).

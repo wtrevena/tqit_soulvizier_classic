@@ -7774,3 +7774,185 @@ characterLifeRegen, or an undead-leech partial-bypass on his record. OPEN - Will
   fallbacks are (secondary) `isResettable=1` on the per-connection awakening step and (tertiary)
   dropping the Warden's `messageDialogTag` - both deliberately withheld here to keep the A/B clean
   and the no-churn law intact.
+
+---
+
+## R-250 [2026-08-11] IMPLEMENTED (branch `fix/toxeus-shroud`, module `tools/patches/enslaver_shroud.py`) - the ENSLAVER OF SOULS gets the demons' black shadow shroud
+
+**WILL, VERBATIM:**
+
+> "toxeus the murderer, devourer of souls we need to add the black shadow shroud around him, the same
+> one that his demon summon guys have"
+
+### THE NAME IS FUSED. THE DEMON CLAUSE RESOLVES IT, AND IT RESOLVES TO THE ENSLAVER.
+
+No variant is called "Devourer of Souls": the phrase fuses **"Toxeus the Murderer, DEVOURER OF BLOOD"**
+and **"Toxeus the Murderer, ENSLAVER OF SOULS"**. The only discriminating words in the sentence are
+*"the same one that his demon summon guys have"*, so the target is decided by measuring, for each
+variant, whether ITS summons carry a black shadow shroud. Measured on the shipped `build83` arz
+(`44499f56`, the hash `docs/HANDOFF_LIVE_STATE.md` records as LIVE) - **and measured at the MESH layer,
+which is where that shroud actually lives**:
+
+| variant | its "demon summon guys" | do the summons carry a black shadow shroud? |
+|---|---|---|
+| **Enslaver of Souls** (`um_toxeus_enslaver_99`) | Enslaved Shadow Marauders (`um_enslaver_marauder_99`, `pets\enslaver_marauder_1..3`) - **`ShadowStalker.msh`** | **YES.** `CreateEntity{attach="SpecialHit01"; entity="Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr"}` compiled into the mesh -> `Effects\MonsterFX\ShadowStalker_Smoke01.pfx`. Always on. Will confirmed it by eye (R-102 fourth amendment). |
+| Devourer of Blood (`um_bloodtoxeus_99`) | Blood Demons (`drxcreatures\blooddemon\um_devourer_bloodspawn_99`) - `DRX\meshes\blooddemon01.msh` | **NO.** Its embedded FX are `FX_blood_CHEST/HANDS/HEAD_fx` - blood effects. It carries no `charFxPakRunningNames` and no shadow FX of any kind. |
+| The Endless Hunt (`um_toxeus_hunt_99`) | Coursers (bloodhounds, not demons) | n/a. He himself wears `ShadowStalker.msh`, so he already HAS the embedded smoke. |
+
+**This is the same sentence Will has now filed three times** - R-95 (2026-07-28: *"the same black shroud
+smoke his summoned demons have"*), R-102 second amendment (*"that is still not implemented"*), and this
+one. A prior round of this lane resolved it to the Devourer on the reasoning that the Enslaver "already
+has a shroud in data, so ADD cannot mean him". That reasoning was wrong twice over: the Devourer's demons
+have no shroud to copy, and what the Enslaver "has in data" does not render (below).
+
+### WHY TWO WAVES SAID IT WAS DONE AND WILL KEPT SEEING NOTHING
+
+Every prior wave worked in the `.dbr` FIELD layer. **The demons' shroud was never in a field.** It is
+compiled into `ShadowStalker.msh`, and a mesh renders every frame - which is exactly why the marauders
+smoke while standing still and the Enslaver does not. What he actually had:
+
+1. `charFxPakRunningNames` -> `drxshadowcloakrunning_fx_pak`: renders **only while RUNNING** (R-95's
+   finding). He is a caster who stands and casts.
+2. `svc_enslaver_shroud` (b98/b102), a `Skill_BuffSelfToggled`: both his controllers shipped
+   `BuffSelfBehavior = WhenEnemyIsSeen`, so it is **OFF out of combat** - i.e. off in precisely the
+   situation Will inspects the summoned pet in (the R-102 screenshot).
+3. Both of those channels pointed at `drxshadowcloakrunning_fx`, whose own
+   `boneList = Bone_R_Weapon; Bone_L_Weapon` **pins the smoke to his two weapon bones**. Even when it
+   played it came off his fists. b98's round 4 fixed that at the PAK layer while the EffectEntity
+   underneath kept doing it - which is why "shape fixed" was true and still looked wrong.
+4. `champion_mesh` (b102, R-102) moved him off `RevenantPoison.msh` to kill the green, onto
+   `SkeletonGrayBlack01New.msh`, **which carries no embedded FX at all**. That fix was correct and is
+   not being undone - but it removed his last always-on emitter, which is why this request arrives now.
+
+### WHAT SHIPPED (all of it on monster-record fields + skill records; CRASH LAW respected)
+
+| leg | change |
+|---|---|
+| **asset** | new `svc_enslaver_shroud_fx`, a **FIELD-FOR-FIELD MIRROR** of the demons' own base-game EffectEntity `Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr` - exactly `templateName` / `ActorName` / `Class` / `effectFile`, the last being **`Effects\MonsterFX\ShadowStalker_Smoke01.pfx`**. `drxshadowcloakrunning_fx` is a record SHELL only and is PRUNED to that set (its weapon `boneList`, and its `Anchored`/`emitterType`/`localOrientFix`, all go) |
+| **shape** | `svc_enslaver_shroud_charfxpak.particleEffectAttachPoints = ['SpecialHit01']` - **the demons' own attach point**, derived from their mesh's `CreateEntity{attach=...}` block; one body emitter, matching their single `CreateEntity` |
+| **always on** | every roster surface moves to an **SVC-owned CLONE** of its controller (`svc_alwayson_*`) with the single field `BuffSelfBehavior = WheneverPossible` (34 shipped carriers, including the DRX demon controllers) |
+| **roster** | `{um_toxeus_enslaver_99}` + every tier derived from `summon_toxeus_enslaver.spawnObjects` + anything wearing his name tags. Placement needs no leg: `q_enslaver_warband` and `q_yard_enslaver` are PROXIES at the one monster record |
+| **untouched** | `charFxPakRunningNames` everywhere (ADD, never take away - the demons carry it too), every mesh, texture, skill and stat |
+
+⚠️ **WE COPY THE DEMONS' OWN ATTACH POINT, BECAUSE HIS RIG CARRIES IT.** Measured in both binaries:
+
+| rig | AttachPoint table |
+|---|---|
+| `SkeletonGrayBlack01New.msh` (his) | Head, HeadEffect, L Hand, Prey_Effect, R Hand, **SpecialHit01**, SpecialHit02, SpecialHit03, SpecialHit04, Target, Upper Body |
+| `ShadowStalker.msh` (the demons') | the **SAME** set, plus `Smoke02` |
+
+`SpecialHit01` is declared on his rig at byte 325003, and its block is byte-identical to theirs -
+`origin = (0,0,0)` with identity axes, i.e. the model origin. So the smoke hangs on him exactly where it
+hangs on them. `Smoke02` is the only helper they have and he does not; **that** is the silent-nothing
+example, and it is what the gate and the negtest now use.
+
+⚠️ **AN EARLIER VERSION OF THIS RULING SAID THE OPPOSITE, AND IT WAS FALSE.** It read: *"SpecialHit01
+is a helper that exists on ShadowStalker.msh and does not exist on SkeletonGrayBlack01New.msh (both mesh
+binaries read directly)."* Both binaries were read; the READER was blind. It scanned
+`[A-Za-z][A-Za-z0-9_ ]{2,31}\x00` - NUL-terminated strings only - and AttachPoint names live in a CRLF
+text block with no NUL in it, so that whole namespace read as ABSENT. **A measurement taken with an
+instrument structurally blind to the class of thing being measured was written into this file, which
+this repo declares THE DESIGN LAW OF RECORD, and became law for every future wave.** The lesson is not
+"check attach points"; it is that a gate or a probe must be validated against a case it is known to find
+before its silence is read as evidence. `tools/patches/enslaver_shroud.py --selftest` now does exactly
+that against the real archives.
+
+Two corollaries of the same error, also corrected: (a) *"`Bone_Waist` ... is where `RevenantPoison_FX`
+hung its aura on his old mesh"* is false - that mesh reads `CreateEntity{ attach = "Waist"; ... }`, the
+ATTACHPOINT `Waist`, which `SkeletonGrayBlack01New.msh` does not declare at all; (b) the namespace
+argument ran backwards. Measured on the build83 arz, `particleEffectAttachPoints` values are ~70
+ATTACHPOINT names ('L Hand' x21, 'R Hand' x20, 'SpecialHit03' x4, 'HeadEffect' x4, ...) against exactly
+**5** rows using a raw `Bone_*` - and this mod already ships `hemor_charfx` attaching at `SpecialHit03`
+on a skeleton rig. `Bone_Waist` was the thinly-precedented choice **and** an animated pelvis joint
+rather than the model origin. Name lookup is case-insensitive in practice (the DB ships `Bone_spine01`
+and `Specialhit03` against rigs that declare `Bone_Spine01` and `SpecialHit03`), so gates compare
+casefolded or they false-fail working records.
+
+⚠️ **THE SHARED CONTROLLERS ARE NEVER EDITED.** `controller_skeleton_toxeus` also drives the Devourer,
+`um_toxeus_99`, `um_toxeus_21` and two dev dummies; `controller_skelly_aggressive` drives **148** pets.
+Editing either in place to fix one champion's FX is the `genericbossorb_04` mistake (R-103's required
+check) with an AI field instead of a loot field. Measured blast radius of `apply()` on the live arz:
+**9 records** - 3 new (the EffectEntity + two controller clones), the pak (2 fields), the skill
+(FileDescription), and **one field (`controller`) on each of the 4 roster surfaces**. Both donor
+controllers verified still `WhenEnemyIsSeen` and not in `_modified`.
+
+**THE AI FLIP IS PROVABLY VISUAL-ONLY, and gated as such.** `BuffSelfBehavior` governs `Skill_BuffSelf*`
+skills only (`BuffAllyBehavior` and `DebuffEnemyBehavior` are separate fields), and the shroud is the
+**only** `Skill_BuffSelf*` in either kit (monster slot 19, pets slot 13; his aura `character_speedall`
+is a `Skill_BuffRadiusToggled`). `verify()` asserts that, so the day someone adds a real self-buff to
+him the gate fails instead of quietly changing a boss fight.
+
+### GATES (all fail-loud; `--negtest` = 30/30 plants caught, `--selftest` = the instrument itself)
+
+- **PROVENANCE, DERIVED not asserted:** re-reads the marauders' `mesh` field, opens the mesh binary and
+  requires it to still embed `shadowstalker_smoke.dbr`. If their shroud ever moves, the "same one his
+  demons have" claim fails loud instead of going stale.
+- **DEMON-ATTACH PARITY:** the attach point our pak names must equal the one the demons' own
+  `CreateEntity` block names, read out of their mesh. The value is pinned so the build is deterministic
+  without the game install, and the gate fails if the pin and the binary ever disagree - a pinned belief
+  about this name is precisely what round 1 got backwards.
+- **EFFECTENTITY MIRROR:** our record's field NAMES and VALUES must equal the demons' own record, read
+  out of the base-game `.arz`. Round 1 claimed "byte-for-byte the demons' own particle" on the strength
+  of the `.pfx` alone while three donor fields rode along; the claim now covers the whole record.
+- **RIG ATTACH:** every attach point the pak names must be present in **each wearer's own mesh binary**,
+  resolved against the **bone table UNION the AttachPoint table**, casefolded. Round 1 shipped this gate
+  resolving against the bone table alone, which (a) could not see the namespace this field mostly uses,
+  so it could not detect the failure it advertised, and (b) would have false-failed any lane using a
+  legitimate AttachPoint name, including this mod's own `Specialhit03` pak.
+- **DONOR RESIDUE:** no `particleEffect*` field may survive on the shroud skill from the
+  `empusamerc_enchantment` donor (an orphan `particleEffectAttachPoint1 = 'R Hand'` did).
+- **A9 RENDER RESOLUTION:** the `.pfx` must exist in a shipped archive, searching the mod's staged
+  `Resources` first and then the game install (it is a base-game asset, so a mod-only search would be a
+  false failure). Live result: `Effects.arc`, 1,824 bytes.
+- **ALWAYS-ON:** every roster controller is SVC-owned AND at `WheneverPossible`; **SHARED-RECORD LAW:**
+  no record outside the roster may carry one of our clones.
+- Plus the inherited legs: visual-only (no payload, no tint), roster two-witness agreement, running
+  channel preserved, and **CRASH LAW** (no `charFxPak*` on any `Skill_SpawnPet*` in either kit - the
+  build28 trap).
+
+### WHAT THIS RULING DOES **NOT** DECIDE
+
+1. **How it READS in game.** Unseen. The particle is the one Will has looked at and called *"the proper
+   black shroud"*, on the marauders, and it provably ships - but nobody has seen the Enslaver wearing it
+   at his waist. `BL-R250-DEBT-1`.
+2. **The Devourer of Blood, who has no shroud either** - `GoldenSkeleton01.msh` is FX-free, he carries no
+   `charFxPakRunningNames`, and his only FX is R-7's `svc_black_poison` (two HAND emitters of the
+   not-colour-confirmed `343_dark_smoke`). That is a real gap, but Will did not ask for it, his demons
+   are BLOOD demons with no shadow shroud to copy, and crimson is his design. **A QUESTION FOR WILL, not
+   a change made on this lane's authority.** `BL-R250-DEBT-2`.
+3. **The End of All Things** (`pets\toxeus_eoat_1..3`), same position, still Will's call.
+
+### CORRECTION OF RECORD, ROUND 2 (the attach point, the mirror, the gate, the test)
+
+Four things this ruling asserted in round 1 are corrected above and in the module. Recorded together
+because they share ONE root cause - a reader that could not see AttachPoint names - and because three of
+them had already hardened into law here:
+
+1. **`SpecialHit01` is on his rig.** The shroud now uses it. The most faithful reading of Will's
+   sentence was excluded on false evidence.
+2. **`RevenantPoison_FX` hung at the AttachPoint `Waist`,** not the bone `Bone_Waist`, and his current
+   rig declares no `Waist` - so the precedent cited for `Bone_Waist` never transferred.
+3. **The RIG ATTACH gate could not see the names it validated.** It is fixed; `tools/mesh_assets.py`
+   grew `attach_points_of()` / `rig_names_of()` / `embedded_fx_attachments_of()`.
+4. **The negative test's stub asserted the false premise,** so the plant "the shroud is aimed at the
+   demons' OWN attach point, absent from his rig" reported OK by certifying the error rather than
+   detecting it. That plant is gone; the stub rig table is now the measured content of both binaries,
+   and `--selftest` re-measures the load-bearing facts against the real archives.
+
+Also fixed here, same pass: the EffectEntity carried donor residue
+(`Anchored`/`emitterType`/`localOrientFix`, all off a weapon-bone-attached effect) and lacked
+`ActorName`, and the shroud skill still carried `particleEffectAttachPoint1 = 'R Hand'` - the b98
+round-4 "smoke off two fists" string sitting on the record that fixes it.
+
+**Standing consequence for this ledger:** a MEASURED claim entered here is law, so it must name the
+instrument and the instrument must be shown to find a known-positive case first. Silence from an
+unvalidated probe is not evidence of absence.
+
+### CORRECTION OF RECORD
+
+An earlier version of R-250 named the Devourer of Blood as the target and shipped
+`tools/patches/devourer_shroud.py`. **That module is deleted and this ruling supersedes it.** Two things
+it got wrong are recorded so the failure mode is not repeated: (a) its own measurement already showed the
+Devourer's summons carry no shroud, and it argued the target from folder naming instead; (b) it claimed
+the Endless Hunt's smoke was "the one he called the proper black shroud" - Will's quote was about the
+ENSLAVER's marauders. The Hunt does carry that smoke, but by wearing `ShadowStalker.msh`, not as a field.
