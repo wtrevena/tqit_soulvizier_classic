@@ -261,7 +261,7 @@ def apply(db, tags):
     mx = db.get_field_value(GAMEENGINE, 'deathPenaltyMax')
     mn = db.get_field_value(GAMEENGINE, 'deathPenaltyMin')
 
-    seen = [nm for nm, want_eq, want_mx in KNOWN_PRE_STATES
+    seen = [(nm, want_eq, want_mx) for nm, want_eq, want_mx in KNOWN_PRE_STATES
             if eq == want_eq and int(mx) == want_mx]
     if not seen:
         raise SystemExit(
@@ -331,14 +331,20 @@ def apply(db, tags):
             'death_xp_penalty: touched unexpected record(s): %s'
             % ', '.join(sorted(newly - {GAMEENGINE})))
 
+    # Report the transition WE ACTUALLY MADE, off the pre-state we actually
+    # observed - not a fixed vanilla->ruled headline. Re-running over an arz that
+    # already carries the R-80 pair moves 90->180, and saying "9->180" there would
+    # describe an edit this run did not perform.
+    pre_name, pre_eq, pre_max = seen[0]
+    pre_div = int(divisor_of(pre_eq))
     van85 = penalty(85, 2, DIV_VANILLA, MAX_VANILLA)
     r80_85 = penalty(85, 2, DIV_R80, MAX_R80)
     new85 = penalty(85, 2, DIV_NEW, MAX_NEW)
     print('    death_xp_penalty: %s (pre-state: %s) -> divisor %d->%d, cap %d->%d '
           '(L85 Legendary %.0f -> %.0f XP, -%.1f%% of vanilla; -%.1f%% of the '
           'build92 %.0f)'
-          % ('ALREADY RULED (no-op)' if already else 'applied', seen[0],
-             DIV_VANILLA, DIV_NEW, MAX_VANILLA, MAX_NEW, van85, new85,
+          % ('ALREADY RULED (no-op)' if already else 'applied', pre_name,
+             pre_div, DIV_NEW, pre_max, MAX_NEW, van85, new85,
              100.0 * (1.0 - new85 / van85),
              100.0 * (1.0 - REDUCTION_VS_R80), r80_85))
 

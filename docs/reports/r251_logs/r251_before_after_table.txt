@@ -1,0 +1,43 @@
+﻿  Loaded: 51312 records, 143700 strings
+    death_xp_penalty: applied (pre-state: the superseded R-80 pair (build92)) -> divisor 90->180, cap 50000->25000 (L85 Legendary 477653 -> 23883 XP, -95.0% of vanilla; -50.0% of the build92 47765)
+    tombstone_xp_recovery: ALREADY RULED (no-op) RedemptionMultiplier 0.5 -> 1.0  (L85 Legendary: lose 23883 XP, recover 23883 XP; was 11941)
+
+ARZ: C:\Users\willi\repos\tqit_soulvizier_classic\work\SoulvizierClassic\Database\SoulvizierClassic.arz
+  STATE: the arz AS IT WILL SHIP (death_xp_penalty + tombstone_xp_recovery applied in memory)
+  deathPenaltyEquation : (currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 180)
+  deathPenaltyMin/Max  : 0 / 25000
+  RedemptionMultiplier : 1.00
+
+  R-109 requires the report BOTH WAYS. Three penalty baselines - VANILLA
+  (divisor 9 / cap 500000), the PREVIOUSLY SHIPPED R-80 pair (divisor 90 / cap
+  50000, build92) and the penalty in THIS arz - against what the death marker
+  gives back at the pre-R-109 multiplier 0.5 and at this arz's multiplier:
+
+  level  difficulty  |    LOST van    LOST b92    LOST now |    BACK@0.5    BACK now back/lost
+  --------------------------------------------------------------------------------------------
+  10     Normal      |         111          11           6 |           3           6   1.0000
+  10     Epic        |         444          44          22 |          11          22   1.0000
+  10     Legendary   |         778          78          39 |          19          39   1.0000
+  25     Normal      |        1736         174          87 |          43          87   1.0000
+  25     Epic        |        6944         694         347 |         173         347   1.0000
+  25     Legendary   |       12153        1215         608 |         304         608   1.0000
+  40     Normal      |        7111         711         356 |         178         356   1.0000
+  40     Epic        |       28444        2844        1422 |         711        1422   1.0000
+  40     Legendary   |       49778        4978        2489 |        1244        2489   1.0000
+  55     Normal      |       18486        1849         924 |         462         924   1.0000
+  55     Epic        |       73944        7394        3697 |        1848        3697   1.0000
+  55     Legendary   |      129403       12940        6470 |        3235        6470   1.0000
+  70     Normal      |       38111        3811        1906 |         953        1906   1.0000
+  70     Epic        |      152444       15244        7622 |        3811        7622   1.0000
+  70     Legendary   |      266778       26678       13339 |        6669       13339   1.0000
+  85     Normal      |       68236        6824        3412 |        1706        3412   1.0000
+  85     Epic        |      272944       27294       13647 |        6823       13647   1.0000
+  85     Legendary   |      477653       47765       23883 |       11941       23883   1.0000
+  100    Normal      |      111111       11111        5556 |        2778        5556   1.0000
+  100    Epic        |      444444       44444       22222 |       11111       22222   1.0000
+  100    Legendary   |      500000       50000       25000 |       12500       25000   1.0000
+
+  RATIO recovered/lost at the SHIPPED multiplier 1.00: worst 1.0000 over the
+  rows above (R-109 requires exactly 1.0000 - equality, not <=).
+  LOST b92 -> LOST now: every row is exactly half - this is R-251 ("another 50%")
+  Every LOST / BACK column above is an INTEGER because the engine rounds (x + 0.5, chop) before the clamp; the recovery then multiplies that integer.
