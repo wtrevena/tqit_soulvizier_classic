@@ -227,10 +227,15 @@ is a Will design decision the lane deliberately did not make for him).
    `(-429, 28, -3538)`; the same false sentence was corrected in `WILL_RULINGS`, this lane record,
    and the landing-note in `gate_landing_clearance`. **Not cosmetic:** the round-2 value put the
    landing 0.00u from `svc_testhub_return_bossarena` and FAILED the b63 `G-NPC-LANDING-SEP` sub-gate
-   at `-1.00u`; it now PASSES at `+0.70u`, the NPC measures exactly 4.00u east, and the boss
-   separation the gate measures is **25.08u** (round 2 published 25.45u, measured at the NPC). The
-   retired row's "89u" was also wrong-target: 89.2u is to the BOSS, 64.1u to the landing.
-   `WILL_TEST_GUIDE` was checked and never carried the sentence.
+   at `-1.00u`; it now PASSES at `+0.70u`, the NPC measures exactly 4.00u east, and the gate names
+   `location_bossarenacenter.dbr` at **d=25.08u** in its own output (round 2 published 25.45u, which
+   was the distance from the NPC). The retired row's "89u" was also wrong-target: 89.2u is to the
+   BOSS, 64.1u to the landing. `WILL_TEST_GUIDE` was checked and never carried the sentence.
+   **AND THE PARITY CLAIM ITSELF WAS WRONG IN ROUND 2 AND IS NOW MEASURED TRUE:** round 2 asserted
+   the whole-gate result was "unchanged and identical row-for-row to `main`", but its own row was
+   failing `G-NPC-LANDING-SEP`, which `main` passes. Re-measured this round on BOTH trees: `main`
+   `DEADLY=3 FAIL=1 PASS=13`, `G-NPC-LANDING-SEP` PASS at `+0.70u`; this branch, identical on every
+   line. Parity is now a measurement, not an assertion.
 2. **LOW (C8 would have redded on a correct configuration):** C8's static half retired on the
    FUNCTION NAME being absent, so if the generosity lane converted the pass IN PLACE (same name,
    wiring semantics) and the integrator followed this branch's own INTEGRATION NOTE to re-add the

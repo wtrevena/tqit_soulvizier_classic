@@ -7978,11 +7978,14 @@ Two existing gates were also corrected by this lane, both for defects they had a
   return NPC, the identical defect PR-5 fixed for the Sparta warden. Both tables now carry
   `(-429, 28, -3538)` -> local `(132.0, 104.0)`, comp#2, on-mesh, clr 100% on all three tilesets;
   the return NPC measures exactly **4.00u** east (independently confirming build_section_surgery's
-  own "4u E" comment) and the gate **measures d=25.08u to `location_bossarenacenter`** (the marker
-  the R-252 proxy is placed at). `G-NPC-LANDING-SEP` now **PASSES** at `+0.70u`. Only that one row
-  was corrected (it is the only one this lane has ground truth for; correcting the rest by guesswork
-  would be the same defect again), and whole-gate totals are **unchanged**: `DEADLY=3 FAIL=1
-  PASS=13`, same rows as `main`. `BL-R252-DEBT-6` stays OPEN for the remaining rows.
+  own "4u E" comment) and the gate names `location_bossarenacenter.dbr` at **d=25.08u** in its own
+  output (the marker the R-252 proxy is placed at). `G-NPC-LANDING-SEP` now **PASSES** at `+0.70u`.
+  Round 2 also claimed the whole-gate result was "unchanged and identical row-for-row to `main`"
+  while its own row was failing a sub-gate `main` passes; that claim is now a MEASUREMENT taken on
+  both trees this round - `main`: `DEADLY=3 FAIL=1 PASS=13`, `G-NPC-LANDING-SEP` PASS `+0.70u`; this
+  branch: identical on every line. Only that one row was corrected (it is the only one this lane has
+  ground truth for; correcting the rest by guesswork would be the same defect again).
+  `BL-R252-DEBT-6` stays OPEN for the remaining rows.
 
 **AND A SECOND NEW GATE, for the process defect this lane hit:** `tools/gate_ruling_ids.py` -
 one ruling number, one ruling. It reds on a repeated primary `## R-<n> [` heading, on a number this
