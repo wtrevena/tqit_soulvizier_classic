@@ -15313,3 +15313,144 @@ travel-npc invariants, quest negatives, the canonical control, **and
   or delete it.
 - ⚠️ Untouched by this lane: `BL-R249-DEBT-1` (Garden -> Secret Place rift admits ENTRY?),
   `BL-R250-DEBT-1..6`, and Will's live-play queue `BL-W0814-2/3/4/5/7/8/9/10/11/12/13`.
+
+---
+
+## BUILD95 GATE RECORD (2026-08-15) - R-251 THE UBER/BOSS CHESTS OPEN THEIR OWN LOOT TABLES AGAIN + THE SECRET PRESENT BOX PAYS 3x; **arz-ONLY**; DEPLOYED TO DEV **AND** STEAM
+
+**`Database/SoulvizierClassic.arz` = DEV `SoulvizierClassicDEV.arz` = Steam = `694fd88150b37d027dcf6b170c5e1bdb`**
+(55,603,087 B, **51,318 records**; +1,516 B / **+3 records** over the shipped build93
+`db31414339f008792ea03aa8531f5002` / 55,601,571 B / 51,315). **arz-ONLY: `Text.arc e1d9592a` /
+canonical `Levels.arc 61aaf3e4` / `Quests.arc 6bad2ea7` / `Creatures.arc 8c0d8d53` md5-proven
+BYTE-UNCHANGED**, **0 new tags**. `main` `732ee8e` (build94-dev) -> `ee5252d`
+(`git merge --no-ff fix/chest-generosity-shared-cause`) -> `2a4ac1c` (changenote) -> this gate
+record. Tag **`build95-ship`**. Next sequential ship after build93 = **BUILD95** (build94 was
+consumed by the DEV-only `build94-dev` TESTHUB `Quests.arc` deploy; Steam skips it, as the
+`build40-dev` precedent allows).
+
+- **What it is:** Will's FIVE reports from one play session, merged into one lane and answered with
+  ONE cause: `BL-W0814-11` *"are you kidding me. this is outrageous ... literally just dropped two
+  items one thing of gold and incarnation of guan-yu's grace"* (Propontis), `-13` *"same problem with
+  the chest guarded by tantalus"*, `-5` the Ephialtes Dread-Hoard, `-2` the Obsidian Hoards **plus
+  the record-separation ask**, and `-7` the Secret Place gift box at 3x. The shared cause was a
+  **WIRE, not a number**: `apply_svc_patches._svc_standardize_boss_chests` (a b42-round-2 implementer
+  scope decision, never a Will ruling) repointed every placed-uber hoard chest at a base-game
+  `defaultloot\boss_default_<lo>-<hi>`, so **21 of 30** uber chests paid Cyclops-grade loot and **18
+  of the 27** `svc_*hoard_loot_0N` records were referenced by NOTHING - three breadth waves
+  (R-180/R-181/R-220) tuned dead records behind four green gates. Design: `docs/WILL_RULINGS.md` ->
+  **R-251**.
+
+- 🔢 **RULING RENUMBERED AT INTEGRATION: the lane authored itself `R-250`, and `R-250` was already
+  taken.** `fix/toxeus-shroud` shipped a DIFFERENT R-250 (the Enslaver's black shadow shroud) to
+  Steam as **build93** while this lane was in flight off `0ea001a`/build92. The SHIPPED number wins:
+  this ruling and its debts are **`R-251` / `BL-R251-DEBT-1..5`** everywhere (docs, module comments,
+  `svc_loot_volume._r251_exempt`, `tools/debug/dryrun_r251_uber_hoards.py`), the same treatment
+  `R-231 -> R-244` got at the build88 integration. **No content changed in the renumber**, and the
+  det-2x byte identity below is the proof (the identifiers are internal names, not data).
+
+- **RECORD-DIFF vs the SHIPPED build93 `db314143`: ADDED 3 / REMOVED 0 / MODIFIED 51, ZERO
+  unexplained.** ADDED = `svc_dorushoard_loot_01/02/03` (the Propontis family that never existed).
+  MODIFIED decomposes exactly three ways and no other way: **21** hoard CHESTS' `tables` (the
+  repoint reversed; the other 9 of the 30 already named their own table, which is the same "21 of 30"
+  the recon measured), **27** hoard LOOT tables' `numSpawnMin/MaxEquation` back to the authored
+  `(3+(1.8*numberOfPlayers))*2.4 / *2.8`, and **3** `loottable_sp_0N` to `*5.4/*6.3` = Will's literal
+  3x. Whole-diff field census: `numSpawnMaxEquation` 30, `numSpawnMinEquation` 30, `tables` 21,
+  `loot3Name2` **2** (the round-2 Obsidian tier fix, `01_act4_relics` -> `02_`/`03_act4_relics`).
+  **SCOPE PROOF, machine-checked on the diff:** ZERO records matching `uberorb` / `apex` /
+  `boss_charon_` / `polisvault` / `loottable_hidden_bloodcave` / `defaultloot` - so R-242's orbs and
+  frozen apex, R-240's polis-vault cage, and R-247.7(a)'s Devourer stash are all byte-identical, and
+  no monster record is touched (that is `toxeus-boss-equipment-and-soul`'s lane).
+
+- **det byte identity (det-2x):** `694fd881` across **two independent COLD builds** (`SVC_NO_CACHE=1`,
+  `PYTHONHASHSEED=0`, `SVC_RELEASE_DROPS=1`, `SVC_REQUIRE_GATES=1`), **exit 0 and "Done." both**,
+  byte-compared in full (55,603,087 B, equal at every byte). run2 built into
+  `local/b95_run2/` with a junction to work's `Resources/` so the location-only gates ran GREEN there
+  too. **Zero `FAIL` / `Traceback` / `OFFENDER` lines in either log.**
+
+- **GATES GREEN (all seven coexisting loot gates re-measured on the POST-wave artifact):**
+  | gate | result on `694fd881` |
+  | --- | --- |
+  | `gate_uber_hoard_generosity` (R-251, H1-H8) | **PASS** - 30 chests name their OWN table, 30 tables reachable and pinned at `*2.4/*2.8` with the guaranteed 100% row intact (worst 12.48 solo iterations), no two chests share a record, none shares the Devourer's stash, gift box exactly 3x |
+  | `gate_loot_volume` (R-240, V1-V7b) | **PASS** - scope now **39** canonical mod-governed surfaces (the carve-out removed the hoard family), worst 2.15 on gaoler cage chest_01 [n], cage run under `{n:4.55, e:3.2, l:4.55}` |
+  | `gate_loot_distribution` (R-181, D1-D9 incl **D7/D7X2**) | **PASS** - all 66 surfaces clear D7b; 45 of 66 at or above the `1.31` reference spawn clear D7, the anchor surface among them. **The briefed D7X2 gotcha did not bite, by design:** the anchor is derived from the polis-vault cage, which this lane does not touch |
+  | `gate_chest_loot_breadth` (R-180) | **PASS** |
+  | `gate_orb_loot_breadth` (R-220) | **PASS** |
+  | `gate_relic_difficulty_tiers` (R-238) | **PASS - 81 branches / 0 findings** (51 before the wave). This is the round-2 lesson made permanent: it walks the WIRE, so R-251 is exactly the wave that makes 30 branches reachable |
+  | `gate_chest_artifacts` (R-240) | **PASS** - 135 of 141 equippable artifacts unreachable; the 6 pinned R-185 craft reagents re-proved live |
+
+- **Contracts + tags:** full `run_contracts` on the built artifact **0 P0 / 0 P1 / 4510 P2** across 6
+  modules = the build87..93 baseline EXACTLY, and **SET-DIFFED** against the same suite on the
+  shipped `db314143`. `validate_tags` **PASS**: 383 referenced mod tags (identical count to build93 =
+  **0 new tags**), the 2 documented pre-existing base/SV WARN (`tagNewMonster66`, `tagNewMonster46`).
+  Registry re-derived on the MERGED tree: **67 modules**, order
+  `c9af6ef62f49350ceb302fa9256147a7dcb35db274357b3d98a41e49825d3bd7`, ordering load-bearing and held
+  (`loot_volume_trim` 62 < `r247_bloodcave_rulings` 64 < `uber_hoard_generosity` 65 < `visuals` 66).
+  All 67 in-build `verify()` hooks OK. Build-log line present verbatim: *"R-251 hoard wiring: 30
+  uber/boss hoard chest(s) now open their OWN `svc_<family>hoard_loot_<tier>` table (10
+  family/families); zero chests left on base-game Cyclops loot."*
+
+- **ANTI-INERT, measured on an artifact that actually SHIPPED:** `gate_uber_hoard_generosity` run
+  against the **shipped build93 arz `db314143`** **EXITS 1 with 85 findings** - `21 H1 + 18 H2 +
+  27 H3 + 3 H6 + 14 H7 + 2 H8` - which is Will's five bug reports reproduced as an artifact fact, and
+  it **PASSES** on `694fd881`. Per `BL-R240-DEBT-8` the control was deliberately taken on a
+  **POST-R-240** artifact, so the red condemns the real defect and not pre-R-240 baseline drift.
+  `negtest_uber_hoards` **12/12 plants caught with the healthy-fixture control GREEN first**, re-run
+  on the MERGED tree rather than the lane tree.
+
+- **CONTRACT SET-DIFF, not merely counted:** the same suite on the shipped `db314143` yields the same
+  **4510 (0/0/4510)** and the `(contract, severity, subject)` row sets are identical -
+  **0 only-in-build95 / 0 only-in-baseline** (4,521 distinct rows both sides).
+
+**DEV:** targeted **arz-only** copy while **TQ.exe was NOT running** (nothing killed, Steam not
+restarted). md5 **source == dest = `694fd881`**. DEV folder md5-inventoried before and after:
+**1 of 62 files changed, 0 added, 0 removed**, the other 61 byte-identical. **DEV `Levels.arc` stays
+TESTHUB `37c33fb0`** (Will's play surface, untouched) and DEV `Quests.arc` stays the build94-dev
+`90d401f1`; DEV `Text`/`Creatures` byte-unchanged.
+
+**ROLLBACK (one step, uncoupled):** `local/DEV_arz_deployed_prev.arz` = build93
+`db31414339f008792ea03aa8531f5002` -> copy back over
+`SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz`. Nothing else moves (no Text coupling, no
+map, no quest). This build's arz kept at `local/build95_run1.arz`; the baseline preserved verbatim at
+`local/build93_shipped_db314143.arz`. Evidence: `local/build95_run{1,2}.log`,
+`build95_record_diff_vs_b93.txt`, `build95_gates.log`,
+`build95_gate_ANTIINERT_on_shipped_b93.log`, `build95_contracts_{new,base}.{log,json}`,
+`build95_validate_tags.log`, `build95_DEV_inventory_{before,after}.txt`, `build95_package.log`,
+`build95_upload.log`.
+
+### DEBT REGISTER (carried forward; nothing silently dropped)
+
+- ⚠️ **`BL-R251-DEBT-3` (P0, WILL'S EYE) - NOT PROVEN IN GAME.** Everything above is database + gate
+  evidence; no chest has been opened. **Will's check (fully quit TQ + restart Steam first): open the
+  Great Hall of Propontis chest, the chest guarded by Tantalus, the Dread Halls hoard, an Obsidian
+  Hoard and a Secret Place gift box.** PASS line: each uber chest pays a handful of items with a
+  guaranteed unique and a relic of the difficulty you are on, not two items and some gold; the gift
+  box pays about three times what it used to. The blood-cave hidden stash should still be the richest
+  chest in the mod.
+- **`BL-R251-DEBT-2` (P1, OPEN WILL DECISION, arz+Text coupled):** the Great Hall of Propontis chest
+  is still LABELLED **"Obsidian Hoard"** (`svc_dorushoard_*.description = tagSVCObsidianHoard`) even
+  though it now has its own loot family. Every sibling has its own name. Minting `tagSVCDorusHoard`
+  forces an arz+Text ship, so it was deliberately not taken in an arz-only lane. **Open question:
+  what should Kroisos the Coin-Drowned's hoard be called, in the amgoz1 voice?**
+- **`BL-R251-DEBT-1` (P2, ACCEPTED LOSS, stated at ship):** the retired b42 repoint gave each chest a
+  REGION-banded base table (Dorus Normal `boss_default_41-43` vs Ephialtes's `57-59`). The bespoke
+  tables are DIFFICULTY-tiered but not region-banded, so within Normal an Act2 hoard now pays the
+  same tier pool as an Act5 one. Confined to Normal and one Epic row; every other bracket was already
+  the shared `63-65` cap.
+- **`BL-R251-DEBT-5` (P2, CHEAP FOLLOW-UP):** the `diadochi` registry module still falls back to the
+  SHARED `_SVC_HOARD_POOL` if a donor is missing. It predates R-251 and fires in no observed build,
+  but it is the one route left by which two ubers could land on one chest record, and H7 cannot catch
+  it (a POOL fallback leaves no second chest record to compare). Make the fallback fail loud.
+- **`BL-R251-DEBT-6` (P1, PROCESS, new at this ship): TWO LANES MINTED `R-250` IN PARALLEL AND
+  NEITHER KNEW.** Both branched off `0ea001a`/build92 and both took the next free number from the
+  ledger they could see. Nothing in the ruling-append law reserves a number across concurrent lanes,
+  so the collision is only discovered at integration, when renaming is at its most expensive (163
+  references across 13 files here). Cheap fix: a lane claims its ruling number on `main` in a
+  one-line commit before it starts writing, or ruling numbers are assigned at INTEGRATION and lanes
+  carry a branch-local placeholder.
+- ~~`BL-R251-DEBT-4`~~ RETIRED in the lane (round 2) - the Obsidian Epic/Legendary tier leak was real
+  and is fixed here; see `WILL_RULINGS.md` R-251 for the method lesson (a gate reading taken where
+  the surface is UNREACHABLE proves nothing about that surface).
+- ⚠️ Untouched by this lane: `BL-R240-DEBT-8` (make D7/D7X2 two-era - **not needed here**, the anchor
+  surface is unchanged), `BL-R240-DEBT-2/7`, `BL-R242-DEBT-1/3/4`, `BL-R250-DEBT-1..6` (the shroud
+  lane's), `BL-R249-DEBT-1/2`, `BL-b94dev-DEBT-1..5`, and Will's remaining live-play queue
+  `BL-W0814-3/4/6/8/9/10/12`.
