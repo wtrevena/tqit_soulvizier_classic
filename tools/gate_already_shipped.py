@@ -43,21 +43,46 @@ THE INVARIANT
 
 S1/S2/S4 need git and fail LOUD (never silently skip) when it is unavailable.
 
+THE RECEIPT (`BL-b98-DEBT-3`, the fourth bite)
+----------------------------------------------
+Everything above is advisory tooling an operator must REMEMBER to invoke, and a fourth
+consecutive dispatch (`toxeus-boss-equipment-and-soul`, already shipped as build96) proved
+that a habit is not a control. So a PASS now writes a RECEIPT to `local/step0_receipt.json`,
+and `--verify-receipt` is a precondition wired into `scripts/package_workshop.ps1` ahead of
+staging: packaging REFUSES to run when step 0 did not run green for this ship.
+
+The receipt is bound to the repo state, not merely to a timestamp:
+  R1 it exists and recorded a PASS;
+  R2 it named an intended `--tag` (a ship with no build number is not a ship);
+  R3 its HEAD is an ANCESTOR of the current HEAD - step 0 legitimately runs BEFORE the
+     merge, so HEAD may move FORWARD after it, but it may never have DIVERGED;
+  R4 the intended tag is STILL free right now (re-measured, not remembered);
+  R5 the tree is still clean and `main` is still not behind origin.
+`--repackage "<reason>"` is the one honest escape (a note-only re-upload of an already
+shipped payload - `BL-b97-DEBT-1`): it waives R4 ONLY, demands a non-empty reason, and the
+package guard prints that reason loudly instead of hiding it.
+
 USAGE
   py tools/gate_already_shipped.py --lane fix/chest-generosity-shared-cause --tag build98-ship
   py tools/gate_already_shipped.py --claim "<dev>/Resources/Quests.arc=1764c3a2..."
+  py tools/gate_already_shipped.py --verify-receipt        # what packaging runs
+  py tools/gate_already_shipped.py --repackage "build97 note-only re-upload"
   py tools/gate_already_shipped.py --negtest
 """
 import re
+import io
 import sys
+import json
 import hashlib
 import argparse
 import subprocess
 from pathlib import Path
+from datetime import datetime, timezone
 
 REPO = Path(__file__).resolve().parent.parent
 MAIN = 'main'
 BUILD_TAG_RE = re.compile(r'^build(\d+)-(ship|dev)$')
+RECEIPT = REPO / 'local' / 'step0_receipt.json'
 
 
 # ── pure cores (negtestable without git or the filesystem) ────────────────────────────
@@ -87,6 +112,56 @@ def containment_problem(lane, contained, merge_commit=None, containing_tag=None)
             f'merge, so a build here would re-ship identical content under a build number '
             f'that is either taken or wrong. ABORT and re-verify the board against the '
             f'repo before doing anything else.')
+
+
+def receipt_problems(receipt, head_ancestor, tag_taken, dirty_count, behind,
+                     lane_now_merged=None):
+    """R1-R6: why packaging must REFUSE, given a receipt dict and the live git facts.
+
+    `receipt` is None when no step 0 has ever run. `head_ancestor` is True when the HEAD
+    step 0 measured is an ancestor of the current HEAD (forward-only movement, which a
+    merge legitimately causes). `lane_now_merged` is True when the lane the receipt
+    cleared is contained in HEAD now - the exact INVERSE of what S1 demanded before the
+    merge, and the clause that stops one lane's receipt authorising another's package.
+    Returns [] when packaging may proceed."""
+    if not receipt:
+        return ['R1: no step-0 receipt at local/step0_receipt.json. Ship-procedure step 0 '
+                'never ran for this ship. Run: py tools/gate_already_shipped.py --lane '
+                '<branch-or-sha> --tag build<N>-ship']
+    out = []
+    repack = (receipt.get('mode') == 'REPACKAGE')
+    if receipt.get('verdict') != 'PASS':
+        out.append(f'R1: the step-0 receipt records verdict '
+                   f'`{receipt.get("verdict")}`, not PASS. The dispatch was refused; '
+                   f'packaging it anyway is exactly the thing the gate exists to stop.')
+    if not repack and not receipt.get('tag'):
+        out.append('R2: the step-0 receipt names no intended --tag. A ship with no build '
+                   'number is not a ship - re-run step 0 with --tag build<N>-ship.')
+    if head_ancestor is False:
+        out.append(f'R3: the receipt was written at HEAD `{str(receipt.get("head"))[:7]}`, '
+                   f'which is NOT an ancestor of the current HEAD. The tree DIVERGED after '
+                   f'step 0 ran (a reset, a rebase or the wrong checkout), so the receipt '
+                   f'describes a repo state that no longer leads here. Re-run step 0.')
+    if tag_taken and not repack:
+        out.append(f'R4: the receipt\'s intended tag `{receipt.get("tag")}` is ALREADY '
+                   f'TAKEN now. Another lane consumed the number between step 0 and '
+                   f'packaging. Re-derive the build number before uploading anything.')
+    if dirty_count:
+        out.append(f'R5: the working tree is NOT clean ({dirty_count} path(s)). Package '
+                   f'from a known tree or the uploaded payload cannot be reproduced.')
+    if behind:
+        out.append(f'R5: `{MAIN}` is {behind} commit(s) BEHIND `origin/{MAIN}`. Another '
+                   f'lane has shipped since step 0 ran.')
+    if repack and not str(receipt.get('reason') or '').strip():
+        out.append('R4: this is a --repackage receipt with an EMPTY reason. The one escape '
+                   'from the tag-free check has to say why, out loud, in the log.')
+    if receipt.get('lane') and lane_now_merged is False:
+        out.append(f'R6: the receipt cleared lane `{receipt.get("lane")}`, but that lane is '
+                   f'NOT contained in HEAD. Step 0 passes a lane BEFORE the merge and '
+                   f'packaging happens AFTER it, so an unmerged lane means this payload is '
+                   f'not the ship the receipt cleared. Re-run step 0 for what you are '
+                   f'actually packaging.')
+    return out
 
 
 def stale_claims(claims, hasher):
@@ -161,6 +236,65 @@ def _containing_tag(sha):
     out = _ok('tag', '--contains', sha, '--sort=creatordate')
     lines = [x for x in (out.splitlines() if out else []) if BUILD_TAG_RE.match(x.strip())]
     return lines[0].strip() if lines else None
+
+
+# ── the receipt (BL-b98-DEBT-3: step 0 becomes a PRECONDITION, not a habit) ───────────
+def write_receipt(lane, tag, claims, mode='SHIP', reason=None):
+    RECEIPT.parent.mkdir(parents=True, exist_ok=True)
+    body = {'verdict': 'PASS', 'mode': mode, 'lane': lane, 'tag': tag,
+            'reason': reason, 'head': _ok('rev-parse', 'HEAD'),
+            'claims': [p for p, _ in claims],
+            'when': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
+    with io.open(RECEIPT, 'w', encoding='utf-8') as fh:
+        json.dump(body, fh, indent=2, sort_keys=True)
+    return body
+
+
+def read_receipt():
+    if not RECEIPT.is_file():
+        return None
+    try:
+        with io.open(RECEIPT, encoding='utf-8') as fh:
+            return json.load(fh)
+    except (ValueError, OSError):
+        return {'verdict': 'UNREADABLE'}
+
+
+def verify_receipt(verbose=True):
+    """What `scripts/package_workshop.ps1` runs before it stages a single byte."""
+    if _ok('rev-parse', '--git-dir') is None:
+        return ['git is unavailable, so the step-0 receipt cannot be verified. Refusing '
+                'to report a PASS that was never measured.']
+    r = read_receipt()
+    head_ancestor = None
+    tag_taken = False
+    if r and r.get('head'):
+        head_ancestor = (_git('merge-base', '--is-ancestor',
+                              r['head'], 'HEAD').returncode == 0)
+    if r and r.get('tag'):
+        tags = local_tags()
+        rtags = remote_tags()
+        tag_taken = (tag_is_taken(tags, r['tag'])
+                     or (rtags is not None and tag_is_taken(rtags, r['tag'])))
+    lane_now_merged = None
+    if r and r.get('lane'):
+        sha = _ok('rev-parse', '--verify', f'{r["lane"]}^{{commit}}')
+        lane_now_merged = (sha is not None
+                           and _git('merge-base', '--is-ancestor', sha,
+                                    'HEAD').returncode == 0)
+    dirty = _ok('status', '--porcelain')
+    behind = _ok('rev-list', '--count', f'{MAIN}..origin/{MAIN}')
+    problems = receipt_problems(r, head_ancestor, tag_taken,
+                                len(dirty.splitlines()) if dirty else 0,
+                                int(behind) if (behind or '').isdigit() else 0,
+                                lane_now_merged)
+    if verbose and r and not problems:
+        what = (f'REPACKAGE ({r.get("reason")})' if r.get('mode') == 'REPACKAGE'
+                else f'tag {r.get("tag")}')
+        print(f'  receipt OK: step 0 passed {r.get("when")} for {what}, lane '
+              f'{r.get("lane") or "(none)"}, at HEAD {str(r.get("head"))[:7]} '
+              f'(an ancestor of the current HEAD)')
+    return problems
 
 
 # ── driver ───────────────────────────────────────────────────────────────────────────
@@ -256,6 +390,48 @@ def negtest():
                             'd9f8c31654cbd8c80efe5ab7be573d77')], fake.get)),
         ('N5 a quoted hash for a file that does not exist is CAUGHT',
          stale_claims([('C:/live/gone.arc', 'deadbeef')], fake.get)[0][2] is None),
+
+        # ── R1-R5, the receipt: BL-b98-DEBT-3, the fourth bite ──────────────────────
+        ('R1 packaging with NO receipt at all is CAUGHT (step 0 never ran)',
+         bool(receipt_problems(None, True, False, 0, 0))),
+        ('R1b a receipt recording a REFUSAL is CAUGHT, not honoured',
+         any(p.startswith('R1') for p in receipt_problems(
+             {'verdict': 'ABORT', 'tag': 'build98-ship', 'head': 'abc'},
+             True, False, 0, 0))),
+        ('R2 a receipt naming no intended tag is CAUGHT',
+         any(p.startswith('R2') for p in receipt_problems(
+             {'verdict': 'PASS', 'head': 'abc'}, True, False, 0, 0))),
+        ('R3 a receipt whose HEAD is not an ancestor of HEAD is CAUGHT (diverged tree)',
+         any(p.startswith('R3') for p in receipt_problems(
+             {'verdict': 'PASS', 'tag': 'build98-ship', 'head': 'abc'},
+             False, False, 0, 0))),
+        ('R4 a receipt whose tag got CONSUMED between step 0 and packaging is CAUGHT',
+         any(p.startswith('R4') for p in receipt_problems(
+             {'verdict': 'PASS', 'tag': 'build98-ship', 'head': 'abc'},
+             True, True, 0, 0))),
+        ('R5 a dirty tree and a behind-origin main are BOTH caught',
+         len([p for p in receipt_problems(
+             {'verdict': 'PASS', 'tag': 'build98-ship', 'head': 'abc'},
+             True, False, 3, 2) if p.startswith('R5')]) == 2),
+        ('R4b a --repackage receipt with an EMPTY reason is CAUGHT',
+         any(p.startswith('R4') for p in receipt_problems(
+             {'verdict': 'PASS', 'mode': 'REPACKAGE', 'reason': '  ', 'head': 'abc'},
+             True, True, 0, 0))),
+        ('R6 a receipt whose cleared lane is NOT in HEAD is CAUGHT (packaging a '
+         'different ship than step 0 cleared)',
+         any(p.startswith('R6') for p in receipt_problems(
+             {'verdict': 'PASS', 'tag': 'build98-ship', 'head': 'abc',
+              'lane': 'fix/some-other-lane'}, True, False, 0, 0, False))),
+        ('R6b the SAME receipt once its lane IS merged is NOT flagged',
+         not receipt_problems({'verdict': 'PASS', 'tag': 'build98-ship', 'head': 'abc',
+                               'lane': 'fix/some-other-lane'}, True, False, 0, 0, True)),
+        ('R-CTRL a good SHIP receipt is NOT flagged',
+         not receipt_problems({'verdict': 'PASS', 'tag': 'build98-ship', 'head': 'abc'},
+                              True, False, 0, 0)),
+        ('R-CTRL2 a REPACKAGE receipt with a real reason passes a TAKEN tag, and only that',
+         not receipt_problems({'verdict': 'PASS', 'mode': 'REPACKAGE', 'head': 'abc',
+                               'reason': 'build97 note-only re-upload'},
+                              True, True, 0, 0)),
     ]
     ok = True
     for label, caught in cases:
@@ -263,15 +439,19 @@ def negtest():
               + ('' if caught else '   <-- THE GATE IS BLIND HERE'))
         ok = ok and caught
 
-    # ANTI-INERT, against the real repo: the three dispatches that were actually spent on
+    # ANTI-INERT, against the real repo: the four dispatches that were actually spent on
     # already-shipped work must each ABORT here, and a genuinely fresh ask must not.
-    for lane, tag in (('fix/chest-generosity-shared-cause', 'build95-ship'),
-                      ('fix/toxeus-shroud', 'build93-ship')):
+    # The fourth is the proof that S1 catches a duplicate even when the tag it asks for is
+    # FREE - `toxeus-boss-equipment-and-soul` shipped as build96 and was re-dispatched to
+    # take build98, so only lane containment could tell it was already done.
+    for lane, tag, want in (
+            ('fix/chest-generosity-shared-cause', 'build95-ship', ('S1', 'S2')),
+            ('fix/toxeus-shroud', 'build93-ship', ('S1', 'S2')),
+            ('fix/toxeus-boss-equipment-and-soul', 'build98-ship', ('S1',))):
         live = run(lane=lane, tag=tag, verbose=False)
-        hit = any(p.startswith('S1') for p in live) and any(p.startswith('S2')
-                                                            for p in live)
+        hit = all(any(p.startswith(s) for p in live) for s in want)
         print(f'  {"CAUGHT " if hit else "MISSED "} P-LIVE the real `{lane}` + `{tag}` '
-              f'dispatch aborts on S1 and S2')
+              f'dispatch aborts on {" and ".join(want)}')
         ok = ok and hit
     clean = run(tag='build98-ship', verbose=False)
     print(f'  {"PASS   " if not clean else "FAIL   "} P0 a fresh build98-ship ask on a '
@@ -296,10 +476,46 @@ def main():
     ap.add_argument('--claim', type=_claim, action='append', default=[],
                     help='<path>=<md5> an artifact hash the dispatch quotes (repeatable)')
     ap.add_argument('--negtest', action='store_true')
+    ap.add_argument('--verify-receipt', action='store_true',
+                    help='what packaging runs: refuse unless step 0 passed for this ship')
+    ap.add_argument('--repackage', metavar='REASON',
+                    help='write a receipt for a note-only re-upload of an already-shipped '
+                         'payload; waives the tag-free check ONLY, and the reason is '
+                         'printed by the package guard')
     a = ap.parse_args()
     if a.negtest:
         print('GATE already-shipped NEGTEST')
         return 0 if negtest() else 1
+
+    if a.verify_receipt:
+        print('\n=== step-0 receipt check (packaging precondition) ===')
+        problems = verify_receipt()
+        if problems:
+            print(f'\nGATE step-0 receipt: REFUSE TO PACKAGE ({len(problems)} problem(s))')
+            for p in problems:
+                print(f'  - {p}')
+            print('\nNothing has been staged or uploaded. Four consecutive ship dispatches '
+                  'were spent on already-shipped work; this check is why a fifth cannot be.')
+            return 1
+        print('\nGATE step-0 receipt: PASS - step 0 ran green for this ship.')
+        return 0
+
+    if a.repackage is not None:
+        print('\n=== step-0 receipt: REPACKAGE (tag-free check waived) ===')
+        if not a.repackage.strip():
+            print('  --repackage needs a REASON. The escape hatch has to say why.')
+            return 1
+        problems = [p for p in run(a.lane, None, a.claim) if not p.startswith('S1')]
+        if problems:
+            print(f'\nGATE already-shipped: ABORT ({len(problems)} problem(s))')
+            for p in problems:
+                print(f'  - {p}')
+            return 1
+        b = write_receipt(a.lane, None, a.claim, mode='REPACKAGE', reason=a.repackage)
+        print(f'  receipt written: {RECEIPT} (REPACKAGE, HEAD {str(b["head"])[:7]})')
+        print(f'  reason: {a.repackage}')
+        return 0
+
     print('\n=== already-shipped audit (ship-procedure step 0) ===')
     problems = run(a.lane, a.tag, a.claim)
     if problems:
@@ -308,9 +524,14 @@ def main():
             print(f'  - {p}')
         print('\nDo NOT merge, build, deploy or tag. Re-derive the board from the repo '
               'and the live artifacts, then re-dispatch.')
+        if RECEIPT.is_file():
+            RECEIPT.unlink()
+            print(f'Stale step-0 receipt removed ({RECEIPT}) - packaging will now refuse.')
         return 1
-    print('\nGATE already-shipped: PASS - this dispatch is not already done. (That is '
-          'all this gate says; the ship procedure still owns every other question.)')
+    b = write_receipt(a.lane, a.tag, a.claim)
+    print(f'\nGATE already-shipped: PASS - this dispatch is not already done. (That is '
+          f'all this gate says; the ship procedure still owns every other question.)')
+    print(f'Receipt written to {RECEIPT} (HEAD {str(b["head"])[:7]}); packaging verifies it.')
     return 0
 
 

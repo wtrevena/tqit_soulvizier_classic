@@ -35,6 +35,28 @@ if (-not (Test-Path $arzFile)) {
 
 Write-Host '=== Package for Steam Workshop ===' -ForegroundColor Cyan
 
+# --- Fail-loud STEP-0 RECEIPT guard (BL-b98-DEBT-3; runs BEFORE everything) ---
+# FOUR consecutive ship dispatches (2026-08-15) were spent on work that was already live,
+# and one of them proposed a deploy that would have REVERTED Will's play surface. Each was
+# caught by hand. tools/gate_already_shipped.py made the check mechanical; this makes it a
+# PRECONDITION - packaging refuses to stage a byte unless step 0 ran green for THIS ship.
+# Escape for a note-only re-upload of an already-shipped payload:
+#   py tools/gate_already_shipped.py --repackage "why"
+$step0 = Join-Path $RepoRoot 'tools\gate_already_shipped.py'
+if (-not (Test-Path $step0)) {
+    Write-Host 'ERROR: tools/gate_already_shipped.py is missing - ship-procedure step 0 cannot be verified.' -ForegroundColor Red
+    exit 1
+}
+$env:PYTHONIOENCODING = 'utf-8'
+& py $step0 --verify-receipt
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ''
+    Write-Host '=== FATAL: SHIP-PROCEDURE STEP 0 DID NOT RUN GREEN - ABORTING ===' -ForegroundColor Red
+    Write-Host 'Nothing was staged. Run step 0 first:' -ForegroundColor Red
+    Write-Host '  py tools/gate_already_shipped.py --lane <branch-or-sha> --tag build<N>-ship' -ForegroundColor Red
+    exit 1
+}
+
 # --- Fail-loud TESTHUB guard (runs BEFORE staging) ---
 # The local-only TESTHUB map variant (local/Levels_merged_TESTHUB.arc) is for local
 # play-testing and must NEVER be uploaded to Steam Workshop. If the map about to be
