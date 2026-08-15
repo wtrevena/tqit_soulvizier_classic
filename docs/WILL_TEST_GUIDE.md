@@ -67,7 +67,16 @@
 >    Nothing else about him changed - same name, same spot, same single "Descend into the Sparta
 >    Crypt" option, same boat-traveler mechanism.
 >
-> **THE HEADLINE TEST (do this on the Steam build after promote, and on TESTHUB now):** deepest Athens
+> ### ⚠️ CORRECTION (2026-08-14 night, `build94-dev`): YOUR DEV COPY DID NOT ACTUALLY HAVE THIS FIX UNTIL NOW
+> **If you already tried the Warden click on DEV and it still auto-dismissed, that was not a failed fix -
+> you were clicking the OLD build.** The Warden fix went to Steam with build92, but your DEV
+> `Quests.arc` was never replaced, so it stayed on the pre-fix file (`1764c3a2`) - the exact one you
+> were playing when you reported the bug. **That is fixed as of tonight: DEV now has the fixed quest
+> file (`90d401f1`), and nothing else on DEV changed** (same map, same database, same everything else -
+> md5-verified, 1 file of 62). **So please run the test below again on DEV, fresh.** Steam has been
+> correct since build92 and did not move tonight. Sorry for the wasted click.
+>
+> **THE HEADLINE TEST (Steam has had this since build92; DEV/TESTHUB has it as of tonight):** deepest Athens
 > catacomb (`CataCube02_FloorLast`) -> click the **Warden of the Spartan Crypt** by the stairs-down ->
 > **PASS = the "Descend into the Sparta Crypt" popup opens AND STAYS OPEN until you answer; clicking
 > "yes" drops you into the crypt on the floor; clicking him again re-opens it.** Do it on an existing

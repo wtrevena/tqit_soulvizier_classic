@@ -15,7 +15,8 @@
 
 **BL-W0814-5 APHORYTEUS (sp?) DREAD HOARD chest over-nerfed:** "Another terrible chest aphoryteus (spelled wrong) dread hoard is a terrible chest, it got nerfed somewhere along the way and needs to drop more items." Identify the real record (name ~ "Aphoryteus/Amphitryos Dread Hoard"); it got trimmed (likely R-240/R-242); restore toward SV richness (same class as BL-W0814-2 + the R-247.7a stash reverts).
 
-**BL-W0814-6 SPARTA CRYPT TRAVELER / WARDEN STILL BROKEN (P1, on canonical+Steam) — WARDEN AUTO-DISMISS (part a) FIXED BY R-249 (branch `feat/warden-fix-almyros-trim`, awaiting integration + in-game confirm BL-R249-DEBT-2):** the ship-relevant symptom (a) — the descend popup opens then AUTO-DISMISSES before the click, then mute on re-click — is root-caused to the awakening `Action_UpdateNPCDialog` `delayTime` = 2.0s (0x40000000) inherited from the Leinth vortex: reached by teleport, the player clicks inside the 2s window and the delayed pak re-assignment closes the just-opened boat menu. R-249 sets `delayTime=0` (base quest-7 boatman value) in the shared `_npc_awaken_actions` helper, so the pak assigns at level load before any click — KEEPING the boat-traveler method (Will explicitly REJECTED the fixed-portal/Typhon-style conversion this item previously proposed: R-249 "no we dont want to do the typhon-style fix... we just need to fix the issue with the warden"). Parts (b) no-pets/can't-move and (c) cross-binding are TESTHUB-ONLY plaza-launcher symptoms (golden-bough/garden-court, NOT on canonical/Steam) and remain open under the R-248 TESTHUB capacity-probe debt. Original report kept verbatim below.
+**BL-W0814-6 SPARTA CRYPT TRAVELER / WARDEN — WARDEN AUTO-DISMISS (part a) FIXED BY R-249; LIVE ON STEAM SINCE build92 AND *NOW* LIVE ON DEV AS `build94-dev` (TESTHUB `Quests.arc` `90d401f1`, deployed 2026-08-14). Awaiting only Will's in-game A/B (`BL-R249-DEBT-2`):** ⚠️ **DEV was carrying the PRE-fix arc `1764c3a2` until build94-dev** - the exact bytes Will played when he filed this - so any TESTHUB Warden click before 2026-08-14 night was testing the OLD bug, not the fix. Fixed now; the A/B is runnable on DEV. Cause + process debt: BUILD94-DEV GATE RECORD at the tail of this file (`BL-b94dev-DEBT-1`). Original triage below.
+**(triage as filed):** the ship-relevant symptom (a) — the descend popup opens then AUTO-DISMISSES before the click, then mute on re-click — is root-caused to the awakening `Action_UpdateNPCDialog` `delayTime` = 2.0s (0x40000000) inherited from the Leinth vortex: reached by teleport, the player clicks inside the 2s window and the delayed pak re-assignment closes the just-opened boat menu. R-249 sets `delayTime=0` (base quest-7 boatman value) in the shared `_npc_awaken_actions` helper, so the pak assigns at level load before any click — KEEPING the boat-traveler method (Will explicitly REJECTED the fixed-portal/Typhon-style conversion this item previously proposed: R-249 "no we dont want to do the typhon-style fix... we just need to fix the issue with the warden"). Parts (b) no-pets/can't-move and (c) cross-binding are TESTHUB-ONLY plaza-launcher symptoms (golden-bough/garden-court, NOT on canonical/Steam) and remain open under the R-248 TESTHUB capacity-probe debt. Original report kept verbatim below.
 > Will's verbatim in-game sequence (TESTHUB): "the spartan crypt traveler isnt working still. i was able to travel from helos via the traveler to athena catacombs level 3 where you see the npc that takes you to the spartan crypt, when i clicked on him a pop up came up that said something like do you want to descend into the spartan crypt and before i could click on it the question went away and then when i clicked the warden of the spartan crypt again nothing happened." + "when i clicked on the traveler from helos to travel to the golden bough, after i traveled back to helos... when i clicked on the guy to travel to the golden bough then it teleported me to what i think is the spartan crypt but my pets did not come with me and i cant move in the spartan crypt... i teleported back to helos, then when i clicked on the traveler again to go to the golden bough, nothing happened... then... i clicked on the guy to travel me to the garden of merchants, and he sent me to the river styx (the area where the boss monster is that summons the briarwood)." => NEW SIGNATURES beyond the b63 mute: (a) Warden descend popup FIRES then AUTO-DISMISSES before click (competing OnLevelLoad refire? churn re-arm cancelling the dialog?); (b) golden-bough->sparta-crypt with NO PETS + CAN'T MOVE (off-mesh landing OR a teleport type that strands + drops pets); (c) residual CROSS-BINDING at 51 TESTHUB rows under churn (golden-bough->sparta, garden->river-styx = still executing other rows after heavy travel/death churn). NOTE: all of (b)(c) involve TESTHUB-ONLY plaza launchers (golden-bough/garden-court) = NOT on canonical/Steam; (a) the Warden IS on canonical => the auto-dismiss is the ship-relevant one. Root-cause the popup auto-dismiss + the churn residual; the definitive fix for the whole class = FIXED-PORTAL conversion (R-248 DEBT-4, mechanism B, Typhon->Rhodes style) which removes per-click quest rows entirely.
 
 **BL-W0814-7 SECRET PLACE GIFT BOX +3x ITEMS:** "the gift box in the secret places need to increase the number of items dropped by 3x." Identify the Secret Place (darkforestenter) gift-box chest record + its loot table; triple the item COUNT it drops (numSpawn* / loot slot count, not just chance). Same chest-generosity class as BL-W0814-2/5 (obsidian + aphoryteus hoards) + the R-247.7a stash reverts - candidate to batch into one chest-tuning lane.
@@ -14998,3 +14999,144 @@ coupling). This build's arz kept at `local/build93_run1.arz`; the baseline also 
   were re-derived on the merged tree (66 / `4a257dc7...`).
 - ⚠️ Still open and NOT touched by this build: `BL-R249-DEBT-1` / `BL-R249-DEBT-2` (build92's two
   in-game debts), and Will's live-play queue `BL-W0814-2/3/4/5/7/8/9/10/11/12/13`.
+
+---
+
+## BUILD94-DEV GATE RECORD (2026-08-14) - DEV PARITY: the R-249 WARDEN FIX finally reaches Will's OWN play surface. **TESTHUB `Quests.arc` ONLY. DEV-only, LOCAL-ONLY, NO Steam, NO canonical artifact moved.**
+
+**DEV `SoulvizierClassicDEV\Resources\Quests.arc` = `1764c3a261ecfc7a0fe9346f6f4df595` (195,761 B) ->
+`90d401f1cebaedc674c74eed899a5aae` (195,691 B, -70 B).** Every other DEV file byte-unchanged:
+**`Levels.arc` stays TESTHUB `37c33fb072d248cdc57b8c293b0d7bf8`**, arz `db31414339f008792ea03aa8531f5002`
+(build93), `Text.arc e1d9592aef8f662979a38c7dd91bc2c7`, `Creatures.arc 8c0d8d53610f0cbe50ee78ffe63839be`.
+Tag **`build94-dev`**. **Steam is UNTOUCHED and stays `build93`** (ManifestID `800835105345340110`).
+
+**NO MERGE WAS NEEDED - and that is the whole bug.** The R-249 lane branch
+`feat/warden-fix-almyros-trim` (`892cef8`) was merged into `main` at `72903c6` and its CANONICAL
+`Quests.arc` (`6bad2ea7`) shipped to Steam as **build92** (`0ea001a`). What never happened is the
+other half: the lane record's INTEGRATION note read *"Ship the new canonical Quests.arc (6bad2ea7)
+to Steam; the TESTHUB Quests (90d401f1) stays LOCAL-ONLY"*, and **"stays LOCAL-ONLY" was executed as
+"do not deploy"**. So build92 put the Warden fix on Steam while the DEV `Quests.arc` remained
+`1764c3a2` - **the exact pre-fix arc Will was playing when he filed `BL-W0814-6`** - while
+`docs/WILL_TEST_GUIDE.md` told him the headline Warden click was testable *"on TESTHUB now"*. It was
+not. This record closes that gap. `main` `ca60db7` (build93-ship) -> this gate-record commit; **no
+source file changed in this lane** (surface = one DEV file).
+
+**BUILD (from `main` `ca60db7`, `PYTHONHASHSEED=0` `SVC_RELEASE_DROPS=1` `SVC_TEST_HUB=1`,
+`SVC_QUESTS_OUT` into scratch so `work/` is never touched):**
+| artifact | md5 | note |
+| --- | --- | --- |
+| TESTHUB `Quests.arc` run1 | `90d401f1cebaedc674c74eed899a5aae` | 195,691 B, exit 0 |
+| TESTHUB `Quests.arc` run2 | `90d401f1cebaedc674c74eed899a5aae` | **det-2x: byte-compared in full, IDENTICAL** |
+| R-249 lane's recorded TESTHUB md5 | `90d401f1cebaedc674c74eed899a5aae` | **reproduced exactly, 3 builds and 2 machineloads later** |
+| CANONICAL control (`SVC_TEST_HUB` unset) | `6bad2ea7184076379b246140665104b3` | **byte-identical to `work/SoulvizierClassic/Resources/Quests.arc` = what is LIVE ON STEAM** |
+
+That last row is the important control: the merged tree at `ca60db7` reproduces the **shipped**
+canonical arc byte-for-byte, so this TESTHUB arc is provably its true sibling and not a drifted build.
+
+**INTENDED-ONLY DIFF PROOF (decoded from the arcs, against the exact bytes Will played):**
+- **D1** entry sets identical: 107 entries both, **0 added / 0 removed**.
+- **D2** exactly **ONE** payload differs and it is `sv_commonmechanics.qst`; the other **106 quests are
+  byte-identical**. 401 triggers in the host quest before and after.
+- **D3** every `Action_UpdateNPCDialog` `delayTime` = `0x40000000` (IEEE 2.0s) **-> 0**: **30 of 30**,
+  the Warden's included. Baseline set was `{0x40000000}`, new set is `{0}`.
+- **D4** Almyros (`portal_master_helos`) `Action_BoatDialog` rows **3 -> 1**: `tagSVCHelosToGarden`
+  KEPT; `tagSVCHelosToSecret` + `tagSVCHelosToUber` GONE (R-249 part A).
+- **D5** with D3 and D4 normalised away, the residual difference across all **401 triggers compared
+  field by field is NONE**. Nothing else moved.
+
+**GATES, all green on the BUILT arc and re-run on the DEPLOYED bytes:**
+- `gate_boatdialog_budget --hub` **PASS** (49 armed rows == frozen TESTHUB roster of 49; Almyros
+  exactly 1; zero talk-menu reuse; label integrity; one-shot arming). `--negtest` **N1-N5 all
+  correctly RED** + positive control GREEN.
+- `gate_boat_npc_awakening` **PASS** (R0 rip holds, 0 ripped-prefix triggers; **30 in-scope SVC boat
+  triggers all lead with ShowNpc + UpdateNPCDialog("Dialog Needed")**; 1 co-resident Almyros
+  reported). Planted suite: 3 RED / 2 GREEN, all correct.
+- `gate_travel_npc_invariants` **PASS** (rip holds; R248 steps 10+25 rows; <=3/step; 1 trigger : 1 NPC;
+  `isResettable=0` one-shot in source; armed<=>placed both variants; zero placed devices; shared-record law).
+- `run_contracts --only quests` on the NEW arc: **0 P0 / 0 P1 / 2 P2**, and on the BASELINE
+  `1764c3a2` under the identical config: **0 P0 / 0 P1 / 2 P2**. Same two violations both sides
+  (`QST-TAG-PLACEHOLDER` x2 on `open_bloodcave_portal.qst`, pre-existing) = **zero new violations**.
+- `tests_quests_negative` **31/31 PASS**. In-build contracts PASS (107 quest records + the boat-NPC
+  awakening contract on the written bytes).
+- CANONICAL control: `gate_traveler_responds` (retired, delegates) on the canonical arc **PASS**
+  (24 armed rows == frozen canonical roster of 24).
+
+**ANTI-INERT (the gate reproduces the shipped DEV defect as an artifact fact):**
+`gate_boatdialog_budget --hub` **EXITS 1 on the arc that was actually deployed on DEV** (`1764c3a2`)
+with **4 violations**: `(a)` the refire step arms **3** Almyros rows and must arm exactly 1;
+`(b)` unwhitelisted armed row `tagSVCHelosToSecret`; `(b)` unwhitelisted armed row
+`tagSVCHelosToUber`; `(c2)` LABEL INTEGRITY - `tagSVCHelosToUber` armed with two different dests
+`[(-7793,1,-3793), (-2438,10,-2457)]`. It PASSES on the new arc. Not inert in either direction.
+
+**COUPLINGS - SATISFIED, NOT WAIVED.** Levels+Quests: the DEV `Levels.arc` stays TESTHUB
+`37c33fb0`, **byte-unchanged by construction** (no Levels-build source was touched, and neither
+`svaera_plus_portals.py` nor `build_section_surgery.py` imports `build_quest_files`), so the TESTHUB
+Quests pairs with the TESTHUB Levels already on DEV. arz+Text: **0 new tags**, no DB or Text source
+touched, both artifacts md5-proven byte-unchanged.
+
+**DEV DEPLOY (TQ-SESSION GUARD HONOURED):** `TQ.exe` was **NOT running** at deploy time - **nothing
+was killed and Steam was NOT restarted**. Targeted single-file copy, **md5 source == dest
+`90d401f1`**. DEV folder md5-inventoried before and after: **62 files both**, **1 CHANGED**
+(`Resources\Quests.arc`), **0 added / 0 removed, the other 61 byte-identical**. Post-deploy re-gate
+**on the LIVE DEV bytes**: budget `--hub` PASS, awakening PASS, and the full D1-D5 diff proof PASS.
+
+**STEAM: NOT TOUCHED, NOT ELIGIBLE.** TESTHUB never uploads (standing law), so there was no package,
+no push-gate, no upload, no changenote and **no canonical build number consumed**. Steam remains
+build93: arz `db314143` + canonical `Quests.arc 6bad2ea7` (which has carried this same Warden fix
+since build92) + canonical `Levels.arc 61aaf3e4` + `Text.arc e1d9592a` + `Creatures.arc 8c0d8d53`.
+The `-dev` tag suffix follows the `build40-dev` precedent (a TESTHUB DEV deploy tagged with its own
+number while Steam stays canonical).
+
+**ROLLBACK (one step, uncoupled):** `local/DEV_quests_deployed_prev.arc` = `1764c3a2` -> copy back
+over `SoulvizierClassicDEV\Resources\Quests.arc`. Nothing else moves. This build's arc is kept at
+`local/build94dev_run1_quests_TESTHUB.arc` = `90d401f1`; the older build88 rollback copy is preserved
+verbatim at `local/build88_quests_607ec99c.arc` = `607ec99c`.
+
+**EVIDENCE (all in `local/`, gitignored):** `build94dev_run1.log` / `build94dev_run2.log` (det-2x),
+`build94dev_canon_control.log` (the `6bad2ea7` canonical reproduction), `build94dev_diff_proof.txt` +
+`build94dev_verify_diff.py` (the D1-D5 proof and the script that produces it, re-runnable against any
+two arcs), `build94dev_gate_*.log` (budget `--hub` + its negtest, awakening + its planted suite,
+travel-npc invariants, quest negatives, the canonical control, **and
+`build94dev_gate_ANTIINERT_budget_on_shipped_DEV_arc.log`**), `build94dev_contracts_{new,base}.{log,json}`,
+`build94dev_DEV_inventory_{before,after}.txt`, and the baseline arc verbatim at
+`build94dev_baseline_1764c3a2.arc`.
+
+### DEBT REGISTER (build94-dev)
+
+- ⚠️ **`BL-R249-DEBT-2` (P1, WILL, IN-GAME) - NOW ACTUALLY RUNNABLE ON DEV.** It was never runnable
+  before tonight: DEV carried the pre-fix arc. **Will's A/B, fully quit TQ + restart Steam first:**
+  deepest Athens catacomb (`CataCube02_FloorLast`) -> click the **Warden of the Spartan Crypt** ->
+  PASS = the "Descend into the Sparta Crypt" popup **opens AND STAYS OPEN** until answered, "yes"
+  drops him into the crypt, and clicking the Warden again re-opens it. Re-test the **Labyrinth ->
+  Uber Dungeon** traveler the same way (same latent timing). If a dismiss persists, the sanctioned
+  fallbacks stay SECONDARY (`isResettable=1`) then TERTIARY (drop the Warden `messageDialogTag`) -
+  both still deliberately withheld to keep the A/B clean and the no-churn law intact.
+- **`BL-b94dev-DEBT-1` (P1, PROCESS) - THE CAUSE OF THIS LANE.** A lane whose artifact has a TESTHUB
+  twin must state **BOTH** dispositions explicitly: "ship the canonical to Steam" **AND** "deploy the
+  TESTHUB twin to DEV". "Stays LOCAL-ONLY" describes where the artifact may **go**, not whether it
+  gets **deployed**, and it was read as "do nothing". **Ship-checklist addition:** after every
+  Quests or Levels ship, md5 the DEV twin and prove it carries the same source change, or say out
+  loud that DEV is deliberately behind.
+- **`BL-b94dev-DEBT-2` (P2, GATE DEBT).** **No permanent gate asserts `_AWAKEN_DIALOG_DELAY == 0` on
+  the BUILT bytes.** The 30/30 `delayTime=0` above is proven by decode in this record, not by a
+  standing gate, so a future edit could reintroduce the 2.0s delay with every existing gate green.
+  Fold a `delayTime` assertion into `gate_boat_npc_awakening`'s A-series (it already walks exactly
+  these action blocks) with a planted negative.
+- **`BL-b94dev-DEBT-3` (P2, DEAD BATTERY).** `tools/debug/negtest_warden_dialog.py` **CRASHES**:
+  `AttributeError: module 'build_quest_files' has no attribute 'TRAVELER_ENTER_OFFERS'`. That table
+  was ripped by R-246 (`c128be3`, 2026-08-13), so this negtest has been dead through build91, build92
+  and build93. It is in **no build path** (no callers outside itself), so nothing shipped on a false
+  green - but a negtest that cannot run is not evidence of anything. Retire it in place (the
+  `gate_traveler_responds` pattern) or repoint N1/N2 at the surviving tables.
+- **`BL-b94dev-DEBT-4` (P3, TOOLING FOOTGUN).** `tools/debug/gate_traveler_responds.py` delegates to
+  `gate_boatdialog_budget` **without `--hub`**, so it can only gate the CANONICAL variant; pointed at
+  a TESTHUB arc it reports 25 false "unwhitelisted armed row" failures. Use
+  `gate_boatdialog_budget --quests <arc> --hub` for the TESTHUB variant (as this lane did). Either
+  teach the delegate to pass `--hub` or make it refuse a TESTHUB arc loudly.
+- **`BL-b94dev-DEBT-5` (P2, STALE ARTIFACT).** `local/Levels_merged_TESTHUB.arc` in the MAIN checkout
+  is **`7a7ca9ac` - STALE** (pre-R-248), while the TESTHUB Levels actually deployed on DEV is
+  **`37c33fb0`** (built in the R-248 lane worktree and never copied back to `local/`). Any future lane
+  that trusts `local/Levels_merged_TESTHUB.arc` as "the DEV map" would deploy a regression. Refresh it
+  or delete it.
+- ⚠️ Untouched by this lane: `BL-R249-DEBT-1` (Garden -> Secret Place rift admits ENTRY?),
+  `BL-R250-DEBT-1..6`, and Will's live-play queue `BL-W0814-2/3/4/5/7/8/9/10/11/12/13`.
