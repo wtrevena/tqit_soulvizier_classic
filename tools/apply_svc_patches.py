@@ -16027,8 +16027,21 @@ def _create_obsidian_roulette(db, tags):
         sf(lt, 'numSpawnMinEquation', _SVC_HOARD_MIN_EQ)      # R-250: one source of truth
         sf(lt, 'numSpawnMaxEquation', _SVC_HOARD_MAX_EQ)
         sf(lt, 'loot3Chance', 100.0)
-        sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE); sf(lt, 'loot3Weight1', 100)
-        sf(lt, 'loot3Name2', _OBS_GUAR_RELIC); sf(lt, 'loot3Weight2', 60)
+        # R-250 round-2: the SAME tier leak Will's 2026-08-08 leak #2 fixed in
+        # `_svc_build_dedicated_hoard` was still live HERE - the roulette wrote the
+        # NORMAL-tier constants into loot_01 AND loot_02 AND loot_03, so the Epic and
+        # Legendary Obsidian Hoards guaranteed an Essence-tier (01_act4_relics) relic.
+        # It stayed invisible because `gate_relic_difficulty_tiers` follows the WIRE
+        # (proxy accessory slot -> pool -> chest -> `tables`), and pre-R-250 these
+        # chests named `boss_default_*`, so the gate never reached these records -
+        # the exact blind spot R-250 exists to end. Measured on the shipped b888f022:
+        # the gate reaches 51 branches / 0 findings before R-250 and 81 / 8 after,
+        # all 8 naming loot_02 + loot_03 here. Per-tier constants close it.
+        # (loot3Name1 was tier-correct on the shipped arz only because R-180's
+        # `retarget_guaranteed_weapon` overwrites it to svc_unique_weapons_{n,e,l}01
+        # downstream - fix BOTH so the tier never depends on a later module.)
+        sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE_TIER[t]); sf(lt, 'loot3Weight1', 100)
+        sf(lt, 'loot3Name2', _OBS_GUAR_RELIC_TIER[t]); sf(lt, 'loot3Weight2', 60)
         db._modified.add(lt)
         _OWN.note_write(lt, 'apply_svc_patches (obsidian hoard)')
 

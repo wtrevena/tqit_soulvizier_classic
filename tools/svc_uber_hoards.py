@@ -152,6 +152,15 @@ def _min_spawn_floor():
     return MIN_SPAWN_MIN_SOLO
 
 
+# The tier reader, READ from `gate_relic_difficulty_tiers` for the same reason: one
+# implementation of "what tier is this loot row", shared by the wire-walking gate and
+# this family-walking one, so they can never disagree about a leak. Lazy for symmetry
+# with the floor above and so this module stays importable from anywhere.
+def _tier_check(db, lk, table, want, ctx):
+    from gate_relic_difficulty_tiers import check_loot_table_tier
+    return check_loot_table_tier(db, lk, table, want, ctx)
+
+
 def format_eq(bracket, mult):
     """Render a multiplier the way the shipped records render one (`*2.4`, not
     `*2.400000`) so a re-run that computes the same number writes the same bytes.
@@ -240,7 +249,7 @@ def _gv(lk, rec, field):
 
 
 def problems(db, lk=None, report=None):
-    """The whole R-250 contract, H1-H7. Returns a list of problem strings (empty = GREEN).
+    """The whole R-250 contract, H1-H8. Returns a list of problem strings (empty = GREEN).
 
     Every check names the record, what it found, what it expected, and which of Will's
     five reports it protects - because a gate line nobody can act on is a gate line
@@ -379,13 +388,61 @@ def problems(db, lk=None, report=None):
                        % (seen[got], short, got.rsplit('\\', 1)[-1]))
         seen.setdefault(got, short)
 
-    # ── RANK (reported, and asserted only as a ceiling) ──────────────────────
-    # The Devourer's stash stays the crown. R-247.7(a) is its volume authority, so this
-    # is a one-way check: R-250 may not lift a hoard past it.
-    if HOARD_MIN_MULT >= STASH_MIN_MULT:
-        out.append("H3 the R-250 hoard volume %.2f meets or exceeds the Devourer's "
-                   "stash %.2f - the blood-cave mega chest must stay the richest "
-                   "surface in the mod (R-247.7a)" % (HOARD_MIN_MULT, STASH_MIN_MULT))
+    # ── H8 TIER: the guaranteed row must match the table's OWN difficulty ────
+    # R-250 round-2, and the reason it exists is the whole point of this lane. Will's
+    # 2026-08-08 leak #2 fixed exactly this in `_svc_build_dedicated_hoard` and the
+    # Obsidian ROULETTE kept writing the Normal-tier constants into all three tiers, so
+    # a Legendary Obsidian Hoard guaranteed an Essence relic. It survived because
+    # `gate_relic_difficulty_tiers` walks the WIRE (proxy -> pool -> chest -> `tables`)
+    # and those chests named `boss_default_*` until R-250 - the b42 orphan blind spot,
+    # measured: that gate reaches 51 branches on the shipped b888f022 and 81 after
+    # R-250 wires the family up, and 8 of the 30 newly-reachable branches were leaks.
+    #
+    # So this check walks the FAMILY, not the wire: every hoard table is tier-checked
+    # from its own `_loot_<tier>` suffix whether or not anything points at it yet. That
+    # is strictly stronger, and it is the shape that catches the next b42 - a table can
+    # be orphaned (H2) AND wrong-tier, and H2 alone would let the tier leak land the
+    # moment someone re-wires it. Measured on the shipped arz: exactly 2 findings, both
+    # the Obsidian leak; every other family and all three gift tables are already clean,
+    # so this gate reds on the defect and on nothing else.
+    for key in sorted(table_map):
+        real, _f, tier = table_map[key]
+        for p in _tier_check(db, lk, real, TIER_LETTER[tier], ''):
+            out.append("H8 %s - a hoard's guaranteed row must match its OWN difficulty "
+                       "(Will 2026-08-08 leak #2, which the Obsidian roulette re-opened)"
+                       % p)
+    for path in GIFT_TABLES:
+        real = lk.real(path)
+        if not real:
+            continue
+        tier = SLB._n(path).rsplit('_', 1)[-1].split('.')[0]
+        for p in _tier_check(db, lk, real, TIER_LETTER.get(tier, 'n'), ''):
+            out.append("H8 %s - the Secret Present box is per-difficulty too" % p)
+
+    # ── H3 THE CROWN, MEASURED (not compared as bare multipliers) ────────────
+    # The Devourer's stash stays the richest surface in the mod (R-247.7a is its volume
+    # authority, so this is one-way: R-250 may not lift anything past it). Comparing
+    # multipliers alone was wrong AND partial - the gift box rides a DIFFERENT bracket
+    # ((1+1.8n) vs (3+1.8n)), so 5.4 > 3.8 as a number while the box is still well under
+    # the stash in items, and the box was outside the check entirely. Compare the thing
+    # that matters instead: solo spawn iterations. Measured: hoard 12.48, gift 16.38,
+    # stash 18.96.
+    # Read the stash's OWN equations rather than re-deriving them: R-247.7(a) owns that
+    # record, and a constant copied here would silently stop tracking it.
+    stash_real = lk.real(STASH_TABLES[0])
+    stash_s = ((_solo(str(_gv(lk, stash_real, 'numSpawnMinEquation') or ''))
+                + _solo(str(_gv(lk, stash_real, 'numSpawnMaxEquation') or ''))) / 2.0
+               if stash_real else 0.0)
+    for label, mn_eq, mx_eq in (
+            ('the R-250 hoard volume', HOARD_MIN_EQ, HOARD_MAX_EQ),
+            ('the Secret Present box', GIFT_MIN_EQ, GIFT_MAX_EQ)):
+        s = (_solo(mn_eq) + _solo(mx_eq)) / 2.0
+        rep['crown_%s' % ('hoard' if 'hoard' in label else 'gift')] = s
+        if stash_s and s >= stash_s:
+            out.append("H3 %s pays %.2f iteration(s) solo, meeting or exceeding the "
+                       "Devourer's stash at %.2f - the blood-cave mega chest must stay "
+                       "the richest surface in the mod (R-247.7a)" % (label, s, stash_s))
+    rep['crown_stash'] = stash_s
     return out
 
 

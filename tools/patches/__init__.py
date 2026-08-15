@@ -1244,7 +1244,7 @@ REGISTRY = [
                             # R-240's trim so it keeps its authored *2.4/*2.8. What lives
                             # HERE is the one write with no other home - the SV/DRX-original
                             # Secret Present gift box at exactly 3x (BL-W0814-7) - plus the
-                            # whole H1-H7 contract as a verify().
+                            # whole H1-H8 contract as a verify().
                             # ORDER IS LOAD-BEARING: MUST run after `loot_volume_trim` (and
                             # after `r247_bloodcave_rulings`, its sibling carve-out), because
                             # apply() FAILS LOUD unless the hoard family came through the

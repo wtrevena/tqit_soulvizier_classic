@@ -26,7 +26,7 @@ What is left for a module is exactly ONE write and ONE gate:
   * apply()  - the Secret Present gift box, x3 item count, Will's literal number. It is
                the only DB write in R-250 that has no home elsewhere: `loottable_sp_0N`
                is an SV/DRX-original table no mod wave has ever owned.
-  * verify() - the whole H1-H7 contract on the FINAL assembled db, so the wiring, the
+  * verify() - the whole H1-H8 contract on the FINAL assembled db, so the wiring, the
                volume, the guaranteed row, the separation and the gift box are all
                proven together AFTER every other module and the monolith's finalization
                have had their say. An apply()-time check could not see the wiring at
@@ -155,7 +155,7 @@ def apply(db, tags):
 
 
 def verify(db, tags):
-    """The whole R-250 contract (H1-H7) on the FINAL db.
+    """The whole R-250 contract (H1-H8) on the FINAL db.
 
     Runs as a verify() and not at apply() time for a reason that is not stylistic: the
     WIRING half of R-250 lands in `run_registry_gates` (step 3), AFTER every registry

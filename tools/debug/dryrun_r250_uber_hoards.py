@@ -9,6 +9,12 @@ then runs the whole coexisting battery over the result. It is a PROOF HARNESS, n
 build step: it writes no file and is not imported by anything in the pipeline.
 
 WHAT IT REPRODUCES, and where the real thing lives:
+  0. `_create_obsidian_roulette` (content pass)    - the guaranteed relic row, per tier.
+     ROUND-2. The roulette wrote the NORMAL-tier relic into all three Obsidian tiers, so
+     the Epic/Legendary hoards guaranteed an Essence relic. R-250's own wiring is what
+     makes that leak REACHABLE (and therefore gate-visible), which is why the battery
+     below now runs `gate_relic_difficulty_tiers` and why this step must be simulated
+     alongside the wiring rather than assumed.
   1. `_create_propontis_superboss` (content pass)  - author svc_dorushoard_loot_0N and
      point Dorus's chests at it.
 
@@ -48,6 +54,7 @@ import svc_armor_breadth as SAB              # noqa: E402
 import svc_loot_distribution as SLD          # noqa: E402
 import svc_chest_artifacts as SCA            # noqa: E402
 import svc_loot_ownership as OWN             # noqa: E402
+import gate_relic_difficulty_tiers as GRT    # noqa: E402
 
 _C = SUH.CONTAINER_DIR
 # The POST-BREADTH sibling (see the header for why, and what the alternative measures).
@@ -70,6 +77,34 @@ def simulate(db, lk, raw_donor=False):
     """Return a list of human-readable change lines."""
     log = []
     donors = _RAW_DONOR if raw_donor else _DONOR
+
+    # (0) the Obsidian roulette's guaranteed row, per tier.
+    #
+    # ROUND-2 ADDITION, and the reason the battery below now runs the relic gate. The
+    # roulette wrote the NORMAL-tier constants into loot_01/02/03 alike, so the Epic and
+    # Legendary Obsidian Hoards guaranteed an Essence relic. Nothing saw it because the
+    # relic gate walks the WIRE and those chests named `boss_default_*` - so R-250's own
+    # wiring is what makes the leak reachable, and simulating the wiring WITHOUT this
+    # would report a red the real build does not have (or, worse, hide a real one).
+    # Ordered first because step (1) clones these tables for the Dorus family.
+    for t in SUH.TIERS:
+        table = lk.real(r'%s\svc_obsidianhoard_loot_%s.dbr' % (_C, t))
+        if not table:
+            continue
+        got = SLB._n(SLB._sc(db.get_field_value(table, 'loot3Name2')) or '')
+        if got == SLB._n(_GUAR_RELIC[t]):
+            continue
+        # `loot3Name2` ONLY. The real fix also makes `loot3Name1` per-tier, but this db
+        # is post-R-180, where `retarget_guaranteed_weapon` has already replaced that
+        # slot with the mod's all-classes `svc_unique_weapons_<tier>01` breadth master.
+        # Writing the base-game `unique_1h_<tier>01` back over it here would simulate a
+        # regression the real build does not have (and would red D3's spear floor) - the
+        # same post-vs-pre-module distinction the `--raw-donor` note above describes.
+        db.set_field(table, 'loot3Name2', _GUAR_RELIC[t])
+        db._modified.add(table)
+        log.append('tier row svc_obsidianhoard_loot_%s: %s -> %s'
+                   % (t, got.rsplit('\\', 1)[-1], _GUAR_RELIC[t].rsplit('\\', 1)[-1]))
+    lk.refresh()
 
     # (1) the missing Dorus family, authored on the shared recipe
     for t in SUH.TIERS:
@@ -147,12 +182,21 @@ def _battery(db, lk):
     """Every coexisting contract R-250 could plausibly disturb, in one pass."""
     results = []
     r250 = {}
-    results.append(('R-250 uber hoard generosity (H1-H7)', SUH.problems(db, lk, r250)))
+    results.append(('R-250 uber hoard generosity (H1-H8)', SUH.problems(db, lk, r250)))
     results.append(('R-240 loot volume (V1-V7b)', SLV.problems(db, lk, {})))
     results.append(('R-181 loot distribution (D1-D9)', SAB.audit_db(db)[0]))
     results.append(('R-181 loot ownership (OWN1/OWN2)', SAB.ownership_problems(db, lk)))
     results.append(('R-180 chest loot breadth', SLB.audit_db(db)[0]))
     results.append(('R-240 chest artifacts', SCA.problems(db, lk)))
+    # ROUND-2: this line is the round-1 miss, and it belongs here more than anywhere.
+    # R-250 is the wave that makes 30 previously-orphaned branches REACHABLE, and this
+    # gate only ever sees a branch something points at - so R-250 is precisely the change
+    # that can turn it red without touching a single record it checks. Measured on the
+    # shipped b888f022: 51 branches / 0 findings before, 81 / 8 after the wiring alone.
+    grt_problems, grt_branches = GRT.audit_db(db)
+    r250['relic_branches'] = grt_branches
+    results.append(('R-238 relic/unique difficulty tiers (%d branches)' % grt_branches,
+                    grt_problems))
     return results, r250
 
 

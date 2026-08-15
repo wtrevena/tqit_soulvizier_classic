@@ -28,6 +28,15 @@ _C = SUH.CONTAINER_DIR
 _FAMILIES = ('tantalus', 'obsidian', 'ephialtes')
 _BASE_TABLE = r'records\item\containers\defaultloot\boss_default_63-65.dbr'
 
+# The guaranteed row, per tier - the pair H8 reads. The unique half is the mod's own
+# breadth master (what `retarget_guaranteed_weapon` leaves in a shipped arz), the relic
+# half the base game's act-4 relic table; both carry their tier in the name, which is
+# exactly what makes the leak machine-checkable.
+_GUAR_UNIQUE = {t: r'records\item\loottables\svc\svc_unique_weapons_%s01.dbr'
+                   % SUH.TIER_LETTER[t] for t in SUH.TIERS}
+_GUAR_RELIC = {t: r'records\xpack\item\loottables\relics\%s_act4_relics.dbr' % t
+               for t in SUH.TIERS}
+
 
 class _TF(object):
     """The minimum of arz_patcher.TypedField the contract actually reads."""
@@ -75,11 +84,16 @@ def _healthy():
             db.d[table] = {'templateName': r'database\Templates\FixedItemLoot.tpl',
                            'numSpawnMinEquation': SUH.HOARD_MIN_EQ,
                            'numSpawnMaxEquation': SUH.HOARD_MAX_EQ,
-                           'loot3Chance': 100.0}
+                           'loot3Chance': 100.0,
+                           'loot3Name1': _GUAR_UNIQUE[tier],
+                           'loot3Name2': _GUAR_RELIC[tier]}
     for i, path in enumerate(SUH.GIFT_TABLES):
+        tier = SUH.TIERS[i]
         db.d[path] = {'templateName': r'database\Templates\FixedItemLoot.tpl',
                       'numSpawnMinEquation': SUH.GIFT_MIN_EQ,
-                      'numSpawnMaxEquation': SUH.GIFT_MAX_EQ}
+                      'numSpawnMaxEquation': SUH.GIFT_MAX_EQ,
+                      'loot1Name3': _GUAR_UNIQUE[tier],
+                      'loot4Name2': _GUAR_RELIC[tier]}
         db.d[SUH.GIFT_CHESTS[i]] = {
             'templateName': r'database\Templates\FixedItemContainer.tpl',
             'tables': path, 'description': 'tagSecretPresentBOX'}
@@ -143,6 +157,38 @@ def _p_h7_stash(db):
     db.d[r'%s\svc_obsidianhoard_02.dbr' % _C]['tables'] = SUH.STASH_TABLES[1]
 
 
+def _p_h8_relic_tier(db):
+    """THE ROUND-2 DEFECT ITSELF: the Obsidian roulette's Normal-tier relic written into
+    the Epic table, so a Legendary-grade chest guarantees an Essence relic. Measured live
+    on the shipped b888f022, and invisible to the wire-walking relic gate until R-250
+    made the branch reachable."""
+    db.d[r'%s\svc_obsidianhoard_loot_02.dbr' % _C]['loot3Name2'] = _GUAR_RELIC['01']
+
+
+def _p_h8_unique_tier(db):
+    """The other half of the same leak: the guaranteed UNIQUE left at Normal tier on the
+    Legendary table. Planted separately because on the shipped arz this half was masked
+    by R-180 retargeting the slot downstream - a fix that depends on a later module is
+    not a fix, and this plant is what keeps that true."""
+    db.d[r'%s\svc_tantalushoard_loot_03.dbr' % _C]['loot3Name1'] = _GUAR_UNIQUE['01']
+
+
+def _p_h8_gift_tier(db):
+    """The Secret Present box is per-difficulty too, and R-250 is the wave that changes
+    it - so its tiers get the same watch."""
+    db.d[SUH.GIFT_TABLES[2]]['loot4Name2'] = _GUAR_RELIC['02']
+
+
+def _p_h3_crown_lost(db):
+    """The crown inverted: the Devourer's stash re-tuned DOWN until the hoards and the
+    gift box out-pay it. R-247.7(a) says the blood-cave mega chest stays the richest
+    surface in the mod, and comparing bare multipliers could never see this (the gift box
+    rides a different bracket) - which is why H3 now measures solo iterations."""
+    for path in SUH.STASH_TABLES:
+        db.d[path]['numSpawnMinEquation'] = SUH.HOARD_BRACKET + '*1'
+        db.d[path]['numSpawnMaxEquation'] = SUH.HOARD_BRACKET + '*1.1'
+
+
 PLANTS = [
     ('N1 H1 a hoard chest repointed to base-game Cyclops loot (the b42 defect)',
      _p_h1_repoint, 'H1'),
@@ -156,6 +202,13 @@ PLANTS = [
      _p_h6_giftbox_unapplied, 'H6'),
     ('N7 H7 two uber chests share one loot record', _p_h7_shared, 'H7'),
     ('N8 H7 an uber chest shares the Devourer stash table', _p_h7_stash, 'H7'),
+    ('N9 H8 a Normal-tier relic on the Epic hoard table (the R-250 round-2 defect)',
+     _p_h8_relic_tier, 'H8'),
+    ('N10 H8 a Normal-tier guaranteed unique on the Legendary hoard table',
+     _p_h8_unique_tier, 'H8'),
+    ('N11 H8 a wrong-tier relic on the Secret Present box', _p_h8_gift_tier, 'H8'),
+    ('N12 H3 the Devourer stash re-tuned below the hoards + gift box (crown inverted)',
+     _p_h3_crown_lost, 'H3'),
 ]
 
 
