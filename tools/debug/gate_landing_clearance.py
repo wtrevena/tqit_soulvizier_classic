@@ -597,19 +597,35 @@ def print_result(r):
 # (imported below); this embedded copy is a provenance-pinned fallback ONLY.
 # Provenance: build_quest_files.HELOS_HUB_TRAVEL @ da918c5 (world signed-int).
 #
-# ⚠️ BOSSARENA_LANDING_NOTE (R-252 vet round 2, and the reason BL-R252-DEBT-6 exists).
+# ⚠️ BOSSARENA_LANDING_NOTE (R-252 vet rounds 2+3, and the reason BL-R252-DEBT-6 exists).
 # The LIVE import is DEAD on main: R-246 retired HELOS_HUB_TRAVEL and TRAVELER_ENTER_OFFERS
 # from build_quest_files, so every run falls back to THIS table - which is a snapshot from
 # da918c5 and has been drifting ever since. Both sets carried `bossarena` at world
 # (-433, 0, -3602), and this lane measured what that actually is: boss_arena.lvl's grid
 # corner is (-561, 0, -3642), so that world point is level-local (128.0, 40.0) - a spot on
-# navmesh component #1, the 1,381,391-cell UNREACHABLE low floor, 89u from the landing the
-# player really arrives on. The R-248 landing is local (136.0, 28.1, 104.0) on component #2
-# (the 92,026-cell dais), authoritative source
-# `build_section_surgery.INJECT_SPECS[...boss_arena.lvl] -> (SVC_RETURN_BOSSARENA_DBR,
-# 136.0, 28.1, 104.0)`; converted with that grid corner it is world (-425, 28, -3538), the
-# value now in both tables. So the arena row audits the real landing instead of an island
-# the encounter is not on.
+# navmesh component #1, the 1,381,391-cell UNREACHABLE low floor, 64.1u from the landing
+# the player really arrives on and 89.2u from the boss spawn.
+#
+# ROUND-3 CORRECTION (vet). Round 2 replaced that with world (-425, 28, -3538) and cited
+# `build_section_surgery.INJECT_SPECS -> (SVC_RETURN_BOSSARENA_DBR, 136.0, 28.1, 104.0)`.
+# BOTH halves were wrong, and this gate's own output proved it: the row measured d=0.00u to
+# `svc_testhub_return_bossarena.dbr`, because it WAS that NPC.
+#   - WRONG ENTITY. (136.0, 28.1, 104.0) is the RETURN NPC. build_section_surgery.py says so
+#     itself where that row lives: "This return NPC = 4u E of that landing", and it states
+#     the landing outright as "world(-429,27,-3538)=local(132,27,104)".
+#   - WRONG SOURCE. That row is not in INJECT_SPECS at all; it lives in
+#     `build_section_surgery.build_hub_extra_specs()`, the TESTHUB-only hub-extra set merged
+#     by merge_hub_into_inject_specs, where it is documented as the one return that stays
+#     TESTHUB-only. INJECT_SPECS[...boss_arena.lvl] holds 13 rows: 6 ring lights, the boss
+#     proxy, 6 pit FX. No landing, no return NPC.
+# The AUTHORITATIVE outbound landing for THIS EXACT TAG is live and survived R-246 (only
+# HELOS_HUB_TRAVEL / TRAVELER_ENTER_OFFERS were retired) - `build_quest_files`
+# `R248_TESTHUB_STEPS`:
+#     (...\svc_helos_trav_bossarena.dbr, (-429, 28, -3538), 'tagSVCTestHubToBossArena')
+# With that grid corner it is level-local (132.0, 28.0, 104.0), on component #2 (the
+# 92,026-cell dais), 25.1u south of the boss spawn. That is the value now in both tables, so
+# the arena row audits the REAL landing instead of an island the encounter is not on
+# (round 1) or the return NPC standing 4u east of it (round 2).
 # STILL OPEN (BL-R252-DEBT-6): the other rows are unverified against whatever R-246
 # replaced HELOS_HUB_TRAVEL with, including three landings this gate reports as pinned
 # inside placed uber proxies (charon / mnemophage / ephialtes) in levels no lane has
@@ -620,7 +636,7 @@ V1_LANDINGS = [
     ('secret', (-2396, 2, -5790), 'tagSVCHelosToSecret'),
     ('sparta', (-5602, -2, -1409), 'tagSVCHelosToSparta'),
     ('uber', (-2438, 10, -2450), 'tagSVCHelosToUber'),
-    ('bossarena', (-425, 28, -3538), 'tagSVCTestHubToBossArena'),  # R-252 CORRECTION, see BOSSARENA_LANDING_NOTE
+    ('bossarena', (-429, 28, -3538), 'tagSVCTestHubToBossArena'),  # R-252 CORRECTION (round 3), see BOSSARENA_LANDING_NOTE
     ('warband', (5680, 1, 3285), 'tagSVCHelosToWarband'),
     ('dorus', (312, 1, -8462), 'tagSVCHelosToDorus'),
     ('tantalus', (-342, -15, -10095), 'tagSVCHelosToTantalus'),
@@ -645,7 +661,7 @@ V2_LANDINGS = [
     ('secret', (-2396, 2, -5790), 'tagSVCHelosToSecret'),
     ('sparta', (-6587, 1, -3180), 'tagSVCHelosToSparta'),        # Athens catacomb DOOR (retarget); b44 NUDGE off AG_Beastmen_Gorgon (was -6588: 2.72u -> 3.69u clr)
     ('uber', (-7793, 1, -3793), 'tagSVCHelosToUber'),            # Knossos->Uber maze03 DOOR (retarget)
-    ('bossarena', (-425, 28, -3538), 'tagSVCTestHubToBossArena'),  # R-252 CORRECTION, see BOSSARENA_LANDING_NOTE
+    ('bossarena', (-429, 28, -3538), 'tagSVCTestHubToBossArena'),  # R-252 CORRECTION (round 3), see BOSSARENA_LANDING_NOTE
     ('warband', (5699, 1, 3315), 'tagSVCHelosToWarband'),
     ('dorus', (330, 1, -8380), 'tagSVCHelosToDorus'),            # Medea tomb ENTRANCE (~82u off Dorus)
     ('tantalus', (-346, -12, -10131), 'tagSVCHelosToTantalus'),  # Styx swamp stairs (~36u off)

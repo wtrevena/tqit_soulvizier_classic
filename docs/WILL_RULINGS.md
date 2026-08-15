@@ -7822,10 +7822,13 @@ deployed map, not inferred):
   Survey on the deployed map (`survey_uberboss_spots`): `d=0.03u`, `clr@3.5` and `clr@6.0` = 100%
   on all three tilesets. The level has **TWO** navmesh components and the arena is on the SMALLER
   one: comp#1 = 1,381,391 cells of unreachable low floor, **comp#2 = 92,026 cells of raised dais**
-  (of 1,473,417 walkable). The boss spot is comp#2, and so is the R-248 traveler/return landing at
-  local `(136.0, 28.1, 104.0)` (`d=0.14u`, clr 100%, comp#2) 26u south - same component, so the
-  encounter is reachable from where the player lands. On this level "the largest component" is the
-  floor nobody can stand on; any later reachability argument must use comp#2.
+  (of 1,473,417 walkable). The boss spot is comp#2, and so is the R-248 arrival, ~25u south on the
+  same dais - so the encounter is reachable from where the player lands. Two DISTINCT entities live
+  there and vet round 2 conflated them (corrected in round 3): the **outbound landing** is local
+  `(132.0, 28.0, 104.0)` = world `(-429, 28, -3538)` (`build_quest_files.R248_TESTHUB_STEPS`),
+  25.1u south of the boss; the **return NPC** `svc_testhub_return_bossarena` stands 4u EAST of it at
+  local `(136.0, 28.1, 104.0)` (`d=0.14u`, clr 100%), 25.45u south. On this level "the largest
+  component" is the floor nobody can stand on; any later reachability argument must use comp#2.
 - **The quest's duplicate spawn is neutralized** (`build_quest_files._neutralize_bossarena_spawn`),
   so exactly ONE spawn source can ever exist - the widow-letter precedent. STEP-1 (`ShowNpc` /
   `OpenDynGridEntrance` / `UnlockFixedItem` on `portal_olympianarena1`, reused by the doors/hub
@@ -7945,17 +7948,30 @@ Two existing gates were also corrected by this lane, both for defects they had a
 - `tools/debug/gate_landing_clearance.py` learns the arena entities (`--placements r252`,
   live-derived from `INJECT_SPECS`), so the landing-vs-placement audit for the level that hosts the
   R-248 return landing is complete again.
-  **CORRECTED in vet round 2 - round 1's citation of this run was not a proof.** The gate was
-  auditing the *retired* arena landing: `boss_arena.lvl`'s grid corner is `(-561, 0, -3642)`, so
-  the embedded world row `(-433, 0, -3602)` is level-local `(128.0, 40.0)` - a point on component
-  **#1**, the 1,381,391-cell unreachable low floor, **89u** from where the player actually arrives.
-  So "nearest arenatemple01 22.81u" said nothing about the boss spawner, and the real separation
-  was a hand calculation. The `bossarena` row in `V1_LANDINGS`/`V2_LANDINGS` is now corrected to
-  world `(-425, 28, -3538)`, converted from the authoritative
-  `build_section_surgery.INJECT_SPECS -> (SVC_RETURN_BOSSARENA_DBR, 136.0, 28.1, 104.0)` using that
-  grid corner. The row now resolves to local `(136.0, 104.0)` and **measures d=25.45u to
-  `location_bossarenacenter` - matching the hand calculation - and PASSES**. Only that one row was
-  corrected (it is the only one this lane has ground truth for; correcting the rest by guesswork
+  **CORRECTED TWICE - round 1's citation of this run was not a proof, and round 2's replacement
+  named the wrong entity from the wrong source.** Round 1: the gate was auditing the *retired* arena
+  landing - `boss_arena.lvl`'s grid corner is `(-561, 0, -3642)`, so the embedded world row
+  `(-433, 0, -3602)` is level-local `(128.0, 40.0)`, a point on component **#1**, the 1,381,391-cell
+  unreachable low floor, **64.1u** from where the player actually arrives (and 89.2u from the boss),
+  so "nearest arenatemple01 22.81u" said nothing about the boss spawner.
+  **ROUND-3 CORRECTION (vet).** Round 2 set the row to world `(-425, 28, -3538)` and cited
+  `build_section_surgery.INJECT_SPECS -> (SVC_RETURN_BOSSARENA_DBR, 136.0, 28.1, 104.0)`. Both
+  halves were false: that coordinate is the **RETURN NPC**, not the landing (build_section_surgery
+  says so itself: "This return NPC = 4u E of that landing", and states the landing as
+  `world(-429,27,-3538)=local(132,27,104)`), and the row is not in `INJECT_SPECS` at all - it lives
+  in `build_hub_extra_specs()`, the TESTHUB-only set. `INJECT_SPECS[...boss_arena.lvl]` holds 13
+  rows (6 ring lights, the boss proxy, 6 pit FX) and no landing. The authoritative source for this
+  exact tag is live and survived R-246: `build_quest_files.R248_TESTHUB_STEPS` ->
+  `(svc_helos_trav_bossarena.dbr, (-429, 28, -3538), 'tagSVCTestHubToBossArena')`.
+  **The error was self-revealing and the gate caught it:** with the round-2 value the row measured
+  `d=0.00u` to `svc_testhub_return_bossarena.dbr` and **FAILED the b63 `G-NPC-LANDING-SEP` sub-gate**
+  (min 1.0u, no exemptions; tightest margin `-1.00u`) - the player would materialise inside the
+  return NPC, the identical defect PR-5 fixed for the Sparta warden. Both tables now carry
+  `(-429, 28, -3538)` -> local `(132.0, 104.0)`, comp#2, on-mesh, clr 100% on all three tilesets;
+  the return NPC measures exactly **4.00u** east (independently confirming build_section_surgery's
+  own "4u E" comment) and the gate **measures d=25.08u to `location_bossarenacenter`** (the marker
+  the R-252 proxy is placed at). `G-NPC-LANDING-SEP` now **PASSES** at `+0.70u`. Only that one row
+  was corrected (it is the only one this lane has ground truth for; correcting the rest by guesswork
   would be the same defect again), and whole-gate totals are **unchanged**: `DEADLY=3 FAIL=1
   PASS=13`, same rows as `main`. `BL-R252-DEBT-6` stays OPEN for the remaining rows.
 
@@ -8011,10 +8027,12 @@ negatives, including a replay of the 2026-08-14 four-way R-250 collision.
   pinned inside placed uber proxies (charon/mnemophage/ephialtes) in levels this lane does not
   touch. The gate needs to be re-pointed at whatever R-246 replaced those tables with before any of
   those rows can be believed either way.
-  **PARTIALLY DISCHARGED in vet round 2:** the `bossarena` row (local `(128.0, 40.0)` -> the R-248
-  landing at local `(136.0, 28.1, 104.0)` = world `(-425, 28, -3538)`) is corrected and pinned to
-  `INJECT_SPECS`, so this lane's own row is now real. Every OTHER row remains unverified and this
-  debt stays OPEN - deliberately, because guessing the rest is the defect, not the fix.
+  **PARTIALLY DISCHARGED in vet rounds 2+3:** the `bossarena` row (local `(128.0, 40.0)` -> the
+  R-248 outbound landing at local `(132.0, 28.0, 104.0)` = world `(-429, 28, -3538)`) is corrected
+  and pinned to `build_quest_files.R248_TESTHUB_STEPS`, the live row that survived R-246, so this
+  lane's own row is now real. (Round 2 mis-pinned it to `INJECT_SPECS` and to the return NPC 4u
+  east; round 3 fixed both.) Every OTHER row remains unverified and this debt stays OPEN -
+  deliberately, because guessing the rest is the defect, not the fix.
 - `BL-R252-DEBT-8` (NOT this lane's - Aniketos lane; surfaced by this lane's ISLAND advisory):
   `minobossproxy_aniketos` in `Connector04.LVL` stands alone on navmesh component **#19 of 68, 277
   of 285,559 walkable cells** - an island smaller than its own 6.0u encounter footprint. Both the

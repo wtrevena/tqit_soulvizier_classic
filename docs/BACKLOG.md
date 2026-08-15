@@ -74,10 +74,13 @@ inst[9] `(132.00, 26.81, 129.95)` r=20. Placing AT the marker: `d=0.03u`, `clr@3
 `clr@6.0 = 100%` on Normal/Epic/Legendary.
 **COMPONENT (the level has two, and the arena is on the SMALLER one):** comp#1 = 1,381,391 cells of
 unreachable low floor, comp#2 = **92,026 cells of raised dais**, of 1,473,417 walkable. The boss is
-on **comp#2**, and so is the R-248 traveler/return landing at local `(136.0, 28.1, 104.0)`
-(`d=0.14u`, clr 100%, comp#2) 26u south - same component, hence reachable. `tools/patches/
-bossarena.py`'s own docstring says the same; an earlier draft of this record said comp#1 and quoted
-the landing's `d` at the boss spot, both corrected here.
+on **comp#2**, and so is the R-248 arrival ~25u south on the same dais, hence reachable. Two
+DISTINCT entities sit there (vet round 2 conflated them; corrected in round 3): the **outbound
+landing** is local `(132.0, 28.0, 104.0)` = world `(-429, 28, -3538)`
+(`build_quest_files.R248_TESTHUB_STEPS`), 25.1u south of the boss; the **return NPC**
+`svc_testhub_return_bossarena` stands 4u EAST at local `(136.0, 28.1, 104.0)` (`d=0.14u`, clr 100%),
+25.45u south. `tools/patches/bossarena.py`'s own docstring says the same; an earlier draft of this
+record said comp#1 and quoted the landing's `d` at the boss spot, both corrected here.
 **FLOOR Y:** `navmesh_floor_y` reads 27.20 at all six fire-ring XZ and at the boss spot; the R-248
 landing pad at `(136,104)` is a different surface at 28.20. The flame ring therefore sits at 27.2
 (b43's LIGHTS stay at 28.0 by design).
@@ -108,15 +111,24 @@ landing pad at `(136,104)` is a different surface at 28.20. The flame ring there
   encounter's own 6.0u footprint disc. Non-gating by design; registered as `BL-R252-DEBT-8` against
   the Aniketos lane. Totals with the advisory in place are **unchanged: PASS 36 / FAIL 1**.
 - `py tools/debug/gate_landing_clearance.py --map <deployed> --placements r252` -> the arena
-  landing reads **PASS**. **ROUND-1 CITATION WITHDRAWN, ROW FIXED (vet):** round 1's run audited the
-  RETIRED landing - `boss_arena.lvl`'s grid corner is `(-561, 0, -3642)`, so the embedded world row
-  `(-433, 0, -3602)` is local `(128.0, 40.0)`, a point on component **#1** (the unreachable low
-  floor) **89u** from the real landing, which is why "nearest `arenatemple01` 22.81u" said nothing
-  about the spawner. The `bossarena` row in `V1_LANDINGS`/`V2_LANDINGS` is now corrected to world
-  `(-425, 28, -3538)`, derived from `build_section_surgery.INJECT_SPECS ->
-  (SVC_RETURN_BOSSARENA_DBR, 136.0, 28.1, 104.0)`. It now resolves to local `(136.0, 104.0)` and
-  the gate itself **measures d=25.45u to `location_bossarenacenter`** - the number round 1 could
-  only hand-compute. Whole-gate summary `DEADLY=3 FAIL=1 PASS=13`, **unchanged and identical
+  landing reads **PASS**. **ROUND-1 CITATION WITHDRAWN, ROW FIXED TWICE (vet):** round 1's run
+  audited the RETIRED landing - `boss_arena.lvl`'s grid corner is `(-561, 0, -3642)`, so the
+  embedded world row `(-433, 0, -3602)` is local `(128.0, 40.0)`, a point on component **#1** (the
+  unreachable low floor) **64.1u** from the real landing and 89.2u from the boss, which is why
+  "nearest `arenatemple01` 22.81u" said nothing about the spawner.
+  **ROUND-3 CORRECTION:** round 2 replaced it with world `(-425, 28, -3538)` "derived from
+  `build_section_surgery.INJECT_SPECS -> (SVC_RETURN_BOSSARENA_DBR, 136.0, 28.1, 104.0)`" - and both
+  halves of that citation were false. That coordinate is the **RETURN NPC**, not the landing, and it
+  lives in `build_hub_extra_specs()` (TESTHUB-only), never in `INJECT_SPECS` (whose 13 arena rows
+  are 6 ring lights + the boss proxy + 6 pit FX). The gate caught the error itself: the row measured
+  **d=0.00u** to `svc_testhub_return_bossarena.dbr` and **FAILED the b63 `G-NPC-LANDING-SEP`
+  sub-gate** at margin `-1.00u` (min 1.0u, no exemptions) - a player would arrive inside the NPC,
+  the same defect PR-5 fixed for the Sparta warden. Both tables now carry the authoritative live row
+  from `build_quest_files.R248_TESTHUB_STEPS`, **world `(-429, 28, -3538)`** -> local
+  `(132.0, 104.0)`, comp#2, on-mesh, clr 100% on all three tilesets. The return NPC now measures
+  exactly **4.00u** east (confirming build_section_surgery's own "4u E of that landing" comment),
+  the gate **measures d=25.08u to `location_bossarenacenter`**, and `G-NPC-LANDING-SEP` **PASSES**
+  at `+0.70u`. Whole-gate summary `DEADLY=3 FAIL=1 PASS=13`, **unchanged and identical
   row-for-row to `main`** - see `BL-R252-DEBT-6` (still OPEN for the other rows, which this lane
   has no ground truth for and refused to guess).
 - **REWARD DRY-RUN against the shipped arz** (in memory, nothing written): all three
@@ -193,7 +205,9 @@ is a Will design decision the lane deliberately did not make for him).
 2. **LOW:** C1 banned three of the four bind/track placement options; it now bans `wants_0x14`
    and `uniqueid` too (negtest N13).
 3. **LOW:** the landing-gate citation was measuring the retired arena landing; the row is fixed
-   and pinned to `INJECT_SPECS`, and the gate now measures the 25.45u separation itself.
+   and pinned to the live `build_quest_files.R248_TESTHUB_STEPS` row, and the gate now measures the
+   25.08u separation itself. (Round 2 pinned it to the wrong entity from the wrong source - the
+   return NPC via `INJECT_SPECS` - which tripped `G-NPC-LANDING-SEP` at 0.00u; fixed in round 3.)
 4. **LOW:** the per-encounter component rule was hiding an unrelated 277-cell-island placement;
    new non-gating ISLAND advisory + `BL-R252-DEBT-8`.
 5. **INFO (no code change, confirmed still true):** the textual merge conflict with
