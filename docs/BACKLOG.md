@@ -100,9 +100,13 @@ landing pad at `(136,104)` is a different surface at 28.20. The flame ring there
   (area "Olympian Arena" OK, on-mesh 0.03u, component #2 encounter-selected). A full run over
   every placement introduces **no new failure**: the single RED (obsidian roulette-b
   BLOCKS-ROUTE/ON-MAIN-PATH) is pre-existing and reproduces identically on `main`.
-- `py tools/debug/gate_landing_clearance.py --placements r252` -> live derivation verified
-  (13 arena entities read from `INJECT_SPECS`: 6 b43 lights `soft`, the spawner `proxy`, 6 flames
-  `soft`); boss-to-R-248-landing separation 25.4u.
+- `py tools/debug/gate_landing_clearance.py --map <deployed> --placements r252` -> the arena
+  landing reads **PASS** with all 13 planned entities loaded (nearest neighbour `arenatemple01` at
+  22.81u; none of the 13 is nearer). Separation from the R-248 return landing `(136.0, 104.0)` to
+  the spawner `(131.68, 129.08)` computes to **25.45u**, far outside every class threshold.
+  Whole-gate summary `DEADLY=3 FAIL=1 PASS=13`, **identical row-for-row to the same command on
+  `main`** - see `BL-R252-DEBT-6`, none of it is this lane's and none of it is in a level this lane
+  touches.
 - **REWARD DRY-RUN against the shipped arz** (in memory, nothing written): all three
   `svc_aithonhoard_0N.tables` -> their OWN `svc_aithonhoard_loot_0N`, `loot3Chance=100.0`,
   `numSpawn (3+(1.8*numberOfPlayers))*2.4 / *2.8`. Gate C5+C8 arz halves **PASS**. Then, as a
@@ -144,7 +148,7 @@ exists (negtest N12), so neither lane blocks the other.
 `gate_ruling_ids --vs main --branches`, `gate_landing_clearance --placements r252`,
 `gate_travel_y_terrain`, `gate_uber_placement`, `verify_merged_bc_navmeshes`,
 `entrance_landing --check-merged`, `run_contracts --only map`, `validate_tags`, and the record-diff
-vs the then-shipped arz. Debt items `BL-R252-DEBT-1..5` are in WILL_RULINGS R-252.
+vs the then-shipped arz. Debt items `BL-R252-DEBT-1..6` are in WILL_RULINGS R-252 (DEBT-6 is a pre-existing travel-lane gate defect this lane FOUND, not caused).
 
 ---
 

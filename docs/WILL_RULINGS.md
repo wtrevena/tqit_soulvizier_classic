@@ -7920,6 +7920,16 @@ negatives, including a replay of the 2026-08-14 four-way R-250 collision.
   (`build_hub_extra_specs`); the canonical Steam map has no traveler to the arena and no return NPC
   inside it. This lane fixes the ENCOUNTER, not its Steam reachability - that is a separate ruling
   (the arena is currently a DEV-only destination).
+- `BL-R252-DEBT-6` (NOT this lane's, found by running its gates - travel lane): the landing gate's
+  `--wiring v1` LIVE import is dead on main. R-246 retired `HELOS_HUB_TRAVEL` and
+  `TRAVELER_ENTER_OFFERS` from `build_quest_files`, so `gate_landing_clearance` catches the
+  ImportError and falls back to its **embedded V1 landing table** - it is currently auditing
+  RETIRED coordinates (e.g. it tests the arena landing at local `(128.0, 40.0)`, not the R-248
+  landing at `(136.0, 28.1, 104.0)`). Measured identically on `main` and on this branch:
+  `DEADLY=3 FAIL=1 PASS=13`, same rows, including three landings reported as pinned inside placed
+  uber proxies (charon/mnemophage/ephialtes) in levels this lane does not touch. The gate needs to
+  be re-pointed at whatever R-246 replaced those tables with before any of those rows can be
+  believed either way.
 - `BL-R252-DEBT-5` (integration): the gate's `--arz` / `--quests` / `--map` halves have been proved
   only as in-memory dry-runs against the SHIPPED artifacts (this lane deliberately ships no build).
   They must be re-run against the BUILT artifacts of the deploy that carries this wave, together
