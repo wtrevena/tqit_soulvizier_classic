@@ -163,6 +163,49 @@ R247_STASH_EXEMPT = frozenset(
 def _r247_exempt(path):
     return SLB._n(path) in R247_STASH_EXEMPT
 
+
+# ── R-251 SCOPE CARVE-OUT (Will 2026-08-14) ─────────────────────────────────────────
+# The SECOND carve-out, on the same Will-ratified mechanism as R-247.7a above and for
+# the same reason: R-240's trim was aimed at the polis-vault CAGE FARM ("we probably
+# need to trip the loot-volume trim ... from the two chests, you get guaranteed 1
+# legendary item"), and it swept the one-per-world UBER/BOSS HOARDS along with it. Will
+# reported the result five separate times on 2026-08-14 - Propontis ("literally just
+# dropped two items one thing of gold and incarnation of guan-yu's grace"), Tantalus,
+# Ephialtes's Dread-Hoard, the Obsidian hoards, plus the Devourer's stash already
+# reverted in R-247.7a.
+#
+# For 21 of those chests the trim was not even the operative nerf - a b42 finalization
+# pass had ALREADY repointed them at base-game `boss_default_*`, so the trimmed tables
+# were orphans nobody could open (docs/WILL_RULINGS.md R-251; tools/svc_uber_hoards.py
+# has the full measurement). R-251 re-wires them, which makes them LIVE - and a live
+# table at *0.2188 would be far worse than what Will complained about. So the family
+# leaves R-240's scope and keeps the volume the monolith AUTHORS it with (*2.4/*2.8).
+#
+# The membership test is IMPORTED from `svc_uber_hoards`, not re-typed, so the trim's
+# carve-out and R-251's own contract are provably the same set - a second typed list is
+# how the two would drift into a gap.
+#
+# EVERY OTHER R-240 SURFACE IS UNTOUCHED: the 21 polis-vault cage tables (canonical AND
+# hub), the 3 DRX donors, the 3 uberorb apex tables, boss_charon_*01b and the 12
+# uberorb_default_* keep their trim exactly. In particular the CAGE does not move, which
+# is why `gate_loot_distribution`'s D7X2 anchor - derived from the cage's POST-TRIM
+# volume - stays valid across R-251.
+try:
+    from svc_uber_hoards import is_hoard_table as _r251_exempt
+except ImportError:                                              # pragma: no cover
+    def _r251_exempt(path):                                      # pragma: no cover
+        raise SystemExit(
+            "[svc_loot_volume] tools/svc_uber_hoards.py is MISSING, so R-251's uber/boss "
+            "hoard carve-out cannot be applied. Failing loud rather than silently "
+            "re-trimming the family Will reported five times: an import gap that "
+            "degrades to 'trim everything' is exactly the quiet regression this "
+            "carve-out exists to prevent.")
+
+
+def _exempt(path):
+    """Out of R-240's trim scope: the R-247.7a stash, or the R-251 uber/boss hoards."""
+    return _r247_exempt(path) or _r251_exempt(path)
+
 # ─────────────────────────────────────────────────────────────────────────────
 # THE ENGINE'S ROUNDING MODE IS UNPROVEN, SO BOTH READINGS ARE ENFORCED
 #
@@ -360,8 +403,10 @@ def scope_tables(db, lk=None):
             real = lk.real(t)
             if not real:
                 continue
-            if _r247_exempt(real):
-                continue  # R-247.7a: the Devourer-stash tables left R-240's scope
+            if _exempt(real):
+                # R-247.7a: the Devourer-stash tables left R-240's scope.
+                # R-251:    so did every uber/boss `svc_*hoard_loot_0N` table.
+                continue
             out[SLB._n(real)] = (real, tier, is_hub(real))
     return out
 
@@ -787,8 +832,11 @@ def problems(db, lk=None, report=None):
     for label, tables, weights, tier in SAB.all_surfaces(db, lk):
         if any(is_hub(t) for t in tables):
             continue
-        if all(_r247_exempt(t) for t in tables):
-            continue  # R-247.7a: the Devourer stash is ruled SV-rich; its own gate owns it
+        if all(_exempt(t) for t in tables):
+            # R-247.7a: the Devourer stash is ruled SV-rich; its own gate owns it.
+            # R-251:    the uber/boss hoards are ruled uber-rich; gate_uber_hoard_
+            #           generosity owns them (H3 pins their exact volume).
+            continue
         S, leg, _pn = surface_reading(d, dist, tables, weights, tier)
         if leg > worst[0]:
             worst = (leg, label)

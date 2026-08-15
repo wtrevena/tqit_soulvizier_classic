@@ -76,6 +76,16 @@ from patches.champion_mesh import (                                # noqa: E402
 # rather than lucky. See `tools/svc_loot_ownership.py`.
 import svc_loot_ownership as _OWN                                  # noqa: E402
 
+# R-251 (Will 2026-08-14). The uber/boss hoard volume this monolith AUTHORS and the
+# volume `tools/gate_uber_hoard_generosity.py` ASSERTS are the same two strings,
+# IMPORTED here rather than re-typed at three authoring sites - the champion_mesh
+# precedent. Before R-251 the equations were typed literals in `_create_obsidian_
+# roulette` and `_svc_build_dedicated_hoard`, R-240's trim then moved them, and the
+# gates measured records the chests did not open. See `tools/svc_uber_hoards.py`.
+import svc_uber_hoards as _UH                                      # noqa: E402
+_SVC_HOARD_MIN_EQ = _UH.HOARD_MIN_EQ          # '(3+(1.8*numberOfPlayers))*2.4'
+_SVC_HOARD_MAX_EQ = _UH.HOARD_MAX_EQ          # '(3+(1.8*numberOfPlayers))*2.8'
+
 # ── All mercenary scroll item paths ────────────────────────────────────────
 
 NORMAL_SCROLLS = [
@@ -13344,6 +13354,9 @@ _DK_PROXY_DONOR = r'records\drxmap\proxy\q_leinth_lone.dbr'
 _DK_LIMIT = r'records\proxies orient\limit_obsidianbosses.dbr'   # no-cap [1..110] contains L71
 _DK_DIFFICULTY = r'records\proxies orient\difficulty_04.dbr'
 _DK_HOARD = {t: r'records\drxitem\container\svc_dorushoard_%s.dbr' % t for t in ('01', '02', '03')}
+# R-251: Dorus's OWN loot family (it used to inherit the Obsidian roulette's tables by
+# clone - see the hoard step in _create_propontis_superboss for the full reason).
+_DK_HOARD_LOOT = {t: r'records\drxitem\container\svc_dorushoard_loot_%s.dbr' % t for t in ('01', '02', '03')}
 _DK_HOARD_DONOR = {t: r'records\drxitem\container\svc_obsidianhoard_%s.dbr' % t for t in ('01', '02', '03')}
 _DK_HOARD_POOL = {t: r'records\drxitem\container\svc_dorushoard_pool_%s.dbr' % t for t in ('01', '02', '03')}
 _DK_HOARD_POOL_DONOR = {t: r'records\drxitem\container\svc_obsidianhoard_pool_%s.dbr' % t for t in ('01', '02', '03')}
@@ -13453,11 +13466,35 @@ def _create_propontis_superboss(db, tags):
     _dorus_pool(_DK_POOL, 'Dorus (main) + 2 royal-guard champion escorts')
 
     # ── 6. The hoard: reuse the proven Obsidian Hoard Boss-locked chest + pool
-    #    records (locked=1 / Boss / radius 50 / gold gen 100 / rich loot). No new
-    #    loot tables; the blood-cave mega chest stays the crown. ──
+    #    records (locked=1 / Boss / radius 50 / gold gen 100 / rich loot). The
+    #    blood-cave mega chest stays the crown. ──
+    #
+    # R-251 (Will 2026-08-14, BL-W0814-2 + BL-W0814-11): the chest clone above copies
+    # `tables` too, so this hoard USED TO SHARE `svc_obsidianhoard_loot_0N` with the
+    # Obsidian roulette - Will's report to the byte ("if these share the same record ...
+    # we need to seperate those records since those should be tuned differently"), and
+    # the reason a chest in the Great Hall of Propontis reads "Obsidian Hoard" in game.
+    # It now gets its OWN loot family on the identical `_svc_build_dedicated_hoard`
+    # recipe. AUTHORED HERE, IN THE CONTENT PASS, NOT AT FINALIZATION: the loot-breadth
+    # and armour-parity registry modules run between the two, and a table authored after
+    # them would ship without R-180/R-181/R-220's widening and red their own gates.
     for t in ('01', '02', '03'):
         db.clone_record(_DK_HOARD_DONOR[t], _DK_HOARD[t])
         sf(_DK_HOARD[t], 'FileDescription', "Dorus's Hoard (Boss-locked king's ransom)")
+        lt = _DK_HOARD_LOOT[t]
+        if db.has_record(_OBS_HOARD_LOOT_DONOR[t]):
+            db.clone_record(_OBS_HOARD_LOOT_DONOR[t], lt)
+            sf(lt, 'numSpawnMinEquation', _SVC_HOARD_MIN_EQ)
+            sf(lt, 'numSpawnMaxEquation', _SVC_HOARD_MAX_EQ)
+            sf(lt, 'loot3Chance', 100.0)
+            sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE_TIER[t]); sf(lt, 'loot3Weight1', 100)
+            sf(lt, 'loot3Name2', _OBS_GUAR_RELIC_TIER[t]); sf(lt, 'loot3Weight2', 60)
+            db._modified.add(lt)
+            _OWN.note_write(lt, 'apply_svc_patches (dorus hoard, R-251)')
+            sf(_DK_HOARD[t], 'tables', lt)
+        else:
+            print(f"  PROPONTIS: WARNING hoard donor missing {_OBS_HOARD_LOOT_DONOR[t]}; "
+                  f"{lt} not authored (R-251 wiring gate will fail loud)")
         db._modified.add(_DK_HOARD[t])
         db.clone_record(_DK_HOARD_POOL_DONOR[t], _DK_HOARD_POOL[t])
         sf(_DK_HOARD_POOL[t], 'fixedItemName1', _DK_HOARD[t])
@@ -13479,7 +13516,8 @@ def _create_propontis_superboss(db, tags):
     # b42 r2 (Will "replace the current chest with three large majestic chests"): Dorus no
     # longer carries his hoard as the boss accessory; it becomes 3 world-placed majestic
     # chests near the tomb encounter (build_section_surgery INJECT_SPECS). The _DK_HOARD_POOL
-    # chain (region-tuned by _svc_standardize_boss_chests -> svc_dorushoard) rides verbatim.
+    # chain (wired to its own svc_dorushoard_loot_0N by _svc_wire_boss_hoard_chests, R-251)
+    # rides verbatim.
     _svc_build_world_chest_proxy(db, 'dorus', _DK_HOARD_POOL)
 
     # ── 8. S1 dense STAT soul (Vashkarr precedent: NO summon, a king's-ransom
@@ -15986,11 +16024,24 @@ def _create_obsidian_roulette(db, tags):
         # numSpawn below-mega, add a guaranteed high-value loot3 slot.
         lt = _OBS_HOARD_LOOT[t]
         db.clone_record(_OBS_HOARD_LOOT_DONOR[t], lt)
-        sf(lt, 'numSpawnMinEquation', '(3+(1.8*numberOfPlayers))*2.4')
-        sf(lt, 'numSpawnMaxEquation', '(3+(1.8*numberOfPlayers))*2.8')
+        sf(lt, 'numSpawnMinEquation', _SVC_HOARD_MIN_EQ)      # R-251: one source of truth
+        sf(lt, 'numSpawnMaxEquation', _SVC_HOARD_MAX_EQ)
         sf(lt, 'loot3Chance', 100.0)
-        sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE); sf(lt, 'loot3Weight1', 100)
-        sf(lt, 'loot3Name2', _OBS_GUAR_RELIC); sf(lt, 'loot3Weight2', 60)
+        # R-251 round-2: the SAME tier leak Will's 2026-08-08 leak #2 fixed in
+        # `_svc_build_dedicated_hoard` was still live HERE - the roulette wrote the
+        # NORMAL-tier constants into loot_01 AND loot_02 AND loot_03, so the Epic and
+        # Legendary Obsidian Hoards guaranteed an Essence-tier (01_act4_relics) relic.
+        # It stayed invisible because `gate_relic_difficulty_tiers` follows the WIRE
+        # (proxy accessory slot -> pool -> chest -> `tables`), and pre-R-251 these
+        # chests named `boss_default_*`, so the gate never reached these records -
+        # the exact blind spot R-251 exists to end. Measured on the shipped b888f022:
+        # the gate reaches 51 branches / 0 findings before R-251 and 81 / 8 after,
+        # all 8 naming loot_02 + loot_03 here. Per-tier constants close it.
+        # (loot3Name1 was tier-correct on the shipped arz only because R-180's
+        # `retarget_guaranteed_weapon` overwrites it to svc_unique_weapons_{n,e,l}01
+        # downstream - fix BOTH so the tier never depends on a later module.)
+        sf(lt, 'loot3Name1', _OBS_GUAR_UNIQUE_TIER[t]); sf(lt, 'loot3Weight1', 100)
+        sf(lt, 'loot3Name2', _OBS_GUAR_RELIC_TIER[t]); sf(lt, 'loot3Weight2', 60)
         db._modified.add(lt)
         _OWN.note_write(lt, 'apply_svc_patches (obsidian hoard)')
 
@@ -17033,16 +17084,38 @@ def _svc_neutralize_b41_placed_pools(db):
           f"pool(s) (canonical map: each apex boss now spawns exactly ONE).")
 
 
-# Boss-chest standardization (Will 2026-07-13: "reduce the chests, replace the
-# current chest with three large majestic chests ... each chest tuned based on
-# where it is in the game"). Every placed uber's bespoke hoard chest currently
-# drops a GUARANTEED unique 1h + tier-01 (Act1/Greece) statics regardless of the
-# boss's region -> under-leveled AND over-good. Repoint each to the base game's
-# own region/level-banded boss loot (boss_default_<lo>-<hi>) = the Cyclops chest
-# form/rarity (a normal boss chest, NOT an over-good hoard). Difficulty tier maps
-# to chest _01/_02/_03 (= the proxy's accessory1/Epic1/Legendary1). Region =
-# the boss's charLevel per difficulty -> nearest base bracket, capped at 63-65
-# (the top loot tier; the apex bosses out-level the L65 item ceiling on E/L).
+# ⚖️ R-251 SUPERSESSION (Will 2026-08-14) - READ THIS BEFORE CHANGING ANY LINE BELOW.
+#
+# What used to happen here: every placed-uber bespoke hoard chest's `tables` was
+# REPOINTED to the base game's region/level-banded `boss_default_<lo>-<hi>` - "the
+# Cyclops chest form". That was a b42-round-2 implementer scope decision
+# (docs/reports/b42_fixedboss_dedup.md S3.3), never a Will ruling, and its own report
+# says the consequence: "The old bespoke guaranteed-unique loot tables are left
+# unreferenced."
+#
+# Will overruled it FIVE TIMES in one 2026-08-14 session, once per chest this repoint
+# reached: BL-W0814-11 the Propontis chest ("are you kidding me. this is outrageous ...
+# literally just dropped two items one thing of gold and incarnation of guan-yu's
+# grace"), -13 Tantalus ("same problem"), -5 Ephialtes's Dread-Hoard, -2 the Obsidian
+# hoards + the record-separation ask. Measured on the shipped b888f022 arz: 21 of 30
+# uber chests opened a base-game table and 18 of the 27 `svc_*hoard_loot_0N` records
+# had ZERO references in 51,312 records - so R-180/R-181/R-220 tuned dead records for
+# three waves while four fail-loud gates stayed green.
+#
+# So this pass now WIRES instead of repointing: every hoard chest names its OWN
+# `svc_<family>hoard_loot_<tier>`. `_SVC_CHEST_STD` survives as the family roster (and
+# as the record of the region brackets the supersession gives up - see the debt note in
+# the docstring below). Contract + gate: `tools/svc_uber_hoards.py` +
+# `tools/gate_uber_hoard_generosity.py`; ruling: docs/WILL_RULINGS.md R-251.
+#
+# Historical rationale of the retired repoint, kept because the RETIREMENT PROTOCOL
+# requires the design intent to stay legible (Will 2026-07-13: "reduce the chests,
+# replace the current chest with three large majestic chests ... each chest tuned based
+# on where it is in the game"): a bespoke hoard drops a GUARANTEED unique 1h + tier-01
+# statics regardless of the boss's region, which b42 read as under-leveled AND
+# over-good. Difficulty tier maps to chest _01/_02/_03 (= the proxy's
+# accessory1/Epic1/Legendary1). Region = the boss's charLevel per difficulty -> nearest
+# base bracket, capped at 63-65 (the top loot tier).
 #
 # NOTE (mechanism): the boss ACCESSORY reward mechanism (proxy.tpl exposes only
 # accessory1/accessoryEpic1/accessoryLegendary1, and ProxyAccessoryPool is a single
@@ -17070,44 +17143,84 @@ _SVC_CHEST_STD = {
     # every row above - the boss's own charLevel per difficulty snapped to the
     # nearest base bracket, capped at 63-65 (the top loot tier). Both target tables
     # were confirmed present in the built arz (32 boss_default_* brackets, 01-03
-    # through 63-65 in steps of 2), so the fail-loud in _svc_standardize_boss_chests
-    # is satisfied by measurement, not by hope.
+    # through 63-65 in steps of 2), so the fail-loud in the chest pass was satisfied by
+    # measurement, not by hope. (R-251 retired that repoint; the brackets stay as the
+    # record of what the supersession gives up - see BL-R251-DEBT-1.)
     'svc_mnemophagehoard': ('45-47', '63-65', '63-65'),    # Mnemophage[46,68,100] Pools of Mnemosyne (Act5/Judgment)
     'svc_diadochihoard':   ('57-59', '63-65', '63-65'),    # Helepolis [58,80,97]  Fields of the Diadochi (Act6/Elysian)
 }
 _SVC_BOSS_DEFAULT_TABLE = r'records\item\containers\defaultloot\boss_default_%s.dbr'
 
 
-def _svc_standardize_boss_chests(db):
-    """Repoint every placed-uber bespoke hoard chest's loot to the base game's
-    region/level-tuned boss loot (boss_default_<bracket>) - the Cyclops chest form
-    (a normal boss chest, not an over-good guaranteed-unique hoard). Keeps the
-    large-majestic mesh + the Boss lock; only the loot table changes. Fail-loud if
-    a target base table is missing. The Devourer/Blood-Toxeus (esti) chest is not
-    in _SVC_CHEST_STD and is never touched. Runs at finalization."""
+def _svc_wire_boss_hoard_chests(db):
+    r"""R-251 (Will 2026-08-14): every uber/boss hoard chest opens ITS OWN loot table.
+
+    Replaces `_svc_standardize_boss_chests`, whose base-game repoint is the ONE shared
+    cause behind BL-W0814-2/-5/-11/-13 (see the block comment above `_SVC_CHEST_STD`).
+    Runs at finalization and is the LAST writer of every hoard chest's `tables`, so no
+    later pass can quietly re-orphan the family again.
+
+    SCOPE IS DERIVED, NOT TYPED. It sweeps every record whose name matches the house
+    hoard shape (`svc_<family>hoard_<01|02|03>`), not `_SVC_CHEST_STD`, so a family a
+    future lane authors is covered the moment it is named - the BL-R181-DEBT-7 lesson.
+    `_SVC_CHEST_STD` is still read, but only to fail loud if a roster family stopped
+    matching the shape.
+
+    WRITES NOTHING BUT `tables`, and authors no records: the loot tables themselves are
+    authored in the CONTENT pass (`_create_obsidian_roulette`, `_svc_build_dedicated_
+    hoard`, `_create_propontis_superboss`) so the loot-breadth and armour-parity
+    registry modules, which run BETWEEN that pass and this one, widen them.
+
+    KNOWN, ACCEPTED LOSS - registered as `BL-R251-DEBT-1`: the retired repoint gave each
+    chest a REGION-banded base table (Dorus Normal = boss_default_41-43 against
+    Ephialtes's 57-59). The bespoke tables are DIFFICULTY-tiered (01/02/03) but not
+    region-banded, so within Normal an Act2 hoard now pays the same tier pool as an Act5
+    one. Confined to Normal and one Epic row (every other bracket in the roster was
+    already the shared 63-65 cap), and deliberate: Will's five reports are that these
+    chests pay too LITTLE, and the mod's own uber content is what he wants in them.
+    """
     tiers = ('01', '02', '03')
-    fixed, skipped, problems = 0, 0, []
-    for prefix, brackets in _SVC_CHEST_STD.items():
-        for tier, bracket in zip(tiers, brackets):
-            chest = rf'records\drxitem\container\{prefix}_{tier}.dbr'
-            table = _SVC_BOSS_DEFAULT_TABLE % bracket
-            if not db.has_record(chest):
-                skipped += 1          # boss whose chest was never built (donor gap)
-                continue
-            if not db.has_record(table):
-                problems.append(f"{chest}: base loot table missing {table}")
-                continue
-            db.set_field(chest, 'tables', table)
-            db._modified.add(chest)
-            fixed += 1
+    wired, problems = 0, []
+    roster_seen = set()
+    for name in sorted(db.record_names(), key=lambda s: str(s).lower()):
+        if not _UH.is_hoard_chest(name):
+            continue
+        want = _UH.table_for(name)
+        roster_seen.add(str(name).lower().rsplit('\\', 1)[-1].rsplit('_', 1)[0])
+        if not db.has_record(want):
+            problems.append(
+                f"{name}: its own loot table {want} does not exist. R-251 requires every "
+                f"uber hoard chest to open a bespoke mod table; author it in the CONTENT "
+                f"pass (the `_svc_build_dedicated_hoard` recipe), never here - a table "
+                f"authored at finalization misses the loot-breadth modules entirely.")
+            continue
+        db.set_field(name, 'tables', want)
+        db._modified.add(name)
+        wired += 1
+    # The roster is no longer the scope, but a roster family that stopped matching the
+    # house shape means someone renamed a chest and this pass silently stopped covering
+    # it - exactly the failure mode that produced the orphans. Fail loud on that.
+    for prefix in _SVC_CHEST_STD:
+        if not any(db.has_record(rf'records\drxitem\container\{prefix}_{t}.dbr')
+                   for t in tiers):
+            continue
+        for t in tiers:
+            chest = rf'records\drxitem\container\{prefix}_{t}.dbr'
+            if db.has_record(chest) and not _UH.is_hoard_chest(chest):
+                problems.append(
+                    f"{chest} is in _SVC_CHEST_STD but does not match the house hoard "
+                    f"name shape, so the derived sweep above cannot see it.")
     if problems:
         for p in problems:
-            print(f"    - CHEST-STD problem: {p}")
-        raise SystemExit(f"Boss-chest standardization: {len(problems)} missing base "
-                         f"boss loot table(s); cannot region-tune the reward.")
-    print(f"  Boss-chest standardization: repointed {fixed} bespoke hoard chest(s) "
-          f"to region-tuned base boss loot (Cyclops-grade, no guaranteed-unique; "
-          f"{skipped} tier(s) skipped for un-built chests).")
+            print(f"    - HOARD-WIRING problem: {p}")
+        raise SystemExit(
+            f"R-251 hoard wiring: {len(problems)} uber/boss chest(s) cannot be wired to "
+            f"their own loot table. Shipping this is what Will opened as 'two items, one "
+            f"thing of gold and incarnation of guan-yu's grace'.")
+    print(f"  R-251 hoard wiring: {wired} uber/boss hoard chest(s) now open their OWN "
+          f"`svc_<family>hoard_loot_<tier>` table ({len(roster_seen)} family/families); "
+          f"zero chests left on base-game Cyclops loot. The Devourer/Blood-Toxeus 'esti' "
+          f"chest is outside this shape and is never touched.")
 
 
 # The 4 FIXED apex ubers whose bespoke boss-accessory chest is REPLACED by 3 world-
@@ -17317,8 +17430,8 @@ def _svc_build_dedicated_hoard(db, prefix, desc_tag):
         # guaranteed high-value loot3 slot (identical tuning to the Obsidian hoard).
         lt = rf'{base}\svc_{prefix}hoard_loot_{t}.dbr'
         db.clone_record(_OBS_HOARD_LOOT_DONOR[t], lt)
-        sf(lt, 'numSpawnMinEquation', '(3+(1.8*numberOfPlayers))*2.4')
-        sf(lt, 'numSpawnMaxEquation', '(3+(1.8*numberOfPlayers))*2.8')
+        sf(lt, 'numSpawnMinEquation', _SVC_HOARD_MIN_EQ)      # R-251: one source of truth
+        sf(lt, 'numSpawnMaxEquation', _SVC_HOARD_MAX_EQ)
         sf(lt, 'loot3Chance', 100.0)
         # tier-correct guaranteed slot (Will 2026-08-08 leak #2): 01/02/03 name the
         # normal/epic/legendary unique + relic donor, matching the accessory tier.
@@ -17394,7 +17507,8 @@ def _svc_build_world_chest_proxy(db, prefix, hoard_pools):
     difficulty tiers. Returns the proxy record path (for build_section_surgery to
     place 3x at the encounter), or None if the donor/pools are missing (caller then
     leaves no world chest). Difficulty scaling + the large-majestic chest form ride
-    verbatim on the reused hoard chain (region-tuned by _svc_standardize_boss_chests)."""
+    verbatim on the reused hoard chain (wired to its own bespoke loot table by
+    _svc_wire_boss_hoard_chests, R-251)."""
     if not (hoard_pools and db.has_record(_SVC_WORLD_CHEST_DONOR)
             and hoard_pools.get('01') and db.has_record(hoard_pools['01'])):
         print(f"  SVC WORLD-CHEST ({prefix}): donor/pools missing; NO world chest built")
@@ -19532,11 +19646,12 @@ def run_registry_gates(db, tags, force_full_drops=True):
     # b41-map-pass places on the canonical map (their pools live in the registry modules,
     # not _MOD_AUTHORED_SPAWN_PROXIES, so the monolith lock above cannot reach them).
     _svc_neutralize_b41_placed_pools(db)
-    # CHEST STANDARDIZATION (2026-07-13): region-tune every placed-uber bespoke hoard
-    # chest to the base game's Cyclops-grade region loot; then (b42 round-2) VERIFY the
-    # 4 fixed ubers no longer carry a boss-accessory chest and each has a world-chest
-    # proxy the map lane places 3x (the "3 majestic chests" replacement).
-    _svc_standardize_boss_chests(db)
+    # HOARD WIRING (R-251, Will 2026-08-14; SUPERSEDES the 2026-07-13 chest
+    # standardization): every placed-uber hoard chest opens its OWN bespoke mod loot
+    # table instead of the base game's Cyclops-grade region loot. Then (b42 round-2)
+    # VERIFY the 4 fixed ubers no longer carry a boss-accessory chest and each has a
+    # world-chest proxy the map lane places 3x (the "3 majestic chests" replacement).
+    _svc_wire_boss_hoard_chests(db)
     _svc_verify_world_chests(db)
     _verify_mod_spawn_proxies_eligible(db)
 

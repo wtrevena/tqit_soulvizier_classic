@@ -1,5 +1,75 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> # 💰 R-251 THE UBER CHESTS PAY LIKE UBER CHESTS AGAIN (2026-08-14) - READ THIS FIRST
+>
+> **Your five reports, verbatim:** "are you kidding me. this is outrageous ... literally just dropped
+> two items one thing of gold and incarnation of guan-yu's grace" (Propontis) / "same problem with the
+> chest guarded by tantalus" / "aphoryteus (spelled wrong) dread hoard is a terrible chest, it got
+> nerfed somewhere along the way and needs to drop more items" / "the obsidian hoard chests ... are
+> still nerfed too much. if these share the same record as the chest - toxeus the murderer, devourer
+> of blood hidden's chest we need to seperate those records" / "the gift box in the secret places need
+> to increase the number of items dropped by 3x".
+>
+> **You were right that it was one thing.** It was not a tuning number - it was a WIRE. Back in b42 a
+> finalization pass quietly repointed every uber chest at the BASE GAME's ordinary boss-chest loot
+> ("the Cyclops chest"), and left each boss's own hand-tuned hoard table sitting there unreferenced.
+> Measured on the build you played: **21 of 30 uber chests were opening a base-game table, and 18 of
+> the 27 bespoke hoard tables had ZERO references anywhere in the database.** So the three waves of
+> chest work you approved (every weapon class, armour parity, spear included) were being applied to
+> records no chest actually opened - which is exactly why every one of these chests felt gutted, and
+> why the gates all looked green.
+>
+> **Your obsidian/Devourer suspicion was also right, with one correction.** The chest in the **Great
+> Hall of Propontis** is a clone of the **Obsidian Hoard** chest - it USED to share the Obsidian
+> Hoard's loot record, and it is still LABELLED "Obsidian Hoard" in game (that label is a separate
+> follow-up, `BL-R251-DEBT-2`). It never shared with the Devourer's stash - that one has been on its
+> own records the whole time, and its R-247 revert is untouched here.
+>
+> **What changed this build:**
+>
+> 1. **Every uber/boss chest opens its OWN hoard table again** (Tantalus, Charon/Golden Bough,
+>    Ephialtes's Dread-Hoard, Propontis/Dorus, the Obsidian hoards, the Mnemophage, the Helepolis, and
+>    the three general-guard hoards). Each one is a SEPARATE record, so they can be tuned
+>    independently from here on - and each carries its **guaranteed 100% unique + relic slot** back,
+>    which the base-game table did not have.
+> 2. **The Propontis chest got its own loot records** for the first time (it had none, which is why it
+>    fell back on the Obsidian chest's).
+> 3. **The uber hoards came back out of the R-240 volume trim.** That trim was for the polis-vault
+>    cage farm you asked to cut back; it had swept the one-per-world uber chests along with it. They
+>    are back at their authored volume, still BELOW the Devourer's stash so the blood-cave mega chest
+>    stays the best chest in the mod. **The polis-vault cage is unchanged** - you asked for that trim
+>    and it stands.
+> 4. **The Secret Present gift box drops 3x the items**, exactly as asked. There are five of them
+>    across the secret-place levels (Dark Forest entrance, Secret Forest, Pillaged Village), which is
+>    why you saw them in more than one place.
+> 5. **A second Obsidian bug turned up while checking the first, and is fixed here too.** The
+>    **Epic and Legendary Obsidian Hoards were guaranteeing a NORMAL-tier (Essence) relic** - the
+>    lowest tier, on the hardest difficulties. It is the same mistake you caught on 2026-08-08 in the
+>    general-guard hoards; it had been left in the Obsidian chests' builder as well, and it stayed
+>    invisible because the checker follows the chest wiring and those chests were pointed at the
+>    base-game table. Fixing the wiring is what exposed it. Epic hoards now guarantee an
+>    **Embodiment**, Legendary an **Incarnation**.
+>
+> **THE TEST:** open, on Legendary if you can:
+>   * the **Great Hall of Propontis** chest (behind Kroisos the Coin-Drowned),
+>   * the **Den of Tantalus** chest,
+>   * **Ephialtes's Dread-Hoard** in the Dread Halls,
+>   * an **Obsidian Hoard** in the Obsidian Halls,
+>   * a **gift box** in a secret place.
+>
+> **PASS =** each uber chest pays a real handful - a guaranteed unique weapon and a tier-correct relic
+> plus several more rolls - not "gold and one relic". The gift box should visibly pay about three
+> times what it used to. On an **Obsidian Hoard specifically**, check the guaranteed relic's tier: on
+> Legendary it must be an **Incarnation**, on Epic an **Embodiment**. An Essence there means item 5
+> did not land. **FAIL =** any of them still pays 1-2 items; say which chest and on which difficulty
+> and it is a one-line fix now that each has its own record.
+>
+> **Not in this change (on purpose):** the polis-vault cage chests, every Mystical Orb (those are the
+> R-242 rates you already ruled on), and the Devourer's stash (already reverted in R-247). With the
+> single exception of the Obsidian relic tier in item 5, nothing about WHAT the chests can pay
+> changed - only whether the tuned table is the one that opens, and how many rolls it gets.
+
+
 > ## 🆕 R-250 (2026-08-11): THE ENSLAVER OF SOULS NOW WEARS HIS DEMONS' BLACK SHROUD, ALL THE TIME
 > **✅ LIVE ON DEV *AND* STEAM as `build93` (arz `db31414339f008792ea03aa8531f5002`).** arz-only:
 > no map, no quest, no Text, no mesh and no texture change (all four sibling artifacts md5-proven

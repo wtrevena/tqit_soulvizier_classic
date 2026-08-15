@@ -7956,3 +7956,158 @@ it got wrong are recorded so the failure mode is not repeated: (a) its own measu
 Devourer's summons carry no shroud, and it argued the target from folder naming instead; (b) it claimed
 the Endless Hunt's smoke was "the one he called the proper black shroud" - Will's quote was about the
 ENSLAVER's marauders. The Hunt does carry that smoke, but by wearing `ShadowStalker.msh`, not as a field.
+
+---
+
+## R-251 [2026-08-14] IMPLEMENTED (branch `fix/chest-generosity-shared-cause`) - THE UBER/BOSS CHESTS OPEN THEIR OWN LOOT TABLES AGAIN; THE SECRET PRESENT BOX PAYS 3x. SUPERSEDES the b42 boss-chest standardization.
+
+> ⚠️ **RENUMBERED AT INTEGRATION (2026-08-14, build95).** This lane authored itself as `R-250`
+> while, in parallel, `fix/toxeus-shroud` shipped a DIFFERENT `R-250` (the Enslaver's black shadow
+> shroud) to Steam as **build93**. The shipped number wins; this ruling and every `BL-R250-DEBT-*`
+> it minted are renumbered to **R-251 / `BL-R251-DEBT-*`**, the same treatment `R-231 -> R-244`
+> received at the build88 integration. No content changed in the renumber.
+
+**WILL'S RULINGS, VERBATIM (2026-08-14)** - five separate reports in one play session, filed as
+BL-W0814-2, -5, -7, -11 and -13:
+
+> "are you kidding me. this is outrageous ... literally just dropped two items one thing of gold
+> and incarnation of guan-yu's grace"  (the Great Hall of Propontis uber-boss chest, BL-W0814-11)
+
+> "same problem with the chest guarded by tantalus"  (BL-W0814-13)
+
+> "Another terrible chest aphoryteus (spelled wrong) dread hoard is a terrible chest, it got
+> nerfed somewhere along the way and needs to drop more items"  (BL-W0814-5)
+
+> "the obsidian hoard chests that we have added in the game in locations such as the obsidian
+> halls are still nerfed too much. if these share the same record as the chest - toxeus the
+> murderer, devourer of blood hidden's chest we need to seperate those records since those should
+> be tuned differently"  (BL-W0814-2)
+
+> "the gift box in the secret places need to increase the number of items dropped by 3x"
+> (BL-W0814-7)
+
+**THE ONE SHARED CAUSE, MEASURED ON THE SHIPPED build92 ARZ `b888f022`.** Five chests nerfed
+identically was one cause, and it was a WIRE, not a number:
+
+`apply_svc_patches._svc_standardize_boss_chests` - a **b42-round-2 implementer scope decision**
+(`docs/reports/b42_fixedboss_dedup.md` S3.3), **never a Will ruling** - ran at finalization and
+rewrote every placed-uber hoard chest's `tables` field to a base-game
+`records\item\containers\defaultloot\boss_default_<lo>-<hi>.dbr`, "the Cyclops chest FORM". Its
+own report states the consequence: *"The old bespoke guaranteed-unique loot tables are left
+unreferenced."*
+
+| measured on `b888f022` | value |
+| --- | --- |
+| uber/boss hoard chests naming a base-game table | **21 of 30** |
+| `svc_*hoard_loot_0N` records with ZERO references in 51,312 records | **18 of 27** |
+| families with no bespoke loot table AT ALL | **1** (`svc_dorushoard_*`, the Propontis chest) |
+| what the player opened instead | S = 7.36 spawn iterations, group chances 14/27/10/21/25/14 (sum 1.11), **`loot3Chance` = 10** |
+| the chest Will holds up as correct (Devourer's stash, R-247.7a) | S = 18.96, chances 40/40/-/21/40/40 (sum 1.81), **`loot3Chance` = 100** |
+
+So R-180 (weapon breadth), R-181 (armour parity) and R-220 tuned **dead records for three waves**
+while four fail-loud gates stayed green - the R-240 gate record's own "hoards 1.730 gear/open" line
+is a measurement of records no player could open. R-240's volume trim then hit the same family a
+second time: invisible on the 18 orphans, real on the six general-guard tables still wired to their
+own loot (`*2.4/*2.8` -> `*0.2188/*0.25`, the most starved gear surface in the mod).
+
+**BL-W0814-2 ANSWERED EXACTLY.** `svc_dorushoard_*` is a `clone_record` of the Obsidian Hoard chest,
+so before the repoint it **shared** `svc_obsidianhoard_loot_0N`, and it still carries
+`description = tagSVCObsidianHoard` - a chest in the Great Hall of Propontis is LABELLED
+"Obsidian Hoard" in game. That is why Will wrote "the obsidian hoard chests ... in locations such
+as the obsidian halls". The Devourer's stash was never shared with them; the sharing Will sensed
+was real, and it was between the Propontis chest and the Obsidian roulette.
+
+**THE FIX - three coupled halves, arz-only, 0 new Text tags:**
+
+1. **WIRING (the shared cause, fixed once, at the cause).** `_svc_standardize_boss_chests` becomes
+   `_svc_wire_boss_hoard_chests`: every `svc_<family>hoard_<tier>` chest names its OWN
+   `svc_<family>hoard_loot_<tier>`. Scope is DERIVED from the house name shape, not from the
+   `_SVC_CHEST_STD` roster, so a family a future lane authors is inside the contract the moment it
+   is named (the BL-R181-DEBT-7 lesson). `_create_propontis_superboss` now authors the missing
+   `svc_dorushoard_loot_0N` family in the **CONTENT pass** - load-bearing, because the loot-breadth
+   and armour-parity registry modules run between the content pass and finalization, and a table
+   authored at finalization would ship without R-180/R-181/R-220's widening.
+2. **VOLUME.** `svc_loot_volume._r251_exempt` (membership imported from `svc_uber_hoards`, not
+   re-typed) takes the family out of R-240's trim on the same Will-ratified mechanism R-247.7(a)
+   used for the Devourer's stash, so the tables keep the volume the monolith authors:
+   `(3+(1.8*numberOfPlayers))*2.4 / *2.8`. Nothing invented - that is the mod's own authored value,
+   it is what the TESTHUB cage twin still carries, and it sits BELOW the stash's `*3.8/*4.1` so the
+   blood-cave mega chest stays the crown. R-240 scope 84 -> 57 surfaces.
+3. **THE GIFT BOX (Will's literal number).** The Secret Present chain - 5 world placements of
+   `proxyspawner_sp_chest` across DarkForestEnter / SecretForest2 / PillagedVillage (hence "the
+   secret places", plural) then `sp_chest_0N` (`tagSecretPresentBOX`) then `loottable_sp_0N` - goes
+   to exactly 3x: `*1.8/*2.1` -> `*5.4/*6.3`. Volume only; composition untouched (SV/DRX original).
+
+**NOT TOUCHED, each for a stated reason:** the polis-vault cage (R-240's trim there IS what Will
+asked for, and `gate_loot_distribution`'s D7X2 anchor is derived from its post-trim volume, so
+leaving it alone is what keeps that anchor valid); every orb table (R-242, frozen apex - Will's
+five reports are CHESTS); the Devourer's stash (R-247.7a owns it); COMPOSITION anywhere
+(R-180/R-181/R-220 own members, weights, group chances and the guaranteed row).
+
+**THE GATE (NO NEW SURFACE WITHOUT A GATE):** `tools/svc_uber_hoards.py` (H1-H8, the shared
+contract) + `tools/gate_uber_hoard_generosity.py` (standalone) + the in-build
+`tools/patches/uber_hoard_generosity.verify()` + `tools/debug/negtest_uber_hoards.py` (12 planted
+defects, all caught, with an anti-inert control). H1 is the check that would have caught b42 the
+day it shipped: does the chest the player opens actually name the table the other gates measured?
+H7 makes Will's record-separation ask an invariant instead of a promise. **H8 (round 2)** asserts
+every hoard's guaranteed unique+relic row matches its OWN difficulty, walking the FAMILY rather than
+the wire so a table that is both orphaned and wrong-tier reds on its own - the exact state
+`svc_obsidianhoard_loot_02/03` shipped in (see `BL-R251-DEBT-4`, retired).
+
+**PROOF (static; `tools/debug/dryrun_r251_uber_hoards.py` applies the wave in memory to `b888f022`):**
+
+| contract | BEFORE | AFTER |
+| --- | --- | --- |
+| R-251 uber hoard generosity (H1-H8) | **RED, 85 findings** (83 + 2 H8) | GREEN |
+| R-240 loot volume (V1-V7b) | GREEN | GREEN |
+| R-181 loot distribution (D1-D9, incl. D7/D7X2) | GREEN | GREEN |
+| R-181 loot ownership (OWN1/OWN2) | GREEN | GREEN |
+| R-180 chest loot breadth | GREEN | GREEN |
+| R-240 chest artifacts | GREEN | GREEN |
+| R-238 relic/unique difficulty tiers | GREEN, **51 branches** | GREEN, **81 branches** |
+
+⚠️ **READ THE LAST ROW AS A METHOD, not a result.** Round 1 omitted it and reported the ruling green;
+on the post-wave db it was **RED with 8 findings**. Its BEFORE green was an artifact of the branches
+being UNREACHABLE, which is the very thing R-251 changes - so a gate that only sees wired surfaces
+must be re-measured on the POST-wave db by any wave that changes what is wired. That is why it now
+sits in the dry-run battery permanently.
+
+**STATUS OF THE SUPERSEDED DECISION:** the b42 repoint is RETIRED, not deleted - `_SVC_CHEST_STD`
+survives as the family roster and as the record of the region brackets the supersession gives up
+(`BL-R251-DEBT-1`).
+
+**DEBT:**
+- `BL-R251-DEBT-1` (accepted loss, stated): the retired repoint gave each chest a REGION-banded
+  base table (Dorus Normal = `boss_default_41-43` vs Ephialtes's `57-59`). The bespoke tables are
+  DIFFICULTY-tiered (01/02/03) but not region-banded, so within Normal an Act2 hoard now pays the
+  same tier pool as an Act5 one. Confined to Normal and one Epic row - every other bracket in the
+  roster was already the shared `63-65` cap.
+- `BL-R251-DEBT-2` (WILL DECISION, arz+Text coupled, deliberately NOT taken here to keep this lane
+  arz-only): the Great Hall of Propontis chest is named **"Obsidian Hoard"**
+  (`svc_dorushoard_*.description = tagSVCObsidianHoard`). Every sibling family has its own name
+  ("Tantalus's Hoard", "Ferryman's Toll-Hoard", "Ephialtes's Dread-Hoard", "Mnemophage's
+  Lethe-Hoard", "Helepolis's Spoil-Hoard"). Minting `tagSVCDorusHoard` forces the arz+Text
+  coupling; a name in the amgoz1 voice for Kroisos the Coin-Drowned is the one open question.
+- `BL-R251-DEBT-3` (in-game, WILL): the closing proof is Will opening the Propontis, Tantalus,
+  Ephialtes and Obsidian chests and a Secret Present box on the next build. Everything above is a
+  database and gate proof.
+- `BL-R251-DEBT-4` - ❌ **RETIRED 2026-08-14 (round 2): it WAS a defect, and the entry that said
+  otherwise was wrong twice over.** The original text read: "`svc_obsidianhoard_loot_02/03` name
+  `01_act4_relics` ... `gate_relic_difficulty_tiers` is GREEN on this (the act-4 relic tables carry
+  difficulty-indexed arrays), so it is recorded rather than 'fixed' blind." Both halves fail:
+  * The GREEN reading was taken on the **pre-R-251** arz, where those chests still named
+    `boss_default_*` so the gate's wire-walk never reached the records. On the **post-R-251** db the
+    same gate reds with **8 findings** naming exactly `svc_obsidianhoard_loot_02` and `_03`.
+    Measured: **51 branches / 0 findings before, 81 / 8 after**.
+  * The parenthetical is not what the gate checks. `gate_relic_difficulty_tiers` maps `NN_act*_relics`
+    straight to a difficulty (`_RELIC_RE` + `_RELIC_FOR`) and reds tier `01` on an Epic/Legendary
+    branch regardless of what the target table contains.
+  FIXED in `_create_obsidian_roulette` (`_OBS_GUAR_{UNIQUE,RELIC}_TIER[t]`), the same per-tier
+  constants Will's 2026-08-08 leak #2 put into `_svc_build_dedicated_hoard` and never into the
+  roulette. Post-fix: **81 branches / 0 findings.**
+  **THE LESSON, which is why this is retired in the ledger rather than quietly amended:** a gate
+  reading taken on an artifact where the surface is UNREACHABLE proves nothing about that surface.
+  R-251 is precisely the wave that makes 30 branches reachable, so every "gate X is green" claim in
+  this ruling had to be re-measured on the POST-wave db, not the shipped one. New invariant `H8`
+  (`svc_uber_hoards`) now walks the FAMILY instead of the wire so an orphaned-and-wrong-tier table
+  reds on its own, and `gate_relic_difficulty_tiers` is in the dry-run battery.
