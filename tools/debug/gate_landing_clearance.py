@@ -596,12 +596,31 @@ def print_result(r):
 # V1 = the DEPLOYED-map wiring. Preferred source = the LIVE build_quest_files
 # (imported below); this embedded copy is a provenance-pinned fallback ONLY.
 # Provenance: build_quest_files.HELOS_HUB_TRAVEL @ da918c5 (world signed-int).
+#
+# ⚠️ BOSSARENA_LANDING_NOTE (R-252 vet round 2, and the reason BL-R252-DEBT-6 exists).
+# The LIVE import is DEAD on main: R-246 retired HELOS_HUB_TRAVEL and TRAVELER_ENTER_OFFERS
+# from build_quest_files, so every run falls back to THIS table - which is a snapshot from
+# da918c5 and has been drifting ever since. Both sets carried `bossarena` at world
+# (-433, 0, -3602), and this lane measured what that actually is: boss_arena.lvl's grid
+# corner is (-561, 0, -3642), so that world point is level-local (128.0, 40.0) - a spot on
+# navmesh component #1, the 1,381,391-cell UNREACHABLE low floor, 89u from the landing the
+# player really arrives on. The R-248 landing is local (136.0, 28.1, 104.0) on component #2
+# (the 92,026-cell dais), authoritative source
+# `build_section_surgery.INJECT_SPECS[...boss_arena.lvl] -> (SVC_RETURN_BOSSARENA_DBR,
+# 136.0, 28.1, 104.0)`; converted with that grid corner it is world (-425, 28, -3538), the
+# value now in both tables. So the arena row audits the real landing instead of an island
+# the encounter is not on.
+# STILL OPEN (BL-R252-DEBT-6): the other rows are unverified against whatever R-246
+# replaced HELOS_HUB_TRAVEL with, including three landings this gate reports as pinned
+# inside placed uber proxies (charon / mnemophage / ephialtes) in levels no lane has
+# re-derived. Only the bossarena row was corrected here, because it is the only one this
+# lane has ground truth for; correcting rows by guesswork would be the same defect again.
 V1_LANDINGS = [
     ('garden', (1173, -39, -4001), 'tagSVCHelosToGarden'),
     ('secret', (-2396, 2, -5790), 'tagSVCHelosToSecret'),
     ('sparta', (-5602, -2, -1409), 'tagSVCHelosToSparta'),
     ('uber', (-2438, 10, -2450), 'tagSVCHelosToUber'),
-    ('bossarena', (-433, 0, -3602), 'tagSVCTestHubToBossArena'),
+    ('bossarena', (-425, 28, -3538), 'tagSVCTestHubToBossArena'),  # R-252 CORRECTION, see BOSSARENA_LANDING_NOTE
     ('warband', (5680, 1, 3285), 'tagSVCHelosToWarband'),
     ('dorus', (312, 1, -8462), 'tagSVCHelosToDorus'),
     ('tantalus', (-342, -15, -10095), 'tagSVCHelosToTantalus'),
@@ -626,7 +645,7 @@ V2_LANDINGS = [
     ('secret', (-2396, 2, -5790), 'tagSVCHelosToSecret'),
     ('sparta', (-6587, 1, -3180), 'tagSVCHelosToSparta'),        # Athens catacomb DOOR (retarget); b44 NUDGE off AG_Beastmen_Gorgon (was -6588: 2.72u -> 3.69u clr)
     ('uber', (-7793, 1, -3793), 'tagSVCHelosToUber'),            # Knossos->Uber maze03 DOOR (retarget)
-    ('bossarena', (-433, 0, -3602), 'tagSVCTestHubToBossArena'),
+    ('bossarena', (-425, 28, -3538), 'tagSVCTestHubToBossArena'),  # R-252 CORRECTION, see BOSSARENA_LANDING_NOTE
     ('warband', (5699, 1, 3315), 'tagSVCHelosToWarband'),
     ('dorus', (330, 1, -8380), 'tagSVCHelosToDorus'),            # Medea tomb ENTRANCE (~82u off Dorus)
     ('tantalus', (-346, -12, -10131), 'tagSVCHelosToTantalus'),  # Styx swamp stairs (~36u off)

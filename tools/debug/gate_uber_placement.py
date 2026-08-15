@@ -75,6 +75,17 @@ Operationalised on the level's own 0x0b navmesh, with no hand-drawn routes:
   failure instead of a printed remark, because that reading can no longer be an artefact
   of looking at the wrong island.
 
+  ISLAND ADVISORY (R-252 vet round 2). Selecting the encounter's own component also makes
+  a new fact visible, so the gate states it: when that component is smaller than the
+  encounter's own R_FOOTPRINT disc it cannot hold the fight being audited, and the gate
+  prints an ISLAND advisory plus an end-of-run summary. It is deliberately NOT a verdict -
+  a small island can be legitimately reached by a door or portal this oracle does not
+  model, and the finding belongs to whichever lane owns the placement. Measured today:
+  minobossproxy_aniketos (Connector04.LVL) sits alone on component #19 of 68, 277 of
+  285,559 cells; under the old comps[0] rule the same placement read OFF-MESH>3u with a
+  106.9u route distance, so the signal existed but pointed at the wrong thing. Fixing the
+  component choice must not make it vanish.
+
 RADII are grounded in this repo's own established encounter numbers, not invented:
   R_FOOTPRINT 6.0u - the "boss + 2 champion escorts + hoard chest" ring every uber survey
                      in build_section_surgery already reports as clr@6.
@@ -750,6 +761,7 @@ def main():
 
     fails = []
     accepted_hits = []
+    islands = []
     navcache = {}
     for suffix, key, dbr, kind, x, y, z in sorted(placements):
         label, want = EXPECTED_AREA.get(suffix, ('(unregistered host)', None))
@@ -815,6 +827,28 @@ def main():
               % (nav.comp_idx + 1, base.ncomp, len(nav.main),
                  sum(len(c) for c in base.comps),
                  '   <- ENCOUNTER-SELECTED (not the largest)' if nav.comp_idx else ''))
+        # R-252 vet round 2: per-encounter component selection makes a NEW fact visible,
+        # so the gate has to say it out loud. Selecting the encounter's own island fixes
+        # the vacuous "OFF-MESH>3u" reading, but it can also silently re-home a placement
+        # onto an island far too small to fight on - minobossproxy_aniketos in
+        # Connector04.LVL lands on component #19 of 68, 277 of 285,559 cells, and reads a
+        # comfortable 0.11u on-mesh. Under the OLD comps[0] rule that same placement read
+        # OFF-MESH>3u with a 106.9u route distance, i.e. the alarm existed but pointed at
+        # the wrong thing; the fix must not make it disappear instead.
+        # THRESHOLD, derived from this gate's own R_FOOTPRINT rather than invented: an
+        # island smaller than the encounter's 6.0u footprint disc cannot hold the fight
+        # the gate is auditing (boss + 2 champion escorts + hoard chest).
+        # ADVISORY, NEVER A VERDICT: it is a reachability SIGNAL, not a proof - a small
+        # island can be legitimately reachable via a door/portal this oracle does not
+        # model - and turning it into a failure would red placements outside the lane
+        # that added the selection rule. It goes to the debt register instead.
+        _foot_cells = math.pi * (a.r_foot ** 2) / (nav.cs ** 2)
+        if nav.comp_idx and len(nav.main) < _foot_cells:
+            notes.append('ISLAND: the encounter stands on a %d-cell component, smaller '
+                         'than its own %.1fu footprint disc (~%d cells). Reachability is '
+                         'unproven by this oracle - verify a door/portal reaches it.'
+                         % (len(nav.main), a.r_foot, int(_foot_cells)))
+            islands.append((suffix, dbr.split(BS)[-1], nav.comp_idx + 1, len(nav.main)))
         print('    gateways : %d clusters, %d connected pairs ; off-path share %.0f%% (%s)'
               % (r['gateways'], r['pairs'], 100 * r['offpath_frac'],
                  'alternatives exist' if avoidable else 'level is essentially all corridor'))
@@ -833,6 +867,14 @@ def main():
               'registered as BACKLOG debt:' % len(accepted_hits))
         for k in accepted_hits:
             print('   %-34s %-30s %s' % (k[0], k[1], ACCEPTED_ON_PATH[k][:70] + '...'))
+        print('')
+    if islands:
+        print('ISLAND ADVISORIES (%d) - encounters standing on a navmesh component too '
+              'small for their own footprint. NOT gating (a door or portal this oracle '
+              'does not model may reach them); register each as debt and prove it:'
+              % len(islands))
+        for s, d, ci, n in islands:
+            print('   %-34s %-30s component #%d, %d cells' % (s, d, ci, n))
         print('')
     if fails:
         print('GATE RED: %d placement(s) fail' % len(fails))
