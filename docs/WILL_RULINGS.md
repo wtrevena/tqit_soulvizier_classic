@@ -7812,7 +7812,8 @@ deployed map, not inferred):
 3. **QUEST-PROXY CONFIG.** The proxy carried `quest=1` and **no `chanceToRun` field**, against the
    shipped placed-uber exemplar `q_tantalus_lone` (`quest=0`, `chanceToRun=100`, `difficulty_04`).
 
-**RULING / FIX (Levels + Quests + arz ship COUPLED):**
+**RULING / FIX (Levels + Quests + arz + Text ship COUPLED - all four; the wave mints one new tag,
+`tagSVCAithonHoard`, so `build_text_arc` + `validate_tags` ride the same deploy):**
 - **The arena boss becomes a PLACED encounter, not a quest spawn.** The spawner proxy is placed
   statically in `boss_arena.lvl` at SV's own marker `location_bossarenacenter` (level-local
   `(131.68, 27.11, 129.08)`, `flags=0`, exemplar rotation, no 0x14) - the same uber-placement

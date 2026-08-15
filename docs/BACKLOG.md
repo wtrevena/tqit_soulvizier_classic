@@ -43,7 +43,7 @@
 ---
 
 
-## LANE RECORD - R-252 BOSS ARENA SPAWN GUARANTEE + POLISH (branch `fix/boss-arena-spawn-and-polish` from 0ea001a/build92-ship, 2026-08-14; **MAP + QUESTS + arz** wave, COUPLED; STATIC gates green in the lane worktree, **NOT built / NOT deployed** - the heavy map build + the gate battery + promote are the orchestrator's)
+## LANE RECORD - R-252 BOSS ARENA SPAWN GUARANTEE + POLISH (branch `fix/boss-arena-spawn-and-polish` from 0ea001a/build92-ship, 2026-08-14; **MAP + QUESTS + arz + Text** wave, ALL FOUR COUPLED - the wave adds one new tag `tagSVCAithonHoard`, so `build_text_arc` + `validate_tags` ride the same deploy; STATIC gates green in the lane worktree, **NOT built / NOT deployed** - the heavy map build + the gate battery + promote are the orchestrator's)
 
 **THE REPORT (BL-W0814-12, Will verbatim):** "when i went to the boss arena this time there was no
 boss there. does he not spawn 100% of the time? the boss arena needs more work."
