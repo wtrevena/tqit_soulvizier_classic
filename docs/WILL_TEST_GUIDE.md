@@ -1,6 +1,47 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> # 🔥 R-253 THE BOSS ARENA NOW ALWAYS HAS ITS BOSS (2026-08-15) - READ THIS FIRST
+> # 💀 R-254 DYING COSTS HALF WHAT IT DID (2026-08-15) - READ THIS FIRST
+>
+> **⚠️ NOT IN A BUILD YET.** This one is code-complete and gated but **deliberately ships no build**,
+> so it is **not on DEV and not on Steam**. Nothing to test until it rides the next deploy - the
+> numbers below are what that build will deliver. (Everything under it in this guide IS live.)
+>
+> **Your report, verbatim:** "lets reduce the penalty for dying by another 50% from what it currently
+> is at."
+>
+> **Done - and measured against what you are actually playing, not against the original game.** You
+> were already on the -90% penalty from the last pass, so "another 50% from what it currently is at"
+> was applied to THAT: **every death now costs exactly half what it costs you today.**
+>
+> | you are level | difficulty | it costs you today | it will cost |
+> | --- | --- | --- | --- |
+> | 55 | Legendary | 12,940 XP | **6,470 XP** |
+> | 85 | Normal | 6,824 XP | **3,412 XP** |
+> | 85 | Legendary | 47,765 XP | **23,883 XP** |
+> | 100 | Legendary | 50,000 XP | **25,000 XP** |
+>
+> **The tombstone still gives back 100% of what you lost.** That was your earlier ruling ("lets make
+> the tombstone xp recovery match the xp lost upon dying") and it is the part worth understanding:
+> we built it as an **equality**, not as a fixed percentage, precisely so that a change like this one
+> could not break it. The game hands your grave the amount it actually took from you, so when the
+> penalty halved, the recovery halved with it **automatically - we did not touch the tombstone code
+> at all.** Had we hardcoded "10%" back then, this change would have quietly turned dying-and-walking-
+> back into a way to GAIN experience. It cannot.
+>
+> So at level 85 Legendary: you die and lose 23,883 XP, you walk back to your marker, you get 23,883
+> XP back. Exactly, on every difficulty, at every level.
+>
+> **One thing to know:** the high-level cap moved too (50,000 -> 25,000). It had to. The penalty
+> grows with the cube of your level, so above roughly level 87 on Legendary you were hitting a flat
+> ceiling - and if we had halved the formula but left the ceiling alone, **you would have felt no
+> change whatsoever** at exactly the levels you were complaining about. Both moved together.
+>
+> **THE TEST (once it is in a build):** die on purpose at a level you know, note the XP you lose ->
+> **PASS = it is half what you are used to.** Then walk back to the tombstone -> **PASS = you get
+> back exactly the number you just lost, not half of it.** FAIL = the loss is unchanged (especially
+> at high level), or the marker returns less than it took.
+
+> # 🔥 R-253 THE BOSS ARENA NOW ALWAYS HAS ITS BOSS (2026-08-15)
 >
 > **Your report, verbatim:** "when i went to the boss arena this time there was no boss there. does
 > he not spawn 100% of the time? the boss arena needs more work."

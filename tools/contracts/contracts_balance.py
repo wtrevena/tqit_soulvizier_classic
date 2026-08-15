@@ -4,7 +4,11 @@ Scope (deliberately narrow): the handful of GLOBAL, engine-loaded balance knobs 
 live on ONE record each and that a single stray write can silently revert, taking a
 Will ruling with it. Everything here is asserted over the SHIPPED .arz.
 
-Today this domain owns exactly one thing: the on-death EXPERIENCE penalty (R-80).
+This domain owns the on-death EXPERIENCE economy: the death penalty itself
+(R-80, retuned by R-254) and the death-marker recovery that must EQUAL it
+(R-109). They live on the SAME record and are ruled as a pair, so they are gated
+as a pair - a lane that retunes one and not the other is exactly the regression
+these contracts exist to red.
 
 WHY IT NEEDS A PERMANENT GATE
 -----------------------------
@@ -33,7 +37,7 @@ ENGINE GROUND TRUTH (measured 2026-07-28 from the shipped binaries):
     difficulty entering ONLY through `gameDifficultyDV` (0/1/2).
   * Vanilla TQAE, SV 0.98i, SV 0.9 and SV 0.41 all ship the identical vanilla triple
     `(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 9)` / 500000 / 0, so any
-    deviation from the R-80 values is a regression, never inherited upstream drift.
+    deviation from the ruled values is a regression, never inherited upstream drift.
 
 INTERFACE (composes with the other domain modules without shared files):
   run(cfg: dict) -> list[dict]      cfg keys used: arz
@@ -46,27 +50,47 @@ STANDALONE:
   python tools/contracts/contracts_balance.py <arz>
 """
 import json
+import math
+import struct
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # tools/ on path
 
 # --------------------------------------------------------------------------- #
-# The ruled values (R-80). Single source of truth for the gate; the build-side
-# module tools/patches/death_xp_penalty.py carries the same constants and this
-# contract cross-checks them so the two can never silently diverge.
+# The ruled values (R-80 as retuned by R-254, plus R-109). Single source of truth
+# for the gate; the build-side modules tools/patches/death_xp_penalty.py and
+# tools/patches/tombstone_xp_recovery.py carry the same constants and this
+# contract cross-checks them so the two sides can never silently diverge.
 # --------------------------------------------------------------------------- #
 GAMEENGINE = r'records\xpack\game\gameengine.dbr'
 
-RULED_EQUATION = '(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 90)'
-RULED_MAX = 50000
+RULED_EQUATION = '(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 180)'
+RULED_MAX = 25000
 RULED_MIN = 0
+
+# The pair R-80 shipped through build92, SUPERSEDED by R-254 ("another 50%").
+# Named, not anonymous: "the retune did not land" is a distinct regression from
+# "the whole ruling reverted to vanilla", and the negative tests plant both.
+SUPERSEDED_R80_EQUATION = '(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 90)'
+SUPERSEDED_R80_MAX = 50000
 
 VANILLA_EQUATION = '(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 9)'
 VANILLA_MAX = 500000
-RULED_REDUCTION = 0.10          # keep 10% of the vanilla loss == the ruled -90%
+RULED_REDUCTION = 0.05          # keep 5% of the vanilla loss == -95% (R-80 + R-254)
 
-DTYPE_INT, DTYPE_STRING = 0, 2
+# R-109: the death marker returns `trunc(realised_loss * RedemptionMultiplier)`,
+# so 1.0 is the equality. 0.5 is vanilla TQAE (and the engine loader's default),
+# which is what the five dead lookalikes still carry.
+GRAVESTONE = r'records\xpack\item\gravestones\gravestonegreece.dbr'
+GRAVESTONE_CLASS = 'FixedItemGravestone'
+REDEMPTION_FIELD = 'RedemptionMultiplier'
+RULED_MULTIPLIER = 1.0
+VANILLA_MULTIPLIER = 0.5
+FLOAT32_EXACT_INT_BOUND = 1 << 24
+_TOL = 1e-9
+
+DTYPE_INT, DTYPE_FLOAT, DTYPE_STRING = 0, 1, 2
 
 # The five deathPenalty-bearing records the engine never loads. They must stay at
 # their own vanilla values: an edit here is either a wrong-record fix (a silent
@@ -81,17 +105,37 @@ DEAD_LOOKALIKES = {
 }
 
 CONTRACTS = [
-    {'id': 'BAL-DEATHXP-1', 'name': 'Death XP penalty holds the ruled -90% values',
+    {'id': 'BAL-DEATHXP-1', 'name': 'Death XP penalty holds the ruled -95% values',
      'asserts': 'the engine-loaded xpack gameengine carries deathPenaltyEquation '
-                '"/ 90", deathPenaltyMax 50000, deathPenaltyMin 0, with STR/INT '
+                '"/ 180", deathPenaltyMax 25000, deathPenaltyMin 0, with STR/INT '
                 'dtypes intact',
-     'derived_from': 'Will R-80 2026-07-27 ("cut by like 90%"); Game.dll loads only '
-                     'Records/XPack/Game/GameEngine.dbr and reads exactly these 3 fields'},
-    {'id': 'BAL-DEATHXP-2', 'name': 'Death XP penalty really is a 90% cut',
-     'asserts': 'clamp(shipped equation, min, max) == 0.10 x clamp(vanilla equation, '
+     'derived_from': 'Will R-80 2026-07-27 ("cut by like 90%") retuned by R-254 '
+                     '2026-08-14 ("another 50% from what it currently is at"); '
+                     'Game.dll loads only Records/XPack/Game/GameEngine.dbr and '
+                     'reads exactly these 3 fields'},
+    {'id': 'BAL-DEATHXP-2', 'name': 'Death XP penalty really is a 95% cut',
+     'asserts': 'clamp(shipped equation, min, max) == 0.05 x clamp(vanilla equation, '
                 '0, 500000) at every level 1..maxPlayerLevel on Normal/Epic/Legendary',
-     'derived_from': 'a cosmetic divisor edit that leaves the 500000 cap in place '
-                     'delivers only -84% in the high-level regime the ruling names'},
+     'derived_from': 'halving the divisor while leaving the previous cap in place '
+                     'under-delivers in exactly the capped high-level regime the '
+                     'ruling names (the "looks retuned but is not" regression)'},
+    {'id': 'BAL-TOMBSTONE-1', 'name': 'Death-marker recovery multiplier holds R-109',
+     'asserts': 'RedemptionMultiplier == 1.0 (FLOAT) on the engine-loaded xpack '
+                'gameengine, the 5 dead lookalikes still carry vanilla 0.5, and the '
+                'ONE gravestone record Game.dll hard-codes still exists as '
+                'Class FixedItemGravestone',
+     'derived_from': 'Will R-109 2026-07-30 ("lets make the tombstone xp recovery '
+                     'match the xp lost upon dying"); Game.dll computes recovered = '
+                     'trunc(realised_loss * RedemptionMultiplier), so 1.0 IS the '
+                     'equality and 0.5 punishes the player twice'},
+    {'id': 'BAL-TOMBSTONE-2', 'name': 'Recovery EQUALS the shipped death penalty',
+     'asserts': 'trunc(float32(lost) * shipped multiplier) == lost for the penalty '
+                'this arz actually ships, at every level x difficulty and across the '
+                'realised-loss domain, with the cap inside the float32 exact-integer '
+                'bound 2^24',
+     'derived_from': 'R-109 rules the INVARIANT, not the number: it is re-derived '
+                     'from the SHIPPED penalty knobs so a retune like R-254 proves '
+                     'itself instead of silently desynchronising the marker'},
     {'id': 'BAL-DEATHXP-3', 'name': 'Dead gameengine lookalikes untouched',
      'asserts': 'the 5 non-engine-loaded deathPenalty-bearing records still carry '
                 'their own vanilla values',
@@ -131,6 +175,27 @@ def clamp_penalty(level, dv, divisor, cap, floor=0):
     """The engine's clamp(equation, deathPenaltyMin, deathPenaltyMax)."""
     raw = (float(level) ** 3) * ((1.0 + (3.0 * dv)) / float(divisor))
     return min(max(raw, floor), float(cap))
+
+
+def _f32(x):
+    """Round through IEEE binary32, the way the engine stores an equation result
+    with `fstp dword ptr` and reloads it for `mulss`."""
+    return struct.unpack('<f', struct.pack('<f', float(x)))[0]
+
+
+def xp_lost_int(level, dv, divisor, cap, floor=0):
+    """The INTEGER the engine subtracts on death, modelled from
+    GetPlayerDeathExperiencePenalty (Game.dll VA 0x101945a0): float32 equation
+    result, floored at 0, rounded half-up (+0.5 then fistp/chop), then clamped."""
+    raw = _f32(max((float(level) ** 3) * ((1.0 + (3.0 * dv)) / float(divisor)), 0.0))
+    return min(max(math.trunc(float(raw) + 0.5), int(floor)), int(cap))
+
+
+def xp_recoverable(lost, multiplier):
+    """What the death marker returns, modelled from
+    GetPlayerExperienceRedemptionAmount (Game.dll VA 0x10194f60):
+    trunc(float32(realised_loss) * RedemptionMultiplier)."""
+    return math.trunc(_f32(float(lost)) * float(multiplier))
 
 
 def _divisor_of(equation):
@@ -173,7 +238,7 @@ class Ctx(object):
 def _build_context(cfg):
     from arz_patcher import ArzDatabase
     db = ArzDatabase.from_arz(Path(cfg['arz']))
-    wanted = ([GAMEENGINE] + list(DEAD_LOOKALIKES) + [PLAYERLEVELS])
+    wanted = ([GAMEENGINE] + list(DEAD_LOOKALIKES) + [PLAYERLEVELS, GRAVESTONE])
     by_lower = {_norm(n): n for n in db.record_names()}
     out = {}
     for rec in wanted:
@@ -205,8 +270,10 @@ def check_deathxp_values(ctx):
     eq = ctx.value(GAMEENGINE, 'deathPenaltyEquation')
     if eq != RULED_EQUATION:
         out.append(_v(cid, 'P0', GAMEENGINE,
-                      'deathPenaltyEquation is not the R-80 value (death XP penalty '
-                      'reverted or re-tuned without a ruling)',
+                      'deathPenaltyEquation is not the ruled value (death XP penalty '
+                      'reverted, or re-tuned without a ruling). The ruled state is '
+                      'R-80 as retuned by R-254; an arz built before R-254 lands '
+                      'shows the superseded "/ 90" here',
                       'want %r, got %r' % (RULED_EQUATION, eq)))
     elif ctx.dtype(GAMEENGINE, 'deathPenaltyEquation') != DTYPE_STRING:
         out.append(_v(cid, 'P0', GAMEENGINE,
@@ -221,7 +288,8 @@ def check_deathxp_values(ctx):
         mx_i = None
     if mx_i != RULED_MAX:
         out.append(_v(cid, 'P0', GAMEENGINE,
-                      'deathPenaltyMax is not the R-80 cap',
+                      'deathPenaltyMax is not the ruled cap (R-80 as retuned by '
+                      'R-254; an arz built before R-254 lands shows 50000 here)',
                       'want %d, got %r' % (RULED_MAX, mx)))
     elif ctx.dtype(GAMEENGINE, 'deathPenaltyMax') != DTYPE_INT:
         out.append(_v(cid, 'P0', GAMEENGINE,
@@ -357,10 +425,138 @@ def check_xp_gain_untouched(ctx):
     return out
 
 
+# --------------------------------------------------------------------------- #
+# BAL-TOMBSTONE-1 - the R-109 multiplier is on the engine-loaded record
+# --------------------------------------------------------------------------- #
+def check_tombstone_multiplier(ctx):
+    cid = 'BAL-TOMBSTONE-1'
+    out = []
+    if not ctx.has(GAMEENGINE):
+        return []
+    got = ctx.value(GAMEENGINE, REDEMPTION_FIELD)
+    if got is None:
+        out.append(_v(cid, 'P0', GAMEENGINE,
+                      '%s is absent - the engine would fall back to its loader '
+                      'default 0.5 and the death marker would return HALF the XP '
+                      'the death penalty took' % REDEMPTION_FIELD,
+                      'Game.dll VA 0x1019b8c3 pushes 0x3f000000 (0.5f) as the default'))
+    else:
+        try:
+            mult = float(got)
+        except (TypeError, ValueError):
+            mult = None
+        if mult is None or abs(mult - RULED_MULTIPLIER) > _TOL:
+            out.append(_v(cid, 'P0', GAMEENGINE,
+                          '%s is not the R-109 identity - the death marker no longer '
+                          'returns what the death penalty took' % REDEMPTION_FIELD,
+                          'want %.1f, got %r (%s)'
+                          % (RULED_MULTIPLIER, got,
+                             'free-XP loop' if (mult or 0) > RULED_MULTIPLIER
+                             else 'punishes the player twice')))
+        elif ctx.dtype(GAMEENGINE, REDEMPTION_FIELD) != DTYPE_FLOAT:
+            out.append(_v(cid, 'P0', GAMEENGINE,
+                          '%s dtype corrupted (must stay FLOAT)' % REDEMPTION_FIELD,
+                          'dtype=%r want %r'
+                          % (ctx.dtype(GAMEENGINE, REDEMPTION_FIELD), DTYPE_FLOAT)))
+
+    for rec in DEAD_LOOKALIKES:
+        if not ctx.has(rec):
+            continue
+        v = ctx.value(rec, REDEMPTION_FIELD)
+        if v is None:
+            continue
+        try:
+            fv = float(v)
+        except (TypeError, ValueError):
+            fv = None
+        if fv is None or abs(fv - VANILLA_MULTIPLIER) > _TOL:
+            out.append(_v(cid, 'P1', rec,
+                          'a gameengine record the engine never loads had %s edited - '
+                          'either the wrong record was fixed (in-game no-op) or the '
+                          'ruled value was mirrored into a decoy' % REDEMPTION_FIELD,
+                          'want %.1f, got %r' % (VANILLA_MULTIPLIER, v)))
+
+    if not ctx.has(GRAVESTONE):
+        out.append(_v(cid, 'P0', GRAVESTONE,
+                      'the ONE gravestone record is gone - without it there is no '
+                      'death marker for the recovery to come from (RETIREMENT '
+                      'PROTOCOL: this record is design law, not dead content)',
+                      'Game.dll hard-codes Records/XPack/Item/Gravestones/'
+                      'GravestoneGreece.dbr at 0x00344554'))
+    else:
+        cls = ctx.value(GRAVESTONE, 'Class')
+        if str(cls) != GRAVESTONE_CLASS:
+            out.append(_v(cid, 'P0', GRAVESTONE, 'the gravestone record was de-classed',
+                          'want %r, got %r' % (GRAVESTONE_CLASS, cls)))
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# BAL-TOMBSTONE-2 - recovered == lost, re-derived from the SHIPPED penalty
+# --------------------------------------------------------------------------- #
+def check_tombstone_equality(ctx):
+    cid = 'BAL-TOMBSTONE-2'
+    if not ctx.has(GAMEENGINE):
+        return []
+    eq = ctx.value(GAMEENGINE, 'deathPenaltyEquation')
+    div = _divisor_of(eq or '')
+    mult = ctx.value(GAMEENGINE, REDEMPTION_FIELD)
+    try:
+        cap = int(ctx.value(GAMEENGINE, 'deathPenaltyMax'))
+        floor = int(ctx.value(GAMEENGINE, 'deathPenaltyMin'))
+        mult = float(mult)
+    except (TypeError, ValueError):
+        return [_v(cid, 'P0', GAMEENGINE,
+                   'the penalty knobs or the recovery multiplier are unreadable, so '
+                   'the R-109 equality cannot be re-derived',
+                   'max=%r min=%r %s=%r'
+                   % (ctx.value(GAMEENGINE, 'deathPenaltyMax'),
+                      ctx.value(GAMEENGINE, 'deathPenaltyMin'),
+                      REDEMPTION_FIELD, ctx.value(GAMEENGINE, REDEMPTION_FIELD)))]
+    if div is None:
+        return [_v(cid, 'P0', GAMEENGINE,
+                   'deathPenaltyEquation no longer has the vanilla SHAPE, so the '
+                   'recovery equality cannot be verified numerically', 'got %r' % (eq,))]
+    if cap <= 0 or cap >= FLOAT32_EXACT_INT_BOUND:
+        return [_v(cid, 'P0', GAMEENGINE,
+                   'deathPenaltyMax is outside the range the engine round-trip can '
+                   'return exactly, so recovery == loss is not provable',
+                   'cap %d, must be 0 < cap < %d (float32 exact-integer bound)'
+                   % (cap, FLOAT32_EXACT_INT_BOUND))]
+
+    # The whole shipped domain, then the realised-loss domain (the engine hands the
+    # grave the amount ACTUALLY removed, which the level floor can make smaller).
+    for lvl in range(1, int(ctx.max_player_level) + 1):
+        for dv in (0, 1, 2):
+            lost = xp_lost_int(lvl, dv, div, cap, floor)
+            back = xp_recoverable(lost, mult)
+            if back != lost:
+                return [_v(cid, 'P0', GAMEENGINE,
+                           'the death marker does not return what the death penalty '
+                           'took (%s)'
+                           % ('FREE-XP LOOP' if back > lost
+                              else 'the player is punished twice'),
+                           'level %d difficulty DV=%d: lost %d XP, recovered %d XP '
+                           '(multiplier %r, divisor %g, cap %d)'
+                           % (lvl, dv, lost, back, mult, div, cap))]
+    for u in (0, 1, 2, 3, 7, 999, 12345, 65535, 1 << 20, cap - 1, cap,
+              FLOAT32_EXACT_INT_BOUND - 1):
+        if u < 0:
+            continue
+        if xp_recoverable(u, mult) != u:
+            return [_v(cid, 'P0', GAMEENGINE,
+                       'the death marker does not return a realised loss exactly',
+                       'realised loss %d XP -> recovered %d XP (multiplier %r)'
+                       % (u, xp_recoverable(u, mult), mult))]
+    return []
+
+
 _CHECKS = [
     ('BAL-DEATHXP-1', check_deathxp_values),
     ('BAL-DEATHXP-2', check_deathxp_reduction),
     ('BAL-DEATHXP-3', check_dead_lookalikes),
+    ('BAL-TOMBSTONE-1', check_tombstone_multiplier),
+    ('BAL-TOMBSTONE-2', check_tombstone_equality),
     ('BAL-XPGAIN-1', check_xp_gain_untouched),
 ]
 

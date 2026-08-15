@@ -8755,3 +8755,144 @@ negatives, including a replay of the 2026-08-14 four-way R-250 collision.
   They must be re-run against the BUILT artifacts of the deploy that carries this wave, together
   with `gate_ruling_ids --vs main --branches` (the ledger moves under parallel lanes) and
   `gate_landing_clearance --placements r253`.
+
+---
+
+## R-254 [2026-08-14] IMPLEMENTED (branch `fix/death-penalty-halve-again`, modules `tools/patches/death_xp_penalty.py` + `tools/patches/tombstone_xp_recovery.py`) - HALVE THE DEATH XP PENALTY AGAIN; THE TOMBSTONE RECOVERY FOLLOWS IT AUTOMATICALLY (R-109)
+
+> **NUMBER NOTE (rulings-ledger process law 1).** This lane originally took **R-251**, allocated
+> off `0ea001a`/build92 - the same four-way collision `tools/gate_ruling_ids.py` was built to catch
+> (R-253's number note enumerates it: this branch was one of the two that claimed R-251). By the
+> time the lane reached implementation, main had shipped a DIFFERENT `R-251` as build95
+> (`fix/chest-generosity-shared-cause`, the uber/boss chest generosity), a DIFFERENT `R-252` as
+> build96 and `R-253` as build97. **The shipped number always wins**, so this ruling and its debts
+> are **`R-254` / `BL-R254-DEBT-1..2`** everywhere. **No content changed** - 41 textual
+> substitutions across the four files this lane owns, plus three scoped edits in
+> `tools/patches/__init__.py` (hand-edited, never swept, because it also carries main's real R-251).
+> `docs/reports/r251_logs/` was renamed `r254_logs/`. Same treatment as R-231 -> R-244 (build88),
+> R-250 -> R-251 (build95), R-251 -> R-252 (build96) and R-252 -> R-253 (build97).
+> `py tools/gate_ruling_ids.py --vs main --branches` PASSES on this branch.
+
+**Will's report, VERBATIM (2026-08-14 live play, BL-W0814-4):**
+> "lets reduce the penalty for dying by another 50% from what it currently is at."
+
+**THE READING.** "Another 50% **from what it currently is at**" is a scalar on the SHIPPED state,
+not on vanilla. The shipped state was R-80's pair (divisor 90, cap 50,000), live since build54-dev
+and on Steam through build92. So: **divisor 90 -> 180, cap 50,000 -> 25,000**, which is exactly
+half the loss build92 shipped at every level on every difficulty, and a uniform **x0.05 of
+vanilla**. `deathPenaltyMin` stays **0** (untouched; 0 x k is still 0).
+
+**WHY THE CAP MOVES TOO - this is the whole defect class.** The penalty is cubic in level and this
+mod ships `maxPlayerLevel = 1000`, so the cap bites at the top of the range. Halving only the
+equation and leaving the cap at 50,000 would deliver LESS than the ruled half in exactly the capped
+tail - the high-level regime R-80 was opened about. Measured: at L100 Legendary the equation alone
+gives 250,000, the old cap clamps it to 50,000, and the player sees **no change at all**. Scaling
+both keeps the reduction exactly 50% everywhere. `BAL-DEATHXP-2` and negtest plant 3 exist solely
+to red this half-fix, and the gate's evidence string deliberately names a high level (>= 80) rather
+than level 1, because the bug is invisible at low level.
+
+**MECHANISM, UNCHANGED FROM R-80.** One knob-set on one record. `Game.dll` hard-codes
+`Records/XPack/Game/GameEngine.dbr` and reads `deathPenaltyEquation` / `deathPenaltyMin` /
+`deathPenaltyMax`, evaluated as `clamp(equation, min, max)`. Difficulty enters ONLY through
+`gameDifficultyDV` (0/1/2), so Normal : Epic : Legendary keep their 1 : 4 : 7 weighting. The edit
+is a single divisor token, adding no new operator or nesting the engine's (narrow) equation parser
+must accept. **FIVE dead lookalike records** also carry `deathPenalty*` fields and the engine never
+loads any of them; they stay byte-equal to their vanilla values and `BAL-DEATHXP-3` plus a negtest
+plant prove we did not shotgun them.
+
+### THE R-109 COUPLING: THE RECOVERY FOLLOWED WITH ZERO EDITS, AND THAT IS THE POINT
+
+R-109 [2026-07-30] verbatim: *"lets make the tombstone xp recovery match the xp lost upon dying"* -
+ruled as an **INVARIANT, not a number** ("Implement the equality; do not hardcode 10%"). This lane
+is **the first live exercise of that property, and it held**: `tombstone_xp_recovery.py` was **not
+edited at all**. Not one value.
+
+The reason is measured, not argued. `Game.dll` computes
+
+    recovered = trunc( (float)(XP ACTUALLY LOST ON DEATH) * RedemptionMultiplier )
+
+where `GetPlayerExperienceRedemptionAmount` (VA `0x10194f60`) reads the **realised loss** that
+`RegisterExperienceLoss` (VA `0x10194540`) stored at `GraveInfo+0x0C`. The marker **never reads
+`deathPenalty*` at all**. So retuning the penalty carries the recovery with it by construction.
+Had R-109 been implemented as the "10% of the original" form Will first floated, R-254 would have
+silently desynchronised the marker and re-opened the exact free-XP/double-punish drift R-109 named.
+
+**PROOF, NOT ASSERTION.** `tombstone_xp_recovery.verify()` re-derives `recovered == lost`
+numerically against the **LIVE penalty knobs it reads off the db** (divisor 180, cap 25,000, min 0)
+- 3,012 checked points over L1-1000 x N/E/L plus the realised-loss domain - and separately re-proves
+the float32 exact-integer headroom: the cap is now **671x inside** 2^24 (the headroom GREW when the
+penalty was cut). Negtest **plant 7** retunes the penalty (divisor 180 -> 360, cap -> 123,456) and
+**plant 8** halves it exactly the way this ruling does, and both must **ACCEPT** with no edit on the
+recovery side. Both do.
+
+### MEASURED BEFORE/AFTER, BOTH WAYS (R-109's reporting clause)
+
+Full table: `docs/reports/r254_logs/r254_before_after_table.txt`, regenerated from the build97
+canonical arz (`98741a4eb59957a4ebe3b6101bbcd49b`) with
+`py tools/patches/tombstone_xp_recovery.py --table <arz> --applied`. Every LOST/BACK figure is an
+INTEGER because the engine rounds (`+0.5`, chop) before the clamp. Excerpt:
+
+| level | difficulty | LOST vanilla | LOST build92 | **LOST now** | BACK @0.5 (pre-R-109) | **BACK now** | back/lost |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 25 | Legendary | 12,153 | 1,215 | **608** | 304 | **608** | 1.0000 |
+| 55 | Legendary | 129,403 | 12,940 | **6,470** | 3,235 | **6,470** | 1.0000 |
+| 85 | Normal | 68,236 | 6,824 | **3,412** | 1,706 | **3,412** | 1.0000 |
+| 85 | Legendary | 477,653 | 47,765 | **23,883** | 11,941 | **23,883** | 1.0000 |
+| 100 | Legendary | 500,000 | 50,000 | **25,000** | 12,500 | **25,000** | 1.0000 |
+
+Every row: **LOST now is exactly half of LOST build92**, and **back/lost is exactly 1.0000** - the
+equality is proved across all three difficulties, not asserted. The L100 Legendary row is the
+capped tail that the cap-forgetting half-fix would have left at 50,000.
+
+### SCOPE + GATES
+
+**SCOPE:** two fields on one record. `experienceEquation` (XP GAIN), the XP curve
+`records\creature\pc\playerlevels.dbr`, `maxPlayerLevel` and all five dead lookalikes are asserted
+UNMOVED (`BAL-XPGAIN-1`, `BAL-DEATHXP-3`). Nothing else in the XP economy moves. The equation has
+no party-size term, so co-op behaves exactly like single-player at the new rate.
+
+**PRE-STATE HANDLING (the "next build fails loud" trap).** `apply()` asserts a known pre-state and
+raises otherwise. The **superseded R-80 pair is kept as a NAMED, recognised pre-state** alongside
+vanilla and the ruled pair, because every arz already on disk carries it - without that, the next
+incremental build and every `--negtest` / `--table` run over a shipped artifact would fail loud on a
+legal input. The apply log prints the transition **actually performed off the pre-state actually
+observed**, so a run over a build92-era arz says "divisor 90->180", never a fixed "9->180" headline
+describing an edit it did not make.
+
+**CONSTANT COHERENCE.** `_check_constants()` runs at IMPORT and fails loud if the divisor, the cap
+and the headline fraction ever stop agreeing (`DIV_NEW == DIV_R80 * 2`, `MAX_NEW == MAX_R80 // 2`,
+`MAX_NEW == REDUCTION * MAX_VANILLA`). `REDUCTION` and `REDUCTION_VS_R80` are **derived** from the
+divisors, never retyped, and every equation is built from one `EQ_SHAPE` template so a retune cannot
+ship a shape regression. `tests_balance_negative.py` cross-checks all of it against the contract
+constants (18 cross-check arms).
+
+**STATIC GATES, all green on this branch:**
+
+| gate | result |
+| --- | --- |
+| `py -m py_compile` (5 changed files) | **PASS** |
+| `py tools/patches/death_xp_penalty.py --negtest <arz>` | **PASS 8/8** |
+| `py tools/patches/tombstone_xp_recovery.py --negtest <arz>` | **PASS 8/8** |
+| `py tools/contracts/tests_balance_negative.py` | **PASS 55/55** |
+| `py tools/gate_ruling_ids.py --vs main --branches` | **PASS** (49 rulings, highest R-254) |
+
+`tools/contracts/contracts_balance.py` run standalone against the **shipped build97 arz** correctly
+**REDS with 3 P0s** (it still carries the superseded `/ 90` + 50,000). That is the fail-loud gate
+working as designed on a pre-R-254 artifact, not a defect; it goes green the moment a build applies
+this ruling. The violation messages name the ruled state as "R-80 as retuned by R-254" and say
+explicitly that a pre-R-254 arz shows `/ 90` here, so the red cannot be misread as a revert.
+
+### DEBTS
+
+- `BL-R254-DEBT-1` (**P1, integration**): this lane deliberately ships **no build** (STATIC gates
+  only). The registry battery, `contracts_balance` and the record-diff-vs-shipped-arz must be
+  re-run against the BUILT arz of the deploy that carries this wave, where `BAL-DEATHXP-1/2` flip
+  from red to green. Expect the documented, benign S4b collision WARN naming the TRIO
+  `damage_display` / `death_xp_penalty` / `tombstone_xp_recovery` on `gameengine.dbr` (disjoint
+  field sets: `FontStyles*` / `deathPenalty*` / `RedemptionMultiplier`); a FOURTH module on that
+  record is a real finding.
+- `BL-R254-DEBT-2` (**P2, WILL / in-game**): the halved penalty is unproven IN GAME. Die at a
+  meaningful level, read the XP lost, walk back to the marker and confirm the recovery returns the
+  SAME number. The arithmetic is proved over 3,012 points; what is unproven is only that the
+  engine's live behaviour matches the disassembly-derived model, which is the same standing
+  uncertainty R-80 and R-109 carry.

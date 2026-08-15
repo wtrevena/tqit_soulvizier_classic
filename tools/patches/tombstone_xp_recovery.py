@@ -123,12 +123,22 @@ automatically, because it never sees those fields at all. That is the strongest
 available form of R-109's "self-correcting" requirement, and it is why this
 module writes a multiplier rather than a second equation.
 
+**R-254 [2026-08-14] IS THE FIRST LIVE EXERCISE OF THAT PROPERTY.** Will halved
+the death penalty again ("lets reduce the penalty for dying by another 50% from
+what it currently is at"): `death_xp_penalty` moved the divisor 90 -> 180 and the
+cap 50,000 -> 25,000, and THIS MODULE DID NOT CHANGE A SINGLE VALUE. The equality
+still holds because it is derived, and `verify()` below re-proves it against the
+NEW knobs it reads off the db (not against any constant in this file). Had R-109
+been built as the "10% of the original" form Will first floated, R-254 would have
+silently desynchronised the marker and re-opened the very drift R-109 named.
+
 EXACTNESS OF THE IDENTITY (this is arithmetic, not a hope). The engine round-trip
 is int32 -> double -> float32 -> `mulss` by 1.0f -> truncate. float32 represents
 every integer up to 2^24 = 16,777,216 exactly, `x * 1.0f` is exact for every
 finite float, and truncating an exactly-represented integer returns it. The
-shipped `deathPenaltyMax` is 50,000 and the realised loss is bounded above by the
-nominal penalty, so every value this path can carry is < 2^24 by a factor of 335.
+shipped `deathPenaltyMax` is 25,000 (R-254) and the realised loss is bounded above
+by the nominal penalty, so every value this path can carry is < 2^24 by a factor
+of 671 - the headroom only GREW when the penalty was cut.
 `verify()` re-proves the identity numerically over L1..1000 x N/E/L rather than
 asserting it, and separately re-proves the 2^24 headroom against the LIVE cap.
 
@@ -362,8 +372,11 @@ def apply(db, tags):
                          % ', '.join(sorted(newly - {GAMEENGINE})))
 
     _eq, divisor, mn, mx = _current_penalty_knobs(db)
-    lost85 = xp_lost(85, 2, divisor, mx)
-    print('    tombstone_xp_recovery: %s %s %.1f -> %.1f  (L85 Legendary: lose %.0f XP, '
+    # The INTEGER the engine actually subtracts - not the real-valued equation
+    # result. Printing the latter made the line read "lose 23883, recover 23882",
+    # which slanders the very equality this module exists to hold.
+    lost85 = xp_lost_int(85, 2, divisor, mx, mn)
+    print('    tombstone_xp_recovery: %s %s %.1f -> %.1f  (L85 Legendary: lose %d XP, '
           'recover %d XP; was %d)'
           % ('ALREADY RULED (no-op)' if already else 'applied', FIELD, MULT_OLD,
              MULT_NEW, lost85, xp_recoverable(lost85, MULT_NEW),
@@ -487,35 +500,62 @@ def _load(arz):
     return ArzDatabase.from_arz(Path(arz))
 
 
-def _table(arz):
+def _table(arz, applied=False):
     """R-109's 'report the measured before/after BOTH WAYS' clause, computed from
-    the arz's own knobs rather than from constants in this file."""
+    the arz's own knobs rather than from constants in this file.
+
+    `applied=True` runs the two registry modules in memory first, so the table
+    reports what the NEXT build will ship rather than what this (older) artifact
+    holds. Which one you are reading is printed, never implied."""
     db = _load(arz)
+    if applied:
+        dxp.apply(db, {})
+        apply(db, {})
     eq, divisor, mn, mx = _current_penalty_knobs(db)
     mult = float(_val(db, GAMEENGINE, FIELD))
     print('\nARZ: %s' % arz)
+    print('  STATE: %s' % ('the arz AS IT WILL SHIP (death_xp_penalty + '
+                           'tombstone_xp_recovery applied in memory)' if applied
+                           else 'the artifact ON DISK, unmodified'))
     print('  deathPenaltyEquation : %s' % eq)
     print('  deathPenaltyMin/Max  : %d / %d' % (mn, mx))
     print('  %-20s : %.2f' % (FIELD, mult))
-    print('\n  PRE-b93 penalty (divisor 9, cap 500000) vs the SHIPPED penalty, and what the')
-    print('  marker gives back at the OLD multiplier 0.5 and the R-109 multiplier 1.0:\n')
-    hdr = ('%-6s %-11s | %12s %12s | %12s %12s %12s'
-           % ('level', 'difficulty', 'LOST(pre-b93)', 'LOST(now)',
-              'BACK@0.5 pre', 'BACK@0.5 now', 'BACK@1.0 now'))
+    print('\n  R-109 requires the report BOTH WAYS. Three penalty baselines - VANILLA')
+    print('  (divisor %d / cap %d), the PREVIOUSLY SHIPPED R-80 pair (divisor %d / cap'
+          % (dxp.DIV_VANILLA, dxp.MAX_VANILLA, dxp.DIV_R80))
+    print('  %d, build92) and the penalty in THIS arz - against what the death marker'
+          % dxp.MAX_R80)
+    print('  gives back at the pre-R-109 multiplier 0.5 and at this arz\'s multiplier:\n')
+    hdr = ('%-6s %-11s | %11s %11s %11s | %11s %11s %8s'
+           % ('level', 'difficulty', 'LOST van', 'LOST b92', 'LOST now',
+              'BACK@0.5', 'BACK now', 'back/lost'))
     print('  ' + hdr)
     print('  ' + '-' * len(hdr))
+    worst_ratio = None
+    halved = True
     for lvl in (10, 25, 40, 55, 70, 85, 100):
         for dv, nm in ((0, 'Normal'), (1, 'Epic'), (2, 'Legendary')):
-            old_lost = xp_lost_int(lvl, dv, 9, dxp.MAX_OLD, 0)
+            van_lost = xp_lost_int(lvl, dv, dxp.DIV_VANILLA, dxp.MAX_VANILLA, 0)
+            b92_lost = xp_lost_int(lvl, dv, dxp.DIV_R80, dxp.MAX_R80, 0)
             new_lost = xp_lost_int(lvl, dv, divisor, mx, mn)
-            print('  %-6d %-11s | %12d %12d | %12d %12d %12d'
-                  % (lvl, nm, old_lost, new_lost,
-                     xp_recoverable(old_lost, 0.5), xp_recoverable(new_lost, 0.5),
-                     xp_recoverable(new_lost, 1.0)))
-    l85 = xp_lost_int(85, 2, divisor, mx, mn)
-    print('\n  RATIO recovered/lost at the SHIPPED multiplier %.2f: %.4f '
-          '(R-109 requires exactly 1.0000)'
-          % (mult, xp_recoverable(l85, mult) / float(l85)))
+            back = xp_recoverable(new_lost, mult)
+            ratio = (back / float(new_lost)) if new_lost else float('nan')
+            if new_lost and (worst_ratio is None or abs(ratio - 1.0) > abs(worst_ratio - 1.0)):
+                worst_ratio = ratio
+            if abs(new_lost - b92_lost / 2.0) > 0.5:
+                halved = False
+            print('  %-6d %-11s | %11d %11d %11d | %11d %11d %8.4f'
+                  % (lvl, nm, van_lost, b92_lost, new_lost,
+                     xp_recoverable(new_lost, 0.5), back, ratio))
+    print('\n  RATIO recovered/lost at the SHIPPED multiplier %.2f: worst %.4f over the'
+          % (mult, worst_ratio if worst_ratio is not None else float('nan')))
+    print('  rows above (R-109 requires exactly 1.0000 - equality, not <=).')
+    # MEASURED, not asserted: an artifact built before R-254 will say so here.
+    print('  LOST b92 -> LOST now: %s'
+          % ('every row is exactly half - this is R-254 ("another 50%")' if halved
+             else 'NOT halved (divisor %g / cap %d) - this artifact predates R-254; '
+                  're-run with --applied to see what the next build ships'
+                  % (divisor, mx)))
     print('  Every LOST / BACK column above is an INTEGER because the engine rounds '
           '(x + 0.5, chop) before the clamp; the recovery then multiplies that integer.')
 
@@ -523,6 +563,12 @@ def _table(arz):
 def _negtest(arz):
     """Prove the R-109 gate is not vacuous. Plants on BOTH sides, as R-109 demands."""
     db = _load(arz)
+    # Bring the PENALTY side to its currently ruled state first, exactly as the
+    # registry does (death_xp_penalty runs immediately before this module). Without
+    # this, running against any already-built arz - which carries whatever penalty
+    # pair was ruled when it was built - would trip this module's own R-80 coupling
+    # guard and the whole negative suite would never run.
+    dxp.apply(db, {})
     apply(db, {})
 
     results = []
@@ -583,15 +629,36 @@ def _negtest(arz):
     # PLANT 6: THE COUPLING. Retune the death penalty and the equality must still
     # hold with NO change here - this is what proves the fix is derived and not a
     # hardcoded 10%. The gate must PASS with a different penalty.
+    # The retune is DERIVED from whatever divisor is live (it used to be a literal
+    # '/ 90)' -> '/ 45)' string swap, which silently became a NO-OP the moment
+    # R-254 moved the divisor to 180 - a plant that plants nothing is worse than
+    # no plant at all, so the swap is asserted to have actually changed the string).
     prev_eq = _val(db, GAMEENGINE, 'deathPenaltyEquation')
     prev_mx = int(_val(db, GAMEENGINE, 'deathPenaltyMax'))
-    check('penalty RETUNED (divisor 90 -> 45, cap -> 123456) still passes untouched',
-          False,
-          lambda: (db.set_field(GAMEENGINE, 'deathPenaltyEquation',
-                                prev_eq.replace('/ 90)', '/ 45)')),
-                   db.set_field(GAMEENGINE, 'deathPenaltyMax', 123456)),
-          lambda: (db.set_field(GAMEENGINE, 'deathPenaltyEquation', prev_eq),
-                   db.set_field(GAMEENGINE, 'deathPenaltyMax', prev_mx)))
+    live_div = int(dxp.divisor_of(prev_eq) or 0)
+    retuned_eq = dxp.EQ_SHAPE % (live_div * 2) if live_div else None
+    if not retuned_eq or retuned_eq == prev_eq:
+        results.append(('penalty RETUNE plant could not be built from %r' % (prev_eq,),
+                        False, True, False))
+    else:
+        check('penalty RETUNED (divisor %d -> %d, cap -> 123456) still passes untouched'
+              % (live_div, live_div * 2), False,
+              lambda: (db.set_field(GAMEENGINE, 'deathPenaltyEquation', retuned_eq),
+                       db.set_field(GAMEENGINE, 'deathPenaltyMax', 123456)),
+              lambda: (db.set_field(GAMEENGINE, 'deathPenaltyEquation', prev_eq),
+                       db.set_field(GAMEENGINE, 'deathPenaltyMax', prev_mx)))
+
+    # PLANT 7: the same coupling in the direction R-254 actually moved - HALVE the
+    # live penalty (divisor x2, cap /2, exactly what death_xp_penalty just did) and
+    # require the equality to hold with no edit on the recovery side. This is the
+    # R-254 regression test for R-109.
+    if retuned_eq:
+        check('penalty HALVED like R-254 (divisor %d -> %d, cap %d -> %d) still passes'
+              % (live_div, live_div * 2, prev_mx, prev_mx // 2), False,
+              lambda: (db.set_field(GAMEENGINE, 'deathPenaltyEquation', retuned_eq),
+                       db.set_field(GAMEENGINE, 'deathPenaltyMax', prev_mx // 2)),
+              lambda: (db.set_field(GAMEENGINE, 'deathPenaltyEquation', prev_eq),
+                       db.set_field(GAMEENGINE, 'deathPenaltyMax', prev_mx)))
 
     print('\ntombstone_xp_recovery _negtest:')
     for label, expect_fail, failed, ok in results:
@@ -611,7 +678,10 @@ if __name__ == '__main__':
                    / 'work' / 'SoulvizierClassic' / 'Database' / 'SoulvizierClassic.arz')
     if '--table' in args:
         i = args.index('--table')
-        _table(args[i + 1] if len(args) > i + 1 else DEFAULT_ARZ)
+        target = DEFAULT_ARZ
+        if len(args) > i + 1 and not args[i + 1].startswith('--'):
+            target = args[i + 1]
+        _table(target, applied='--applied' in args)
     elif '--negtest' in args:
         i = args.index('--negtest')
         raise SystemExit(_negtest(args[i + 1] if len(args) > i + 1 else DEFAULT_ARZ))

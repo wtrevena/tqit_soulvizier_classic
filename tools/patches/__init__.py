@@ -111,10 +111,15 @@ REGISTRY = [
                                     # finalization-phase interim call) so it wins any collision
     'damage_display',       # build38: restore AE floating combat-text FontStyles on xpack
                             # gameengine (SV's pre-AE record lacks them; touches only gameengine)
-    'death_xp_penalty',     # b93 (Will R-80 2026-07-27): on-death XP loss cut by exactly 90% -
-                            # deathPenaltyEquation divisor 9 -> 90 and deathPenaltyMax
-                            # 500000 -> 50000 on records\xpack\game\gameengine.dbr (the ONE
-                            # GameEngine record Game.dll loads). MUST sit adjacent to
+    'death_xp_penalty',     # b93 (Will R-80 2026-07-27) + R-254 (Will 2026-08-14, "another
+                            # 50% from what it currently is at"): on-death XP loss cut to
+                            # exactly 5% of vanilla - deathPenaltyEquation divisor 9 -> 180
+                            # and deathPenaltyMax 500000 -> 25000 on
+                            # records\xpack\game\gameengine.dbr (the ONE GameEngine record
+                            # Game.dll loads). The SUPERSEDED R-80 pair (90 / 50000, shipped
+                            # through build92) stays a RECOGNISED pre-state, so re-running
+                            # over any arz already on disk is a legal no-op rather than a
+                            # loud failure. deathPenaltyMin stays 0. MUST sit adjacent to
                             # damage_display: they are the only two modules that write that
                             # record, so the S4b collision WARN naming exactly this pair is
                             # EXPECTED and benign - their field sets are disjoint
@@ -122,6 +127,15 @@ REGISTRY = [
                             # neither reads the other's fields, so order between them is
                             # immaterial. A collision WARN naming any THIRD module on this
                             # record is a real finding: investigate before shipping.
+                            # Negative test: py tools/patches/death_xp_penalty.py --negtest
+                            # RULING RENUMBERED AT INTEGRATION (R-251 -> R-254): this lane
+                            # also authored itself R-251 off 0ea001a/build92, the same
+                            # collision fix/toxeus-boss-equipment-and-soul hit. The SHIPPED
+                            # number wins - R-251 is the uber/boss chest generosity (build95)
+                            # and R-252/R-253 shipped as build96/build97 - so this ruling and
+                            # its debts are R-254 / BL-R254-DEBT-1..2 everywhere. Same
+                            # treatment as R-231 -> R-244 (build88), R-250 -> R-251 (build95)
+                            # and R-251 -> R-252 (build96). No content changed.
     'tombstone_xp_recovery',  # R-109 (Will 2026-07-30): "lets make the tombstone xp recovery
                             # match the xp lost upon dying". ONE field on the SAME record
                             # death_xp_penalty owns: RedemptionMultiplier 0.5 -> 1.0 on
@@ -131,9 +145,12 @@ REGISTRY = [
                             # RegisterExperienceLoss VA 0x10194540 stored at GraveInfo+0x0C), so
                             # 1.0 makes the marker return exactly what the penalty took, DERIVED
                             # from the penalty rather than hardcoded - retune deathPenalty* and
-                            # the marker follows with no edit here (negtest plant 6 proves it).
+                            # the marker follows with no edit here. R-254 (2026-08-14) is the
+                            # FIRST live exercise of that property: the penalty halved and this
+                            # module was not edited at all (negtest plants 7+8 hold the retune
+                            # and the exact R-254 halving against an unedited recovery side).
                             # MUST run immediately AFTER death_xp_penalty: apply() refuses to run
-                            # unless the R-80 penalty is already in its ruled state. Third writer
+                            # unless the penalty is already in its ruled state. Third writer
                             # of gameengine.dbr alongside damage_display (FontStyles) and
                             # death_xp_penalty (deathPenalty*); all three field sets are disjoint,
                             # so the S4b collision WARN naming this TRIO is EXPECTED and benign -
