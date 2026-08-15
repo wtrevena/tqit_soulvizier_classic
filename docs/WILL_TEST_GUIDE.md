@@ -294,6 +294,14 @@
 > md5-verified, 1 file of 62). **So please run the test below again on DEV, fresh.** Steam has been
 > correct since build92 and did not move tonight. Sorry for the wasted click.
 >
+> ### ✅ STILL GOOD ON build97 (re-checked 2026-08-15, nothing deployed)
+> Builds 95, 96 and 97 have landed on DEV since that correction, so your `Quests.arc` is no longer
+> `90d401f1` - it is now `d9f8c316` (the build97 TESTHUB file). **The Warden fix is still in it.** We
+> re-checked by reading your actual live DEV file rather than trusting the build: all 30 of the travel
+> NPC "wake up" steps, the Warden's included, now open their menu instantly instead of after the 2
+> second delay that was eating your click. Nothing was rebuilt or copied to do this check. **The test
+> below is current and still worth running.**
+>
 > **THE HEADLINE TEST (Steam has had this since build92; DEV/TESTHUB has it as of tonight):** deepest Athens
 > catacomb (`CataCube02_FloorLast`) -> click the **Warden of the Spartan Crypt** by the stairs-down ->
 > **PASS = the "Descend into the Sparta Crypt" popup opens AND STAYS OPEN until you answer; clicking
