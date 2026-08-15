@@ -7777,7 +7777,20 @@ characterLifeRegen, or an undead-leech partial-bypass on his record. OPEN - Will
 
 ---
 
-## R-250 [2026-08-14] IMPLEMENTED (branch `fix/boss-arena-spawn-and-polish`) - THE BOSS ARENA BOSS MUST SPAWN ON EVERY VISIT (he was quest-one-shot + player-level-gated); THE ARENA GETS A REWARD AND A FIRE RING
+## R-252 [2026-08-14] IMPLEMENTED (branch `fix/boss-arena-spawn-and-polish`) - THE BOSS ARENA BOSS MUST SPAWN ON EVERY VISIT (he was quest-one-shot + player-level-gated); THE ARENA GETS A REWARD AND A FIRE RING
+
+> **NUMBER NOTE (rulings-ledger process law 1).** This lane originally took **R-250**. On
+> 2026-08-14 main topped out at R-249 and FOUR parallel lanes had each independently claimed
+> R-250 (`fix/boss-arena-spawn-and-polish`, `fix/chest-generosity-shared-cause`,
+> `fix/toxeus-boss-equipment-and-soul`, `fix/toxeus-shroud`) with TWO more on R-251
+> (`fix/death-penalty-halve-again`, `fix/toxeus-boss-equipment-and-soul`) - every lane read the
+> same ledger tail in its own worktree and picked the same next number. This lane renumbered to
+> **R-252**, which no branch claimed, and ships `tools/gate_ruling_ids.py` so the next collision
+> is caught mechanically instead of at merge time. **Cross-reference: R-250 is the UBER/BOSS
+> CHEST GENEROSITY ruling** (`fix/chest-generosity-shared-cause`), which is semantically coupled
+> to this one - see the REWARD paragraph below. The integrator must re-run
+> `py tools/gate_ruling_ids.py --vs main --branches` before merging; if the ledger has moved
+> again, renumber this section and its `BL-R252-DEBT-*` ids together.
 
 **Will's report, VERBATIM (2026-08-14 live play, BL-W0814-12):**
 > "when i went to the boss arena this time there was no boss there. does he not spawn 100% of the
@@ -7805,8 +7818,13 @@ deployed map, not inferred):
   `(131.68, 27.11, 129.08)`, `flags=0`, exemplar rotation, no 0x14) - the same uber-placement
   pattern as Tantalus / Ephialtes / the parchment Devourer. `flags=0` is not tracked, so the engine
   re-spawns it every time the level streams in: **every visit, every character, no quest state.**
-  Survey on the deployed map: `d=0.14u`, `clr@3.5` and `clr@6.0` = 100% on all three tilesets,
-  comp#1 (the same component as the R-248 traveler landing 26u south).
+  Survey on the deployed map (`survey_uberboss_spots`): `d=0.03u`, `clr@3.5` and `clr@6.0` = 100%
+  on all three tilesets. The level has **TWO** navmesh components and the arena is on the SMALLER
+  one: comp#1 = 1,381,391 cells of unreachable low floor, **comp#2 = 92,026 cells of raised dais**
+  (of 1,473,417 walkable). The boss spot is comp#2, and so is the R-248 traveler/return landing at
+  local `(136.0, 28.1, 104.0)` (`d=0.14u`, clr 100%, comp#2) 26u south - same component, so the
+  encounter is reachable from where the player lands. On this level "the largest component" is the
+  floor nobody can stand on; any later reachability argument must use comp#2.
 - **The quest's duplicate spawn is neutralized** (`build_quest_files._neutralize_bossarena_spawn`),
   so exactly ONE spawn source can ever exist - the widow-letter precedent. STEP-1 (`ShowNpc` /
   `OpenDynGridEntrance` / `UnlockFixedItem` on `portal_olympianarena1`, reused by the doors/hub
@@ -7820,23 +7838,63 @@ deployed map, not inferred):
   false-fail against the 29-36 window; that reason is gone).
 - **"Needs more work" part (b), scoped:**
   - **REWARD.** The arena guarded NOTHING (b43 RCA sec 6 item 5: zero chest/loot strings in the
-    whole blob). Aithon now carries a dedicated Boss-locked **"Ember-Crowned Hoard"** on the standard
-    region-tuned chain (`svc_aithonhoard`, brackets `55-57 / 63-65 / 63-65` from his charLevel
-    `[55,69,75]`). **ONE** chest, per **R-108**.
+    whole blob). Aithon now carries a dedicated Boss-locked **"Ember-Crowned Hoard"**
+    (`svc_aithonhoard_{01,02,03}`), **ONE** chest per **R-108**, and it **keeps its own loot
+    table** (`svc_aithonhoard_loot_0N`, `(3+(1.8*numberOfPlayers))*2.4/*2.8`, `loot3Chance=100`
+    with a guaranteed unique + relic).
+    It is deliberately **NOT** registered in `_SVC_CHEST_STD`. That roster feeds
+    `_svc_standardize_boss_chests`, which repoints a registered chest at the base game's
+    `boss_default_<bracket>`; measured at 1 player that trades `*2.4/*2.8` and chance-mass 2.81
+    with a guaranteed unique+relic for `*1.5/*1.7`, chance-mass 1.11, `loot3Chance=10` and nothing
+    guaranteed, and strands the bespoke table (18 of 27 `svc_*hoard_loot_0N` records are already
+    unreferenced in the shipped arz for exactly this reason). **That repoint is the single shared
+    cause Will reported five times on 2026-08-14** (BL-W0814-2/5/7/11/13: "are you kidding me. this
+    is outrageous", "a terrible chest", "nerfed too much") and is the subject of **R-250**
+    (`fix/chest-generosity-shared-cause`). A chest created THIS wave does not ship into a defect
+    reported five times the same day. **When R-250 lands** and that pass stops repointing (it
+    becomes a WIRING pass: each chest -> its own `svc_<family>hoard_loot_<tier>`), the row may be
+    added back as a family-roster entry (`'svc_aithonhoard': ('55-57','63-65','63-65')`, from his
+    charLevel `[55,69,75]`) - check C8 of the new gate enforces the correct state in **both**
+    worlds and retires itself, so the two lanes compose in either merge order.
   - **ATMOSPHERE.** Real flame (`pit_fx02`, an EffectEntity - no mesh, no collision, cannot block
     the fight or the navmesh) under each of b43's six ring lights, which previously glowed with no
-    source.
+    source. The FX Y is **measured, not copied**: `navmesh_floor_y` reads the floor at all six ring
+    XZ as **27.20**, so the flames sit at 27.2. b43's six LIGHTS stay at 28.0 on purpose (a point
+    light hangs above what it lights); the earlier 28.0 for the flames was the light Y borrowed
+    from a comment that also mis-named the surface - the exact literal-burial class R-248 spent a
+    wave unburying.
 
 **NEW CONTENT CLASS + ITS GATE (process law 4):** "REPEATABLE-DESTINATION ENCOUNTER" -
 `tools/gate_arena_spawn_guarantee.py`. Per registered destination: placed exactly once as a plain
 flags=0 0x05 instance; ZERO `Action_SpawnEntityAtLocation` for it in the ported quest (with the
 upstream quest proven to still HAVE one, so the check cannot pass vacuously); the neutralizer proven
-CALLED by the port (the build22 inert-fix lesson); and an unconditional DB declaration (quest flag 0,
-chance 100, window spanning [1..110], empty pool equation, >=1 guaranteed main). `--arz` / `--quests`
-/ `--map` re-prove the same invariant on the real artifacts at ship. 9 planted negatives, all caught.
-`tools/debug/gate_uber_placement.py` also learns the arena (new BOSS_MARKER for the
-`proxies custom\bossarena\` namespace + expected area "Olympian Arena" + an ACCEPTED_ON_PATH row:
-the centre of a one-room destination arena IS the destination, the Ephialtes reward-vault precedent).
+CALLED by the port (the build22 inert-fix lesson); an unconditional DB declaration (quest flag 0,
+chance 100, window spanning [1..110], empty pool equation, >=1 guaranteed main); and **C8 REWARD** -
+the destination pays, and keeps paying: statically its chest is not enrolled in a repointing pass,
+and with `--arz` each tier's chest names its OWN loot record which still carries its guaranteed
+slot. `--arz` / `--quests` / `--map` re-prove the same invariant on the real artifacts at ship.
+**11 planted negatives, all caught**, plus N12 proving C8 self-retires once nothing repoints.
+
+Two existing gates were also corrected by this lane, both for defects they had all along:
+- `tools/debug/gate_uber_placement.py` learns the arena (BOSS_MARKER for the
+  `proxies custom\bossarena\` namespace + expected area "Olympian Arena" + an ACCEPTED_ON_PATH row:
+  the centre of a one-room destination arena IS the destination, the Ephialtes reward-vault
+  precedent) **and its ORACLE 2 now picks the navmesh component the ENCOUNTER stands on** instead
+  of the largest one. On `boss_arena.lvl` the largest component is the unreachable low floor, so
+  every gateway/BFS/route computation ran on a component the arena is not on and the placement read
+  "OFF-MESH>3u" while being 0.03u on-mesh - a vacuous PASS with an alarming line. It now reads
+  on-mesh on comp#2, and off-EVERY-component is a hard failure. 2 new planted negatives prove the
+  old rule was blind here and the new one is not; a full run over every placement introduces no new
+  failure (the pre-existing obsidian roulette-b RED is unchanged).
+- `tools/debug/gate_landing_clearance.py` learns the arena entities (`--placements r252`,
+  live-derived from `INJECT_SPECS`), so the landing-vs-placement audit for the level that hosts the
+  R-248 return landing is complete again. Measured separation boss-to-landing: 25.4u.
+
+**AND A SECOND NEW GATE, for the process defect this lane hit:** `tools/gate_ruling_ids.py` -
+one ruling number, one ruling. It reds on a repeated primary `## R-<n> [` heading, on a number this
+branch adds that another branch already claims (ledger headings AND `R-<n>` stamps under `tools/`),
+and it knows the ledger's amendment/follow-up/wave headings reuse numbers on purpose. 6 planted
+negatives, including a replay of the 2026-08-14 four-way R-250 collision.
 
 **NOT DONE / DELIBERATELY NOT TOUCHED:**
 - SV's two vestigial `portal_olympianarena2` return portals stay placed (b43 already hid their
@@ -7845,17 +7903,25 @@ the centre of a one-room destination arena IS the destination, the Ephialtes rew
   payoff arrives as the hoard chest instead of rewriting an SV original in a P1 lane.
 
 **DEBT:**
-- `BL-R250-DEBT-1` (WILL / in-game): confirm the boss is present on a SECOND and THIRD visit (the
+- `BL-R252-DEBT-1` (WILL / in-game): confirm the boss is present on a SECOND and THIRD visit (the
   actual bug), and that only ONE Aithon spawns (the double-spawn a mis-coupled Levels/Quests deploy
   would produce).
-- `BL-R250-DEBT-2` (WILL / in-game): confirm the Ember-Crowned Hoard chest appears and unlocks on
-  his death, and say whether its contents are worth the fight (it rides the same region-tuned chain
-  as the chests flagged over-nerfed in BL-W0814-2/5/11/13, so the chest-generosity lane's outcome
-  applies here too).
-- `BL-R250-DEBT-3` (in-game, visual): confirm the six `pit_fx02` flames read as a fire ring and not
-  as floating particles; if they look wrong, the fallback is to drop them (pure dressing, no
-  gameplay dependency).
-- `BL-R250-DEBT-4` (canonical/Steam reachability): the Boss Arena travel leg is TESTHUB-only
+- `BL-R252-DEBT-2` (WILL / in-game): confirm the Ember-Crowned Hoard chest appears and unlocks on
+  his death, and say whether its contents are worth the fight. It opens its OWN generous table
+  (`*2.4/*2.8`, guaranteed unique + relic), NOT the `boss_default_*` table behind
+  BL-W0814-2/5/7/11/13 - so this is also the first live read on what an ungutted uber chest feels
+  like. If R-250 moves the shared hoard volume constants, this chest moves with them once the two
+  lanes merge (it is built by the same `_svc_build_dedicated_hoard` recipe).
+- `BL-R252-DEBT-3` (in-game, visual): confirm the six `pit_fx02` flames read as a fire ring and not
+  as floating particles. Their Y is now the MEASURED navmesh floor (27.20) rather than the borrowed
+  light Y (28.0), so they should sit ON the ground; if they still look wrong, the fallback is to
+  drop them (pure dressing, no gameplay dependency).
+- `BL-R252-DEBT-4` (canonical/Steam reachability): the Boss Arena travel leg is TESTHUB-only
   (`build_hub_extra_specs`); the canonical Steam map has no traveler to the arena and no return NPC
   inside it. This lane fixes the ENCOUNTER, not its Steam reachability - that is a separate ruling
   (the arena is currently a DEV-only destination).
+- `BL-R252-DEBT-5` (integration): the gate's `--arz` / `--quests` / `--map` halves have been proved
+  only as in-memory dry-runs against the SHIPPED artifacts (this lane deliberately ships no build).
+  They must be re-run against the BUILT artifacts of the deploy that carries this wave, together
+  with `gate_ruling_ids --vs main --branches` (the ledger moves under parallel lanes) and
+  `gate_landing_clearance --placements r252`.

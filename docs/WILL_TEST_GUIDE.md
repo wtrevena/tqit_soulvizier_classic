@@ -1,6 +1,6 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> # 🔥 R-250 THE BOSS ARENA NOW ALWAYS HAS ITS BOSS (2026-08-14) - READ THIS FIRST
+> # 🔥 R-252 THE BOSS ARENA NOW ALWAYS HAS ITS BOSS (2026-08-14) - READ THIS FIRST
 >
 > **Your report, verbatim:** "when i went to the boss arena this time there was no boss there. does
 > he not spawn 100% of the time? the boss arena needs more work."
@@ -25,10 +25,13 @@
 >
 > **Two more things while we were in there (your "needs more work"):**
 > - **The arena finally PAYS.** It had literally no loot and no chest in the whole level. Aithon now
->   guards an **Ember-Crowned Hoard** - a Boss-locked chest that unlocks when he dies, tuned to his
->   level like every other apex hoard (one chest, per your "he should only have one" ruling).
+>   guards an **Ember-Crowned Hoard** - a Boss-locked chest that unlocks when he dies (one chest, per
+>   your "he should only have one" ruling). It has its **own** loot table, with a guaranteed unique
+>   and a guaranteed relic in it. It is deliberately NOT on the shared table behind the five chests
+>   you called out that same day ("are you kidding me. this is outrageous"), so this chest is also
+>   your first look at what an un-nerfed uber chest feels like - **tell us if it is still thin.**
 > - **The ring burns.** The six lights we ringed the fight floor with last time had no fire under
->   them; now each one sits on a real flame.
+>   them; now each one sits on a real flame, standing on the floor rather than hovering over it.
 >
 > **THE TEST:** travel to the **Boss Arena** from the Helos hub -> **PASS = Aithon, the Ember-Crowned
 > plus his two Ember Satyr Wardens are standing in the middle, every time.** Then: **leave, come

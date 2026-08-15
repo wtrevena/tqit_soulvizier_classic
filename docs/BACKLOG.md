@@ -34,7 +34,7 @@
 **BL-W0814-12 BOSS ARENA - NO BOSS SPAWNED (spawn not 100%?) + needs more work** (Will 2026-08-14): "when i went to the boss arena this time there was no boss there. does he not spawn 100% of the time? the boss arena needs more work." Player traveled to the Boss Arena (the Helos boat-hub destination; level bossarena/boss_arena) and found it EMPTY - no boss. Two parts:
   - **(a) SPAWN 100%:** the arena boss must spawn on EVERY visit. Audit the boss proxy/spawn: check spawnChance / championChance / difficulty gate / whether the spawn is one-shot-consumed after a prior kill (persisted). Set to guaranteed spawn. (Note: "this time" implies it spawned before - possible one-shot/consumed spawn or a random spawnChance<100.)
   - **(b) NEEDS MORE WORK (general):** Will flags the Boss Arena overall as underbaked. Scope TBD when the lane runs - likely encounter design, loot, atmosphere. RELATED to el_boss_audit.md (E/L boss spawn-chain failure modes incl proxy championChance + MERGE-DROPPED). Fold the specific spawn fix + a boss-arena polish pass into one lane.
-  - ✅ **IMPLEMENTED (R-250, branch `fix/boss-arena-spawn-and-polish`)** - NOT built/deployed (integration is the orchestrator's). Cause was neither spawnChance nor championChance: it was THREE stacked gates - a one-shot quest step (the "this time"), a 29-36/41-55/60-75 PLAYER-level window, and a quest-only proxy config. See the LANE RECORD below + WILL_RULINGS R-250.
+  - ✅ **IMPLEMENTED (R-252, branch `fix/boss-arena-spawn-and-polish`)** - NOT built/deployed (integration is the orchestrator's). Cause was neither spawnChance nor championChance: it was THREE stacked gates - a one-shot quest step (the "this time"), a 29-36/41-55/60-75 PLAYER-level window, and a quest-only proxy config. See the LANE RECORD below + WILL_RULINGS R-252.
 
 **BL-W0814-13 TANTALUS-GUARDED CHEST OVER-NERFED** (Will 2026-08-14, "same problem with the chest guarded by tantalus"): the chest guarded by Tantalus (in the Den of Tantalus; Tantalus was relocated into the Den in b45) drops far too little - SAME over-nerf as BL-W0814-11 (Propontis). This is now the FIFTH gutted uber/boss chest: obsidian hoards (-2), Aphoryteus Dread Hoard (-5), Propontis uber chest (-11), Tantalus chest (-13), plus the Devourer's stash (already reverted in R-247.7a). FIVE chests nerfed identically = STRONG evidence of ONE shared upstream cause (a common loot table, a global drop-count/quality multiplier, or a batch chest edit). The chest-generosity lane's FIRST task = find that shared cause and fix it once; enumerate ALL boss/uber chests and check each, rather than patching named chests one at a time (there are likely more Will hasn't visited yet). Also folds in BL-W0814-7 (Secret Place gift box +3x).
 
@@ -43,7 +43,7 @@
 ---
 
 
-## LANE RECORD - R-250 BOSS ARENA SPAWN GUARANTEE + POLISH (branch `fix/boss-arena-spawn-and-polish` from 0ea001a/build92-ship, 2026-08-14; **MAP + QUESTS + arz** wave, COUPLED; STATIC gates green in the lane worktree, **NOT built / NOT deployed** - the heavy map build + the gate battery + promote are the orchestrator's)
+## LANE RECORD - R-252 BOSS ARENA SPAWN GUARANTEE + POLISH (branch `fix/boss-arena-spawn-and-polish` from 0ea001a/build92-ship, 2026-08-14; **MAP + QUESTS + arz** wave, COUPLED; STATIC gates green in the lane worktree, **NOT built / NOT deployed** - the heavy map build + the gate battery + promote are the orchestrator's)
 
 **THE REPORT (BL-W0814-12, Will verbatim):** "when i went to the boss arena this time there was no
 boss there. does he not spawn 100% of the time? the boss arena needs more work."
@@ -60,28 +60,57 @@ boss there. does he not spawn 100% of the time? the boss arena needs more work."
 - `tools/build_section_surgery.py` - `ARENA_BOSS_PROXY_DBR` / `ARENA_BOSS_SPAWN_XYZ` / `ARENA_FIRE_RING_*` + the `boss_arena.lvl` INJECT_SPECS rows (1 proxy + 6 flame FX).
 - `tools/build_quest_files.py` - `_drop_spawn_entity_action` (generalized from the proven widowletter surgery, which is left byte-untouched) + `_neutralize_bossarena_spawn`, wired into the SV-quest port dispatcher after `_fix_bossarena_entervolume`.
 - `tools/patches/bossarena.py` - the DB half + the machine-readable `SPAWN_GUARANTEE` declaration + the `_MOD_AUTHORED_SPAWN_PROXIES` registration + the Ember-Crowned Hoard.
-- `tools/apply_svc_patches.py` - one row: `_SVC_CHEST_STD['svc_aithonhoard'] = ('55-57','63-65','63-65')`.
-- `tools/gate_arena_spawn_guarantee.py` - **NEW GATE** (the class invariant).
-- `tools/debug/gate_uber_placement.py` - the arena joins the placed-uber audit.
-- `docs/WILL_RULINGS.md` R-250 (verbatim report + ruling + 4 debt items), `docs/WILL_TEST_GUIDE.md` (top section).
+- `tools/apply_svc_patches.py` - `_SVC_CHEST_STD` gains a comment block, NOT a row: `svc_aithonhoard` is deliberately unregistered so the new chest keeps its own generous table (see REWARD below).
+- `tools/gate_arena_spawn_guarantee.py` - **NEW GATE** (the class invariant, C1-C8).
+- `tools/gate_ruling_ids.py` - **NEW GATE** (one ruling number = one ruling; parallel-lane collisions).
+- `tools/debug/gate_uber_placement.py` - the arena joins the placed-uber audit, and ORACLE 2 learns per-encounter navmesh component selection.
+- `tools/debug/gate_landing_clearance.py` - `--placements r252` (live-derived from `INJECT_SPECS`); selectors comma-combinable.
+- `docs/WILL_RULINGS.md` R-252 (verbatim report + ruling + 5 debt items), `docs/WILL_TEST_GUIDE.md` (top section).
 
 **PLACEMENT PROOF (deployed map `work/SoulvizierClassic/Resources/Levels.arc`, read-only survey):**
 `boss_arena.lvl` = LVL v0x0e, 35 instances (b43's mannequin de-place + 6 lights present). SV's spawn
 marker `location_bossarenacenter` = inst[26] local `(131.68, 27.11, 129.08)`; the trigger volume
-inst[9] `(132.00, 26.81, 129.95)` r=20. Placing AT the marker: `d=0.14u`, `clr@3.5 = 100%`,
-`clr@6.0 = 100%` on Normal/Epic/Legendary, comp#1 (size 1,381,391 of 1,473,417 walkable cells) -
-the SAME component as the R-248 traveler landing at local `(132, 28, 104)`, 26u south.
+inst[9] `(132.00, 26.81, 129.95)` r=20. Placing AT the marker: `d=0.03u`, `clr@3.5 = 100%`,
+`clr@6.0 = 100%` on Normal/Epic/Legendary.
+**COMPONENT (the level has two, and the arena is on the SMALLER one):** comp#1 = 1,381,391 cells of
+unreachable low floor, comp#2 = **92,026 cells of raised dais**, of 1,473,417 walkable. The boss is
+on **comp#2**, and so is the R-248 traveler/return landing at local `(136.0, 28.1, 104.0)`
+(`d=0.14u`, clr 100%, comp#2) 26u south - same component, hence reachable. `tools/patches/
+bossarena.py`'s own docstring says the same; an earlier draft of this record said comp#1 and quoted
+the landing's `d` at the boss spot, both corrected here.
+**FLOOR Y:** `navmesh_floor_y` reads 27.20 at all six fire-ring XZ and at the boss spot; the R-248
+landing pad at `(136,104)` is a different surface at 28.20. The flame ring therefore sits at 27.2
+(b43's LIGHTS stay at 28.0 by design).
 
-**GATES RUN IN-LANE (STATIC + in-memory dry-runs; the Ship phase owns the heavy builds):**
-- `py -m py_compile` on all five edited modules: OK.
+**GATES RUN IN-LANE (STATIC + read-only surveys + in-memory dry-runs; the Ship phase owns the heavy builds):**
+- `py -m py_compile` on all seven edited/new modules: OK.
 - `py tools/gate_arena_spawn_guarantee.py` -> **PASS**.
-- `py tools/gate_arena_spawn_guarantee.py --negtest` -> **9/9 planted negatives CAUGHT**, live config clean
+- `py tools/gate_arena_spawn_guarantee.py --negtest` -> **11/11 planted negatives CAUGHT**, live config clean,
+  plus N12 (C8 self-retires when nothing repoints) PASS.
   (N1 not placed, N2 placed twice, N3 quest keeps its one-shot spawn, N4 neutralizer over-reaches,
   N5 level window reintroduced, N6 sub-100 chance, N7 quest-only proxy, N8 champion crowd-out,
-  N9 spawn-count equation left on).
+  N9 spawn-count equation left on, N10 reward not declared, N11 reward chest repointed to a
+  base `boss_default_*` table.)
+- `py tools/gate_ruling_ids.py --negtest` -> **6/6 CAUGHT** + ledger clean; `--vs main --branches`
+  -> **PASS** (160 branches scanned; this branch adds `[252]`, claimed by nobody else).
+- `py tools/debug/gate_uber_placement.py <deployed map> --negtest` -> **8/8**, including the two
+  new component-selection negatives (N5 proves the old comps[0] rule read the arena OFF-MESH;
+  N5b proves the encounter-selected component reads the same spot at 0.03u).
+- `py tools/debug/gate_uber_placement.py <deployed map> --only bossarena` -> **GATE GREEN**
+  (area "Olympian Arena" OK, on-mesh 0.03u, component #2 encounter-selected). A full run over
+  every placement introduces **no new failure**: the single RED (obsidian roulette-b
+  BLOCKS-ROUTE/ON-MAIN-PATH) is pre-existing and reproduces identically on `main`.
+- `py tools/debug/gate_landing_clearance.py --placements r252` -> live derivation verified
+  (13 arena entities read from `INJECT_SPECS`: 6 b43 lights `soft`, the spawner `proxy`, 6 flames
+  `soft`); boss-to-R-248-landing separation 25.4u.
+- **REWARD DRY-RUN against the shipped arz** (in memory, nothing written): all three
+  `svc_aithonhoard_0N.tables` -> their OWN `svc_aithonhoard_loot_0N`, `loot3Chance=100.0`,
+  `numSpawn (3+(1.8*numberOfPlayers))*2.4 / *2.8`. Gate C5+C8 arz halves **PASS**. Then, as a
+  NEGATIVE, the retired repointing pass was run over the same db with the roster row restored:
+  all three chests flipped to `boss_default_55-57 / 63-65 / 63-65` and **C8 CAUGHT all three**.
 - **QUEST DELTA proved on the real upstream bytes** (census of every action/condition class +
   every actionCount/max/volumeRecord/entity/location literal): upstream 2,946 B ->
-  R-250 2,705 B; the ONLY changes are `Action_SpawnEntityAtLocation 1 -> 0`, its `actionCount 1 -> 0`,
+  R-252 2,705 B; the ONLY changes are `Action_SpawnEntityAtLocation 1 -> 0`, its `actionCount 1 -> 0`,
   and b22's existing `volumeRecord` retarget. `Action_ShowNpc`, `Action_OpenDynGridEntrance`,
   `Action_UnlockFixedItem`, `Condition_OnLevelLoad`, `Condition_EnterVolume`, step `max`, trigger
   `max` all UNCHANGED. Round-trip stable.
@@ -89,19 +118,33 @@ the SAME component as the R-248 traveler landing at local `(132, 28, 104)`, 26u 
   `chanceToRun=100.0`, `difficultyLimitsFile=limit_bossarena` `[1..110]` x3, `difficulty_04`;
   pool `3/3`, champion `2/2/100`, `limit1=1`, `proxyPoolEquation=''`; the 3 hoard chests + pools
   built, `LockedClassification=Boss`; 4 tags emitted. The monolith's own
-  `_verify_mod_spawn_proxies_eligible` **PASSES with the arena now registered** (18 proxies), and
-  `_svc_standardize_boss_chests` region-tunes the hoard to `boss_default_55-57 / 63-65 / 63-65`.
+  `_verify_mod_spawn_proxies_eligible` **PASSES with the arena now registered** (18 proxies).
   The new gate's `--arz` half run against that post-apply db: **PASS**.
 
 **COUPLINGS THIS WAVE (all must ship in ONE deploy):** Levels + Quests (the static placement and the
 quest neutralization are two halves of the single-spawn-source guarantee) AND arz + Text (the wave
 adds one new tag, `tagSVCAithonHoard` = "Ember-Crowned Hoard").
 
+**RULING NUMBER (rulings-ledger process law 1):** this lane was written as R-250 and **renumbered to
+R-252**. On 2026-08-14 main topped out at R-249 while FOUR in-flight branches had each claimed R-250
+(`boss-arena`, `chest-generosity-shared-cause`, `toxeus-boss-equipment-and-soul`, `toxeus-shroud`)
+and TWO had claimed R-251 - every lane read the same ledger tail in its own worktree. **R-250 is the
+chest-generosity ruling**, which this lane's REWARD paragraph cross-references. `tools/gate_ruling_ids.py`
+now catches this mechanically; run it `--vs main --branches` at integration and renumber (section +
+`BL-R252-DEBT-*` ids together) if the ledger moved again.
+
+**INTEGRATION ORDER vs `fix/chest-generosity-shared-cause` (R-250): EITHER ORDER IS SAFE.** This lane
+leaves `svc_aithonhoard` out of `_SVC_CHEST_STD`, so the arena chest opens its own table on today's
+main. When R-250 lands and the pass stops repointing, the row may be added back as a roster entry.
+Gate C8 asserts the correct end state in both worlds and switches itself off once no repointing pass
+exists (negtest N12), so neither lane blocks the other.
+
 **STILL OWED AT SHIP (orchestrator):** the heavy map build (Levels) + `build_quest_files` + the arz
 + `build_text_arc`, all in one coupled deploy; then `gate_arena_spawn_guarantee --arz --quests --map`,
+`gate_ruling_ids --vs main --branches`, `gate_landing_clearance --placements r252`,
 `gate_travel_y_terrain`, `gate_uber_placement`, `verify_merged_bc_navmeshes`,
 `entrance_landing --check-merged`, `run_contracts --only map`, `validate_tags`, and the record-diff
-vs the then-shipped arz. Debt items `BL-R250-DEBT-1..4` are in WILL_RULINGS R-250.
+vs the then-shipped arz. Debt items `BL-R252-DEBT-1..5` are in WILL_RULINGS R-252.
 
 ---
 
