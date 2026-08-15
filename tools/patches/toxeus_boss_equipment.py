@@ -302,6 +302,11 @@ _W_COMMON, _W_UNIQUE, _W_GUARANTEED = 5000, 19, 100
 # the family chances the Hunt's dead slots are switched on to
 _HUNT_MISC_CHANCES = {'Finger1': 100.0, 'Misc1': 100.0, 'Misc2': 18.0, 'Misc3': 50.0}
 
+# The Hunt's three soul pets (built by `r247_boss_forms`, R-247.6c). Dressing the
+# SOURCE without re-dressing them breaks the PET-GEAR-PARITY law - see _resync_hunt_pets.
+_HUNT_PETS = tuple('records\\skills\\soulskills\\pets\\toxeus_hunt_%d.dbr' % i
+                   for i in (1, 2, 3))
+
 # STRUCTURAL GUARD (import-time, not a runtime hope): the two slot sets this module
 # writes may never include Finger2. R-243 pinned the four champions' soul rate at 100
 # and its record-diff proved all 16 pin records byte-unchanged; this lane asserts that
@@ -856,10 +861,82 @@ def apply(db, tags):
           "Misc2 18 / Misc3 50 - the family shape. Spear, soul pin and Misc4 rite asserted "
           "and untouched; Head + LeftHand stay off by design (bare skull, two-handed spear)."
           % (_W_COMMON, _W_UNIQUE))
+    # ── 5. the Hunt's SOUL PETS inherit the same armour ─────────────────────
+    _resync_hunt_pets(db)
+
     print("  [-10] NOT CLOSED HERE: the 100% soul pin is asserted intact and the equip "
           "anomaly is gone, but the engine link is unprovable from the bytes - it closes on "
           "Will's next kill (BL-R252-DEBT-1).")
     print("=== toxeus_boss_equipment done ===\n")
+
+
+def _resync_hunt_pets(db):
+    """PET-GEAR-PARITY: re-mirror the Hunt's three soul pets onto the DRESSED source.
+
+    Will's law, gated fail-loud by the monolith's `_verify_summon_pet_gear`, is that a
+    summoned pet carries EXACTLY the gear its wild source form carries - both directions,
+    per slot. `r247_boss_forms` (registry slot 32) builds `toxeus_hunt_1/2/3` through
+    `_build_boss_summon` with `loadout=None`, which SNAPSHOTS the source's equip slots at
+    that moment. This module is slot 67 and has to stay the last writer of those slots, so
+    by the time it dresses the Hunt the pets' snapshot is three slots stale: the source
+    wears Torso/LowerBody/Forearm and the pets stand there naked. That is 9 violations of
+    the parity gate, and it is Will's own "not wearing any equipment" report reproduced on
+    the pet - so the honest fix is to dress the pets too, not to narrow the gate.
+
+    The re-mirror goes through the monolith's OWN sanctioned helpers, not a private path:
+    `_mirror_source_loadout(strict=True)` reads the POST-R-252 source, `_loadout_spec`
+    turns it into hard-coded item-table paths, and `_set_pet_equipment` writes them.
+    **No Monster.tpl field is ever copied onto a Pet.tpl record** - that is the standing
+    crash law (copying equipment/loot fields Monster -> Pet crashes the game, even when
+    only changing the value of an existing field), and it is exactly why this uses
+    `_set_pet_equipment` with hard-coded paths instead of any field-copy helper.
+
+    The over-add half of the law is honoured too: every gear slot the source does NOT use
+    is zeroed on the pet, the same clean-up `_build_boss_summon` does at build time.
+
+    IDEMPOTENT and pre-state-checked like the rest of the module: it asserts the source is
+    already dressed (this runs AFTER step 4) and fails loud if a pet record is missing.
+    """
+    from apply_svc_patches import (_mirror_source_loadout, _loadout_spec,
+                                   _set_pet_equipment, _GEAR_SLOTS)
+
+    for slot in sorted(_HUNT_ARMOUR):
+        if not _close(_gv(db, _HUNT, 'chanceToEquip%s' % slot), 100.0):
+            raise SystemExit(
+                "[toxeus_boss_equipment] _resync_hunt_pets ran before the source was "
+                "dressed: %s chanceToEquip%s = %r, expected 100.0. This must run AFTER "
+                "step 4 or it would mirror the naked pre-state."
+                % (_HUNT, slot, _gv(db, _HUNT, 'chanceToEquip%s' % slot)))
+
+    missing = [p for p in _HUNT_PETS if not _has(db, p)]
+    if missing:
+        raise SystemExit(
+            "[toxeus_boss_equipment] Hunt soul pet(s) MISSING: %s - r247_boss_forms "
+            "(R-247.6c) builds them and must run before this module. Without them the "
+            "PET-GEAR-PARITY gate has nothing to check and Will's summoned Hunt would "
+            "keep fighting naked." % ', '.join(missing))
+
+    loadout = _mirror_source_loadout(db, _HUNT, strict=True) or []
+    slots = {s for s, _c, _w, _p in loadout}
+    if not slots >= set(_HUNT_ARMOUR):
+        raise SystemExit(
+            "[toxeus_boss_equipment] the source mirror lost an armour slot: mirrored %s, "
+            "expected at least %s. The pets would still fail PET-GEAR-PARITY."
+            % (sorted(slots), sorted(_HUNT_ARMOUR)))
+
+    for pet in _HUNT_PETS:
+        _set_pet_equipment(db, pet, _loadout_spec(loadout))
+        for slot in _GEAR_SLOTS:
+            if slot not in slots:
+                db.set_field(pet, 'chanceToEquip%s' % slot, 0.0)
+        db._modified.add(pet)
+
+    print("  [-3 pets] Endless Hunt soul pets (%d): gear re-mirrored from the DRESSED "
+          "source through _set_pet_equipment - slots %s on, %s off. Will's summoned Hunt "
+          "now wears what the fought one wears (PET-GEAR-PARITY, both directions); no "
+          "Monster.tpl field was copied onto a Pet.tpl record."
+          % (len(_HUNT_PETS), '/'.join(sorted(slots)),
+             '/'.join(sorted(s for s in _GEAR_SLOTS if s not in slots)) or 'none'))
 
 
 # ── the gate ────────────────────────────────────────────────────────────────
