@@ -26,10 +26,19 @@
 > **Two more things while we were in there (your "needs more work"):**
 > - **The arena finally PAYS.** It had literally no loot and no chest in the whole level. Aithon now
 >   guards an **Ember-Crowned Hoard** - a Boss-locked chest that unlocks when he dies (one chest, per
->   your "he should only have one" ruling). It has its **own** loot table, with a guaranteed unique
->   and a guaranteed relic in it. It is deliberately NOT on the shared table behind the five chests
->   you called out that same day ("are you kidding me. this is outrageous"), so this chest is also
->   your first look at what an un-nerfed uber chest feels like - **tell us if it is still thin.**
+>   your "he should only have one" ruling). It keeps its **own** loot table, which guarantees a
+>   unique weapon and a relic every time it rolls, rather than being repointed onto the shared
+>   base-game boss table behind the five chests you called out that same day ("are you kidding me.
+>   this is outrageous").
+>   **BE CLEAR ABOUT WHAT THIS IS NOT.** It is not an un-nerfed chest and it is not more loot. It
+>   ships at exactly the same trimmed volume as every other hoard chest in the mod - the loot-volume
+>   trim covers this new table too. Measured at 1 player: it rolls about **1.1-1.2** times per open
+>   against the base boss table's **6.9-7.8**, so it actually drops FEWER items overall. The one
+>   thing it really buys you is that the guaranteed unique+relic slot fires on **every** roll
+>   instead of 10% of them. So judge it as "does a dedicated boss hoard feel right", **not** as
+>   "is this what an ungutted chest feels like" - that question belongs to the separate
+>   chest-generosity wave, and if you want this chest carved out of the volume trim, say so and it
+>   becomes a ruling.
 > - **The ring burns.** The six lights we ringed the fight floor with last time had no fire under
 >   them; now each one sits on a real flame, standing on the floor rather than hovering over it.
 >
