@@ -1225,6 +1225,41 @@ REGISTRY = [
                             # fields, the egg pool's limits/weights and the warband's
                             # chanceToRun. Negative test:
                             # py tools/patches/r247_bloodcave_rulings.py --negtest
+    'uber_hoard_generosity',   # R-250 (Will 2026-08-14, FIVE reports in one session:
+                            # BL-W0814-2/-5/-7/-11/-13 - "are you kidding me. this is
+                            # outrageous ... literally just dropped two items one thing of
+                            # gold and incarnation of guan-yu's grace"). THE SHARED CAUSE was
+                            # a wire, not a number: the b42 finalization pass repointed every
+                            # placed-uber hoard chest's `tables` at a base-game
+                            # defaultloot\boss_default_<lo>-<hi>, so on the shipped b888f022
+                            # arz 21 of 30 uber chests opened Cyclops-grade base loot and 18
+                            # of the 27 svc_*hoard_loot_0N records had ZERO references in
+                            # 51,312 - three breadth waves tuned dead records behind four
+                            # green gates. Fixed AT the cause, outside this module: the
+                            # monolith's `_svc_wire_boss_hoard_chests` now wires every hoard
+                            # chest to its OWN table (and `_create_propontis_superboss`
+                            # authors the missing Dorus family, which used to SHARE the
+                            # Obsidian roulette's records by clone - Will's separation ask),
+                            # and `svc_loot_volume._r250_exempt` takes the family out of
+                            # R-240's trim so it keeps its authored *2.4/*2.8. What lives
+                            # HERE is the one write with no other home - the SV/DRX-original
+                            # Secret Present gift box at exactly 3x (BL-W0814-7) - plus the
+                            # whole H1-H7 contract as a verify().
+                            # ORDER IS LOAD-BEARING: MUST run after `loot_volume_trim` (and
+                            # after `r247_bloodcave_rulings`, its sibling carve-out), because
+                            # apply() FAILS LOUD unless the hoard family came through the
+                            # trim UNTRIMMED - which is the live proof that the R-250
+                            # carve-out fired, and can only be checked once the trim has run.
+                            # verify() deliberately runs in step 4: the WIRING half lands in
+                            # run_registry_gates (step 3), AFTER every registry apply().
+                            # NOT TOUCHED, each for a stated reason: the polis-vault cage
+                            # (R-240's trim there IS what Will asked for, and its post-trim
+                            # volume is what gate_loot_distribution's D7X2 anchor is derived
+                            # from - so that anchor stays valid), every orb table (R-242,
+                            # frozen apex), the Devourer's stash (R-247.7a owns it), and
+                            # COMPOSITION anywhere (R-180/R-181/R-220).
+                            # Standalone: py tools/gate_uber_hoard_generosity.py <arz>
+                            # (--calibrate); negatives: py tools/debug/negtest_uber_hoards.py
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

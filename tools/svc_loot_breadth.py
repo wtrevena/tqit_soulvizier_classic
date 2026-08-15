@@ -233,6 +233,23 @@ DRX_DONORS = {
 EXEMPT = {
     r'records\item\loottables\svc\toxeus_rant_perplayer.dbr':
         'per-player Toxeus rant scroll (a single quest-flavour item, not a gear chest)',
+    # R-250 (Will 2026-08-14, BL-W0814-7: "the gift box in the secret places need to
+    # increase the number of items dropped by 3x"). The three Secret Present tables are
+    # SV/DRX ORIGINALS - no mod wave authored them and none has ever tuned their
+    # composition. `uber_hoard_generosity` moves numSpawnMin/MaxEquation on them and
+    # NOTHING else (its own scope proof fails the build if anything else drifts), so the
+    # write is real and the ownership rule is right to notice it - but holding an
+    # untouched upstream table to R-180/R-181's mod-chest breadth and distribution
+    # thresholds would be gating composition this lane deliberately did not change.
+    # NOT UNGOVERNED: their volume is pinned exactly by `svc_uber_hoards` H6 and by
+    # `tools/gate_uber_hoard_generosity.py`, with a planted negative (N6) proving the
+    # check fires. Reconsider this entry the day a wave actually re-composes the box.
+    r'records\drxitem\container\loottable_sp_01.dbr':
+        'SV/DRX-original Secret Present box; R-250 moves VOLUME only, gated by H6',
+    r'records\drxitem\container\loottable_sp_02.dbr':
+        'SV/DRX-original Secret Present box; R-250 moves VOLUME only, gated by H6',
+    r'records\drxitem\container\loottable_sp_03.dbr':
+        'SV/DRX-original Secret Present box; R-250 moves VOLUME only, gated by H6',
 }
 
 

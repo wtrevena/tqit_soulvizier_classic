@@ -142,12 +142,14 @@ STASH_MIN_MULT = 3.8
 # ── The base-game family the b42 repoint sent every hoard chest to ──────────
 BASE_LOOT_MARK = '\\containers\\defaultloot\\'
 
-# The never-empty floor, imported rather than re-typed so R-250 and R-240 can never
-# disagree about what "a chest that opens and drops nothing" means (build28/29/30 P0).
-try:
+# The never-empty floor, READ from R-240 rather than re-typed so the two contracts can
+# never disagree about what "a chest that opens and drops nothing" means (build28/29/30
+# P0). The import is LAZY and must stay that way: `svc_loot_volume` imports THIS module
+# at module level for its R-250 carve-out, so a module-level import back would be a
+# cycle. Resolving it at call time keeps one definition and no cycle.
+def _min_spawn_floor():
     from svc_loot_volume import MIN_SPAWN_MIN_SOLO
-except ImportError:                                          # pragma: no cover
-    MIN_SPAWN_MIN_SOLO = 1.05
+    return MIN_SPAWN_MIN_SOLO
 
 
 def format_eq(bracket, mult):
@@ -307,6 +309,7 @@ def problems(db, lk=None, report=None):
     rep['worst_hoard_spawn'] = worst
 
     # ── H4 FORM: co-op scaling kept, and the never-empty floor holds ─────────
+    floor = _min_spawn_floor()
     for key in sorted(table_map):
         real, _f, _t = table_map[key]
         short = key.rsplit('\\', 1)[-1]
@@ -318,9 +321,9 @@ def problems(db, lk=None, report=None):
                            "returned 0 and the chest opened and dropped NOTHING."
                            % (short, field, eq))
         lo = _solo(str(_gv(lk, real, 'numSpawnMinEquation') or ''))
-        if lo < MIN_SPAWN_MIN_SOLO:
+        if lo < floor:
             out.append("H4 %s spawns %.3f iteration(s) solo, under the never-empty "
-                       "floor %.2f" % (short, lo, MIN_SPAWN_MIN_SOLO))
+                       "floor %.2f" % (short, lo, floor))
 
     # ── H5 GUARANTEED ROW: the slot the base-game repoint destroyed ──────────
     for key in sorted(table_map):

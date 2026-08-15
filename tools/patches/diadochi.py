@@ -288,10 +288,12 @@ def apply(db, tags):
     #                                  places, which is why _proxy() above deliberately
     #                                  leaves this boss's accessory tiers EMPTY.
     # ORDERING (checked, not assumed): the registry runs BEFORE run_registry_gates, and
-    # _svc_standardize_boss_chests + _svc_verify_world_chests both live inside that
-    # battery - so a hoard authored here IS region-tuned ('svc_diadochihoard' is in
-    # _SVC_CHEST_STD) and IS covered by the world-chest invariant ('diadochi' is in
-    # _SVC_FIXED_UBER_CHESTS). Falls back to the shared Obsidian pool if a donor is
+    # _svc_wire_boss_hoard_chests + _svc_verify_world_chests both live inside that
+    # battery - so a hoard authored here IS wired to its own bespoke loot table (R-250,
+    # by name shape, which `svc_diadochihoard_<tier>` matches) and IS covered by the
+    # world-chest invariant ('diadochi' is in _SVC_FIXED_UBER_CHESTS). It is also
+    # authored EARLY ENOUGH in the registry that the loot-breadth and armour-parity
+    # modules still widen it. Falls back to the shared Obsidian pool if a donor is
     # missing, exactly like the monolith callers, so a donor gap degrades to "a hoard"
     # rather than to "no chest again".
     _dia_hoard = A._svc_build_dedicated_hoard(db, 'diadochi', TAG_HOARD) or A._SVC_HOARD_POOL
