@@ -10,15 +10,25 @@
 > **What was actually wrong (measured in the shipped build, not guessed):**
 >
 > - **The bow was real.** In this engine the LEFT hand is the shield / two-handed-ranged slot (I
->   counted every base-game monster: 123 shields and 48 bows ride the left hand, zero ride the right).
+>   counted every base-game monster: 144 shields and 49 bows ride the left hand, zero ride the right).
 >   The Devourer's left hand was pointed at a "high bleed gear" pool that had been picked by AFFIX
->   instead of by weapon type - and two of its three entries on Normal and Legendary are BOWS. So he
->   equipped one and fought as an archer. Now his left hand can only ever hold a **shield**, and his
->   right hand holds a **guaranteed Vein Render** (his own sword), so he is sword-and-shield every
->   time. The bows are removed from that pool outright.
+>   instead of by weapon type - and one of its three entries on Normal and on Legendary is a BOW. So
+>   he equipped one and fought as an archer. The bows are now removed from that pool outright.
+> - **And while I was in there I found something you did NOT report: he was often standing there with
+>   NOTHING in his sword hand.** His weapon hand was pointed at his 4-piece Crimson Verdict set
+>   table, and 3 of those 4 entries are ARMOUR - a helm, a cuirass, an armband. The engine cannot put
+>   a helm in a hand, so **63% of Devourer spawns in the shipped build had an empty weapon hand.**
+>   That is the same bug you filed against the Endless Hunt, on the boss you only mentioned the bow
+>   for. Fixed: **his weapon hand now only ever rolls one-handed melee weapons, so he is armed 100%
+>   of the time** - about **72%** of spawns it is his own **Vein Render**, the rest a bleed-affix axe
+>   or a unique sword. His off hand holds a **shield about 86%** of the time; the other ~14% is the
+>   Crimson Verdict set roll, which still DROPS the set piece for you but leaves that hand bare. So:
+>   **always a weapon, usually a shield** - if you catch him without a shield once in a while that is
+>   expected, and it means a set piece just dropped. If you ever see him with an empty WEAPON hand,
+>   or a bow, that is a bug - tell me.
 > - **The Hunt really was naked - but he DID have his spear.** His record had no torso, legs or arm
 >   equipment fields at all, and his ring/potion/relic/amulet slots were all switched off. His spear
->   was fine the whole time (right hand, 100%, the Runbreaker) - spears ride the right hand 130-to-0
+>   was fine the whole time (right hand, 100%, the Runbreaker) - spears ride the right hand 122-to-0
 >   in the base game - so what you were seeing was a spearman in no armour. He now wears **torso,
 >   greaves and armbands at 100%** from his own loot bracket, plus the ring / potion / relic / amulet
 >   rolls his two brothers have. He stays **bare-headed on purpose** (so does the Enslaver and so does
@@ -33,14 +43,21 @@
 >   onto the drop channel that provably works in-game (the same one that delivered your End of All
 >   Things formula).
 >
+> **STILL OPEN - READ THIS FIRST.** Two of your three reports are fixed with proof in the files. The
+> **soul is NOT one of them.** I could not find anything wrong with it, so there is nothing I can
+> point at and call the fix. Your next kill is the test. If it still does not drop, say so and I move
+> it onto the drop channel that provably works.
+>
 > **THE TEST (fully quit TQ + restart Steam first):**
-> 1. **Devourer of Blood** (blood cave, his stash / the parchment ambush): he must be holding a
->    **sword and a shield - never a bow**. Kill him: **PASS = his soul drops** (and you should see
->    Vein Render drop as well). FAIL = a bow in his hands, or still no soul.
+> 1. **Devourer of Blood** (blood cave, his stash / the parchment ambush): he must have a **melee
+>    weapon in his weapon hand every single time - never a bow, never an empty hand**. A shield in
+>    the off hand most of the time (roughly 6 spawns in 7); no shield now and then is expected and
+>    means a Crimson Verdict set piece dropped instead. Kill him: **the thing I need to know is
+>    whether his soul drops.** FAIL = a bow, an empty weapon hand, or still no soul.
 > 2. **Toxeus the Murderer, the Endless Hunt:** he must be **wearing armour** (chest, legs, arms) and
 >    still carrying his spear. FAIL = still naked, or the spear is gone.
-> 3. Kill each of them a couple of times if you can - the armour rolls are per-spawn, so a second look
->    tells us whether it is consistent.
+> 3. Kill each of them a couple of times if you can - the armour and weapon rolls are per-spawn, so a
+>    second look tells us whether it is consistent.
 
 > # 🛠️ R-249 WARDEN FIX + ALMYROS TRIM (2026-08-14) - it amends the R-248 section below
 >
