@@ -8,7 +8,7 @@ is a regression that has a real in-game consequence:
 
   * BAL-DEATHXP-1  the ruling reverted to Iron Lore's `/ 9`; the cap put back to
                    500000; the SUPERSEDED R-80 pair (`/ 90` + 50000) left in place,
-                   i.e. the R-251 halving silently did not land; the floor lifted
+                   i.e. the R-254 halving silently did not land; the floor lifted
                    off 0; STR/INT dtype corruption; the engine-loaded record
                    deleted outright.
   * BAL-DEATHXP-2  the "looks retuned but isn't" regression: the divisor is scaled
@@ -67,7 +67,7 @@ STR, INT, FLT = C.DTYPE_STRING, C.DTYPE_INT, C.DTYPE_FLOAT
 
 # The ruled divisor, read out of the ruled equation instead of retyped - so these
 # tests keep planting REAL regressions after the next retune instead of quietly
-# no-opping (the exact trap R-251 found in the R-109 negtest's '/ 90)' literal).
+# no-opping (the exact trap R-254 found in the R-109 negtest's '/ 90)' literal).
 RULED_DIV = C._divisor_of(C.RULED_EQUATION)
 
 
@@ -134,7 +134,7 @@ def new_ctx(ge=None, pl=None, look=None, grave=None, drop_gameengine=False,
 # ===========================================================================
 def test_values():
     print('CONTRACT: BAL-DEATHXP-1')
-    check('silent on a compliant R-80/R-251 gameengine',
+    check('silent on a compliant R-80/R-254 gameengine',
           not fires(C.check_deathxp_values(new_ctx()), 'BAL-DEATHXP-1'))
 
     # break: the ruling reverted to Iron Lore's vanilla divisor
@@ -143,7 +143,7 @@ def test_values():
     check('fires (P0) when deathPenaltyEquation reverts to the vanilla "/ 9"',
           fires(C.check_deathxp_values(bad), 'BAL-DEATHXP-1', C.GAMEENGINE, 'P0'))
 
-    # break: THE R-251 REGRESSION - the halving did not land and the record still
+    # break: THE R-254 REGRESSION - the halving did not land and the record still
     # carries the pair build92 shipped.
     bad = new_ctx(ge=good_gameengine(
         deathPenaltyEquation=(STR, C.SUPERSEDED_R80_EQUATION),
@@ -183,7 +183,7 @@ def test_reduction():
     check('silent when equation AND cap are both scaled by the ruled fraction',
           not fires(C.check_deathxp_reduction(new_ctx()), 'BAL-DEATHXP-2'))
 
-    # THE R-251 headline plant: the divisor was halved to 180 and the cap was left
+    # THE R-254 headline plant: the divisor was halved to 180 and the cap was left
     # at the PREVIOUS 50000. It passes a naive "is the equation right?" eyeball and
     # still over-charges every capped high-level death.
     half = new_ctx(ge=good_gameengine(deathPenaltyMax=(INT, C.SUPERSEDED_R80_MAX)))
@@ -293,7 +293,7 @@ def test_tombstone_equality():
     check('silent when recovered == lost on the shipped penalty',
           not fires(C.check_tombstone_equality(new_ctx()), 'BAL-TOMBSTONE-2'))
 
-    # THE COUPLING, in the direction R-251 moved: halve the penalty and the
+    # THE COUPLING, in the direction R-254 moved: halve the penalty and the
     # equality must STILL hold with no edit on the recovery side. This is the
     # property R-109 was built for, asserted rather than assumed.
     retuned = new_ctx(ge=good_gameengine(
@@ -410,7 +410,7 @@ def test_module_agreement():
               - C.clamp_penalty(85, 2, RULED_DIV, C.RULED_MAX)) < 1e-9)
 
     # the ruled constants are internally coherent: the cap is the same fraction of
-    # vanilla as the equation, and R-251 really is "another 50%" on R-80.
+    # vanilla as the equation, and R-254 really is "another 50%" on R-80.
     check('the ruled cap is exactly the ruled fraction of the vanilla cap',
           abs(C.RULED_MAX - C.RULED_REDUCTION * C.VANILLA_MAX) < 1e-6 * C.VANILLA_MAX,
           '%d vs %.3f x %d' % (C.RULED_MAX, C.RULED_REDUCTION, C.VANILLA_MAX))
@@ -418,7 +418,7 @@ def test_module_agreement():
           abs(RULED_DIV - (C._divisor_of(C.VANILLA_EQUATION) / C.RULED_REDUCTION))
           < 1e-9,
           'divisor %r' % (RULED_DIV,))
-    check('R-251 is exactly half of the R-80 penalty (divisor x2, cap /2)',
+    check('R-254 is exactly half of the R-80 penalty (divisor x2, cap /2)',
           RULED_DIV == 2 * C._divisor_of(C.SUPERSEDED_R80_EQUATION)
           and C.RULED_MAX * 2 == C.SUPERSEDED_R80_MAX)
 

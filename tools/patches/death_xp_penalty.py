@@ -1,5 +1,5 @@
 r"""tools/patches/death_xp_penalty.py - cut the on-death EXPERIENCE penalty to 5%
-of vanilla (R-80 took it to 10%; R-251 halved that again).
+of vanilla (R-80 took it to 10%; R-254 halved that again).
 
 WILL'S RULINGS (verbatim)
 -------------------------
@@ -7,7 +7,7 @@ R-80, 2026-07-27:
     "also i want to drastically reduce the xp penalty for dying. at high levels
      the penalty is way too crazy, it needs to be cut by like 90%"
 
-R-251, 2026-08-14 (BL-W0814-4) - the CURRENT ruling, it retunes R-80's number and
+R-254, 2026-08-14 (BL-W0814-4) - the CURRENT ruling, it retunes R-80's number and
 leaves R-80's mechanism, scope and reasoning standing:
     "lets reduce the penalty for dying by another 50% from what it currently is
      at."
@@ -61,7 +61,7 @@ PROVENANCE
 The vanilla values are pure TQAE, untouched by every upstream and by our own
 pipeline before b93. Identical in: base TQAE database.arz, SV 0.98i, SV 0.9,
 SV 0.41. b93 (R-80) moved them to the 90 / 50,000 pair that shipped through
-build92; R-251 moves that pair on again. No tool or registry module other than
+build92; R-254 moves that pair on again. No tool or registry module other than
 this one writes any `deathPenalty*` field.
 
 THE CHANGE (a uniform, exactly-95%-of-vanilla cut)
@@ -69,11 +69,11 @@ THE CHANGE (a uniform, exactly-95%-of-vanilla cut)
     deathPenaltyEquation
       VANILLA  (currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 9)
       R-80     (currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 90)
-      R-251    (currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 180)
+      R-254    (currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 180)
     deathPenaltyMax
-      VANILLA  500000     R-80  50000      R-251  25000
+      VANILLA  500000     R-80  50000      R-254  25000
     deathPenaltyMin
-      VANILLA  0          R-80  0          R-251  0   (UNTOUCHED - 0 x k is still 0)
+      VANILLA  0          R-80  0          R-254  0   (UNTOUCHED - 0 x k is still 0)
 
 WHY A DIVISOR CHANGE AND NOT A NEW FACTOR: `90 -> 180` is exactly x0.5 while
 adding no new token, operator or nesting to a string the engine's equation parser
@@ -108,7 +108,7 @@ SAME record, because Game.dll computes
 (`GetPlayerExperienceRedemptionAmount` VA 0x10194f60 reads the realised loss that
 `RegisterExperienceLoss` VA 0x10194540 stored at `GraveInfo+0x0C`). The marker
 never reads `deathPenalty*` at all, so retuning the penalty - which is exactly
-what R-251 does - carries the recovery with it with NO edit on the recovery side.
+what R-254 does - carries the recovery with it with NO edit on the recovery side.
 That self-correcting property is the reason R-109 was built this way, and this
 lane is its first live exercise. It is not asserted: `tombstone_xp_recovery.
 verify()` re-derives `recovered == lost` numerically against the LIVE penalty
@@ -135,7 +135,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # tools/ on path
 
-MODULE_NAME = 'Death XP penalty -95% of vanilla (R-80 + R-251)'
+MODULE_NAME = 'Death XP penalty -95% of vanilla (R-80 + R-254)'
 
 # The ONE record the TQAE engine loads for the death penalty.
 GAMEENGINE = r'records\xpack\game\gameengine.dbr'
@@ -148,10 +148,10 @@ EQ_SHAPE = '(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / %d)'
 
 # The three divisor/cap pairs this module knows about. VANILLA is what upstream
 # ships; R80 is the pair build92 shipped and is kept as a NAMED, recognised
-# pre-state (see apply()); NEW is the ruled state R-251 writes.
+# pre-state (see apply()); NEW is the ruled state R-254 writes.
 DIV_VANILLA, MAX_VANILLA = 9, 500000
-DIV_R80, MAX_R80 = 90, 50000            # SUPERSEDED by R-251, still a legal input
-DIV_NEW, MAX_NEW = 180, 25000           # R-251: "another 50%" on the R-80 pair
+DIV_R80, MAX_R80 = 90, 50000            # SUPERSEDED by R-254, still a legal input
+DIV_NEW, MAX_NEW = 180, 25000           # R-254: "another 50%" on the R-80 pair
 MIN_EXPECTED = 0
 
 EQ_OLD = EQ_SHAPE % DIV_VANILLA         # kept under its historical name
@@ -190,7 +190,7 @@ _PROTECTED_SAMPLE = ('experienceEquation', 'transferCostEquation')
 # already on disk carries it, and re-running the retune over one of those (the
 # --negtest / --table paths, and any incremental rebuild) must not fail loud.
 KNOWN_PRE_STATES = (
-    ('the R-251 ruled pair (already applied)', EQ_NEW, MAX_NEW),
+    ('the R-254 ruled pair (already applied)', EQ_NEW, MAX_NEW),
     ('the superseded R-80 pair (build92)',     EQ_R80, MAX_R80),
     ('vanilla TQAE',                           EQ_OLD, MAX_VANILLA),
 )
@@ -217,7 +217,7 @@ def _check_constants():
     states a cut the build does not deliver."""
     if DIV_NEW != DIV_R80 * 2 or MAX_NEW != MAX_R80 // 2:
         raise SystemExit(
-            'death_xp_penalty: R-251 is "another 50%%" on the R-80 pair, so the '
+            'death_xp_penalty: R-254 is "another 50%%" on the R-80 pair, so the '
             'constants must be divisor %d and cap %d; got %d / %d.'
             % (DIV_R80 * 2, MAX_R80 // 2, DIV_NEW, MAX_NEW))
     if abs(MAX_NEW - REDUCTION * MAX_VANILLA) > _TOL * MAX_VANILLA:
@@ -359,7 +359,7 @@ def verify(db, tags):
     if eq != EQ_NEW:
         raise SystemExit(
             'death_xp_penalty verify: deathPenaltyEquation is %r, expected %r - a '
-            'later phase clobbered the R-80/R-251 ruling.' % (eq, EQ_NEW))
+            'later phase clobbered the R-80/R-254 ruling.' % (eq, EQ_NEW))
     if int(mx) != MAX_NEW:
         raise SystemExit(
             'death_xp_penalty verify: deathPenaltyMax is %r, expected %d.'
@@ -375,7 +375,7 @@ def verify(db, tags):
 
     # The ruled reduction, re-derived numerically over the shipped level cap,
     # against BOTH baselines: vanilla (the R-80 headline) and the build92 pair
-    # (the R-251 headline, "another 50%"). Both come off the constants, so a
+    # (the R-254 headline, "another 50%"). Both come off the constants, so a
     # future retune that edits one constant and not the others reds here.
     worst_v = worst_r80 = 0.0
     for lvl in range(1, 1001):
@@ -393,7 +393,7 @@ def verify(db, tags):
             'vanilla (worst ratio deviation %.3g)' % (100 * (1 - REDUCTION), worst_v))
     if worst_r80 > _TOL:
         raise SystemExit(
-            'death_xp_penalty verify: R-251 is not a uniform %.0f%% cut of the '
+            'death_xp_penalty verify: R-254 is not a uniform %.0f%% cut of the '
             'build92 penalty (worst ratio deviation %.3g)'
             % (100 * (1 - REDUCTION_VS_R80), worst_r80))
 
@@ -452,7 +452,7 @@ def _negtest(arz):
         db.set_field(GAMEENGINE, 'deathPenaltyMax', v)
 
     # CONTROL: the ruled state passes.
-    check('control - the R-251 ruled state passes', False, lambda: None, lambda: None)
+    check('control - the R-254 ruled state passes', False, lambda: None, lambda: None)
 
     # PLANT 1: the whole ruling reverted to Iron Lore's vanilla divisor.
     check('equation reverted to vanilla "/ %d" rejected' % DIV_VANILLA, True,

@@ -5,7 +5,7 @@ live on ONE record each and that a single stray write can silently revert, takin
 Will ruling with it. Everything here is asserted over the SHIPPED .arz.
 
 This domain owns the on-death EXPERIENCE economy: the death penalty itself
-(R-80, retuned by R-251) and the death-marker recovery that must EQUAL it
+(R-80, retuned by R-254) and the death-marker recovery that must EQUAL it
 (R-109). They live on the SAME record and are ruled as a pair, so they are gated
 as a pair - a lane that retunes one and not the other is exactly the regression
 these contracts exist to red.
@@ -58,7 +58,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # tools/ on path
 
 # --------------------------------------------------------------------------- #
-# The ruled values (R-80 as retuned by R-251, plus R-109). Single source of truth
+# The ruled values (R-80 as retuned by R-254, plus R-109). Single source of truth
 # for the gate; the build-side modules tools/patches/death_xp_penalty.py and
 # tools/patches/tombstone_xp_recovery.py carry the same constants and this
 # contract cross-checks them so the two sides can never silently diverge.
@@ -69,7 +69,7 @@ RULED_EQUATION = '(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 180)'
 RULED_MAX = 25000
 RULED_MIN = 0
 
-# The pair R-80 shipped through build92, SUPERSEDED by R-251 ("another 50%").
+# The pair R-80 shipped through build92, SUPERSEDED by R-254 ("another 50%").
 # Named, not anonymous: "the retune did not land" is a distinct regression from
 # "the whole ruling reverted to vanilla", and the negative tests plant both.
 SUPERSEDED_R80_EQUATION = '(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 90)'
@@ -77,7 +77,7 @@ SUPERSEDED_R80_MAX = 50000
 
 VANILLA_EQUATION = '(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 9)'
 VANILLA_MAX = 500000
-RULED_REDUCTION = 0.05          # keep 5% of the vanilla loss == -95% (R-80 + R-251)
+RULED_REDUCTION = 0.05          # keep 5% of the vanilla loss == -95% (R-80 + R-254)
 
 # R-109: the death marker returns `trunc(realised_loss * RedemptionMultiplier)`,
 # so 1.0 is the equality. 0.5 is vanilla TQAE (and the engine loader's default),
@@ -109,7 +109,7 @@ CONTRACTS = [
      'asserts': 'the engine-loaded xpack gameengine carries deathPenaltyEquation '
                 '"/ 180", deathPenaltyMax 25000, deathPenaltyMin 0, with STR/INT '
                 'dtypes intact',
-     'derived_from': 'Will R-80 2026-07-27 ("cut by like 90%") retuned by R-251 '
+     'derived_from': 'Will R-80 2026-07-27 ("cut by like 90%") retuned by R-254 '
                      '2026-08-14 ("another 50% from what it currently is at"); '
                      'Game.dll loads only Records/XPack/Game/GameEngine.dbr and '
                      'reads exactly these 3 fields'},
@@ -134,7 +134,7 @@ CONTRACTS = [
                 'realised-loss domain, with the cap inside the float32 exact-integer '
                 'bound 2^24',
      'derived_from': 'R-109 rules the INVARIANT, not the number: it is re-derived '
-                     'from the SHIPPED penalty knobs so a retune like R-251 proves '
+                     'from the SHIPPED penalty knobs so a retune like R-254 proves '
                      'itself instead of silently desynchronising the marker'},
     {'id': 'BAL-DEATHXP-3', 'name': 'Dead gameengine lookalikes untouched',
      'asserts': 'the 5 non-engine-loaded deathPenalty-bearing records still carry '

@@ -123,20 +123,20 @@ automatically, because it never sees those fields at all. That is the strongest
 available form of R-109's "self-correcting" requirement, and it is why this
 module writes a multiplier rather than a second equation.
 
-**R-251 [2026-08-14] IS THE FIRST LIVE EXERCISE OF THAT PROPERTY.** Will halved
+**R-254 [2026-08-14] IS THE FIRST LIVE EXERCISE OF THAT PROPERTY.** Will halved
 the death penalty again ("lets reduce the penalty for dying by another 50% from
 what it currently is at"): `death_xp_penalty` moved the divisor 90 -> 180 and the
 cap 50,000 -> 25,000, and THIS MODULE DID NOT CHANGE A SINGLE VALUE. The equality
 still holds because it is derived, and `verify()` below re-proves it against the
 NEW knobs it reads off the db (not against any constant in this file). Had R-109
-been built as the "10% of the original" form Will first floated, R-251 would have
+been built as the "10% of the original" form Will first floated, R-254 would have
 silently desynchronised the marker and re-opened the very drift R-109 named.
 
 EXACTNESS OF THE IDENTITY (this is arithmetic, not a hope). The engine round-trip
 is int32 -> double -> float32 -> `mulss` by 1.0f -> truncate. float32 represents
 every integer up to 2^24 = 16,777,216 exactly, `x * 1.0f` is exact for every
 finite float, and truncating an exactly-represented integer returns it. The
-shipped `deathPenaltyMax` is 25,000 (R-251) and the realised loss is bounded above
+shipped `deathPenaltyMax` is 25,000 (R-254) and the realised loss is bounded above
 by the nominal penalty, so every value this path can carry is < 2^24 by a factor
 of 671 - the headroom only GREW when the penalty was cut.
 `verify()` re-proves the identity numerically over L1..1000 x N/E/L rather than
@@ -550,10 +550,10 @@ def _table(arz, applied=False):
     print('\n  RATIO recovered/lost at the SHIPPED multiplier %.2f: worst %.4f over the'
           % (mult, worst_ratio if worst_ratio is not None else float('nan')))
     print('  rows above (R-109 requires exactly 1.0000 - equality, not <=).')
-    # MEASURED, not asserted: an artifact built before R-251 will say so here.
+    # MEASURED, not asserted: an artifact built before R-254 will say so here.
     print('  LOST b92 -> LOST now: %s'
-          % ('every row is exactly half - this is R-251 ("another 50%")' if halved
-             else 'NOT halved (divisor %g / cap %d) - this artifact predates R-251; '
+          % ('every row is exactly half - this is R-254 ("another 50%")' if halved
+             else 'NOT halved (divisor %g / cap %d) - this artifact predates R-254; '
                   're-run with --applied to see what the next build ships'
                   % (divisor, mx)))
     print('  Every LOST / BACK column above is an INTEGER because the engine rounds '
@@ -631,7 +631,7 @@ def _negtest(arz):
     # hardcoded 10%. The gate must PASS with a different penalty.
     # The retune is DERIVED from whatever divisor is live (it used to be a literal
     # '/ 90)' -> '/ 45)' string swap, which silently became a NO-OP the moment
-    # R-251 moved the divisor to 180 - a plant that plants nothing is worse than
+    # R-254 moved the divisor to 180 - a plant that plants nothing is worse than
     # no plant at all, so the swap is asserted to have actually changed the string).
     prev_eq = _val(db, GAMEENGINE, 'deathPenaltyEquation')
     prev_mx = int(_val(db, GAMEENGINE, 'deathPenaltyMax'))
@@ -648,12 +648,12 @@ def _negtest(arz):
               lambda: (db.set_field(GAMEENGINE, 'deathPenaltyEquation', prev_eq),
                        db.set_field(GAMEENGINE, 'deathPenaltyMax', prev_mx)))
 
-    # PLANT 7: the same coupling in the direction R-251 actually moved - HALVE the
+    # PLANT 7: the same coupling in the direction R-254 actually moved - HALVE the
     # live penalty (divisor x2, cap /2, exactly what death_xp_penalty just did) and
     # require the equality to hold with no edit on the recovery side. This is the
-    # R-251 regression test for R-109.
+    # R-254 regression test for R-109.
     if retuned_eq:
-        check('penalty HALVED like R-251 (divisor %d -> %d, cap %d -> %d) still passes'
+        check('penalty HALVED like R-254 (divisor %d -> %d, cap %d -> %d) still passes'
               % (live_div, live_div * 2, prev_mx, prev_mx // 2), False,
               lambda: (db.set_field(GAMEENGINE, 'deathPenaltyEquation', retuned_eq),
                        db.set_field(GAMEENGINE, 'deathPenaltyMax', prev_mx // 2)),
