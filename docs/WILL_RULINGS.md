@@ -7856,23 +7856,33 @@ leaving it alone is what keeps that anchor valid); every orb table (R-242, froze
 five reports are CHESTS); the Devourer's stash (R-247.7a owns it); COMPOSITION anywhere
 (R-180/R-181/R-220 own members, weights, group chances and the guaranteed row).
 
-**THE GATE (NO NEW SURFACE WITHOUT A GATE):** `tools/svc_uber_hoards.py` (H1-H7, the shared
+**THE GATE (NO NEW SURFACE WITHOUT A GATE):** `tools/svc_uber_hoards.py` (H1-H8, the shared
 contract) + `tools/gate_uber_hoard_generosity.py` (standalone) + the in-build
-`tools/patches/uber_hoard_generosity.verify()` + `tools/debug/negtest_uber_hoards.py` (8 planted
+`tools/patches/uber_hoard_generosity.verify()` + `tools/debug/negtest_uber_hoards.py` (12 planted
 defects, all caught, with an anti-inert control). H1 is the check that would have caught b42 the
 day it shipped: does the chest the player opens actually name the table the other gates measured?
-H7 makes Will's record-separation ask an invariant instead of a promise.
+H7 makes Will's record-separation ask an invariant instead of a promise. **H8 (round 2)** asserts
+every hoard's guaranteed unique+relic row matches its OWN difficulty, walking the FAMILY rather than
+the wire so a table that is both orphaned and wrong-tier reds on its own - the exact state
+`svc_obsidianhoard_loot_02/03` shipped in (see `BL-R250-DEBT-4`, retired).
 
 **PROOF (static; `tools/debug/dryrun_r250_uber_hoards.py` applies the wave in memory to `b888f022`):**
 
 | contract | BEFORE | AFTER |
 | --- | --- | --- |
-| R-250 uber hoard generosity (H1-H7) | **RED, 83 findings** | GREEN |
+| R-250 uber hoard generosity (H1-H8) | **RED, 83 findings** | GREEN |
 | R-240 loot volume (V1-V7b) | GREEN | GREEN |
 | R-181 loot distribution (D1-D9, incl. D7/D7X2) | GREEN | GREEN |
 | R-181 loot ownership (OWN1/OWN2) | GREEN | GREEN |
 | R-180 chest loot breadth | GREEN | GREEN |
 | R-240 chest artifacts | GREEN | GREEN |
+| R-238 relic/unique difficulty tiers | GREEN, **51 branches** | GREEN, **81 branches** |
+
+⚠️ **READ THE LAST ROW AS A METHOD, not a result.** Round 1 omitted it and reported the ruling green;
+on the post-wave db it was **RED with 8 findings**. Its BEFORE green was an artifact of the branches
+being UNREACHABLE, which is the very thing R-250 changes - so a gate that only sees wired surfaces
+must be re-measured on the POST-wave db by any wave that changes what is wired. That is why it now
+sits in the dry-run battery permanently.
 
 **STATUS OF THE SUPERSEDED DECISION:** the b42 repoint is RETIRED, not deleted - `_SVC_CHEST_STD`
 survives as the family roster and as the record of the region brackets the supersession gives up
@@ -7893,8 +7903,23 @@ survives as the family roster and as the record of the region brackets the super
 - `BL-R250-DEBT-3` (in-game, WILL): the closing proof is Will opening the Propontis, Tantalus,
   Ephialtes and Obsidian chests and a Secret Present box on the next build. Everything above is a
   database and gate proof.
-- `BL-R250-DEBT-4` (measured, not a defect): `svc_obsidianhoard_loot_02/03` name `01_act4_relics`
-  in their guaranteed relic slot where every sibling names `02_/03_act4_relics`.
-  `gate_relic_difficulty_tiers` is GREEN on this (the act-4 relic tables carry difficulty-indexed
-  arrays), so it is recorded rather than "fixed" blind. Now that these tables are LIVE it is worth
-  one measured look in a composition lane.
+- `BL-R250-DEBT-4` - ❌ **RETIRED 2026-08-14 (round 2): it WAS a defect, and the entry that said
+  otherwise was wrong twice over.** The original text read: "`svc_obsidianhoard_loot_02/03` name
+  `01_act4_relics` ... `gate_relic_difficulty_tiers` is GREEN on this (the act-4 relic tables carry
+  difficulty-indexed arrays), so it is recorded rather than 'fixed' blind." Both halves fail:
+  * The GREEN reading was taken on the **pre-R-250** arz, where those chests still named
+    `boss_default_*` so the gate's wire-walk never reached the records. On the **post-R-250** db the
+    same gate reds with **8 findings** naming exactly `svc_obsidianhoard_loot_02` and `_03`.
+    Measured: **51 branches / 0 findings before, 81 / 8 after**.
+  * The parenthetical is not what the gate checks. `gate_relic_difficulty_tiers` maps `NN_act*_relics`
+    straight to a difficulty (`_RELIC_RE` + `_RELIC_FOR`) and reds tier `01` on an Epic/Legendary
+    branch regardless of what the target table contains.
+  FIXED in `_create_obsidian_roulette` (`_OBS_GUAR_{UNIQUE,RELIC}_TIER[t]`), the same per-tier
+  constants Will's 2026-08-08 leak #2 put into `_svc_build_dedicated_hoard` and never into the
+  roulette. Post-fix: **81 branches / 0 findings.**
+  **THE LESSON, which is why this is retired in the ledger rather than quietly amended:** a gate
+  reading taken on an artifact where the surface is UNREACHABLE proves nothing about that surface.
+  R-250 is precisely the wave that makes 30 branches reachable, so every "gate X is green" claim in
+  this ruling had to be re-measured on the POST-wave db, not the shipped one. New invariant `H8`
+  (`svc_uber_hoards`) now walks the FAMILY instead of the wire so an orphaned-and-wrong-tier table
+  reds on its own, and `gate_relic_difficulty_tiers` is in the dry-run battery.

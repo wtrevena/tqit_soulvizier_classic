@@ -100,8 +100,8 @@ x1, SecretForest2 x2, PillagedVillage x2 - hence "the secret **places**") ->
 | 1. WIRING | `tools/apply_svc_patches.py` | `_svc_standardize_boss_chests` -> **`_svc_wire_boss_hoard_chests`**: every `svc_<fam>hoard_<tier>` chest names its OWN `svc_<fam>hoard_loot_<tier>`; scope DERIVED from the house name shape (not the `_SVC_CHEST_STD` roster) so a future family is covered the moment it is named; fail-loud if any chest's own table is missing. `_create_propontis_superboss` authors the missing `svc_dorushoard_loot_0N` family **in the CONTENT pass** (load-bearing: the loot-breadth/armour-parity registry modules run between the content pass and finalization). The three `*2.4/*2.8` literals collapse to `_SVC_HOARD_MIN_EQ/_MAX_EQ`, imported from `svc_uber_hoards` so the authoring sites and the gate cannot drift. |
 | 2. VOLUME | `tools/svc_loot_volume.py` | `_r250_exempt` (membership imported from `svc_uber_hoards.is_hoard_table`, never re-typed) + `_exempt()`; `scope_tables` and the V1 per-surface ceiling both consult it. Same Will-ratified mechanism as R-247.7(a). **R-240 scope 84 -> 57 surfaces** (66 -> 39 canonical; the 18 TESTHUB twins untouched). |
 | 3. GIFT BOX | `tools/patches/uber_hoard_generosity.py` (NEW registry module) | `loottable_sp_0{1,2,3}` `*1.8/*2.1` -> **`*5.4/*6.3`** = exactly 3x, VOLUME ONLY with a scope proof; `apply()` also fails loud unless the hoard family came through `loot_volume_trim` UNTRIMMED (the live proof the carve-out fired). Registered after `r247_bloodcave_rulings`, before `visuals`. |
-| GATE | `tools/svc_uber_hoards.py` + `tools/gate_uber_hoard_generosity.py` + the module's `verify()` | H1 wiring / H2 no orphans / H3 exact authored volume / H4 form + never-empty floor / H5 guaranteed 100% row / H6 the 3x gift box / H7 no shared records (Will's separation ask as an invariant). |
-| NEGATIVES | `tools/debug/negtest_uber_hoards.py` | 8 plants (one per check + both H7 shapes), **8/8 caught**, with an ANTI-INERT control proving the healthy fixture is green first. Also reachable as `py tools/patches/uber_hoard_generosity.py --negtest`. |
+| GATE | `tools/svc_uber_hoards.py` + `tools/gate_uber_hoard_generosity.py` + the module's `verify()` | H1 wiring / H2 no orphans / H3 exact authored volume **+ the crown, measured in solo iterations and now covering the gift box** / H4 form + never-empty floor / H5 guaranteed 100% row / H6 the 3x gift box / H7 no shared records (Will's separation ask as an invariant) / **H8 (round 2) the guaranteed row's TIER matches the table's own difficulty** - walks the FAMILY not the wire, so an orphaned-AND-wrong-tier table reds on its own. Tier reader imported from `gate_relic_difficulty_tiers` so the two gates cannot disagree. |
+| NEGATIVES | `tools/debug/negtest_uber_hoards.py` | **12 plants**, **12/12 caught**, with an ANTI-INERT control proving the healthy fixture is green first. Round 2 added N9 relic tier / N10 unique tier / N11 gift-box tier / N12 crown inverted, and gave the healthy fixture tier-correct guaranteed rows so H8 is not inert. Also reachable as `py tools/patches/uber_hoard_generosity.py --negtest`. |
 | PROOF HARNESS | `tools/debug/dryrun_r250_uber_hoards.py` | applies the whole wave IN MEMORY to a built arz and runs the coexisting battery. Writes nothing; not imported by the pipeline. |
 | OWNERSHIP | `tools/svc_loot_breadth.py` `EXEMPT` | the 3 SV/DRX-original `loottable_sp_0N` tables, with the written reason the escape hatch costs. Not ungoverned: H6 pins their volume exactly and N6 proves the check fires. |
 
@@ -109,18 +109,35 @@ x1, SecretForest2 x2, PillagedVillage x2 - hence "the secret **places**") ->
 
 | contract | BEFORE (shipped `b888f022`) | AFTER (wave applied in memory) |
 | --- | --- | --- |
-| R-250 uber hoard generosity (H1-H7) | **RED - 83 findings** (21 H1 + 18 H2 + 27 H3 + H6 + H7) | **GREEN** |
+| R-250 uber hoard generosity (H1-H8) | **RED - 83 findings** (21 H1 + 18 H2 + 27 H3 + H6 + H7) | **GREEN** |
 | R-240 loot volume (V1-V7b) | GREEN | **GREEN** |
 | R-181 loot distribution (D1-D9, incl. D7/D7X2) | GREEN | **GREEN** |
 | R-181 loot ownership (OWN1/OWN2) | GREEN | **GREEN** |
 | R-180 chest loot breadth | GREEN | **GREEN** |
 | R-240 chest artifacts | GREEN | **GREEN** |
+| R-238 relic/unique difficulty tiers | GREEN - **51 branches** | **GREEN - 81 branches** |
+
+🚨 **THE LAST ROW IS THE ROUND-2 LESSON, and it is a method, not a number.** Round 1 left this gate
+out of the battery and recorded it green from the shipped arz. It is a WIRE-walking gate: it only
+ever sees a loot table something points at. R-250 is precisely the wave that makes 30 previously
+orphaned branches reachable, so on the post-wave db it went **RED with 8 findings** - the Epic and
+Legendary Obsidian Hoards guaranteeing an Essence-tier relic (see the retired `BL-R250-DEBT-4`).
+**Any wave that changes what is WIRED must re-measure every wire-walking gate on the POST-wave db.**
+Fixed at the cause, and the gate is now a permanent member of the dry-run battery.
 
 Also re-run standalone on the shipped arz with the carve-out in place: `gate_loot_volume` PASS (39
 canonical surfaces), `gate_loot_distribution` PASS, `gate_orb_loot_breadth` PASS,
 `gate_chest_loot_breadth` PASS, `gate_relic_difficulty_tiers` PASS, `gate_chest_artifacts` PASS.
 `py -m py_compile` clean on every touched module; `patches.selfcheck()` OK (67 modules, order hash
-`c9af6ef6...`).
+`c9af6ef6...`); `negtest_uber_hoards` 12/12 with the anti-inert control green.
+
+**THE CROWN, RE-MEASURED (round 2).** H3's crown check used to compare bare multipliers
+(`HOARD_MIN_MULT` vs `STASH_MIN_MULT`) and did not cover the gift box at all. That was wrong on both
+counts: the gift box rides a DIFFERENT bracket (`(1+(1.8*n))` vs `(3+(1.8*n))`), so its `*5.4` is a
+bigger number than the stash's `*3.8` while paying fewer items. H3 now compares **solo spawn
+iterations**, which is the thing that matters, and covers the box. Measured: **uber hoard 12.48,
+Secret Present box 16.38, Devourer's stash 18.96** - the stash keeps the crown (R-247.7a) with the
+box at ~86% of it, which is what Will's literal "3x" produces. N12 plants the inversion.
 
 **THE D7X2 GOTCHA THE BRIEF WARNED ABOUT DID NOT BITE, BY DESIGN.** `gate_loot_distribution`'s
 `ARMOR_SLOT_FLOOR_REF_SPAWN = 1.3100` is anchored to the **polis-vault cage's** post-trim volume.
@@ -141,7 +158,21 @@ multiplier, and the scope proofs fail the build if anything else drifts.
 - arz-only. **0 new Text tags** -> no arz+Text coupling; Levels/Quests need no rebuild.
 - Expect the record-diff vs shipped `b888f022` to show, and nothing else: **30** hoard chests'
   `tables`, **27** hoard tables' `numSpawnMin/MaxEquation`, **3** NEW `svc_dorushoard_loot_0N`
-  records (+ their breadth widening), **3** `loottable_sp_0N` `numSpawnMin/MaxEquation`.
+  records (+ their breadth widening), **3** `loottable_sp_0N` `numSpawnMin/MaxEquation`, and
+  (**round 2**) **2** `loot3Name2` values - `svc_obsidianhoard_loot_02` and `_03`, `01_act4_relics`
+  -> `02_`/`03_act4_relics`.
+  ⚠️ `loot3Name1` on those two records is ALSO made per-tier in source, but expect **no diff** there:
+  R-180's `retarget_guaranteed_weapon` overwrites the slot downstream with the tier-correct
+  `svc_unique_weapons_{n,e,l}01` either way. It is fixed in source anyway so the tier never depends
+  on a later module running - if a future wave retires that retarget, the source is already right.
+- **Fail-loud message the ship lane may see (by design, not a bug):** `PROPONTIS: WARNING hoard donor
+  missing <path>; <table> not authored (R-250 wiring gate will fail loud)`. The Dorus path clones the
+  CHEST unconditionally but authors its loot table only when the donor exists, so a donor gap leaves
+  a table-less chest and `_svc_wire_boss_hoard_chests` then raises `SystemExit`. The donor is an SV
+  original present in every build, so this should never fire; if it does, the WARNING names the
+  missing record and the build stops rather than shipping a chest that pays nothing. (Every other
+  hoard family degrades to "no chest" instead - `_svc_build_dedicated_hoard` returns `None` and
+  authors nothing - so Dorus is the one path where a donor gap is a hard abort.)
 - `gate_uber_hoard_generosity` REDS on every PRE-R-250 artifact by design (83 findings). Read a
   pre-R-250 red as the anchor PASSING, exactly like `BL-R240-DEBT-8`'s D7X2 note. Run it on a
   POST-R-250 arz.
@@ -161,11 +192,19 @@ multiplier, and the scope proofs fail the build if anything else drifts.
 - `BL-R250-DEBT-3` - **NOT PROVEN IN-GAME.** Everything above is a database and gate proof. The
   closing evidence is Will opening the Propontis / Tantalus / Ephialtes / Obsidian chests and a
   Secret Present box on the next build (the WILL_TEST_GUIDE section names the exact PASS line).
-- `BL-R250-DEBT-4` - MEASURED, NOT A DEFECT: `svc_obsidianhoard_loot_02/03` name `01_act4_relics` in
-  their guaranteed relic slot where every sibling names `02_/03_act4_relics`.
-  `gate_relic_difficulty_tiers` is GREEN on it (the act-4 relic tables carry difficulty-indexed
-  arrays), so it is recorded rather than "fixed" blind - but these tables are LIVE now and it is
-  worth one measured look in a composition lane.
+- ~~`BL-R250-DEBT-4`~~ - ❌ **RETIRED 2026-08-14 (round 2) - IT WAS A DEFECT, and this entry's own
+  "gate is GREEN" claim was measured on the wrong artifact.** `svc_obsidianhoard_loot_02/03` named
+  `01_act4_relics` in their guaranteed relic slot, so an **Epic or Legendary Obsidian Hoard
+  guaranteed an Essence-tier relic** - on a chest Will filed as under-rewarding. The green reading
+  came from the **pre-R-250** arz, where those chests still named `boss_default_*` and
+  `gate_relic_difficulty_tiers` (which walks the WIRE) never reached them. Measured: **51 branches /
+  0 findings before R-250, 81 / 8 after**; post-fix **81 / 0**. The stated rationale was wrong too -
+  that gate maps `NN_act*_relics` straight to a difficulty and reds tier `01` on an Epic/Legendary
+  branch regardless of the target table's contents.
+  Fixed at the cause in `_create_obsidian_roulette` (`_OBS_GUAR_{UNIQUE,RELIC}_TIER[t]` - the same
+  per-tier constants Will's 2026-08-08 leak #2 put into `_svc_build_dedicated_hoard` and never into
+  the roulette), covered by new invariant **H8**, and the relic gate is now in the dry-run battery.
+  See `WILL_RULINGS.md` R-250 for the method lesson.
 - `BL-R250-DEBT-5` - the `diadochi` registry module still falls back to the SHARED
   `_SVC_HOARD_POOL` (the Obsidian accessory pool) if a donor is missing. That degradation path
   predates R-250 and does not fire in any observed build, but it is the one route left by which two

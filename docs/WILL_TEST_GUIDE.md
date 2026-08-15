@@ -42,6 +42,13 @@
 > 4. **The Secret Present gift box drops 3x the items**, exactly as asked. There are five of them
 >    across the secret-place levels (Dark Forest entrance, Secret Forest, Pillaged Village), which is
 >    why you saw them in more than one place.
+> 5. **A second Obsidian bug turned up while checking the first, and is fixed here too.** The
+>    **Epic and Legendary Obsidian Hoards were guaranteeing a NORMAL-tier (Essence) relic** - the
+>    lowest tier, on the hardest difficulties. It is the same mistake you caught on 2026-08-08 in the
+>    general-guard hoards; it had been left in the Obsidian chests' builder as well, and it stayed
+>    invisible because the checker follows the chest wiring and those chests were pointed at the
+>    base-game table. Fixing the wiring is what exposed it. Epic hoards now guarantee an
+>    **Embodiment**, Legendary an **Incarnation**.
 >
 > **THE TEST:** open, on Legendary if you can:
 >   * the **Great Hall of Propontis** chest (behind Kroisos the Coin-Drowned),
@@ -52,13 +59,15 @@
 >
 > **PASS =** each uber chest pays a real handful - a guaranteed unique weapon and a tier-correct relic
 > plus several more rolls - not "gold and one relic". The gift box should visibly pay about three
-> times what it used to. **FAIL =** any of them still pays 1-2 items; say which chest and on which
-> difficulty and it is a one-line fix now that each has its own record.
+> times what it used to. On an **Obsidian Hoard specifically**, check the guaranteed relic's tier: on
+> Legendary it must be an **Incarnation**, on Epic an **Embodiment**. An Essence there means item 5
+> did not land. **FAIL =** any of them still pays 1-2 items; say which chest and on which difficulty
+> and it is a one-line fix now that each has its own record.
 >
 > **Not in this change (on purpose):** the polis-vault cage chests, every Mystical Orb (those are the
-> R-242 rates you already ruled on), and the Devourer's stash (already reverted in R-247). Nothing
-> about WHAT the chests can pay changed - only whether the tuned table is the one that opens, and how
-> many rolls it gets.
+> R-242 rates you already ruled on), and the Devourer's stash (already reverted in R-247). With the
+> single exception of the Obsidian relic tier in item 5, nothing about WHAT the chests can pay
+> changed - only whether the tuned table is the one that opens, and how many rolls it gets.
 
 
 > # 🛠️ R-249 WARDEN FIX + ALMYROS TRIM (2026-08-14) - READ THIS FIRST; it amends the R-248 section below
