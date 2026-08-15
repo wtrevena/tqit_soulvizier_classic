@@ -119,7 +119,12 @@
 > - The **Endless Hunt** already has this smoke built into his model. Nothing to do.
 > - **Toxeus, End of All Things** (the crafted supra pet) - still your call whether he gets his own look.
 
-> # ⚔️ R-252 TOXEUS BOSS EQUIPMENT (2026-08-14) - the Hunt gets dressed, the Devourer drops the bow
+> # ⚔️ R-252 TOXEUS BOSS EQUIPMENT (2026-08-15) - the Hunt gets dressed, the Devourer drops the bow
+>
+> **✅ LIVE ON DEV *AND* STEAM as `build96` (arz `0bd0121f36e5ce7bd205c73e588016ae`).** arz-only:
+> no map, no quest, no Text and no new item (all four sibling artifacts md5-proven byte-identical to
+> build95). Closes `BL-W0814-3` and `-9`; **`BL-W0814-10` (the soul) is NOT closed** - see the
+> STILL-OPEN block below. **Fully quit TQ and restart Steam before testing** (standing rule).
 >
 > **Your three reports, verbatim:** "toxeus the murderer the endless hunt is not wearing any equipment
 > and i dont think he has a weapon" + "toxeus the murderer devourer of blood is using a bow which
@@ -202,7 +207,12 @@
 >    whether his soul drops.** FAIL = a bow, an empty weapon hand, or still no soul.
 > 2. **Toxeus the Murderer, the Endless Hunt:** he must be **wearing armour** (chest, legs, arms) and
 >    still carrying his spear. FAIL = still naked, or the spear is gone.
-> 3. Kill each of them a couple of times if you can - the armour and weapon rolls are per-spawn, so a
+> 3. **NEW at integration - the SUMMONED Hunt too.** Cast his soul and look at the pet: it must wear
+>    the SAME armour the fought one wears. The build caught this on its own and refused to finish
+>    until it was fixed: his three soul-pet records copy his gear at the moment they are BUILT, which
+>    happens before the armour is written, so the pet was standing there naked while its source wore
+>    a full kit - your own report, reproduced on the pet. FAIL = you summon him and he is bare.
+> 4. Kill each of them a couple of times if you can - the armour and weapon rolls are per-spawn, so a
 >    second look tells us whether it is consistent.
 
 > # 🛠️ R-249 WARDEN FIX + ALMYROS TRIM (2026-08-14) - it amends the R-248 section below
