@@ -1,20 +1,18 @@
-[h2]The Boss Arena always has its boss now, and it finally pays[/h2]
+[h2]Dying now costs exactly half what it did[/h2]
 [list]
-[*]A player reported walking into the Boss Arena and finding it empty. It was not bad luck and it was not a spawn chance. It was three separate things stacked, any one of which empties the arena.
-[*][b]The boss was spawned by a quest step, and a quest step only ever fires once per character.[/b] Soulvizier built the fight as walk into the middle, quest spawns him. Titan Quest saves that step as completed, forever. So the first visit had a boss and every visit after it was empty. He is now placed in the arena the way every other set piece boss in this mod is placed, which means the engine spawns him fresh every time the level loads: every visit, every character, no saved state involved.
-[*][b]There was also a hidden character level window.[/b] The spawner was using the base game generic quest limits, which only allow the spawn between levels 29 and 36 on Normal, 41 and 55 on Epic, and 60 and 75 on Legendary. Outside that band you got nothing, with a perfectly healthy quest and monster pool sitting there. The arena now uses its own limits, levels 1 to 110, on all three difficulties.
-[*][b]And the spawner was configured as quest only,[/b] with no run chance at all. It is now a world spawner at 100 percent, with exactly one Aithon guaranteed alongside his two Ember Satyr Wardens.
-[*]The quest keeps everything else it did (it still opens the arena entrance); only its duplicate spawn action is gone, so there is exactly one source for the boss and you can never get two Aithons at once.
+[*]A player asked to cut the death penalty by another 50 percent from where it already was. This mod had already reduced the on-death experience loss to 10 percent of the original game's. That reduction is now [b]halved again[/b], so every death costs exactly half of what it cost in the previous version, on every difficulty, at every level. Measured against the original game, the penalty is now 5 percent of vanilla.
+[*][b]The high-level ceiling moved with it, and it had to.[/b] The penalty grows with the cube of your character level, and this mod raises the level cap to 1000, so above roughly level 87 on Legendary you were sitting on a flat ceiling rather than on the formula. Halving the formula alone would have left that ceiling in place and you would have felt no change at all at exactly the levels the complaint was about. Both moved together: the formula divisor and the cap.
+[*]What that looks like in practice: level 55 Legendary was 12,940 XP and is now [b]6,470[/b]. Level 85 Normal was 6,824 and is now [b]3,412[/b]. Level 85 Legendary was 47,765 and is now [b]23,883[/b]. Level 100 Legendary was the 50,000 ceiling and is now [b]25,000[/b].
 [/list]
 
-[h2]The arena guarded nothing, and now it does[/h2]
+[h2]The tombstone still returns 100 percent of what you lost[/h2]
 [list]
-[*]Aithon carries a dedicated Boss locked chest, the [b]Ember Crowned Hoard[/b], one per kill. It opens its own loot table with a guaranteed unique plus relic slot, at the same volume as the other named boss hoards in the mod (the Tantalus chest, the Obsidian hoards, and the rest), which were all restored to their authored generosity in the previous update.
-[*]The six lights ringing the arena floor now have actual flame under them, sitting on the measured floor height rather than floating.
+[*]An earlier ruling made the death marker's experience recovery equal to the experience the death took, rather than a fixed fraction of it. That was built as an [b]equality[/b] on purpose, so it survives retunes like this one. The game hands your grave the amount it actually took from you, so when the penalty halved, the recovery halved with it [b]automatically, with no change to the recovery side at all[/b].
+[*]Concretely, at level 85 Legendary you lose 23,883 XP and the marker gives back 23,883 XP. Not half of it, and not more than it. Had the recovery been hardcoded as a percentage back then, this update would have quietly turned dying and walking back into a way to gain experience. It cannot.
 [/list]
 
-[i]Scope, measured rather than asserted: the world map changed in exactly one level, the arena itself, and its pathfinding data is byte for byte what it was. The quest archive changed in exactly one quest, bossarena. The database added ten records (the hoard family and the new spawn limits) and modified two (the arena spawner and its pool), and nothing else in 51,331 records moved. One new item name was added. No other boss, chest, drop rate, or area was touched.[/i]
+[i]Scope, measured rather than asserted: this update changes [b]two fields on one database record[/b], the game engine record the game actually loads. Nothing else in 51,331 records moved, no new records were added or removed, and no item, monster, drop rate, chest, quest, area or map data changed. The world map, quest archive, text archive and creature archive are byte for byte identical to the previous update. Experience gain, the level table and the level cap are all asserted untouched by their own gates.[/i]
 
-[i]Note: the previous change note was posted against this update by mistake. It describes the Toxeus champion equipment work, which shipped in the update before this one and is unchanged here.[/i]
+[i]Not yet confirmed in play: the arithmetic is proved over 3,012 checked points and the marker equality is derived from the game's own code, but nobody has died in-game on this build to watch the two numbers match on screen.[/i]
 
 [i]Credits: [b]amgoz1[/b] for Soulvizier and the emblem, used with permission - [b]soa[/b] for Soulvizier AERA - [b]Dragonlord[/b] for DRX.[/i]
