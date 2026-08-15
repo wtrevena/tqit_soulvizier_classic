@@ -10,7 +10,7 @@
 > **What was actually wrong (measured in the shipped build, not guessed):**
 >
 > - **The bow was real.** In this engine the LEFT hand is the shield / two-handed-ranged slot. I
->   counted every base-game monster (all 6,085 of them): **805 carry a shield in the left hand and
+>   counted every base-game monster (all 5,556 of them): **805 carry a shield in the left hand and
 >   exactly ZERO carry one in the right**; bows ride the left hand **514 times against 17** on the
 >   right, and those 17 are all the same handful of hand-less things (rot piles, creeping slimes,
 >   earth elementals) using the slot as a plain drop chute rather than as a hand - which is precisely
@@ -30,6 +30,26 @@
 >   **always a weapon, usually a shield** - if you catch him without a shield once in a while that is
 >   expected, and it means a set piece just dropped. If you ever see him with an empty WEAPON hand,
 >   or a bow, that is a bug - tell me.
+> - 🔴 **A NERF YOU DID NOT ASK FOR, AND I NEED YOU TO RULE ON IT.** Moving that set table out of his
+>   sword hand is what fixes the empty hand, but it also makes the set **6.1x harder to farm**, and
+>   that table is the **only** place those pieces drop in the entire game. Per kill of the Devourer:
+>
+>   | Crimson Verdict piece | before | now |
+>   |---|---|---|
+>   | helm | 21.0% | **3.4%** |
+>   | cuirass | 21.0% | **3.4%** |
+>   | armband | 21.0% | **3.4%** |
+>   | Vein Render (the sword) | 21.0% | **72.5%** - and he actually wields it now |
+>
+>   The sword got much commoner; the three armour pieces got much rarer. **I did not "fix" this back
+>   on my own, because every way to do it is a balance call on content you designed:** his only free
+>   equipment slot is his head, and using it would mean he visibly wears the Crimson Verdict helm
+>   about 1 spawn in 4 (that would actually give the BEST rate, 25% a piece, and costs nothing else);
+>   the alternatives are hanging two of the three pieces on his chest/arm rolls (the helm still has
+>   nowhere to go), or fattening the off-hand row and giving up most of the shield. **Tell me which
+>   you want and it is a one-line change** (`BL-R251-DEBT-7`). If you would rather leave it as is,
+>   say so and I will mark it ratified. Until then the build has a gate that refuses to let this
+>   number move again without telling you.
 > - **The Hunt really was naked - but he DID have his spear.** His record had no torso, legs or arm
 >   equipment fields at all, and his ring/potion/relic/amulet slots were all switched off. His spear
 >   was fine the whole time (right hand, 100%, the Runbreaker) - spears ride the right hand **493-to-0**
@@ -51,6 +71,9 @@
 > **soul is NOT one of them.** I could not find anything wrong with it, so there is nothing I can
 > point at and call the fix. Your next kill is the test. If it still does not drop, say so and I move
 > it onto the drop channel that provably works.
+> **And one decision is yours, not mine:** the Crimson Verdict armour now drops 6.1x more slowly (the
+> red block above). I left it that way deliberately rather than quietly picking a new number for a
+> set you designed. Ratify it, or name which restoration you want, and it lands in one line.
 >
 > **THE TEST (fully quit TQ + restart Steam first):**
 > 1. **Devourer of Blood** (blood cave, his stash / the parchment ambush): he must have a **melee

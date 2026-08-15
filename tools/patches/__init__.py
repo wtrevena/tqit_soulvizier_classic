@@ -1231,8 +1231,9 @@ REGISTRY = [
                             # "toxeus the murderer devourer of blood is using a bow which makes
                             # no sense" + "i killed toxeus the murderer devourer of blood and he
                             # did not drop his soul even though he should have 100% chance".
-                            # MEASURED: a base-game census (6,085 Monster.tpl records, one tick
-                            # per record per class its hand can yield, references resolved
+                            # MEASURED: a base-game census (5,556 records whose templateName
+                            # BASENAME is Monster.tpl, one tick per record per class its hand
+                            # can yield, references resolved
                             # CASE-INSENSITIVELY) proves LeftHand is the shield /
                             # two-handed-ranged slot (Shield 0-to-805, Bow 17-to-514, Staff
                             # 17-to-710) and RightHand the one-handed melee slot (Spear
@@ -1242,7 +1243,12 @@ REGISTRY = [
                             # i.e. the very anti-pattern this lane removes. ROUND-3: the census
                             # published at rounds 1-2 (Bow 0-to-49, Shield 0-to-144, Spear
                             # 122-to-0) was this module's own exact-case has_record() bug and is
-                            # RETRACTED - see the module docstring.
+                            # RETRACTED - see the module docstring. ROUND-4: the DENOMINATOR
+                            # published at rounds 1-3 (6,085) was templateName.endswith(
+                            # monster.tpl), which also counts 529 ControllerMonster /
+                            # SpawnMonster / ControllerStationaryMonster records that are not
+                            # monsters and carry no chanceToEquip fields; 5556 + 529 = 6085 and
+                            # every per-class tally re-derives EXACTLY as published.
                             # So the Devourer's LeftHand pool bleed_affix_high_{n,l},
                             # which contains a BOW, is exactly an archer wiring, and the Hunt
                             # simply has NO lootTorso/LowerBody/Forearm fields at all with four
@@ -1253,6 +1259,18 @@ REGISTRY = [
                             # family chances. The gate measures the resulting rolls, so the
                             # player-facing claim cannot drift: armed 100.00%, Vein Render
                             # 72.46%, shield 86.23% (shipped: 36.97 / 21.01 / 15.97).
+                            # DISCLOSED BALANCE DELTA, pinned by gate arm E2d: moving the
+                            # 4-piece set table out of the weapon hand @100 into the off hand
+                            # @19 takes each of the three WORN Crimson Verdict pieces from
+                            # 21.0084% to 3.4420% per kill, and that table is their ONLY drop
+                            # path in the whole db - a 6.1x farm slowdown on hand-designed
+                            # content. E2d is TWO-SIDED against _CRIMSON_MEMBER_PCT and sums
+                            # over EVERY slot of the record, so neither a further dilution nor
+                            # a later RESTORATION can move the rate without moving the four
+                            # documents that publish it. Awaiting Will: BL-R251-DEBT-7, which
+                            # costs all three restoration options (Misc2 cannot reach 21% at
+                            # any weight; Misc4 can, but only by cutting the rant scroll and
+                            # the EoAT formula to 7.99% each).
                             # ORDER IS LOAD-BEARING: this must be the LAST writer of these equip
                             # fields, so it runs after EVERY other writer of the two records
                             # (toxeus_hunt_encounter, enslaver_shroud, devourer_kit,

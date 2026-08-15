@@ -25,7 +25,7 @@
   - **(c) Invisible walls in some passageways.** "there are also some invisible walls in some of the passage ways. it seems like this area never got finished."
   FORK TO RESOLVE (drives fix scope): was crypt_floor1 ALWAYS an empty/unfinished stub in source SV/base, or was it populated in the reference source and DROPPED in our Levels.arc merge (the known MERGE-DROPPED failure mode, cf. el_boss_audit.md)? Read-only forensic STAGED at `docs/wip_workflows/uber_dungeon_forensic.js` (NOT run - Will deferred investigation 2026-08-14; fire it when the Uber Dungeon lane is greenlit). If merge-dropped -> restore from source (map lane). If never finished -> full content-population lane (chests + champion/boss spawns + navmesh/collision pass for the invisible walls). Invisible walls = navmesh/collision mismatch (blocked passages with no walkable mesh, or props with collision where floor should be).
 
-**BL-W0814-9 DEVOURER OF BLOOD IS WIELDING A BOW - FIXED BY R-251 (branch `fix/toxeus-boss-equipment-and-soul`, awaiting integration + in-game confirm `BL-R251-DEBT-2`):** measured root cause = `lootLeftHandItem1` = `bleed_affix_high_{n,e,l}` at chance 100 / weight 100, and LeftHand IS the engine's shield / two-handed-ranged slot (base-game census over 6,085 Monster.tpl records, one tick per record per class, references resolved case-insensitively: Shield 0-to-805, Bow 17-to-514, Staff 17-to-710, Spear 493-to-0 - and the 17 RightHand bow/staff records are one shared set of hand-less monsters using the slot as a drop chute, the same anti-pattern this fix removes). Those tables were curated by AFFIX not class and carry `u_n_tendonripper` / the Nemesis recurve, both `Weapon_Bow`. Fix = the weapon hand goes MELEE-ONLY (a NEW guaranteed `veinrender_guaranteed_{n,e,l}` table @100 + the de-bowed bleed table @19 + the shipped unique-sword row @19, so it is armed 100% of spawns vs 36.97% shipped), the off hand takes the Enslaver's shield array @100 + the 4-piece set table's only drop row @19, and both bleed tables are de-bowed. Original report kept verbatim below. "toxeus the murderer devourer of blood is using a bow which makes no sense." The Devourer (record `um_bloodtoxeus_99`, the blood-cave stash guardian) has a ranged BOW equipped - wrong for a melee/blood boss. Fix = audit his equipment slots (weapon1/weapon2 + any equip-pool loot rolling a bow onto him) and replace with an appropriate melee weapon (or clear the bow). SAME CLASS as BL-W0814-3 (Endless Hunt no equipment/weapon) - both are Toxeus-boss weapon-rig bugs; candidate to batch into one boss-equipment lane.
+**BL-W0814-9 DEVOURER OF BLOOD IS WIELDING A BOW - FIXED BY R-251 (branch `fix/toxeus-boss-equipment-and-soul`, awaiting integration + in-game confirm `BL-R251-DEBT-2`):** measured root cause = `lootLeftHandItem1` = `bleed_affix_high_{n,e,l}` at chance 100 / weight 100, and LeftHand IS the engine's shield / two-handed-ranged slot (base-game census over the 5,556 records whose templateName basename is Monster.tpl, one tick per record per class, references resolved case-insensitively: Shield 0-to-805, Bow 17-to-514, Staff 17-to-710, Spear 493-to-0 - and the 17 RightHand bow/staff records are one shared set of hand-less monsters using the slot as a drop chute, the same anti-pattern this fix removes). Those tables were curated by AFFIX not class and carry `u_n_tendonripper` / the Nemesis recurve, both `Weapon_Bow`. Fix = the weapon hand goes MELEE-ONLY (a NEW guaranteed `veinrender_guaranteed_{n,e,l}` table @100 + the de-bowed bleed table @19 + the shipped unique-sword row @19, so it is armed 100% of spawns vs 36.97% shipped), the off hand takes the Enslaver's shield array @100 + the 4-piece set table's only drop row @19, and both bleed tables are de-bowed. Original report kept verbatim below. "toxeus the murderer devourer of blood is using a bow which makes no sense." The Devourer (record `um_bloodtoxeus_99`, the blood-cave stash guardian) has a ranged BOW equipped - wrong for a melee/blood boss. Fix = audit his equipment slots (weapon1/weapon2 + any equip-pool loot rolling a bow onto him) and replace with an appropriate melee weapon (or clear the bow). SAME CLASS as BL-W0814-3 (Endless Hunt no equipment/weapon) - both are Toxeus-boss weapon-rig bugs; candidate to batch into one boss-equipment lane.
 
 **BL-W0814-10 DEVOURER OF BLOOD DID NOT DROP HIS SOUL - 🔴 STILL OPEN. R-251 removed the one anomaly and closed NOTHING here; the closing proof is Will's next kill (`BL-R251-DEBT-1`, branch `fix/toxeus-boss-equipment-and-soul`). R-251 changes nothing on the `Finger2` channel BY CONSTRUCTION, so no part of that lane may be presented as the fix for this item:** the audit this item asked for was run and it CLEARED every listed suspect: `chanceToEquipFinger2` = 100.0 (R-243's pin, byte-unchanged), `lootFinger2Item1` = `blood_toxeus_soul_{n,e,l}` all resolving as `Jewelry_Ring`/`Magical`/`itemLevel 40 (N) / 68 (E) / 100 (L)` (field-for-field the same shape as the Enslaver + Hunt souls, also Ring/Magical/40-68-100, that have never failed), no difficulty or championChance gate, and EXACTLY ONE record in the DB carries `tagMonsterHemorrheus` with every spawn pool (`q_bloodtoxeus_lone`, `egg_blooddragon`, the ambush) naming it - so "base record vs difficulty/uber variant" is REFUTED. The ONE structural anomaly his three siblings do not share was the cross-class hand wiring of BL-W0814-9 (weapon hand rolling a 3/4-ARMOUR table, off-hand rolling weapons) - the same equip system the soul rides; R-251 removes it. HONEST: the engine path from a class-mismatched hand roll to a skipped Finger2 equip is NOT provable from the bytes, so this closes in-game. Escalation if it still fails = move the soul onto the Misc4 channel R-247.6a proved delivers ("Will's kill DID drop it"). Original report kept verbatim below. "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul." The Devourer (`um_bloodtoxeus_99`) killed, but his named SOUL item did not drop despite an intended 100% guaranteed drop. Fix = audit the Devourer's loot table / lootMasterTable chain for the soul entry: confirm the soul item is present in his drop pool AND that its drop CHANCE is 100% (not gated by difficulty, championChance, or a percentage roll). Check whether the drop is on the base record vs a difficulty/uber variant and whether the killed instance is the one carrying the loot ref. RELATED to the R-247 soul/summon wave (tiered souls, Enslaver-summon, EoAT forge formula visibility) and BL-W0814-9 (Devourer bow) - same boss; candidate to batch into the Devourer/boss-equipment+loot lane.
 
@@ -47,6 +47,31 @@
 **MERGES THREE WILL REPORTS (BL-W0814-3, -9, -10) - one boss family, one system.** Verbatim quotes
 and the full design law: `docs/WILL_RULINGS.md` -> **R-251**. Player-facing test: `docs/WILL_TEST_GUIDE.md`
 top section.
+
+> ### 🔁 ROUND 4 (2026-08-14) - what the adversarial vet found and what changed
+> One MEDIUM, two LOW. **All three fixed, none deferred.** All three re-measured independently
+> against the shipped `b888f022` and the base-game `database.arz` BEFORE anything was written.
+> 1. **MEDIUM - a 6.1x nerf to the Crimson Verdict set was riding SILENTLY inside a bug-fix lane.**
+>    The set's ONLY drop path moved from the weapon hand @100 to the off hand @19, taking each of the
+>    three worn pieces from **21.0084% to 3.4420% per kill**. The post-state numbers were published;
+>    the DELTA never was, and nothing was registered as debt - contrary to the PLAYER-SURFACE
+>    CHECKLIST law and the no-new-surface-without-a-gate-and-debt-register law, on a table the lane
+>    had itself invoked RETIREMENT PROTOCOL over. **Fixed by disclosure + a gate + a debt, not by a
+>    unilateral re-balance:** the delta is now stated in all four Will-visible places, pinned
+>    TWO-SIDED by new gate arm **E2d** (so neither a further dilution NOR a later restoration can
+>    move it without moving the docs), and registered as **`BL-R251-DEBT-7`** with all three
+>    restoration options costed on the bytes. The vet's suggested cheap remedy (a `Misc2`/`Misc4`
+>    chute) was **measured and rejected**: `Misc2`'s per-member ceiling is 4.5% at infinite weight,
+>    and `Misc4` would cut the rant scroll and the EoAT formula to 7.99% each - swapping this
+>    undisclosed nerf for a fresh one on R-247.6a content.
+> 2. **LOW - the published census denominator did not reproduce.** "6,085 `Monster.tpl` records" is
+>    `endswith('monster.tpl')`, which sweeps in 529 controllers/skill records. Correct denominator is
+>    **5,556** by basename (5,561 by `Class`). Every per-class tally re-derives exactly as published;
+>    corrected at all four sites.
+> 3. **LOW - internal inconsistency in the module.** The GATE section said 2,435 case-only-resolvable
+>    references where `_rec_index` and the registry note said 2,436. Measured: **2,436 occurrences
+>    across 402 distinct strings**; the GATE line was the wrong one, now corrected and the distinct
+>    count added.
 
 > ### 🔁 ROUND 3 (2026-08-14) - what the adversarial vet found and what changed
 > Two HIGH findings, one MEDIUM, three LOW. **All six fixed, none deferred.**
@@ -72,8 +97,9 @@ top section.
 > be called the fix. It closes on Will's next kill (`BL-R251-DEBT-1`) or it escalates to the Misc4
 > relocation. **`BL-W0814-3` and `BL-W0814-9` ARE closed**, with byte proof and a gate.
 
-**THE MEASUREMENT THAT DECIDED THE LANE.** A base-game census over all **6,085 `Monster.tpl`
-records** establishes the engine's slot law. **COUNTING RULE (stated so it re-derives): one tick per
+**THE MEASUREMENT THAT DECIDED THE LANE.** A base-game census over all **5,556 records whose
+`templateName` BASENAME is `Monster.tpl`** establishes the engine's slot law. **COUNTING RULE
+(stated so it re-derives): one tick per
 RECORD per class its hand can yield** - every armed row of that hand is expanded through the loot
 chain to leaf `templateName` stems and the per-record class sets are unioned. **References resolved
 CASE-INSENSITIVELY, class stems compared CASE-FOLDED** (see the round-3 retraction below).
@@ -110,6 +136,19 @@ as a **generic drop chute**, which is the exact anti-pattern this lane removes f
 > design conclusion is unchanged and strictly stronger (805-to-0 on shields), the evidence is
 > corrected in all four places (module docstring, `__init__.py` registry note, R-251 ruling,
 > `WILL_TEST_GUIDE.md`).
+
+> 🔁 **ROUND-4 RETRACTION OF THE DENOMINATOR.** Rounds 1-3 published the counting rule as "over all
+> **6,085** `Monster.tpl` records". 6,085 is `templateName.lower().endswith('monster.tpl')`, which
+> also counts **411 `ControllerMonster.tpl` + 53 `FixedItemSkill_SpawnMonster.tpl` + 34
+> `Skill_SpawnPetMonster.tpl` + 31 `ControllerStationaryMonster.tpl` = 529** controllers and skill
+> records that are not monsters and carry no `chanceToEquip*` fields (5,556 + 529 = 6,085). Measured
+> on `database.arz`: **74,013 total, 5,556 by basename, 5,561 by `Class == 'Monster'`.** **Every
+> per-class tally above re-derives EXACTLY as published** (Spear 493/0, Sword 1164/244,
+> `weapon_rangedonehand` 127/12, Bow 17/514, Staff 17/710, Shield 0/805, and the 17 RightHand bow
+> carriers being the identical 17 staff carriers) - the 529 extras contributed to none of them, so
+> only the stated denominator was wrong. Corrected in the same four places, because round 3 exists
+> to retract an unreproducible census and must not publish an unreproducible denominator inside the
+> correction.
 
 **ROOT CAUSES (all measured on the SHIPPED build91/92 arz `b888f022`, read-only):**
 - **(-9) the bow is a real equip.** `um_bloodtoxeus_99.lootLeftHandItem1` = `bleed_affix_high_{n,e,l}`
@@ -178,6 +217,29 @@ as a **generic drop chute**, which is the exact anti-pattern this lane removes f
     piece, 3.44% a second Vein Render. **He is "always armed, usually shielded", NOT
     "sword-and-shield every time"** - the round-1 wording was wrong and is corrected in all four
     places (module docstring, R-251 ruling 1, this record, `WILL_TEST_GUIDE.md`).
+  - 🔴 **ROUND-4: THE DISCLOSED BALANCE DELTA (was shipping SILENTLY, now gated by E2d).** Rounds
+    1-3 published the post-state and never the DELTA. Moving the set table out of the weapon hand
+    @100 into the off hand @19 takes each of the three **WORN** Crimson Verdict pieces from
+    **21.0084% to 3.4420% per kill** - a **6.1x** farm slowdown - and a full reverse-reference scan
+    of `b888f022` proves that table is their **ONLY** drop path in the whole db (single referrer =
+    this record's `lootRightHandItem1`; `svc_crimsonverdict.dbr` `setMembers` is the set DEFINITION,
+    not a drop). The fourth member goes the other way: Vein Render 21.0084% -> **72.4638%** wielded
+    AND dropped.
+
+    | Crimson Verdict piece | shipped `b888f022` | after R-251 |
+    |---|---|---|
+    | helm (`Armor_Head`) | 21.0084% | **3.4420%** |
+    | cuirass (`Armor_UpperBody`) | 21.0084% | **3.4420%** |
+    | armband (`Armor_Forearm`) | 21.0084% | **3.4420%** |
+    | Vein Render (`Weapon_Sword`) | 21.0084% | **72.4638%** |
+
+    **NOT restored by this lane, and the cheap remedy was rejected on MEASUREMENT, not assumption:**
+    `Misc2` is an 18%-chance slot so its per-member ceiling is **4.5% at infinite weight** (it
+    cannot reach 21% at all), and `Misc4`'s single row is a 50/50 between the Toxeus rant scroll and
+    the End of All Things formula, so restoring 21.01% there needs weight **526** and cuts both
+    R-247.6a drops to **7.99%** - a fresh undisclosed nerf in place of this one. Every remaining
+    option is a balance decision on hand-designed content -> **`BL-R251-DEBT-7`**, all three costed,
+    for Will. Pinned meanwhile by **E2d**, two-sided, summing over EVERY slot of the record.
   - HUNT (both records): `Torso` / `LowerBody` / `Forearm` at 100 on his own **tier-02** loot family
     (common @5000 + unique @19 = his brothers' weight shape) + `Finger1` 100 / `Misc1` 100 /
     `Misc2` 18 / `Misc3` 50 on tables already present and dead on his record. Spear, soul pin and
@@ -207,7 +269,14 @@ MEASURED roll arithmetic of both hands against the three named floors, minimum o
 difficulties - the arm that makes the player-facing claim falsifiable - **plus a DEAD-HAND check: a
 hand whose selectable distribution is empty now fails instead of being scored as a vacuous 100%**
 (round 2's `_hand_metrics` seeded the shares at 100.0 and only lowered them, so a boss holding
-nothing reported "armed 100.00%", the exact number the docs hand Will); E3 both Hunt records wear
+nothing reported "armed 100.00%", the exact number the docs hand Will); **E2d (round 4)** the
+MEASURED per-kill drop share of each of the three worn Crimson Verdict pieces, summed over **EVERY**
+equip slot of the Devourer and minimised over the three difficulties, held **TWO-SIDED** against the
+published `_CRIMSON_MEMBER_PCT` - the ceiling is the load-bearing half, because a later lane that
+RESTORES the rate must move the four documents that quote it in the same commit, and a rate that can
+move without the docs moving is exactly how rounds 1-3 shipped a 6.1x nerf in silence. The arm walks
+the MONSTER RECORD only, so a container-side channel (`BL-R251-DEBT-3` parks the helm's natural home
+in the Devourer's stash chest, owned by the chest-generosity lane) cannot trip it; E3 both Hunt records wear
 the three armour slots at 100 on class-correct tables and still hold the Runbreaker spear @100 and
 the EoAT rite @100; E4 all four R-48 champions keep the 100% pin on a soul that resolves to a real
 `Jewelry_Ring`; **E5 MOD-WIDE, widened at round 3 to EVERY `chanceToEquipFinger2 == 100` carrier**
@@ -224,9 +293,10 @@ carriers = 4 checked + 7 waived.**
 |---|---|
 | `py -m py_compile` (module + gate + registry) | **PASS** |
 | `py tools/patches/_check_registry.py` | **PASS** - 67 modules, 0 duplicates, order hash `0544b615c5f780f6e1dbaf5630ab3df1...`, slot 66 = `toxeus_boss_equipment` between `r247_bloodcave_rulings` and `visuals` |
-| `py tools/patches/toxeus_boss_equipment.py --negtest` | **39/39 checks clean** (34 planted defects caught + 4 positive controls + the untouched positive control). **Round-3 additions, all 8 of them defects the round-2 gate MISSED and 4 of them re-proven against the real post-apply arz, not just the stub:** the Devourer's weapon hand switched off entirely, his shield hand switched off, either hand's rows all zeroed (slot on, nothing selectable), a bow reached through a **MIXED-CASE** table reference, a wrong-class Hunt row reached through a MIXED-CASE reference, a 100%-pinned carrier with **no Finger2 loot at all**, a 100%-pinned carrier pointing Finger2 at a non-ring class, and a non-lowercase entry in a case-folded class set. Plus **4 POSITIVE controls** proving the case fix did not go fail-closed: a legitimate lowercase `weapon_axe` stem, a legitimate `Weapon_RangedOneHand` stem, a lowercase `armor_upperbody` stem, and a clean table referenced in mixed case - none of which may red the build. Round-1 plants: bow row surviving the de-bow, a bow/staff pool back in the off-hand, armour back as the dominant weapon row, the dominant row demoted, the Vein Render table losing its sword, each Hunt armour slot switched off, a Hunt table repointed at the wrong class, armour weight drift, the spear lost / its chance dropped, the rite unwired, misc chance drift, the R-243 pin moved, the soul reference not resolving, a soul item that is not a ring, a ring slot repointed at an amulet, the mod-wide arm on a foreign 100%-pinned carrier. **Round-2 additions covering this lane's own failure modes:** the 3/4-armour set table moved back into the weapon hand (empty-hand spawns), the guaranteed row diluted below its floor *without* losing dominance (the exact hole round 1 had), the off-hand shield share collapsed, the set's only drop channel deleted (orphaned content), an **Epic-only** class violation, a **Legendary-only** bow, and an allowlist entry naming an ungoverned slot |
-| **ANTI-INERT** `py tools/gate_toxeus_boss_equipment.py <shipped b888f022>` | **EXIT 1, 45 problems** - it names `bleed_affix_high_n`/`_l` yielding `Weapon_Bow` in the Devourer's LeftHand, `crimsonverdict_guaranteed_{n,e,l}` yielding 3 armour classes in his RightHand, **his weapon hand armed only 36.97% of spawns**, and all three Hunt armour slots at 0.0 on BOTH records. The gate reproduces all three of Will's reports as artifact facts |
-| **RED -> GREEN** `... --dryrun` on the same shipped arz | **PASS** - 45 problems before `apply()`, **0** after, in memory only, nothing written |
+| `py tools/patches/toxeus_boss_equipment.py --negtest` | **45/45 checks clean** (36 planted defects caught + 2 arm-specific E2d proofs + 1 E2d measurement check + 4 positive controls + the untouched positive control). **Round-4 additions, guarding the disclosed balance number in BOTH directions:** the set's drop channel quietly THINNED below the published rate, and the rate quietly RESTORED via a new row on an **ungoverned** slot with the docs left stale - each planted twice, once in the general list and once as an **arm-specific** proof asserting that `E2d` itself fires (not merely that some arm did) and that it names all three worn pieces, because a plant that happens to trip E2c would otherwise score as "caught" while E2d slept. Plus a measurement check that the clean baseline reads exactly the `_CRIMSON_MEMBER_PCT` the four documents publish - a gate whose constant does not match its own clean state is a gate that gets edited into silence the first time it fires. **Round-3 additions, all 8 of them defects the round-2 gate MISSED and 4 of them re-proven against the real post-apply arz, not just the stub:** the Devourer's weapon hand switched off entirely, his shield hand switched off, either hand's rows all zeroed (slot on, nothing selectable), a bow reached through a **MIXED-CASE** table reference, a wrong-class Hunt row reached through a MIXED-CASE reference, a 100%-pinned carrier with **no Finger2 loot at all**, a 100%-pinned carrier pointing Finger2 at a non-ring class, and a non-lowercase entry in a case-folded class set. Plus **4 POSITIVE controls** proving the case fix did not go fail-closed: a legitimate lowercase `weapon_axe` stem, a legitimate `Weapon_RangedOneHand` stem, a lowercase `armor_upperbody` stem, and a clean table referenced in mixed case - none of which may red the build. Round-1 plants: bow row surviving the de-bow, a bow/staff pool back in the off-hand, armour back as the dominant weapon row, the dominant row demoted, the Vein Render table losing its sword, each Hunt armour slot switched off, a Hunt table repointed at the wrong class, armour weight drift, the spear lost / its chance dropped, the rite unwired, misc chance drift, the R-243 pin moved, the soul reference not resolving, a soul item that is not a ring, a ring slot repointed at an amulet, the mod-wide arm on a foreign 100%-pinned carrier. **Round-2 additions covering this lane's own failure modes:** the 3/4-armour set table moved back into the weapon hand (empty-hand spawns), the guaranteed row diluted below its floor *without* losing dominance (the exact hole round 1 had), the off-hand shield share collapsed, the set's only drop channel deleted (orphaned content), an **Epic-only** class violation, a **Legendary-only** bow, and an allowlist entry naming an ungoverned slot |
+| **ANTI-INERT** `py tools/gate_toxeus_boss_equipment.py <shipped b888f022>` | **EXIT 1, 48 problems** - it names `bleed_affix_high_n`/`_l` yielding `Weapon_Bow` in the Devourer's LeftHand, `crimsonverdict_guaranteed_{n,e,l}` yielding 3 armour classes in his RightHand, **his weapon hand armed only 36.97% of spawns**, all three Hunt armour slots at 0.0 on BOTH records, and (round 4) the three worn Crimson Verdict pieces measured at their shipped **21.0084%**. The gate reproduces all three of Will's reports as artifact facts |
+| **RED -> GREEN** `... --dryrun` on the same shipped arz | **PASS** - 48 problems before `apply()`, **0** after, in memory only, nothing written |
+| **E2d measured on the real arz** (round 4, read-only) | pre-`apply()` **21.0084%** for each of helm / cuirass / armband; post-`apply()` **3.442029%** each. Hands unchanged by the round-4 work: armed **100.0000** / signature **72.4638** / shield **86.2319**, no dead hand. The nerf the vet computed by hand is confirmed to 4 decimal places by the module's own arm |
 | idempotency / mis-order guard | a **second** `apply()` over the already-patched db FAILS LOUD on the LeftHand pre-state assertion rather than double-writing |
 | `tools/verify_soul_drop_rates.py --gate <shipped b888f022>` | **PASS** (re-run at round 3, not asserted): shipped distribution `100.0%x4, 66.0%x4, 25.0%x4, 20.0%x770, 10.0%x118, 0.5%x7, 0.35%x2, 0.0%x655`, every cohort on its ruled rate, all 11 of its own planted negatives RED, positive control green. The `100.0%x4` IS R-243's four-champion pin. **UNAFFECTED BY CONSTRUCTION** - this lane writes no `chanceToEquipFinger2` on any record (asserted only); the cohort is independently re-asserted by E4 |
 | **ROUND-3 blind-spot re-proof on the REAL post-apply arz** (not the stub) | `RightHand switched off -> 1 problem CAUGHT`; `LeftHand switched off -> 1 CAUGHT`; `LeftHand rows all zeroed -> 4 CAUGHT`; `a wrong-class table reached through a MIXED-CASE reference -> 3 CAUGHT`. **All four were MISSED by the round-2 gate** (0 problems each) |
@@ -268,6 +338,28 @@ Totals: **ADDED 3, REMOVED 0, CONTENT-CHANGED 5**, `db._modified` marks **8** re
   Alternative that would let the mixed row retire entirely: turn the Devourer's `Head` on (his helm
   tables are present, switched off at chance 0) and give all three worn set pieces a class-correct
   home - one constant, but it changes his silhouette, so it is Will's call.
+- `BL-R251-DEBT-7` (**P1, WILL / balance ratification - the disclosed cost of this lane, round 4**):
+  the three worn Crimson Verdict pieces drop at **3.4420%** per Devourer kill instead of the shipped
+  **21.0084%**, on the set's ONLY drop path in the whole db. This lane deliberately did NOT pick a
+  new number for hand-designed content; it disclosed, gated (E2d) and handed it over. **Three
+  restoration options, each costed on the bytes, each one constant plus a row weight:**
+  - **(a) turn `Head` on** - `lootHeadItem1` = `crimsonverdict_guaranteed_{n,e,l}` @100 on a slot
+    currently at chance 0. **25% per member and it dilutes NOTHING** (that slot rolls nothing
+    today); only the `Armor_Head` member is wearable there, and the other 3 drop unworn per
+    R-247.6a. Price: he visibly wears the Crimson Verdict helm 1 spawn in 4. It is his own set's
+    crown, but it changes a hand-designed silhouette, so it is Will's call - this also RETIRES
+    `BL-R251-DEBT-3` (the homeless helm) and lets `_MIXED_DROP_ROWS` shrink back on the off hand.
+  - **(b) class-correct worn rows** - split the table and hang the cuirass on `Torso` and the
+    armband on `Forearm` at weight **1336** against common@5000 + unique@19 (21.01% each). The helm
+    still has no home; `DEBT-3` stays open. 3 new tables.
+  - **(c) fatten the off-hand row** to weight **203** (from 19): restores **21.01% per member
+    exactly**, but the shield share falls to **36.96%** - still better than the shipped 15.97%,
+    though it retires the "usually shielded" claim and `_MIN_SHIELD_PCT` with it.
+  - **REJECTED ON MEASUREMENT (recorded so it is not re-proposed):** a `Misc2` chute - an 18%-chance
+    slot whose per-member ceiling is **4.5% at infinite weight**, so it cannot reach 21% at all and
+    would gut the relic roll trying; and a `Misc4` chute - 100% chance but its single row is a 50/50
+    between the **Toxeus rant scroll** and the **End of All Things formula**, so 21.01% needs weight
+    **526** and cuts both R-247.6a drops to **7.99%**, i.e. a fresh undisclosed nerf.
 - `BL-R251-DEBT-4` (audit, cheap): the same class-vs-slot audit has never been run on the mod's
   OTHER hand-authored bosses. The gate is champion-scoped today; widening E2 mod-wide needs a
   curated allowlist first (base-game monsters legitimately carry 2H weapons in LeftHand).

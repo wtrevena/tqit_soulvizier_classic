@@ -7788,7 +7788,8 @@ characterLifeRegen, or an undead-leech partial-bypass on his record. OPEN - Will
 > (BL-W0814-10) "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul"
 
 **THE MEASUREMENT THAT DECIDES ALL THREE (base-game census over `database.arz`).**
-**COUNTING RULE, stated so this is re-derivable:** over all **6,085 `Monster.tpl` records**, a
+**COUNTING RULE, stated so this is re-derivable:** over all **5,556 records whose `templateName`
+BASENAME is exactly `Monster.tpl`**, a
 record is counted **once per class its hand can yield** - every armed row of that hand
 (`chanceToEquip<Hand>` > 0, row weight > 0) is expanded through the loot chain to leaf
 `templateName` stems, the per-record class sets are unioned, and each class gets one tick.
@@ -7835,6 +7836,19 @@ melee slot.** That table is the design law this ruling rests on.
 > violating row hidden behind a mixed-case reference is now CAUGHT; a legitimate item spelled with a
 > lowercase template stem no longer reds the build).
 
+> 🔁 **ROUND-4 CORRECTION TO THE DENOMINATOR, same discipline.** Rounds 1-3 published the counting
+> rule as "over all **6,085** `Monster.tpl` records". 6,085 is what
+> `templateName.lower().endswith('monster.tpl')` returns, and it additionally sweeps in **411
+> `ControllerMonster.tpl` + 53 `FixedItemSkill_SpawnMonster.tpl` + 34 `Skill_SpawnPetMonster.tpl` +
+> 31 `ControllerStationaryMonster.tpl` = 529 controllers and skill records** that are not monsters
+> and carry no `chanceToEquip*` fields at all (5,556 + 529 = 6,085). Measured on `database.arz`:
+> **74,013 records total, 5,556 by basename, 5,561 by `Class == 'Monster'`.** **Every per-class tally
+> in the table above re-derives EXACTLY as published** - the 529 extras contributed nothing to any of
+> them, including the finding that the 17 RightHand bow carriers are the identical 17 staff carriers.
+> Only the stated denominator was wrong, and it is corrected in all four places, because a ruling
+> whose round-3 job is to retract an unreproducible census must not publish an unreproducible
+> denominator inside the correction.
+
 **WHAT THIS RULES (design law):**
 
 1. **(-9) THE BOW IS A REAL EQUIP, NOT A COSMETIC GLITCH - AND THE SLOT IS THE CAUSE.**
@@ -7878,6 +7892,45 @@ melee slot.** That table is the design law this ruling rests on.
    > enforces the three floors `_MIN_ARMED_HAND_PCT` 100 / `_MIN_SIGNATURE_PCT` 70 /
    > `_MIN_SHIELD_PCT` 85 against the numbers it computes from the final db, so this table cannot
    > drift away from the bytes.
+   >
+   > ⚠️ **ROUND-4 DISCLOSURE - THE ONE PLAYER-VISIBLE COST OF THIS RULING, AND IT IS A NERF.**
+   > Rounds 1-3 stated the post-state and never the DELTA, and the only thing this ruling said about
+   > the set row was that parking it in the off hand "means a mis-class roll costs a shield instead
+   > of the sword". That understated it. **Moving `crimsonverdict_guaranteed_*` out of the weapon
+   > hand @100 and into the off hand @19 cuts the drop rate of the three WORN Crimson Verdict pieces
+   > by 6.1x:**
+   >
+   > | Crimson Verdict piece | shipped `b888f022` | after R-251 |
+   > |---|---|---|
+   > | helm (`Armor_Head`) | 21.0084% per kill | **3.4420%** |
+   > | cuirass (`Armor_UpperBody`) | 21.0084% per kill | **3.4420%** |
+   > | armband (`Armor_Forearm`) | 21.0084% per kill | **3.4420%** |
+   > | Vein Render (`Weapon_Sword`) | 21.0084%, rarely wielded | **72.4638%, wielded AND dropped** |
+   >
+   > Shipped, the weapon hand was crimson@100 + unique_sword@19 (119), so the set table won 84.0336%
+   > of that hand and each of its 4 equal-weight members dropped at 21.0084%. After, the off hand is
+   > shield@100 + crimson@19 + unique_shield@19 (138), so the set table wins 13.7681% and each member
+   > drops at 3.4420%. **A full reverse-reference scan of the shipped arz proves
+   > `crimsonverdict_guaranteed_{n,e,l}` is the ONLY drop path in the entire db for those three
+   > pieces** (its single referrer was this record's `lootRightHandItem1`; the only other mention
+   > anywhere is `svc_crimsonverdict.dbr` `setMembers`, which is the set DEFINITION, not a drop). So
+   > this is a real 6.1x farm slowdown on hand-designed content, riding inside a bug-fix lane.
+   >
+   > **WHY IT WAS NOT SIMPLY RESTORED - costed on the bytes, not assumed.** The cheap fix would be a
+   > drop chute on a slot the gate does not class-govern, but the Devourer has **no free slot**: all
+   > 12 are wired except `Head`, which is 0 by the family's bare-skull design. `Misc2` is an
+   > 18%-chance slot (relics@88 + arcane formulae@12), so its per-member ceiling is **4.5% at
+   > infinite weight** - it cannot reach 21% at all. `Misc4` is 100% chance but its single row is
+   > `svc_devourer_misc4_master`, a 50/50 between the **Toxeus rant scroll** and the **End of All
+   > Things formula**; restoring 21.01% there needs weight **526** against 100, cutting **both** of
+   > those R-247.6a drops from 50% to **7.99%** - trading this nerf for a fresh undisclosed one.
+   > Every remaining option (turn `Head` on; split the set table into class-correct rows on
+   > Torso/Forearm; fatten the off-hand row and surrender the shield share) is a **balance decision
+   > on content Will hand-designed and never asked this lane to touch**. **RULED: the rate change is
+   > disclosed, gated and handed to Will, not decided here** - `BL-R251-DEBT-7`, all three options
+   > costed. **Gate arm E2d** pins the published number two-sided against `_CRIMSON_MEMBER_PCT`,
+   > summing the per-kill share over EVERY equip slot of the record, so neither a further dilution
+   > nor a later restoration can move the rate without moving the four documents that publish it.
    >
    > ⚠️ **ROUND-2 CORRECTION, recorded rather than quietly overwritten.** This ruling first said
    > "his weapon hand holds a guaranteed Vein Render" and the test guide said "sword-and-shield
@@ -7939,6 +7992,10 @@ melee slot.** That table is the design law this ruling rests on.
    is also policed as a hand, not only as a set of rows:** `chanceToEquipRightHand` /
    `chanceToEquipLeftHand` are asserted at 100 and a hand with nothing selectable fails, because
    the class arms skip a slot switched off and a boss holding nothing must not report "armed 100%".
+   **AND (round 4) EVERY PLAYER-VISIBLE NUMBER THIS RULING PUBLISHES IS PINNED TWO-SIDED TO THE
+   BYTES:** arm **E2d** re-measures the Crimson Verdict per-kill drop share over EVERY equip slot of
+   the record and fails if it leaves `_CRIMSON_MEMBER_PCT` in either direction, because a rate that
+   can move without the documents moving is precisely how rounds 1-3 shipped a 6.1x nerf in silence.
    Enforced in-build by `tools/patches/toxeus_boss_equipment.py::verify` and standalone by
    `tools/gate_toxeus_boss_equipment.py`.
 
@@ -7949,13 +8006,19 @@ record (the R-250 `enslaver_shroud` lane owns that field - **zero field intersec
 Devourer's stash tables and guard pool (R-247.7a/7b), and every Pet.tpl record (the
 Monster-equipment-onto-Pet crash law is never approached).
 
-**GATE + ANTI-INERT PROOF:** the gate EXITS 1 on the SHIPPED build91/92 arz `b888f022` with **45
-problems**, naming the Devourer's bow rows, his 36.97%-armed weapon hand and the Hunt's three
-missing armour slots - it reproduces all three of Will's reports as artifact facts, so it is not a
+**GATE + ANTI-INERT PROOF:** the gate EXITS 1 on the SHIPPED build91/92 arz `b888f022` with **48
+problems**, naming the Devourer's bow rows, his 36.97%-armed weapon hand, the Hunt's three
+missing armour slots and (round 4) the three Crimson Verdict pieces sitting at their shipped
+21.0084% - it reproduces all three of Will's reports as artifact facts, so it is not a
 gate that can only ever be green. `py tools/gate_toxeus_boss_equipment.py <arz> --dryrun` proves
-RED -> GREEN (**45 -> 0**) by running the module's own `apply()` in memory over that same arz.
-Planted negatives: **39/39 clean** (`py tools/patches/toxeus_boss_equipment.py --negtest`) - 34
-planted defects caught plus 5 positive controls. The round-2 additions cover this ruling's own
+RED -> GREEN (**48 -> 0**) by running the module's own `apply()` in memory over that same arz.
+Planted negatives: **45/45 clean** (`py tools/patches/toxeus_boss_equipment.py --negtest`) - 36
+planted defects caught plus 2 arm-specific E2d proofs, 1 E2d measurement check and 6 positive
+controls. **The round-4 additions guard the disclosed balance number in BOTH directions:** the set's
+drop channel quietly THINNED below the published rate, and the rate quietly RESTORED on an
+ungoverned slot with the documents left stale - each asserting that **E2d itself** fires (not
+merely that some arm did) and that it names all three worn pieces, plus a check that the clean
+baseline measures exactly the `_CRIMSON_MEMBER_PCT` the four documents publish. The round-2 additions cover this ruling's own
 failure modes (the set table moved back into the weapon hand, the guaranteed row diluted without
 losing dominance, the off-hand shield share collapsed, an Epic-only / Legendary-only class
 violation, the allowlist guard). **The round-3 additions cover eight defects the round-2 gate
@@ -7979,6 +8042,14 @@ the untouched control - none of which may red the build.
 4. `bleed_affix_high_{n,l}` lose their bow row rather than gaining a replacement melee unique; the
    tables drop from 3 members to 2. Restoring a third high-bleed 1H melee pick is a one-line
    addition if Will wants the breadth back.
+5. 🔴 **THE BIG ONE, and it is a NERF: the three worn Crimson Verdict pieces now drop 6.1x less
+   often (21.0084% -> 3.4420% per kill).** That table is their only drop path in the whole db. The
+   lane did NOT restore the rate, because every way of doing so is a balance call on hand-designed
+   content: `Misc2` cannot reach 21% at any weight (4.5% ceiling), `Misc4` can only by cutting the
+   rant scroll and the End of All Things formula to 7.99% each, and the rest change the Devourer's
+   silhouette or surrender his shield. **Ratify or reverse - `BL-R251-DEBT-7`, all three costed.**
+   Whatever Will picks is one constant (`_CRIMSON_MEMBER_PCT`) plus the row weight, and gate arm
+   E2d forces the four published documents to move with it.
 
 **WHAT THIS RULING CLOSES AND WHAT IT DOES NOT (the DONE-means-DONE line):**
 **CLOSED with byte proof + a gate:** BL-W0814-3 (the Hunt's armour) and BL-W0814-9 (the bow), plus
@@ -8001,6 +8072,22 @@ fix. It closes in-game or not at all - lead with that, never with the two that l
   Turning the Devourer's `Head` on (his helm tables are present and switched off at chance 0) would
   give all three worn set pieces a class-correct home and let the mixed row retire - one constant,
   but it changes his silhouette, so it is Will's call, not the lane's.
+- `BL-R251-DEBT-7` (**P1, WILL / balance ratification - the disclosed cost of this ruling**): the
+  three worn Crimson Verdict pieces drop at **3.4420%** per kill instead of the shipped **21.0084%**,
+  on the set's ONLY drop path in the db. Three restoration options, each costed on the bytes:
+  **(a) `Head` on** - `lootHeadItem1` = the set table @100 on a slot currently at chance 0, giving
+  **25% per member with zero dilution of anything**, at the price of him visibly wearing the Crimson
+  Verdict helm 1 spawn in 4 (his own set's crown, but it changes a hand-designed silhouette);
+  **(b) class-correct worn rows** - split the table and hang the cuirass on `Torso` and the armband
+  on `Forearm` at weight **1336** against common@5000 + unique@19 to land 21.01% each, which leaves
+  the HELM with no home (that is `DEBT-3`); **(c) fatten the off-hand row** to weight **203**, which
+  restores 21.01% per member exactly but drops the shield share to 36.96% (still better than the
+  shipped 15.97%, but it retires the "usually shielded" claim and `_MIN_SHIELD_PCT`). **REJECTED on
+  measurement, recorded so it is not re-proposed:** a `Misc2` chute (18%-chance slot, 4.5% ceiling
+  at infinite weight - it cannot reach 21% at all) and a `Misc4` chute (needs weight 526, cutting
+  the Toxeus rant scroll and the End of All Things formula from 50% to 7.99% each, i.e. a fresh
+  undisclosed nerf on R-247.6a content). Gate arm **E2d** holds the current number two-sided, so
+  whichever option Will ratifies must land with the docs in the same commit.
 - `BL-R251-DEBT-5` (**pre-existing, outside this ruling's surface, measured at round 3**): seven
   records mod-wide sit at `chanceToEquipFinger2` = 100 and cannot deliver a ring, so their pin is
   decorative. `quest_celtheano_19` / `_20` (harpy quest bosses) have `lootFinger2Item1` **EMPTY**;
