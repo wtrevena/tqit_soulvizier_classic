@@ -57,10 +57,18 @@ The receipt is bound to the repo state, not merely to a timestamp:
   R3 its HEAD is an ANCESTOR of the current HEAD - step 0 legitimately runs BEFORE the
      merge, so HEAD may move FORWARD after it, but it may never have DIVERGED;
   R4 the intended tag is STILL free right now (re-measured, not remembered);
-  R5 the tree is still clean and `main` is still not behind origin.
+  R5 the tree is still clean and `main` is still not behind origin;
+  R6 if it cleared a lane, that lane is CONTAINED in HEAD now - the inverse of what S1
+     demanded before the merge, which stops one lane's receipt authorising another's;
+  R7 it has not already been SPENT. A green `--verify-receipt` marks the receipt CONSUMED,
+     so one step-0 run authorises exactly ONE package (`BL-b98-DEBT-4`, the fifth bite).
+     Before this, a receipt naming no lane was invalidated only by its tag being taken, so
+     between a legitimate package and the tagging step it could authorise a SECOND package
+     of different bytes inside one build-number window. An honest re-package is not blocked,
+     it just re-runs step 0, which costs seconds.
 `--repackage "<reason>"` is the one honest escape (a note-only re-upload of an already
 shipped payload - `BL-b97-DEBT-1`): it waives R4 ONLY, demands a non-empty reason, and the
-package guard prints that reason loudly instead of hiding it.
+package guard prints that reason loudly instead of hiding it. It is single-use as well.
 
 USAGE
   py tools/gate_already_shipped.py --lane fix/chest-generosity-shared-cause --tag build98-ship
@@ -128,6 +136,14 @@ def receipt_problems(receipt, head_ancestor, tag_taken, dirty_count, behind,
         return ['R1: no step-0 receipt at local/step0_receipt.json. Ship-procedure step 0 '
                 'never ran for this ship. Run: py tools/gate_already_shipped.py --lane '
                 '<branch-or-sha> --tag build<N>-ship']
+    if receipt.get('verdict') == 'CONSUMED':
+        return [f'R7: this step-0 receipt was ALREADY CONSUMED at '
+                f'{receipt.get("consumed_at")}, by an earlier package run that it cleared '
+                f'({receipt.get("tag") or "a repackage"}). A receipt authorises exactly ONE '
+                f'package. A second one is either an honest re-run - fine, re-run step 0, it '
+                f'costs seconds - or a stale dispatch riding a live receipt inside one '
+                f'build-number window, which is the hole this closes. Run: py '
+                f'tools/gate_already_shipped.py --lane <branch-or-sha> --tag build<N>-ship']
     out = []
     repack = (receipt.get('mode') == 'REPACKAGE')
     if receipt.get('verdict') != 'PASS':
@@ -260,8 +276,28 @@ def read_receipt():
         return {'verdict': 'UNREADABLE'}
 
 
-def verify_receipt(verbose=True):
-    """What `scripts/package_workshop.ps1` runs before it stages a single byte."""
+def consume_receipt(receipt):
+    """BL-b98-DEBT-4: a receipt authorises exactly ONE package, then it is spent.
+
+    The residual hole the receipt did not close: a receipt naming NO lane (the branchless
+    dispatch shape of `dev-parity-r249-testhub-quests`) is invalidated only by its tag being
+    consumed, so between a legitimate package and the tagging step it could authorise a
+    SECOND package - of different bytes - inside one build-number window. Marking it spent
+    the moment it is honoured closes that for every receipt shape, not just the branchless
+    one, and it does not depend on an operator remembering to tag."""
+    body = dict(receipt)
+    body['verdict'] = 'CONSUMED'
+    body['consumed_at'] = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+    with io.open(RECEIPT, 'w', encoding='utf-8') as fh:
+        json.dump(body, fh, indent=2, sort_keys=True)
+    return body
+
+
+def verify_receipt(verbose=True, consume=True):
+    """What `scripts/package_workshop.ps1` runs before it stages a single byte.
+
+    On a green result the receipt is CONSUMED (`consume=False` peeks without spending it),
+    so one step-0 run authorises exactly one package - `BL-b98-DEBT-4`."""
     if _ok('rev-parse', '--git-dir') is None:
         return ['git is unavailable, so the step-0 receipt cannot be verified. Refusing '
                 'to report a PASS that was never measured.']
@@ -288,12 +324,18 @@ def verify_receipt(verbose=True):
                                 len(dirty.splitlines()) if dirty else 0,
                                 int(behind) if (behind or '').isdigit() else 0,
                                 lane_now_merged)
-    if verbose and r and not problems:
+    if r and not problems:
         what = (f'REPACKAGE ({r.get("reason")})' if r.get('mode') == 'REPACKAGE'
                 else f'tag {r.get("tag")}')
-        print(f'  receipt OK: step 0 passed {r.get("when")} for {what}, lane '
-              f'{r.get("lane") or "(none)"}, at HEAD {str(r.get("head"))[:7]} '
-              f'(an ancestor of the current HEAD)')
+        if verbose:
+            print(f'  receipt OK: step 0 passed {r.get("when")} for {what}, lane '
+                  f'{r.get("lane") or "(none)"}, at HEAD {str(r.get("head"))[:7]} '
+                  f'(an ancestor of the current HEAD)')
+        if consume:
+            c = consume_receipt(r)
+            if verbose:
+                print(f'  receipt CONSUMED at {c["consumed_at"]} - it authorised exactly '
+                      f'this one package. Re-run step 0 before any further packaging.')
     return problems
 
 
@@ -425,6 +467,22 @@ def negtest():
         ('R6b the SAME receipt once its lane IS merged is NOT flagged',
          not receipt_problems({'verdict': 'PASS', 'tag': 'build98-ship', 'head': 'abc',
                                'lane': 'fix/some-other-lane'}, True, False, 0, 0, True)),
+        ('R7 an ALREADY-CONSUMED receipt is CAUGHT (one receipt, one package - '
+         'BL-b98-DEBT-4)',
+         any(p.startswith('R7') for p in receipt_problems(
+             {'verdict': 'CONSUMED', 'tag': 'build98-ship', 'head': 'abc',
+              'consumed_at': '2026-08-15T05:00:00Z'}, True, False, 0, 0))),
+        ('R7b a consumed BRANCHLESS receipt - the exact dev-parity shape, lane None and '
+         'tag still FREE - is CAUGHT, which is the hole BL-b98-DEBT-4 named',
+         any(p.startswith('R7') for p in receipt_problems(
+             {'verdict': 'CONSUMED', 'tag': 'build98-ship', 'head': 'abc', 'lane': None,
+              'consumed_at': '2026-08-15T05:00:00Z'}, True, False, 0, 0))),
+        ('R7c a consumed REPACKAGE receipt is CAUGHT too (the escape hatch is single-use '
+         'as well, so one --repackage authorises one re-upload)',
+         any(p.startswith('R7') for p in receipt_problems(
+             {'verdict': 'CONSUMED', 'mode': 'REPACKAGE', 'head': 'abc',
+              'reason': 'note-only', 'consumed_at': '2026-08-15T05:00:00Z'},
+             True, False, 0, 0))),
         ('R-CTRL a good SHIP receipt is NOT flagged',
          not receipt_problems({'verdict': 'PASS', 'tag': 'build98-ship', 'head': 'abc'},
                               True, False, 0, 0)),

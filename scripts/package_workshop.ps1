@@ -40,6 +40,9 @@ Write-Host '=== Package for Steam Workshop ===' -ForegroundColor Cyan
 # and one of them proposed a deploy that would have REVERTED Will's play surface. Each was
 # caught by hand. tools/gate_already_shipped.py made the check mechanical; this makes it a
 # PRECONDITION - packaging refuses to stage a byte unless step 0 ran green for THIS ship.
+# The receipt is SINGLE-USE (BL-b98-DEBT-4): a green check CONSUMES it, so one step-0 run
+# authorises exactly one package and a stale dispatch cannot ride a live receipt through a
+# second staging inside one build-number window. An honest re-package just re-runs step 0.
 # Escape for a note-only re-upload of an already-shipped payload:
 #   py tools/gate_already_shipped.py --repackage "why"
 $step0 = Join-Path $RepoRoot 'tools\gate_already_shipped.py'
