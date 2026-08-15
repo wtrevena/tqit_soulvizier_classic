@@ -34,6 +34,7 @@
 **BL-W0814-12 BOSS ARENA - NO BOSS SPAWNED (spawn not 100%?) + needs more work** (Will 2026-08-14): "when i went to the boss arena this time there was no boss there. does he not spawn 100% of the time? the boss arena needs more work." Player traveled to the Boss Arena (the Helos boat-hub destination; level bossarena/boss_arena) and found it EMPTY - no boss. Two parts:
   - **(a) SPAWN 100%:** the arena boss must spawn on EVERY visit. Audit the boss proxy/spawn: check spawnChance / championChance / difficulty gate / whether the spawn is one-shot-consumed after a prior kill (persisted). Set to guaranteed spawn. (Note: "this time" implies it spawned before - possible one-shot/consumed spawn or a random spawnChance<100.)
   - **(b) NEEDS MORE WORK (general):** Will flags the Boss Arena overall as underbaked. Scope TBD when the lane runs - likely encounter design, loot, atmosphere. RELATED to el_boss_audit.md (E/L boss spawn-chain failure modes incl proxy championChance + MERGE-DROPPED). Fold the specific spawn fix + a boss-arena polish pass into one lane.
+  - ✅ **IMPLEMENTED (R-250, branch `fix/boss-arena-spawn-and-polish`)** - NOT built/deployed (integration is the orchestrator's). Cause was neither spawnChance nor championChance: it was THREE stacked gates - a one-shot quest step (the "this time"), a 29-36/41-55/60-75 PLAYER-level window, and a quest-only proxy config. See the LANE RECORD below + WILL_RULINGS R-250.
 
 **BL-W0814-13 TANTALUS-GUARDED CHEST OVER-NERFED** (Will 2026-08-14, "same problem with the chest guarded by tantalus"): the chest guarded by Tantalus (in the Den of Tantalus; Tantalus was relocated into the Den in b45) drops far too little - SAME over-nerf as BL-W0814-11 (Propontis). This is now the FIFTH gutted uber/boss chest: obsidian hoards (-2), Aphoryteus Dread Hoard (-5), Propontis uber chest (-11), Tantalus chest (-13), plus the Devourer's stash (already reverted in R-247.7a). FIVE chests nerfed identically = STRONG evidence of ONE shared upstream cause (a common loot table, a global drop-count/quality multiplier, or a batch chest edit). The chest-generosity lane's FIRST task = find that shared cause and fix it once; enumerate ALL boss/uber chests and check each, rather than patching named chests one at a time (there are likely more Will hasn't visited yet). Also folds in BL-W0814-7 (Secret Place gift box +3x).
 
@@ -41,6 +42,68 @@
 
 ---
 
+
+## LANE RECORD - R-250 BOSS ARENA SPAWN GUARANTEE + POLISH (branch `fix/boss-arena-spawn-and-polish` from 0ea001a/build92-ship, 2026-08-14; **MAP + QUESTS + arz** wave, COUPLED; STATIC gates green in the lane worktree, **NOT built / NOT deployed** - the heavy map build + the gate battery + promote are the orchestrator's)
+
+**THE REPORT (BL-W0814-12, Will verbatim):** "when i went to the boss arena this time there was no
+boss there. does he not spawn 100% of the time? the boss arena needs more work."
+
+**RCA - three stacked no-spawn defects, each measured against real artifacts:**
+
+| # | defect | evidence | fix |
+|---|---|---|---|
+| 1 | **one-shot quest state** - `bossarena.qst` is a 2-step quest; STEP-2 `Condition_EnterVolume(isResettable=0)` fires ONE `Action_SpawnEntityAtLocation` (no `canReFire`). A TQ step completes once per character, persisted in the `.que`. | parsed from BOTH `upstream/soulvizier_098i/.../Quests.arc` and the built `work/.../Quests.arc` (`max=2` steps, `isResettable=0`) | boss becomes a STATIC 0x05 placement (respawns every stream) + the quest's spawn action is dropped |
+| 2 | **player-level window** - proxy `difficultyLimitsFile = records\xpack\quests\proxies\limit_quest.dbr` = min/max PLAYER level 29-36 / 41-55 / 60-75 | shipped arz `work/SoulvizierClassic/Database/SoulvizierClassic.arz` | new `records\proxies custom\bossarena\limit_bossarena.dbr` `[1..110]` all difficulties (`_svc_widen_limit`, the limit_tantalus precedent) |
+| 3 | **quest-only proxy config** - `quest=1`, NO `chanceToRun`; budget `difficulty_quest` (avgPlayerLevel*3.5) | same arz, vs the placed-uber exemplar `q_tantalus_lone` (`quest=0`, `chanceToRun=100`, `difficulty_04` = *6) | `quest=0`, `chanceToRun=100.0`, `difficulty_04`; pool `limit1=1` + spawn-count equation emptied |
+
+**FILES (all in this branch):**
+- `tools/build_section_surgery.py` - `ARENA_BOSS_PROXY_DBR` / `ARENA_BOSS_SPAWN_XYZ` / `ARENA_FIRE_RING_*` + the `boss_arena.lvl` INJECT_SPECS rows (1 proxy + 6 flame FX).
+- `tools/build_quest_files.py` - `_drop_spawn_entity_action` (generalized from the proven widowletter surgery, which is left byte-untouched) + `_neutralize_bossarena_spawn`, wired into the SV-quest port dispatcher after `_fix_bossarena_entervolume`.
+- `tools/patches/bossarena.py` - the DB half + the machine-readable `SPAWN_GUARANTEE` declaration + the `_MOD_AUTHORED_SPAWN_PROXIES` registration + the Ember-Crowned Hoard.
+- `tools/apply_svc_patches.py` - one row: `_SVC_CHEST_STD['svc_aithonhoard'] = ('55-57','63-65','63-65')`.
+- `tools/gate_arena_spawn_guarantee.py` - **NEW GATE** (the class invariant).
+- `tools/debug/gate_uber_placement.py` - the arena joins the placed-uber audit.
+- `docs/WILL_RULINGS.md` R-250 (verbatim report + ruling + 4 debt items), `docs/WILL_TEST_GUIDE.md` (top section).
+
+**PLACEMENT PROOF (deployed map `work/SoulvizierClassic/Resources/Levels.arc`, read-only survey):**
+`boss_arena.lvl` = LVL v0x0e, 35 instances (b43's mannequin de-place + 6 lights present). SV's spawn
+marker `location_bossarenacenter` = inst[26] local `(131.68, 27.11, 129.08)`; the trigger volume
+inst[9] `(132.00, 26.81, 129.95)` r=20. Placing AT the marker: `d=0.14u`, `clr@3.5 = 100%`,
+`clr@6.0 = 100%` on Normal/Epic/Legendary, comp#1 (size 1,381,391 of 1,473,417 walkable cells) -
+the SAME component as the R-248 traveler landing at local `(132, 28, 104)`, 26u south.
+
+**GATES RUN IN-LANE (STATIC + in-memory dry-runs; the Ship phase owns the heavy builds):**
+- `py -m py_compile` on all five edited modules: OK.
+- `py tools/gate_arena_spawn_guarantee.py` -> **PASS**.
+- `py tools/gate_arena_spawn_guarantee.py --negtest` -> **9/9 planted negatives CAUGHT**, live config clean
+  (N1 not placed, N2 placed twice, N3 quest keeps its one-shot spawn, N4 neutralizer over-reaches,
+  N5 level window reintroduced, N6 sub-100 chance, N7 quest-only proxy, N8 champion crowd-out,
+  N9 spawn-count equation left on).
+- **QUEST DELTA proved on the real upstream bytes** (census of every action/condition class +
+  every actionCount/max/volumeRecord/entity/location literal): upstream 2,946 B ->
+  R-250 2,705 B; the ONLY changes are `Action_SpawnEntityAtLocation 1 -> 0`, its `actionCount 1 -> 0`,
+  and b22's existing `volumeRecord` retarget. `Action_ShowNpc`, `Action_OpenDynGridEntrance`,
+  `Action_UnlockFixedItem`, `Condition_OnLevelLoad`, `Condition_EnterVolume`, step `max`, trigger
+  `max` all UNCHANGED. Round-trip stable.
+- **DB DRY-RUN against the shipped arz** (in memory, nothing written): proxy `quest=0`,
+  `chanceToRun=100.0`, `difficultyLimitsFile=limit_bossarena` `[1..110]` x3, `difficulty_04`;
+  pool `3/3`, champion `2/2/100`, `limit1=1`, `proxyPoolEquation=''`; the 3 hoard chests + pools
+  built, `LockedClassification=Boss`; 4 tags emitted. The monolith's own
+  `_verify_mod_spawn_proxies_eligible` **PASSES with the arena now registered** (18 proxies), and
+  `_svc_standardize_boss_chests` region-tunes the hoard to `boss_default_55-57 / 63-65 / 63-65`.
+  The new gate's `--arz` half run against that post-apply db: **PASS**.
+
+**COUPLINGS THIS WAVE (all must ship in ONE deploy):** Levels + Quests (the static placement and the
+quest neutralization are two halves of the single-spawn-source guarantee) AND arz + Text (the wave
+adds one new tag, `tagSVCAithonHoard` = "Ember-Crowned Hoard").
+
+**STILL OWED AT SHIP (orchestrator):** the heavy map build (Levels) + `build_quest_files` + the arz
++ `build_text_arc`, all in one coupled deploy; then `gate_arena_spawn_guarantee --arz --quests --map`,
+`gate_travel_y_terrain`, `gate_uber_placement`, `verify_merged_bc_navmeshes`,
+`entrance_landing --check-merged`, `run_contracts --only map`, `validate_tags`, and the record-diff
+vs the then-shipped arz. Debt items `BL-R250-DEBT-1..4` are in WILL_RULINGS R-250.
+
+---
 
 ## LANE RECORD - R-249 WARDEN FIX + ALMYROS TRIM (branch `feat/warden-fix-almyros-trim` from 40ea6d9/build91-ship, 2026-08-14; **QUESTS-ONLY** wave - Levels/arz/Text BYTE-UNCHANGED by construction; BUILT det-2x + ALL TRAVEL GATES GREEN in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
 

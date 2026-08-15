@@ -7774,3 +7774,88 @@ characterLifeRegen, or an undead-leech partial-bypass on his record. OPEN - Will
   fallbacks are (secondary) `isResettable=1` on the per-connection awakening step and (tertiary)
   dropping the Warden's `messageDialogTag` - both deliberately withheld here to keep the A/B clean
   and the no-churn law intact.
+
+---
+
+## R-250 [2026-08-14] IMPLEMENTED (branch `fix/boss-arena-spawn-and-polish`) - THE BOSS ARENA BOSS MUST SPAWN ON EVERY VISIT (he was quest-one-shot + player-level-gated); THE ARENA GETS A REWARD AND A FIRE RING
+
+**Will's report, VERBATIM (2026-08-14 live play, BL-W0814-12):**
+> "when i went to the boss arena this time there was no boss there. does he not spawn 100% of the
+> time? the boss arena needs more work."
+
+**RCA - THREE independent no-spawn defects, all MEASURED** (built Quests.arc + shipped arz + the
+deployed map, not inferred):
+
+1. **ONE-SHOT QUEST STATE (the "this time" cause).** SV's `bossarena.qst` is a TWO-step quest whose
+   STEP-2 is `Condition_EnterVolume(volume_startolympianarena, isResettable=0)` ->
+   ONE `Action_SpawnEntityAtLocation(boss_satyrshaman proxy, location_bossarenacenter)` (no
+   `canReFire` field at all). A TQ quest step completes exactly once per character and the
+   completion is persisted in the `.que` save, so after the FIRST clear the arena is empty forever.
+   A quest is structurally incapable of "spawns on every visit".
+2. **PLAYER-LEVEL WINDOW.** The arena proxy's `difficultyLimitsFile` was the base game's generic
+   `records\xpack\quests\proxies\limit_quest.dbr`: min/max PLAYER level **29-36 Normal, 41-55 Epic,
+   60-75 Legendary**. A character outside that band gets no spawn at all - an empty arena with a
+   perfectly healthy quest and pool.
+3. **QUEST-PROXY CONFIG.** The proxy carried `quest=1` and **no `chanceToRun` field**, against the
+   shipped placed-uber exemplar `q_tantalus_lone` (`quest=0`, `chanceToRun=100`, `difficulty_04`).
+
+**RULING / FIX (Levels + Quests + arz ship COUPLED):**
+- **The arena boss becomes a PLACED encounter, not a quest spawn.** The spawner proxy is placed
+  statically in `boss_arena.lvl` at SV's own marker `location_bossarenacenter` (level-local
+  `(131.68, 27.11, 129.08)`, `flags=0`, exemplar rotation, no 0x14) - the same uber-placement
+  pattern as Tantalus / Ephialtes / the parchment Devourer. `flags=0` is not tracked, so the engine
+  re-spawns it every time the level streams in: **every visit, every character, no quest state.**
+  Survey on the deployed map: `d=0.14u`, `clr@3.5` and `clr@6.0` = 100% on all three tilesets,
+  comp#1 (the same component as the R-248 traveler landing 26u south).
+- **The quest's duplicate spawn is neutralized** (`build_quest_files._neutralize_bossarena_spawn`),
+  so exactly ONE spawn source can ever exist - the widow-letter precedent. STEP-1 (`ShowNpc` /
+  `OpenDynGridEntrance` / `UnlockFixedItem` on `portal_olympianarena1`, reused by the doors/hub
+  machinery by record name) and every other action stay byte-identical; the quest keeps its slot
+  inside the ~256-entry QUESTS load window.
+- **The DB gates are removed:** new always-on `records\proxies custom\bossarena\limit_bossarena.dbr`
+  `[1..110]` on all three difficulties (minted by the same `_svc_widen_limit` every placed uber
+  uses), `quest=0`, `chanceToRun=100.0`, `difficulty_04` budget; pool `limit1=1` and the spawn-count
+  equation emptied. The chain is now REGISTERED in the mod-wide
+  `_verify_mod_spawn_proxies_eligible` invariant (b43 had to exclude it because check (B) would
+  false-fail against the 29-36 window; that reason is gone).
+- **"Needs more work" part (b), scoped:**
+  - **REWARD.** The arena guarded NOTHING (b43 RCA sec 6 item 5: zero chest/loot strings in the
+    whole blob). Aithon now carries a dedicated Boss-locked **"Ember-Crowned Hoard"** on the standard
+    region-tuned chain (`svc_aithonhoard`, brackets `55-57 / 63-65 / 63-65` from his charLevel
+    `[55,69,75]`). **ONE** chest, per **R-108**.
+  - **ATMOSPHERE.** Real flame (`pit_fx02`, an EffectEntity - no mesh, no collision, cannot block
+    the fight or the navmesh) under each of b43's six ring lights, which previously glowed with no
+    source.
+
+**NEW CONTENT CLASS + ITS GATE (process law 4):** "REPEATABLE-DESTINATION ENCOUNTER" -
+`tools/gate_arena_spawn_guarantee.py`. Per registered destination: placed exactly once as a plain
+flags=0 0x05 instance; ZERO `Action_SpawnEntityAtLocation` for it in the ported quest (with the
+upstream quest proven to still HAVE one, so the check cannot pass vacuously); the neutralizer proven
+CALLED by the port (the build22 inert-fix lesson); and an unconditional DB declaration (quest flag 0,
+chance 100, window spanning [1..110], empty pool equation, >=1 guaranteed main). `--arz` / `--quests`
+/ `--map` re-prove the same invariant on the real artifacts at ship. 9 planted negatives, all caught.
+`tools/debug/gate_uber_placement.py` also learns the arena (new BOSS_MARKER for the
+`proxies custom\bossarena\` namespace + expected area "Olympian Arena" + an ACCEPTED_ON_PATH row:
+the centre of a one-room destination arena IS the destination, the Ephialtes reward-vault precedent).
+
+**NOT DONE / DELIBERATELY NOT TOUCHED:**
+- SV's two vestigial `portal_olympianarena2` return portals stay placed (b43 already hid their
+  meshes DB-side); removing SV originals is WILL-VETO by the retirement protocol.
+- Aithon's own SV on-death loot table is left as SV wrote it (Act-1-tier slots). The tier-correct
+  payoff arrives as the hoard chest instead of rewriting an SV original in a P1 lane.
+
+**DEBT:**
+- `BL-R250-DEBT-1` (WILL / in-game): confirm the boss is present on a SECOND and THIRD visit (the
+  actual bug), and that only ONE Aithon spawns (the double-spawn a mis-coupled Levels/Quests deploy
+  would produce).
+- `BL-R250-DEBT-2` (WILL / in-game): confirm the Ember-Crowned Hoard chest appears and unlocks on
+  his death, and say whether its contents are worth the fight (it rides the same region-tuned chain
+  as the chests flagged over-nerfed in BL-W0814-2/5/11/13, so the chest-generosity lane's outcome
+  applies here too).
+- `BL-R250-DEBT-3` (in-game, visual): confirm the six `pit_fx02` flames read as a fire ring and not
+  as floating particles; if they look wrong, the fallback is to drop them (pure dressing, no
+  gameplay dependency).
+- `BL-R250-DEBT-4` (canonical/Steam reachability): the Boss Arena travel leg is TESTHUB-only
+  (`build_hub_extra_specs`); the canonical Steam map has no traveler to the arena and no return NPC
+  inside it. This lane fixes the ENCOUNTER, not its Steam reachability - that is a separate ruling
+  (the arena is currently a DEV-only destination).

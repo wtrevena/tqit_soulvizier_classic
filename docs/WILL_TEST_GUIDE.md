@@ -1,5 +1,40 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> # 🔥 R-250 THE BOSS ARENA NOW ALWAYS HAS ITS BOSS (2026-08-14) - READ THIS FIRST
+>
+> **Your report, verbatim:** "when i went to the boss arena this time there was no boss there. does
+> he not spawn 100% of the time? the boss arena needs more work."
+>
+> **You were right, and it was worse than a random chance - it was three separate things, any one of
+> which empties the arena:**
+>
+> 1. **The boss was spawned by a QUEST STEP, and a quest step only ever fires ONCE per character.**
+>    Soulvizier built the arena fight as "walk into the middle -> quest spawns him". Titan Quest
+>    saves that step as completed, forever. So the first visit had a boss and **every visit after it
+>    was empty** - exactly your "this time".
+> 2. **He also had a player-LEVEL window on him** (29-36 on Normal, 41-55 Epic, 60-75 Legendary,
+>    inherited from the base game's generic quest-proxy). Outside that band: no boss, even on a
+>    fresh character.
+> 3. **He was configured as a quest-only spawner** (no spawn chance at all), unlike every boss we
+>    place ourselves.
+>
+> **What changed:** Aithon is now placed in the arena the same way Tantalus, Ephialtes and the
+> Devourer are - a real world placement standing on Soulvizier's own centre marker, with **no quest,
+> no level window, and a 100% spawn**. The quest's old one-shot spawn is removed so you never get two
+> sets of him. **He is there on every single visit, on any character, at any level.**
+>
+> **Two more things while we were in there (your "needs more work"):**
+> - **The arena finally PAYS.** It had literally no loot and no chest in the whole level. Aithon now
+>   guards an **Ember-Crowned Hoard** - a Boss-locked chest that unlocks when he dies, tuned to his
+>   level like every other apex hoard (one chest, per your "he should only have one" ruling).
+> - **The ring burns.** The six lights we ringed the fight floor with last time had no fire under
+>   them; now each one sits on a real flame.
+>
+> **THE TEST:** travel to the **Boss Arena** from the Helos hub -> **PASS = Aithon, the Ember-Crowned
+> plus his two Ember Satyr Wardens are standing in the middle, every time.** Then: **leave, come
+> back, and check he is there AGAIN** (that is the actual bug). Kill him -> **PASS = a chest is there
+> and opens.** FAIL = an empty arena on any visit, or two Aithons at once (tell me which).
+
 > # 🛠️ R-249 WARDEN FIX + ALMYROS TRIM (2026-08-14) - READ THIS FIRST; it amends the R-248 section below
 >
 > **Your ruling, verbatim:** "no steam should not have a traveler from helos to the secret place or the

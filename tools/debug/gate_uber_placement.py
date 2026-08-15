@@ -129,6 +129,9 @@ EXPECTED_AREA = {
     'connector04.lvl':                          ('Aniketos (SV restore)', None),
     'random05a.lvl':                            ('Vashkarr', None),
     'drxfirstxistion_connection.lvl':           ('Blood-Toxeus parchment ambush', None),
+    # R-250 (BL-W0814-12): the arena boss stopped being quest-spawned and became a real
+    # placed encounter, so he now falls under this gate like every other uber we place.
+    'boss_arena.lvl':                           ('R-250 Aithon, the Ember-Crowned', 'Olympian Arena'),
 }
 
 # ── AUDITED + ACCEPTED on-path placements (R-100 #16b audit, 2026-07-30) ───────────
@@ -170,11 +173,21 @@ ACCEPTED_ON_PATH = {
     ('tombobs02.lvl', 'q_obs_roulette_a.dbr'):
         'Obsidian roulette CORNER - a random 25% mini-event prop, not an uber monster we '
         'place. The 4 corners deliberately span both Obsidian levels.',
+    ('boss_arena.lvl', 'boss_satyrshaman.dbr'):
+        'R-250: the ARENA. The fight stands at SV own location_bossarenacenter, dead '
+        'centre of a one-room destination level whose only gateways are the traveler '
+        'landing and the two return portals - so "beside the route" does not exist here: '
+        'the centre IS the destination (the Ephialtes reward-vault precedent). Moving it '
+        'off-centre would move the boss out of the arena Will travels to.',
 }
 
 
 # Records this gate treats as OUR placed encounters (bosses/hordes) and OUR chests.
-BOSS_MARKERS = ('drxmap' + BS + 'proxy' + BS + 'q_', 'minobossproxy_aniketos')
+# R-250: the arena spawner lives in SV own namespace (records\proxies custom\bossarena\),
+# not drxmap\proxy\q_*, so it needs its own marker or the gate would silently ignore the
+# newest placed encounter.
+BOSS_MARKERS = ('drxmap' + BS + 'proxy' + BS + 'q_', 'minobossproxy_aniketos',
+                'proxies custom' + BS + 'bossarena' + BS)
 CHEST_MARKERS = ('svc_' , 'polisvault_chest')
 
 
