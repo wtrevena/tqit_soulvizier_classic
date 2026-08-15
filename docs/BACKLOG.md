@@ -48,6 +48,23 @@
 and the full design law: `docs/WILL_RULINGS.md` -> **R-251**. Player-facing test: `docs/WILL_TEST_GUIDE.md`
 top section.
 
+> ### 🔁 ROUND 3 (2026-08-14) - what the adversarial vet found and what changed
+> Two HIGH findings, one MEDIUM, three LOW. **All six fixed, none deferred.**
+> 1. **HIGH - the published census was FALSE and did not reproduce.** Root cause was this lane's own
+>    `db.has_record()` exact-case lookup. Retracted and re-derived (two independent derivations now
+>    agree); corrected at all four sites; `_resolve()` + case-folded class comparison shipped.
+> 2. **HIGH - the gate was blind to the Devourer's hands being switched off**, the exact defect class
+>    the lane exists to catch, and `_hand_metrics` REPORTED "armed 100.00%" for a hand holding
+>    nothing. E2b + the dead-hand check + 4 plants shipped.
+> 3. **MEDIUM - the class arms were case-blind**, so a violating row could hide behind a mixed-case
+>    reference. Same `_resolve()` fix; 2 mixed-case plants + 4 positive controls shipped.
+> 4. **LOW - the footprint field counts were low.** Re-measured field-by-field; the table below is
+>    the corrected one the ship-time record-diff is checked against.
+> 5. **LOW - E5's docstring promised more than the code checked.** Arm widened to match the promise;
+>    the 7 pre-existing offenders named and registered (`BL-R251-DEBT-5`).
+> 6. **LOW - integration coupling with the in-flight loot-breadth lanes.** Registered as
+>    `BL-R251-DEBT-6` so the integration lane expects it.
+
 > ### 🔴 WHAT THIS LANE DOES **NOT** CLOSE - lead with this, per DONE-means-DONE
 > **`BL-W0814-10` (the soul) is STILL OPEN.** Every suspect the report named was audited and
 > cleared, the one structural anomaly the Devourer had was removed, and the lane writes **nothing**
@@ -211,7 +228,9 @@ carriers = 4 checked + 7 waived.**
 | **ANTI-INERT** `py tools/gate_toxeus_boss_equipment.py <shipped b888f022>` | **EXIT 1, 45 problems** - it names `bleed_affix_high_n`/`_l` yielding `Weapon_Bow` in the Devourer's LeftHand, `crimsonverdict_guaranteed_{n,e,l}` yielding 3 armour classes in his RightHand, **his weapon hand armed only 36.97% of spawns**, and all three Hunt armour slots at 0.0 on BOTH records. The gate reproduces all three of Will's reports as artifact facts |
 | **RED -> GREEN** `... --dryrun` on the same shipped arz | **PASS** - 45 problems before `apply()`, **0** after, in memory only, nothing written |
 | idempotency / mis-order guard | a **second** `apply()` over the already-patched db FAILS LOUD on the LeftHand pre-state assertion rather than double-writing |
-| `tools/verify_soul_drop_rates.py --gate` | **UNAFFECTED BY CONSTRUCTION** - this lane writes no `chanceToEquipFinger2` on any record (asserted only); its 4-champions-at-100 cohort arm is independently re-asserted by E4 |
+| `tools/verify_soul_drop_rates.py --gate <shipped b888f022>` | **PASS** (re-run at round 3, not asserted): shipped distribution `100.0%x4, 66.0%x4, 25.0%x4, 20.0%x770, 10.0%x118, 0.5%x7, 0.35%x2, 0.0%x655`, every cohort on its ruled rate, all 11 of its own planted negatives RED, positive control green. The `100.0%x4` IS R-243's four-champion pin. **UNAFFECTED BY CONSTRUCTION** - this lane writes no `chanceToEquipFinger2` on any record (asserted only); the cohort is independently re-asserted by E4 |
+| **ROUND-3 blind-spot re-proof on the REAL post-apply arz** (not the stub) | `RightHand switched off -> 1 problem CAUGHT`; `LeftHand switched off -> 1 CAUGHT`; `LeftHand rows all zeroed -> 4 CAUGHT`; `a wrong-class table reached through a MIXED-CASE reference -> 3 CAUGHT`. **All four were MISSED by the round-2 gate** (0 problems each) |
+| **ROUND-3 leaf-resolution re-proof** | walking every armed slot of all four champions with the FIXED resolver: **1,547 leaves pre-apply, 2,553 post-apply, ZERO unresolved in either**. The docstring's "the shares are exact, not lower bounds" is now a claim about the whole leaf set rather than about the subset the buggy lookup happened to reach |
 
 **EXPECTED BUILD FOOTPRINT (for the Ship phase's record-diff).** Re-measured at round 3 with a
 field-level before/after snapshot of the WHOLE db around `apply()` over the shipped arz in memory

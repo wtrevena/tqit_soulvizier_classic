@@ -518,13 +518,16 @@ def _leaf_items(db, table, weight=1.0, depth=0, seen=(), out=None):
     weight. Records not in `db` are base-game records that exist at runtime but not in the
     mod arz; they come back as leaves whose class resolves to the sentinel '' and every
     caller IGNORES them (an unresolved leaf is never a violation - that would cry wolf on
-    half the base game). Measured on b888f022: ZERO of the tables this lane touches has an
-    unresolved leaf, so the shares below are exact, not lower bounds.
+    half the base game).
 
     CASE (round 3): resolution goes through `_resolve`, so a reference that differs from the
     stored record name only by case is FOLLOWED, not written off as unresolved. Before that
     fix the "unresolved leaf is never a violation" rule silently swallowed 2,436 references
     that do resolve, which is how a violating row could hide behind a mixed-case spelling.
+    RE-MEASURED with the fixed resolver over b888f022, walking every armed slot of all four
+    champions: 1,547 leaves pre-apply and 2,553 post-apply, ZERO unresolved in either. So
+    the shares below are exact, not lower bounds - and unlike round 2, that is now a claim
+    about the whole leaf set rather than about the subset the lookup happened to reach.
     """
     if out is None:
         out = {}
