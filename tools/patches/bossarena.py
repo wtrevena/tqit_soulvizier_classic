@@ -137,6 +137,20 @@ SPAWN_GUARANTEE = {
     'hoard_prefix': _HOARD_PREFIX,
     'chest_std_key': 'svc_%shoard' % _HOARD_PREFIX,
     'guaranteed_loot_chance': 100.0,   # loot3Chance: the guaranteed unique + relic slot
+    # ── VOLUME TRUTH (check C9), added by the R-252 vet round 2 ───────────────────
+    # `_svc_build_dedicated_hoard` WRITES (3+1.8P)*2.4/*2.8 into the table it mints, and
+    # R-240's trim (tools/svc_loot_volume.py) then REWRITES it - the arena family is in
+    # that trim's scope by the same mod-ownership rule as its 27 siblings (mechanically
+    # confirmed: svc_loot_breadth.is_mod_owned=True, svc_armor_breadth.in_scope=True,
+    # svc_loot_volume._r247_exempt=False - identical to svc_tantalushoard_loot_01, which
+    # ships trimmed). So the number a reader sees at the mint site is NOT the number that
+    # ships, and round 1 of this lane stated the mint-site number as MEASURED in seven
+    # places. `volume_peer` names an ALREADY-SHIPPED sibling family; C9 asserts the arena
+    # table's numSpawn equations are identical to that peer's at the same tier, so this
+    # chest can never quietly diverge from its siblings in either direction, and any
+    # deliberate divergence has to arrive as a ruling that flips `volume_exempt`.
+    'volume_peer': 'tantalus',         # svc_tantalushoard_loot_<tier>, shipped + trimmed
+    'volume_exempt': False,            # True only via a Will ruling granting an R-240 carve-out
 }
 
 # ── Soul design (amgoz1 voice) ────────────────────────────────────────────────
@@ -347,13 +361,30 @@ def apply(db, tags):
     # THE CHEST KEEPS ITS OWN TABLE. 'svc_aithonhoard' is deliberately NOT registered
     # in _SVC_CHEST_STD: that roster drives _svc_standardize_boss_chests, which
     # REPOINTS a chest's `tables` at the base game's boss_default_<bracket> and strands
-    # the bespoke table. Measured per chest at 1 player: bespoke = (3+1.8P)*2.4/2.8
-    # iterations, chance-mass 2.81, guaranteed unique + relic; boss_default_55-57/63-65
-    # = (3+1.6P)*1.5/1.7, chance-mass 1.11, nothing guaranteed. That repoint is the
-    # single shared cause behind Will's five 2026-08-14 chest reports
-    # (BL-W0814-2/5/7/11/13), so a chest built THIS wave does not opt into it. See the
-    # comment block at _SVC_CHEST_STD, and check C8 in
-    # tools/gate_arena_spawn_guarantee.py, which reds if that ever changes.
+    # the bespoke table. That repoint is the single shared cause behind Will's five
+    # 2026-08-14 chest reports (BL-W0814-2/5/7/11/13), so a chest built THIS wave does
+    # not opt into it.
+    #
+    # WHAT THAT ACTUALLY BUYS, MEASURED ON THE SHIPPED ARZ (build92, 51,312 records),
+    # per chest, at 1 player, tier 01 - i.e. POST-R-240-trim, which is what ships:
+    #   this table  svc_<fam>hoard_loot_01 : (3+1.8P)*0.2188/*0.25 -> 1.05/1.20 spawn
+    #                iterations; chances 40/40/100/21.2/40/40 -> group mass 2.812;
+    #                loot3Chance=100, so EVERY iteration rolls svc_unique_weapons_n01
+    #                + 01_act4_relics.
+    #   boss_default_55-57 / 63-65 : (3+1.6P)*1.5/*1.7 -> 6.90/7.82 iterations; chances
+    #                14/27/10/21.2/25/14 -> group mass 1.112; loot3Chance=10, and the
+    #                group behind it is 01_l_boss_misc.
+    # So the honest comparison is NOT "more loot": the bespoke table runs ~6.5x FEWER
+    # iterations and pays FEWER items overall (expected group hits 2.95-3.37 against
+    # 7.67-8.70). What it buys is the GUARANTEED unique+relic slot - expected 1.05-1.20
+    # rolls of it against 0.69-0.78, and it is the only one of the two that guarantees
+    # that slot at all - plus not stranding a table this wave just built. Round 1 of
+    # this lane quoted (3+1.8P)*2.4/*2.8 here as MEASURED; that is what
+    # `_svc_build_dedicated_hoard` WRITES, and R-240's trim (tools/svc_loot_volume.py)
+    # rewrites it before the arz ships. See check C9, which now asserts that shipped
+    # equality against a peer family instead of trusting a comment.
+    # See also the comment block at _SVC_CHEST_STD, and check C8 in
+    # tools/gate_arena_spawn_guarantee.py, which reds if the repoint ever comes back.
     _hoard = M._svc_build_dedicated_hoard(db, _HOARD_PREFIX, _HOARD_TAG)
     if not _hoard:
         raise SystemExit(

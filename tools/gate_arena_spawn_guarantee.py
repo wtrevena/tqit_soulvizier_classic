@@ -29,6 +29,9 @@ THE INVARIANT (per registered destination encounter)
   C1 PLACED  : the encounter's spawner proxy is placed EXACTLY ONCE, statically, in its
                host level (build_section_surgery.INJECT_SPECS), as a plain 0x05 instance
                (no 0x14 binding) - flags=0, so the engine re-spawns it on every stream.
+               EVERY option that can bind or track an instance is refused, `wants_0x14`
+               included (it was missed in round 1: three of the four options were banned
+               and the fourth produced the same bound shape).
   C2 NO ONE-SHOT SOURCE: the ported .qst carries ZERO Action_SpawnEntityAtLocation for
                that (entity, location). The upstream quest must still HAVE one (else the
                registry is stale and the check is vacuous), the neutralizer must remove
@@ -51,9 +54,14 @@ THE INVARIANT (per registered destination encounter)
                svc_*hoard_loot_0N records unreferenced in the shipped arz); with --arz,
                each tier's chest names its OWN loot record and that record still carries
                its guaranteed high-value slot.
+  C9 (--arz) VOLUME TRUTH: the hoard ships at the SAME volume as an already-shipped PEER
+               family, tier for tier - because the value the hoard BUILDER writes is not
+               the value that ships (R-240's trim rewrites it), so any number published
+               about this chest has to be checked against the arz, not against the mint
+               site. `volume_exempt: True` inverts the check rather than silencing it.
 
 C1-C4 + C8's static half are STATIC (source + the pristine upstream .qst): they run in
-any worktree with no build. C5-C8 are the same invariant re-proved on real artifacts at
+any worktree with no build. C5-C9 are the same invariant re-proved on real artifacts at
 ship time.
 
 USAGE
@@ -220,12 +228,17 @@ def check_placed(d, inject_specs, problems):
     if not isinstance(opts, dict):
         problems.append(f"{d['label']}: placement options must be a dict, got {opts!r}")
         return
-    for banned in ('x14_payload', 'x14', 'flags'):
+    # Every option in build_section_surgery._normalize_spec that can produce a TRACKED or
+    # BOUND instance. 'wants_0x14' was missing in round 1 (vet finding): it is the third
+    # way to get a 0x14 binding onto an instance, so a destination registered with
+    # {'wants_0x14': True} would have passed C1 while violating the invariant C1 encodes.
+    for banned in ('x14_payload', 'x14', 'wants_0x14', 'flags', 'uniqueid'):
         if banned in opts:
             problems.append(
                 f"{d['label']}: placement carries '{banned}' - a destination spawner must "
-                f"be a plain flags=0 0x05 instance (a tracked/bound instance is not "
-                f"re-spawned on revisit, which is the bug this gate exists for).")
+                f"be a plain flags=0 0x05 instance with no 0x14 binding (a tracked/bound "
+                f"instance is not re-spawned on revisit, which is the bug this gate "
+                f"exists for).")
 
 
 def check_quest_neutralized(d, bqf, upstream_arc, problems):
@@ -309,14 +322,30 @@ def check_reward_static(d, decl, problems):
     REPOINTS it away from the table it just built.
 
     `_svc_standardize_boss_chests` walks `_SVC_CHEST_STD` and rewrites each listed
-    chest's `tables` to the base game's `boss_default_<bracket>`. Measured on the
-    shipped arz at 1 player, per chest: bespoke = (3+1.8P)*2.4/2.8 spawn iterations,
-    group chance-mass 2.81, loot3Chance=100 with a guaranteed unique + relic;
-    boss_default_55-57/63-65 = (3+1.6P)*1.5/1.7, chance-mass 1.11, loot3Chance=10,
-    nothing guaranteed - and the bespoke table is left unreferenced. That is the single
-    shared cause behind five separate 2026-08-14 reports from Will
-    (BL-W0814-2/5/7/11/13), so a chest shipped for a destination encounter may not opt
-    into it.
+    chest's `tables` to the base game's `boss_default_<bracket>`. MEASURED on the
+    SHIPPED arz (build92), per chest, at 1 player, tier 01 - i.e. POST-R-240-trim,
+    which is what actually ships:
+
+        bespoke svc_<fam>hoard_loot_01 : (3+1.8P)*0.2188/*0.25 -> 1.05/1.20 spawn
+            iterations; chances 40/40/100/21.2/40/40 -> group mass 2.812;
+            loot3Chance=100 (svc_unique_weapons_n01 + 01_act4_relics EVERY iteration).
+        boss_default_55-57 / 63-65     : (3+1.6P)*1.5/*1.7 -> 6.90/7.82 iterations;
+            chances 14/27/10/21.2/25/14 -> group mass 1.112; loot3Chance=10
+            (01_l_boss_misc).
+
+    So the repoint is NOT a volume nerf in the naive direction: boss_default runs ~6.5x
+    MORE iterations and pays MORE items (expected group hits 7.67-8.70 against
+    2.95-3.37). What the repoint destroys is the GUARANTEED unique+relic slot (expected
+    1.05-1.20 rolls collapse to 0.69-0.78, and the guarantee itself disappears), and it
+    leaves the bespoke table unreferenced. That is the single shared cause behind five
+    separate 2026-08-14 reports from Will (BL-W0814-2/5/7/11/13), so a chest shipped for
+    a destination encounter may not opt into it.
+
+    ROUND-1 CORRECTION (vet): this docstring previously quoted (3+1.8P)*2.4/*2.8 as the
+    bespoke MEASURED volume. That is the value `_svc_build_dedicated_hoard` WRITES;
+    R-240's trim (tools/svc_loot_volume.py) rewrites it before the arz ships, and the
+    arena family is inside that trim's scope like its 27 siblings. C9 below now asserts
+    the SHIPPED number against a peer family rather than trusting any prose.
 
     SELF-RETIRING: the check only fires while a repointing pass EXISTS. When the
     chest-generosity lane replaces it with a wiring pass (each chest -> its own
@@ -374,6 +403,75 @@ def check_reward_arz(d, decl, db, problems):
             problems.append(
                 f"{d['label']}: {loot}.loot3Chance = {got!r} (want >= {want_chance}) - "
                 f"the guaranteed unique + relic slot is what makes the hoard a hoard.")
+
+
+_VOLUME_FIELDS = ('numSpawnMinEquation', 'numSpawnMaxEquation')
+
+
+def check_volume_truth(d, decl, db, problems):
+    r"""C9 (arz half) - THE NUMBER IN THE RULING MUST BE THE NUMBER THAT SHIPS.
+
+    THE DEFECT CLASS (found by the R-252 round-1 vet, and worth its own check):
+    `_svc_build_dedicated_hoard` mints the family's loot tables with
+    `(3+(1.8*numberOfPlayers))*2.4/*2.8`, and R-240's later trim
+    (`tools/svc_loot_volume.py`) REWRITES those equations before the arz is written.
+    The arena family is inside that trim's scope by the ordinary mod-ownership rule
+    (`svc_` prefix / `\svc\` folder), exactly like its 27 already-shipped siblings - the
+    scope is derived, never a typed roster (BL-R181-DEBT-7's lesson). So a reader who
+    measures at the MINT site, or who runs the hoard builder alone as a dry-run, reads a
+    number the shipped arz does not contain. Round 1 of this lane did exactly that and
+    published `*2.4/*2.8` as MEASURED in seven places, including the ruling and Will's
+    test guide, with the bespoke-vs-boss_default comparison inverted on that axis.
+
+    Neither C8 half could see it: C8 asserts tables-identity and `loot3Chance`, both of
+    which the trim leaves alone. Hence C9, asserting the property that actually carries
+    the meaning: the destination's hoard ships at the SAME volume as an already-shipped
+    PEER family (`volume_peer`), tier for tier. Any divergence - the trim skipping this
+    family, a future generosity pass touching one family and not the other, or a
+    deliberate carve-out - reds here and forces the ruling to say so out loud.
+
+    `volume_exempt: True` is the declared escape hatch. It is not a way to silence C9:
+    it INVERTS it (the arena must then differ from its peer), so an exemption that was
+    ruled but never actually landed still fails."""
+    prefix = decl.get('hoard_prefix')
+    peer = decl.get('volume_peer')
+    if not prefix:
+        return
+    if not peer:
+        problems.append(
+            f"{d['label']}: SPAWN_GUARANTEE declares a hoard but no 'volume_peer'. C9 "
+            f"cannot check that the shipped volume is the volume the ruling states, and "
+            f"the mint-site value is NOT the shipped value (R-240 trims it).")
+        return
+    exempt = bool(decl.get('volume_exempt', False))
+    mine, theirs = _hoard_records(prefix), _hoard_records(peer)
+    for t in sorted(mine):
+        loot, peer_loot = mine[t][1], theirs[t][1]
+        if not db.has_record(peer_loot):
+            problems.append(
+                f"{d['label']}: declared volume_peer {peer!r} has no {peer_loot} in the "
+                f"arz, so C9 would pass vacuously. Name a family that really ships.")
+            continue
+        if not db.has_record(loot):
+            continue                      # C8 already reports the missing family
+        for f in _VOLUME_FIELDS:
+            a = db.get_field_value(loot, f)
+            b = db.get_field_value(peer_loot, f)
+            a = a[0] if isinstance(a, list) else a
+            b = b[0] if isinstance(b, list) else b
+            same = str(a) == str(b)
+            if same and exempt:
+                problems.append(
+                    f"{d['label']}: volume_exempt=True but {loot}.{f} = {a!r} is "
+                    f"IDENTICAL to peer {peer_loot} - the ruled carve-out never landed, "
+                    f"so the ruling promises a volume the arz does not carry.")
+            elif not same and not exempt:
+                problems.append(
+                    f"{d['label']}: {loot}.{f} = {a!r} but peer {peer_loot}.{f} = {b!r}. "
+                    f"This hoard is supposed to ship at the SAME volume as its siblings "
+                    f"(R-240 governs both). A silent divergence means every number "
+                    f"published for this chest - ruling, test guide, code comments - is "
+                    f"now wrong. Fix the pass, or declare volume_exempt=True in a ruling.")
 
 
 def check_arz(d, decl, db, problems):
@@ -519,6 +617,7 @@ def run(dests, arz=None, quests=None, map_path=None, verbose=True):
                 _db = ArzDatabase.from_arz(Path(arz))
                 check_arz(d, decl, _db, problems)
                 check_reward_arz(d, decl, _db, problems)
+                check_volume_truth(d, decl, _db, problems)
         if quests:
             check_built_quest(d, ArcArchive.from_file(Path(quests)), problems)
         if map_path:
@@ -549,6 +648,15 @@ def negtest():
     BSS.INJECT_SPECS[base['level_key']] = list(saved) + [
         (base['proxy_dbr'].encode('latin1'), 1.0, 2.0, 3.0)]
     cases.append(('N2 spawner placed twice', run([base], verbose=False)))
+    # N13 (C1): the placement is registered with 'wants_0x14' - the FOURTH bind/track
+    # option in build_section_surgery._normalize_spec, and the one round 1 forgot. It
+    # appends 0x14 metadata for the instance, i.e. the tracked/bound shape C1's own
+    # rationale says is not re-spawned on revisit, so C1 must refuse it like the others.
+    BSS.INJECT_SPECS[base['level_key']] = [
+        (s[0], s[1], s[2], s[3], dict(s[4] if len(s) > 4 else {}, wants_0x14=True))
+        if _norm(s[0]) == _norm(base['proxy_dbr']) else s
+        for s in saved]
+    cases.append(('N13 placement bound via wants_0x14', run([base], verbose=False)))
     BSS.INJECT_SPECS[base['level_key']] = saved
 
     # N3: the quest neutralizer is a no-op (the one-shot spawn survives)
@@ -629,6 +737,66 @@ def negtest():
     for p in _retired:
         print(f'      - {p}')
 
+    # ── N14..N16 (C9 VOLUME TRUTH) ───────────────────────────────────────────────────
+    # C9 needs an arz, but the invariant it encodes is exactly the one a dry-run cannot
+    # be trusted for, so its negatives run against a MINIMAL fake db instead of gating on
+    # a build. The fake carries only what C9 reads (has_record + numSpawn equations), and
+    # the SHIPPED equations are the real ones re-measured from build92's arz.
+    _SHIPPED = {'01': ('(3+(1.8*numberOfPlayers))*0.2188', '(3+(1.8*numberOfPlayers))*0.25'),
+                '02': ('(3+(1.8*numberOfPlayers))*0.228', '(3+(1.8*numberOfPlayers))*0.266'),
+                '03': ('(3+(1.8*numberOfPlayers))*0.252', '(3+(1.8*numberOfPlayers))*0.294')}
+    _MINTED = ('(3+(1.8*numberOfPlayers))*2.4', '(3+(1.8*numberOfPlayers))*2.8')
+
+    class _FakeDb(object):
+        """Only what check_volume_truth reads."""
+
+        def __init__(self, rows):
+            self._rows = {_norm(k): v for k, v in rows.items()}
+
+        def has_record(self, name):
+            return _norm(name) in self._rows
+
+        def get_field_value(self, name, field):
+            return self._rows.get(_norm(name), {}).get(field)
+
+    def _rows(prefix, per_tier):
+        base = r'records\drxitem\container'
+        out = {}
+        for t, (mn, mx) in per_tier.items():
+            out[rf'{base}\svc_{prefix}hoard_loot_{t}.dbr'] = {
+                'numSpawnMinEquation': mn, 'numSpawnMaxEquation': mx}
+            out[rf'{base}\svc_{prefix}hoard_{t}.dbr'] = {}
+        return out
+
+    def _c9(decl_mut, mine, peer_rows):
+        probs = []
+        decl = copy.deepcopy(real_decl)
+        decl.update(decl_mut)
+        db = _FakeDb(dict(mine, **peer_rows))
+        check_volume_truth(base, decl, db, probs)
+        return probs
+
+    _peer = _rows(real_decl['volume_peer'], _SHIPPED)
+    _pfx = real_decl['hoard_prefix']
+    # N14: the R-240 trim skips the arena family, so it ships at the MINT value while
+    # every sibling ships trimmed - the exact divergence that would make the ruling's
+    # published numbers wrong again, in the other direction.
+    cases.append(('N14 hoard volume diverges from its shipped peer (trim skipped it)',
+                  _c9({}, _rows(_pfx, {t: _MINTED for t in _SHIPPED}), _peer)))
+    # N15: a ruling grants an R-240 carve-out but the code never landed it, so the arz
+    # still matches the peer. An exemption that exists only on paper must red.
+    cases.append(('N15 volume_exempt ruled but never landed in the arz',
+                  _c9({'volume_exempt': True}, _rows(_pfx, _SHIPPED), _peer)))
+    # N16: volume_peer names a family that does not ship - C9 would pass vacuously.
+    cases.append(('N16 volume_peer names a family absent from the arz',
+                  _c9({'volume_peer': 'nosuchfamily'}, _rows(_pfx, _SHIPPED), _peer)))
+    # P1: and the real, shipped shape (arena == peer, no exemption) must be CLEAN.
+    _c9_clean = _c9({}, _rows(_pfx, _SHIPPED), _peer)
+    print('  %s P1 C9 clean when the hoard ships at its peer volume'
+          % ('PASS   ' if not _c9_clean else 'FAIL   '))
+    for p in _c9_clean:
+        print(f'      - {p}')
+
     ok = True
     for label, probs in cases:
         caught = bool(probs)
@@ -640,7 +808,7 @@ def negtest():
     print(f'  {"PASS   " if not live else "FAIL   "} P0 the shipped configuration is clean')
     for p in live:
         print(f'      - {p}')
-    return ok and not live and not _retired
+    return ok and not live and not _retired and not _c9_clean
 
 
 def main():

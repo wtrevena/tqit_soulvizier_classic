@@ -17079,11 +17079,27 @@ _SVC_CHEST_STD = {
     # strings in the whole blob), so R-252 gives him the standard dedicated Boss-locked
     # hoard (tools/patches/bossarena.py -> _svc_build_dedicated_hoard). Registering the
     # family HERE would then repoint that brand-new chest at boss_default_55-57/63-65
-    # and strand the table it just built. MEASURED on the shipped arz, per chest, at
-    # 1 player: bespoke = (3+1.8P)*2.4/2.8 spawn iterations, group chances
-    # 40/40/100/21.2/40/40, loot3Chance=100 with a guaranteed unique + relic; the
-    # boss_default_* pair = (3+1.6P)*1.5/1.7, chances 14/27/10/21.2/25/14,
-    # loot3Chance=10, nothing guaranteed. That repoint is the ONE shared cause Will
+    # and strand the table it just built. MEASURED on the SHIPPED arz (build92), per
+    # chest, at 1 player, tier 01 - these are POST-R-240-trim values, i.e. what really
+    # ships:
+    #   bespoke svc_<fam>hoard_loot_01 : (3+1.8P)*0.2188/*0.25 -> 1.05/1.20 spawn
+    #       iterations; chances 40/40/100/21.2/40/40 -> group mass 2.812; loot3Chance
+    #       = 100 (svc_unique_weapons_n01 + 01_act4_relics, rolled EVERY iteration).
+    #   boss_default_55-57 / 63-65     : (3+1.6P)*1.5/*1.7 -> 6.90/7.82 iterations;
+    #       chances 14/27/10/21.2/25/14 -> group mass 1.112; loot3Chance = 10
+    #       (01_l_boss_misc).
+    # Read honestly, the bespoke table runs ~6.5x FEWER iterations and pays FEWER items
+    # overall (expected group hits 2.95-3.37 against 7.67-8.70). The advantage that
+    # SURVIVES the trim is the GUARANTEED unique+relic slot - expected 1.05-1.20 rolls
+    # of it against 0.69-0.78, and it is the only one of the two that guarantees that
+    # slot at all - plus not stranding a table this wave just built. R-252 round 1
+    # quoted (3+1.8P)*2.4/*2.8 here as MEASURED; that is what _svc_build_dedicated_hoard
+    # WRITES, and R-240's trim (tools/svc_loot_volume.py) rewrites it before ship - the
+    # arena family sits in that trim's scope exactly like its 27 siblings
+    # (is_mod_owned=True, in_scope=True, _r247_exempt=False). Check C9 of
+    # tools/gate_arena_spawn_guarantee.py now asserts the SHIPPED equality against a
+    # peer family instead of trusting a comment.
+    # That repoint is the ONE shared cause Will
     # filed five times on 2026-08-14 (BL-W0814-2/5/7/11/13: "are you kidding me. this
     # is outrageous", "a terrible chest", "nerfed too much"), and it is what left 18 of
     # 27 svc_*hoard_loot_0N records with zero references in the shipped arz. A NEW
