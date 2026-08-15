@@ -179,9 +179,12 @@ now catches this mechanically; run it `--vs main --branches` at integration and 
 
 **INTEGRATION ORDER vs `fix/chest-generosity-shared-cause` (R-250): EITHER ORDER IS SAFE.** This lane
 leaves `svc_aithonhoard` out of `_SVC_CHEST_STD`, so the arena chest opens its own table on today's
-main. When R-250 lands and the pass stops repointing, the row may be added back as a roster entry.
-Gate C8 asserts the correct end state in both worlds and switches itself off once no repointing pass
-exists (negtest N12), so neither lane blocks the other.
+main. When R-250 lands and the pass stops repointing, that lane sets
+`_SVC_CHEST_STD_REPOINTS = False` (declared beside `_svc_standardize_boss_chests`) and adds the row
+back as a roster entry, in the same commit. Gate C8 asserts the correct end state in both worlds and
+switches itself off on **that flag** - a property the PASS owns - so it retires correctly whether the
+lane deletes, renames, or converts the pass IN PLACE (negtests N12 = deleted/renamed, N17 = converted
+in place, N18 = flag missing entirely still reds). Neither lane blocks the other.
 
 **STILL OWED AT SHIP (orchestrator):** the heavy map build (Levels) + `build_quest_files` + the arz
 + `build_text_arc`, all in one coupled deploy; then `gate_arena_spawn_guarantee --arz --quests --map`,
@@ -212,9 +215,35 @@ is a Will design decision the lane deliberately did not make for him).
    new non-gating ISLAND advisory + `BL-R252-DEBT-8`.
 5. **INFO (no code change, confirmed still true):** the textual merge conflict with
    `fix/chest-generosity-shared-cause` in `apply_svc_patches._SVC_CHEST_STD` is expected and the
-   two lanes compose semantically - that lane renames `_svc_standardize_boss_chests`, so C8
-   self-retires on its own, and its gate H1 is already satisfied by the arena chest.
-   Ruling numbers remain disjoint (`R-252` claimed by nobody else).
+   two lanes compose semantically, and its gate H1 is already satisfied by the arena chest.
+   Ruling numbers remain disjoint (`R-252` claimed by nobody else). **Round 3 narrowed this:**
+   round 2 assumed that lane RENAMES `_svc_standardize_boss_chests` so C8 retires on its own. That
+   holds only for a rename; see round-3 item 2.
+
+**VET ROUND 3 - WHAT CHANGED AND WHY:**
+1. **MEDIUM (false provenance in the rulings ledger):** the round-2 landing correction cited the
+   wrong entity from the wrong source, and the value it landed was the RETURN NPC's, 4u east of the
+   real landing. Fixed to the live `build_quest_files.R248_TESTHUB_STEPS` row, world
+   `(-429, 28, -3538)`; the same false sentence was corrected in `WILL_RULINGS`, this lane record,
+   and the landing-note in `gate_landing_clearance`. **Not cosmetic:** the round-2 value put the
+   landing 0.00u from `svc_testhub_return_bossarena` and FAILED the b63 `G-NPC-LANDING-SEP` sub-gate
+   at `-1.00u`; it now PASSES at `+0.70u`, the NPC measures exactly 4.00u east, and the boss
+   separation the gate measures is **25.08u** (round 2 published 25.45u, measured at the NPC). The
+   retired row's "89u" was also wrong-target: 89.2u is to the BOSS, 64.1u to the landing.
+   `WILL_TEST_GUIDE` was checked and never carried the sentence.
+2. **LOW (C8 would have redded on a correct configuration):** C8's static half retired on the
+   FUNCTION NAME being absent, so if the generosity lane converted the pass IN PLACE (same name,
+   wiring semantics) and the integrator followed this branch's own INTEGRATION NOTE to re-add the
+   roster row, C8 would have blocked it. The retirement condition is now
+   `apply_svc_patches._SVC_CHEST_STD_REPOINTS`, a flag the PASS declares and owns; a missing flag on
+   an existing pass reads as still-repointing, so an older monolith fails loud instead of silently
+   opening. New negtests **N17** (converted in place -> must be quiet) and **N18** (flag deleted ->
+   must still red). Proven discriminating by a mutation replay: the old name-based condition raises
+   a false red on exactly the N17 configuration where the new one is correctly quiet.
+3. **LOW (defensive):** `patches/bossarena.py` 4b appended to `_MOD_AUTHORED_SPAWN_PROXIES` with no
+   dedup. `run_registry` calls `apply()` once so it was not reachable, but a dry run / double pass /
+   test harness would double-register the arena and inflate the "Spawn-eligibility invariant OK: N
+   proxies" count. Now guarded on the proxy path, matching the `diadochi` / `toxeus_hunt_*` idiom.
 
 ---
 

@@ -347,10 +347,20 @@ def check_reward_static(d, decl, problems):
     arena family is inside that trim's scope like its 27 siblings. C9 below now asserts
     the SHIPPED number against a peer family rather than trusting any prose.
 
-    SELF-RETIRING: the check only fires while a repointing pass EXISTS. When the
-    chest-generosity lane replaces it with a wiring pass (each chest -> its own
-    svc_<family>hoard_loot_<tier>), `_SVC_CHEST_STD` becomes a harmless family roster
-    and this check goes quiet on its own instead of blocking that lane."""
+    SELF-RETIRING, on a property the PASS OWNS: the check fires only while the pass
+    still REPOINTS, which the monolith declares as `_SVC_CHEST_STD_REPOINTS` beside
+    `_svc_standardize_boss_chests`. When the chest-generosity lane converts it into a
+    wiring pass (each chest -> its own svc_<family>hoard_loot_<tier>) it flips that flag
+    to False, `_SVC_CHEST_STD` becomes a harmless family roster, and this check goes
+    quiet instead of blocking that lane.
+
+    ROUND-3 CORRECTION (vet): this used to retire on the function NAME being absent.
+    That only covers deletion/rename - if the generosity lane converted the pass IN
+    PLACE (same name, wiring semantics) and the integrator followed this branch's own
+    instruction to re-add the roster row, C8 would have redded on a CORRECT
+    configuration. The flag is now the condition; a missing flag on an existing pass is
+    read as still-repointing, so an older monolith fails loud rather than silently
+    opening the hole."""
     prefix = decl.get('hoard_prefix')
     key = decl.get('chest_std_key')
     if not prefix or not key:
@@ -365,14 +375,21 @@ def check_reward_static(d, decl, problems):
         return
     repointer = getattr(MONO, '_svc_standardize_boss_chests', None)
     roster = getattr(MONO, '_SVC_CHEST_STD', {})
-    if repointer is not None and key in roster:
+    # The PASS owns the retirement condition, not this gate and not the function name.
+    # No pass at all -> nothing repoints. Pass present but no flag -> a pre-R-252
+    # monolith, which does repoint (conservative: fail loud, never silently open).
+    repoints = (repointer is not None
+                and bool(getattr(MONO, '_SVC_CHEST_STD_REPOINTS', True)))
+    if repoints and key in roster:
         problems.append(
             f"{d['label']}: '{key}' is registered in _SVC_CHEST_STD while "
             f"_svc_standardize_boss_chests still REPOINTS registered chests at "
             f"records{BS}item{BS}containers{BS}defaultloot{BS}boss_default_*. That "
             f"strands the dedicated hoard this wave builds and ships the exact chest "
             f"Will rejected five times on 2026-08-14. Remove the row (the chest then "
-            f"keeps its own table), or land this after the pass stops repointing.")
+            f"keeps its own table), or land this after the pass stops repointing - and "
+            f"when it does stop, set _SVC_CHEST_STD_REPOINTS = False in the same commit, "
+            f"which is what retires this check.")
 
 
 def check_reward_arz(d, decl, db, problems):
@@ -724,7 +741,7 @@ def negtest():
         del MONO._SVC_CHEST_STD[_key]
 
     # N12 (C8): ... and the check must RETIRE ITSELF once nothing repoints, or it
-    # blocks the chest-generosity lane forever.
+    # blocks the chest-generosity lane forever. SHAPE A: the pass is deleted/renamed.
     _repointer = MONO._svc_standardize_boss_chests
     del MONO._svc_standardize_boss_chests
     MONO._SVC_CHEST_STD[_key] = ('55-57', '63-65', '63-65')
@@ -736,6 +753,36 @@ def negtest():
           % ('PASS   ' if not _retired else 'FAIL   '))
     for p in _retired:
         print(f'      - {p}')
+
+    # N17 (C8, R-252 vet round 3): SHAPE B - the generosity lane converts the pass IN
+    # PLACE (same function name, wiring semantics) and flips the flag the pass owns. The
+    # roster row is then CORRECT and must NOT red. Retiring on the function NAME alone
+    # would have failed exactly here, blocking the lane this branch tells the integrator
+    # to hand the row back to.
+    _flag = getattr(MONO, '_SVC_CHEST_STD_REPOINTS', True)
+    MONO._SVC_CHEST_STD_REPOINTS = False
+    MONO._SVC_CHEST_STD[_key] = ('55-57', '63-65', '63-65')
+    _converted = run([base], verbose=False)
+    MONO._SVC_CHEST_STD_REPOINTS = _flag
+    if not _had:
+        del MONO._SVC_CHEST_STD[_key]
+    print('  %s N17 C8 self-retires when the pass is converted IN PLACE '
+          '(_SVC_CHEST_STD_REPOINTS=False, function still present)'
+          % ('PASS   ' if not _converted else 'FAIL   '))
+    for p in _converted:
+        print(f'      - {p}')
+
+    # N18 (C8): and the flag must not be a blanket off-switch - a pass that still
+    # repoints while the row is registered stays caught even if some other lane removed
+    # the flag entirely (missing flag = still repointing).
+    _flag2 = MONO._SVC_CHEST_STD_REPOINTS
+    del MONO._SVC_CHEST_STD_REPOINTS
+    MONO._SVC_CHEST_STD[_key] = ('55-57', '63-65', '63-65')
+    cases.append(('N18 repointing pass with the declaration flag missing entirely',
+                  run([base], verbose=False)))
+    MONO._SVC_CHEST_STD_REPOINTS = _flag2
+    if not _had:
+        del MONO._SVC_CHEST_STD[_key]
 
     # ── N14..N16 (C9 VOLUME TRUTH) ───────────────────────────────────────────────────
     # C9 needs an arz, but the invariant it encodes is exactly the one a dry-run cannot
@@ -808,7 +855,7 @@ def negtest():
     print(f'  {"PASS   " if not live else "FAIL   "} P0 the shipped configuration is clean')
     for p in live:
         print(f'      - {p}')
-    return ok and not live and not _retired and not _c9_clean
+    return (ok and not live and not _retired and not _converted and not _c9_clean)
 
 
 def main():

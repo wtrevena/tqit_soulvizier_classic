@@ -17107,13 +17107,34 @@ _SVC_CHEST_STD = {
     # times, so the arena chest keeps its own table.
     # INTEGRATION NOTE: when the chest-generosity lane lands and this pass stops
     # repointing (it becomes a WIRING pass that points each chest at its OWN
-    # svc_<family>hoard_loot_<tier>), add the row back - it becomes the family roster:
+    # svc_<family>hoard_loot_<tier>), do BOTH of these in the SAME commit:
+    #   1. set `_SVC_CHEST_STD_REPOINTS = False` (declared just below this dict) - that
+    #      is what retires gate check C8's static half; and
+    #   2. add the row back - it becomes the family roster:
     #     'svc_aithonhoard':  ('55-57', '63-65', '63-65'),   # Aithon [55,69,75] Olympian Arena
+    # Doing (2) without (1) is exactly the false red the R-252 vet round 3 closed: C8
+    # used to key off the function NAME, so an in-place conversion (same name, wiring
+    # semantics) would have blocked a correct configuration.
     # tools/gate_arena_spawn_guarantee.py check C8 enforces exactly this in BOTH
-    # worlds: it reds if a repointing pass exists AND the arena family is registered,
+    # worlds: it reds if a REPOINTING pass exists AND the arena family is registered,
     # and (with --arz) it reds if the arena chest's `tables` is not its own loot record.
 }
 _SVC_BOSS_DEFAULT_TABLE = r'records\item\containers\defaultloot\boss_default_%s.dbr'
+
+# ── The pass DECLARES its own semantics (R-252 vet round 3) ──────────────────────────
+# True  = _svc_standardize_boss_chests REPOINTS every registered chest away from its
+#         bespoke hoard table, at the base game's boss_default_<bracket>. While this is
+#         True, being listed in _SVC_CHEST_STD means "my dedicated table gets stranded".
+# False = the pass has become a WIRING pass (each chest -> its OWN
+#         svc_<family>hoard_loot_<tier>) and _SVC_CHEST_STD is a harmless family roster
+#         that every family SHOULD join.
+# The chest-generosity lane (fix/chest-generosity-shared-cause) flips this to False in
+# the same commit that changes the pass, whether it renames the function or converts it
+# in place. tools/gate_arena_spawn_guarantee.py check C8 reads this flag instead of
+# guessing from the function NAME, so an in-place conversion retires C8 correctly rather
+# than reddening a correct configuration. A missing flag on an EXISTING pass is read as
+# True (a pre-R-252 monolith still repoints), so the gate fails loud, never silently open.
+_SVC_CHEST_STD_REPOINTS = True
 
 
 def _svc_standardize_boss_chests(db):

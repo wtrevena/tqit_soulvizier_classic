@@ -342,9 +342,15 @@ def apply(db, tags):
     # (C) no spawn-count equation) are satisfiable and MEANINGFUL here. Registering it
     # turns "the arena boss spawns" from an inline assert into the same build invariant
     # every other placed uber carries - the whole point of BL-W0814-12.
-    M._MOD_AUTHORED_SPAWN_PROXIES.append(
-        {'proxy': _PROXY, 'pool': _POOL, 'main_monster': _BOSS,
-         'name': 'Aithon, the Ember-Crowned (Olympian Arena)'})
+    # RE-ENTRY GUARD (R-252 vet round 3): run_registry calls apply() once, so this is
+    # not reachable today, but a dry run / double registry pass / a test harness that
+    # imports and applies twice would double-register the arena and inflate the
+    # "Spawn-eligibility invariant OK: N proxies" count into a false reading. Same guard
+    # the diadochi / toxeus_hunt_* modules already use.
+    if not any(s.get('proxy') == _PROXY for s in M._MOD_AUTHORED_SPAWN_PROXIES):
+        M._MOD_AUTHORED_SPAWN_PROXIES.append(
+            {'proxy': _PROXY, 'pool': _POOL, 'main_monster': _BOSS,
+             'name': 'Aithon, the Ember-Crowned (Olympian Arena)'})
 
     # ── 4c. R-252 POLISH: the arena finally PAYS (b43 RCA sec 6 item 5) ───────────
     # "the arena has no loot and no chest (verified: 0 chest/loot strings in the blob)."

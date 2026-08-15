@@ -7883,8 +7883,14 @@ deployed map, not inferred):
     reported five times the same day. **When R-250 lands** and that pass stops repointing (it
     becomes a WIRING pass: each chest -> its own `svc_<family>hoard_loot_<tier>`), the row may be
     added back as a family-roster entry (`'svc_aithonhoard': ('55-57','63-65','63-65')`, from his
-    charLevel `[55,69,75]`) - check C8 of the new gate enforces the correct state in **both**
-    worlds and retires itself, so the two lanes compose in either merge order.
+    charLevel `[55,69,75]`) **in the same commit that sets `_SVC_CHEST_STD_REPOINTS = False`** -
+    check C8 of the new gate enforces the correct state in **both** worlds and retires itself on
+    that flag, so the two lanes compose in either merge order. **Round-3 correction:** C8 first
+    retired on the function NAME being absent, which covers a delete or a rename but NOT an in-place
+    conversion; had R-250 converted the pass in place and the integrator followed the INTEGRATION
+    NOTE above, C8 would have redded on a CORRECT configuration. The condition is now a property the
+    PASS declares and owns, and a missing flag on an existing pass reads as still-repointing, so an
+    older monolith fails loud rather than silently opening the hole.
 
     **AND THE PROCESS FIX, so a ruling can never again publish a number a later pass overwrites:**
     the gate gains **C9 VOLUME TRUTH** (`--arz`), asserting that the arena hoard ships at the SAME
@@ -7915,10 +7921,13 @@ slot; and **C9 VOLUME TRUTH** (`--arz`, added in vet round 2) - the hoard ships 
 numSpawn equations as a named already-shipped PEER family, because the value the hoard BUILDER
 writes is not the value that ships and round 1 published the builder's value as measured.
 `--arz` / `--quests` / `--map` re-prove the same invariant on the real artifacts at ship.
-**15 planted negatives, all caught** (round 1: 11; round 2 adds N13 `wants_0x14`, N14 volume
+**16 planted negatives, all caught** (round 1: 11; round 2 adds N13 `wants_0x14`, N14 volume
 diverges from peer, N15 exemption ruled but never landed, N16 peer family absent = vacuous-pass
-guard), plus N12 proving C8 self-retires once nothing repoints and P1 proving C9 is clean at the
-real shipped shape. C1 also learned the two bind/track placement options it had missed
+guard; round 3 adds N18 the repointing pass with its declaration flag deleted), plus N12 and N17
+proving C8 self-retires on BOTH retirement shapes (pass deleted/renamed, and pass converted in place
+with `_SVC_CHEST_STD_REPOINTS = False`) and P1 proving C9 is clean at the real shipped shape. N17 was
+mutation-proven to discriminate: replaying the retired name-based condition against that exact
+configuration raises a false red where the flag-based one is correctly quiet. C1 also learned the two bind/track placement options it had missed
 (`wants_0x14`, `uniqueid`): three of the four were banned and the fourth produced the same bound
 instance, so a destination registered with `{'wants_0x14': True}` passed C1 while violating the
 invariant C1 exists for.
