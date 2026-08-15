@@ -2,9 +2,9 @@
 
 > # 💀 R-254 DYING COSTS HALF WHAT IT DID (2026-08-15) - READ THIS FIRST
 >
-> **⚠️ NOT IN A BUILD YET.** This one is code-complete and gated but **deliberately ships no build**,
-> so it is **not on DEV and not on Steam**. Nothing to test until it rides the next deploy - the
-> numbers below are what that build will deliver. (Everything under it in this guide IS live.)
+> **✅ LIVE ON DEV *AND* STEAM AS `build98`** (arz `15dacc68c118f50900a5a7100225e2a8`, 2026-08-15).
+> Full quit TQ and restart Steam before testing. The numbers below are what the build actually
+> ships - every one of them was re-measured on the deployed DEV bytes, not on a plan.
 >
 > **Your report, verbatim:** "lets reduce the penalty for dying by another 50% from what it currently
 > is at."
@@ -36,7 +36,7 @@
 > ceiling - and if we had halved the formula but left the ceiling alone, **you would have felt no
 > change whatsoever** at exactly the levels you were complaining about. Both moved together.
 >
-> **THE TEST (once it is in a build):** die on purpose at a level you know, note the XP you lose ->
+> **THE TEST:** die on purpose at a level you know, note the XP you lose ->
 > **PASS = it is half what you are used to.** Then walk back to the tombstone -> **PASS = you get
 > back exactly the number you just lost, not half of it.** FAIL = the loss is unchanged (especially
 > at high level), or the marker returns less than it took.

@@ -17,12 +17,15 @@
 > ✅ **`BL-b98-DEBT-1` and `BL-b98-DEBT-2` are CLOSED, mechanically, by the new `tools/gate_already_shipped.py`** - because three consecutive ship-lane dispatches have now been spent on already-shipped work and the manual discipline that caught all three is exactly the thing that should not be manual. The gate is **ship-procedure step 0**, run BEFORE any merge or build, and it is both halves the two debts asked for: **S1 LANE CONTAINMENT** (`git merge-base --is-ancestor <lane> main`; aborts naming the merge commit AND the tag that shipped it), **S2 TAG FREE** (local and remote, and it always reports the next free build number - `build94-dev` is the proof that a DEV-only tag still CONSUMES a number), **S3 HASH TRUTH** (`--claim <path>=<md5>` re-hashes every artifact hash the dispatch quotes against the live bytes, short board excerpts included - this is `BL-b98-DEBT-2`'s specific ask, born from the dispatch that would have reverted DEV off build97), and **S4 TREE STATE** (clean tree, main not behind origin). Git being unavailable is reported as UNMEASURED, never as a PASS. **`--negtest` 10/10 CAUGHT plus 3 controls**, and the anti-inert proof is that it replays the real stale dispatches: `fix/chest-generosity-shared-cause`+`build95-ship` and `fix/toxeus-shroud`+`build93-ship` both abort on S1 **and** S2, while a fresh `build98-ship` ask on a clean tree is GREEN. Run live on THIS dispatch it exits 1 with: *"`2c2a6a79...` is ALREADY an ancestor of `main` (merged at ee5252d ..., shipped as build95-ship)"*. **Ship operators: run it first, every time.** `py tools/gate_already_shipped.py --lane <branch-or-sha> --tag build<N>-ship [--claim <path>=<md5>]`.
 > ✅ **`BL-b98-DEBT-3` CLOSED 2026-08-15 by the step-0 RECEIPT** (`--verify-receipt` wired as the first action of `scripts/package_workshop.ps1`; R1-R6 + `--repackage` escape; negtest 21/21 + 3 live replays; the packaging refusal proven live with `dist/` untouched at 56 files). Original text kept verbatim below. 🆕 **`BL-b98-DEBT-3` (P2, PROCESS - the residue the gate does NOT cover):** `gate_already_shipped` is advisory tooling that an operator must remember to invoke; nothing yet FORCES step 0, exactly as `gate_ruling_ids` catches a number collision at merge without preventing it (`BL-R251-DEBT-6`, thrice-bitten). The durable fix is to make the ship entrypoint itself refuse to proceed when step 0 has not run green - i.e. wire it into `scripts/` ahead of packaging, next to the `BL-b97-DEBT-1` change-note guard, so the check is a precondition rather than a habit. Cheap, and it retires an entire class of wasted dispatch.
 
+> 🆕 **`BL-b98-DEBT-5` (P2, public-facing, filed 2026-08-15 at the build98 upload):** `upload_workshop.ps1` warned *"WARNING: no preview image - the Workshop item will show a BLANK tile. Put one at assets/workshop_preview.jpg or pass -PreviewFile."* The `previewfile` key was added to the VDF back at build38 for exactly this, but no image has ever been committed, so item 3759792705 has shown a blank tile in browse and subscribed lists since launch. Not caused by this ship and not fixed by it; recorded because a blank tile is the first thing a prospective subscriber sees. FIX: commit a square 600x600+ JPG under 1 MB at `assets/workshop_preview.jpg` and re-upload (payload unchanged, so it is a note-and-preview-only update through `--repackage`).
+> ✅ **`BL-b98-DEBT-4` PROVEN ON A REAL SHIP (2026-08-15, build98):** the single-use receipt arm ran its first live ship end to end - step 0 wrote the receipt at HEAD `d3f7780` for lane `fix/death-penalty-halve-again` + tag `build98-ship`, and `package_workshop.ps1` verified **and CONSUMED** it at 12:00:30Z (*"it authorised exactly this one package. Re-run step 0 before any further packaging."*). **And the six-dispatch stale streak broke here**: this dispatch was genuinely fresh, S1 named 5 commits to integrate, S2 found `build98-ship` free, and the ship ran. The gate cost seconds and cost nothing on a fresh lane, which is the whole design claim.
+
 **BL-W0814-3 ENDLESS HUNT NO EQUIPMENT/WEAPON - ✅ FIXED BY R-252, LIVE ON DEV *AND* STEAM AS `build96` (arz `0bd0121f36e5ce7bd205c73e588016ae`, 2026-08-15); in-game confirm = `BL-R252-DEBT-2`:** ⚠️ the integration build ALSO caught the same bug on his three SOUL PETS (`toxeus_hunt_1/2/3` snapshot his gear before this module writes it, so the SUMMONED Hunt was naked while the fought one was dressed) - fixed in the same build, see BUILD96 GATE RECORD. Measured root cause = both Hunt records carry NO `lootTorso*`/`lootLowerBody*`/`lootForearm*`/`lootHead*`/`lootLeftHand*` fields AT ALL, plus `Finger1/Misc1/Misc2/Misc3` at 0.0 (literally naked). His SPEAR was correct all along (RightHand 100% -> `runbreaker_guaranteed` -> `Weapon_Spear`; spears ride RightHand 493-to-0 in the base game), so R-247's animation work had a real weapon under it. Fix = Torso/LowerBody/Forearm at 100% on his own tier-02 loot family + the family Finger1/Misc chances; Head + LeftHand stay off by design. Original report kept verbatim below. "toxeus the murderer the endless hunt is not wearing any equipment and i dont think he has a weapon." DESPITE the R-247 spear-RIG work (anim rows bound), he is not actually EQUIPPED - no armor, likely no weapon in hand. Distinct from the rig fix: this is equip chance/slot on um_toxeus_hunt_99 (+ his equipment loadout). Give him the spear + armor the family wears.
 
 > 🛑 **DUPLICATE SHIP REQUEST REFUSED (THE FOURTH IN A ROW) + R-252 RE-VERIFIED LIVE ON build97 (2026-08-15 03:55, ship operator `toxeus-boss-equipment-and-soul`).** A ship lane was dispatched to "merge the lane branch into main, full gated build, deploy DEV, Steam per the push-gate and tag the next build number" for `fix/toxeus-boss-equipment-and-soul` at impl sha `5b9c4a9a`. **That dispatch was one build stale and NO MERGE, NO BUILD, NO DEPLOY, NO STEAM PUSH AND NO TAG WAS RUN.** Step 0 answered it in seconds: `py tools/gate_already_shipped.py --lane fix/toxeus-boss-equipment-and-soul --tag build98-ship` exits 1 with *"is ALREADY an ancestor of `main` (merged at 6e465c5 ..., shipped as build96-ship)"*; `git log main..fix/toxeus-boss-equipment-and-soul` is **EMPTY** and main has advanced to `6a939e7` with build97 live. Note the shape that makes this one different from the first three: **the tag it asked for (`build98-ship`) was genuinely FREE**, so S2 was green and **only S1 lane containment could tell it was already done** - the branchless/tag-free dispatch is not the only stale shape. The impl sha it quoted (`5b9c4a9a`, *"R-251: import-time guard that Finger2 is never in this module write set"*) belongs to the **chest** lane, so the board had also crossed two lanes' identities. **The one question a stale board cannot answer - did build97 regress the boss equipment? - was answered by measurement, not assumption:** `py tools/gate_toxeus_boss_equipment.py` against the **LIVE DEV arz** (`98741a4e`, 51,331 records) exits **0** - no Toxeus champion can hold a bow or staff in any slot on any difficulty, all **4** 100%-pinned `Finger2` carriers still deliver a ring, 7 pre-existing offenders waived by name (`BL-R252-DEBT-5`); and `py tools/verify_soul_drop_rates.py --gate` on the same bytes **PASSES** with the four R-48 champions still pinned at 100 and its own 12 planted negatives all RED. **ANTI-INERT CONTROL:** the same equipment gate run against the preserved pre-fix shipped arz `local/build92_shipped_b888f022.arz` **exits 1 with 48 problems**, naming the Devourer's bow rows, his weapon hand armed only 36.97% of spawns (*"i dont think he has a weapon"*) and all three Hunt armour slots at 0.0 - so its silence on DEV is evidence, not inertness. DEV re-hashed byte-exact **build97** on all four artifacts (arz `98741a4e` / Quests `d9f8c316` / Levels `666789ab` / Creatures `8c0d8d53`, S3 hash-truth green on all four); `main == origin/main` 0 ahead / 0 behind, tags `build93..build97` all on the remote, TQ.exe not running (nothing killed). **R-252 is live on DEV and Steam and has NOT regressed.** Still owed, unchanged: `BL-R252-DEBT-1` and `BL-R252-DEBT-2` (Will's own kill), the open Will decision `BL-R252-DEBT-7`, and **`BL-W0814-10` remains OPEN** - nothing here closes it.
 > ✅ **`BL-b98-DEBT-3` is CLOSED: step 0 is now a PRECONDITION, not a habit.** The prior lane's own residue said it plainly - `gate_already_shipped` is advisory tooling an operator must remember to invoke - and the very next dispatch was the fourth spent on already-shipped work. So a PASS now writes a **receipt** to `local/step0_receipt.json` (gitignored, so it can never be forged through a commit), and `scripts/package_workshop.ps1` runs `--verify-receipt` as its **first action, ahead of the TESTHUB guard and ahead of any staging**, refusing to package when step 0 did not run green for this ship. The receipt is bound to the repo state, not to a timestamp: **R1** it exists and recorded a PASS (a receipt recording a REFUSAL is never honoured), **R2** it named an intended `--tag`, **R3** its HEAD is an **ancestor** of the current HEAD (step 0 legitimately runs before the merge so HEAD may move FORWARD, but never DIVERGE), **R4** the tag is **still** free re-measured now, **R5** clean tree and `main` not behind origin, **R6** if it cleared a lane, that lane is **contained in HEAD now** - the exact inverse of what S1 demanded before the merge, which is what stops one lane's receipt authorising another lane's package. A failing step 0 **deletes** any stale receipt on its way out. The one honest escape is `--repackage "<reason>"` for a note-only re-upload of an already-shipped payload (the `BL-b97-DEBT-1` case): it waives **R4 only**, demands a non-empty reason, and the package guard prints that reason loudly rather than hiding it. **`--negtest` 21/21 CAUGHT plus 3 live replays** (the real `chest-generosity`+`build95-ship` and `toxeus-shroud`+`build93-ship` dispatches abort on S1 **and** S2; the new third replay is **this** dispatch, `toxeus-boss-equipment-and-soul`+`build98-ship`, aborting on **S1 alone** because its tag was free). **ANTI-INERT ON THE WIRING ITSELF:** `scripts/package_workshop.ps1` was run for real with no receipt present and **aborted at the guard with `PKG_EXIT=1`**, with the already-staged `dist/` file count **56 before and 56 after**, proving it refused before the staging clean-out rather than after. The whole receipt lifecycle was then walked live against this repo: **(A)** step 0 on the real unmerged lane `fix/death-penalty-halve-again` + free `build98-ship` PASSES and writes the receipt at HEAD `e3b2e1b`; **(B)** `--verify-receipt` immediately **REFUSES on R6** because that lane is not in HEAD yet, which is the cross-lane hole closing in practice; **(C/D)** a tag-only receipt verifies **GREEN**; **(E)** re-running step 0 on **this** lane's already-shipped branch fails **and deletes the stale receipt**; **(F)** packaging refuses again on R1. DISCLOSED: the green path was verified at the guard (`--verify-receipt` exit 0), **not** carried through a full 1.1 GB staging, because this lane ships nothing. **No receipt is live now** - step E consumed it. **Residual `BL-b98-DEBT-4` (P3, narrow):** a receipt that names **no** lane (the branchless-dispatch shape of `dev-parity-r249-testhub-quests`) is only invalidated by its tag being consumed, so within one build-number window it could in principle authorise a later package; the durable close is to have the tagging step consume the receipt. No receipt is live now - this lane deleted its own.
 
-**BL-W0814-4 DEATH PENALTY -50% MORE - ✅ ADDRESSED BY R-254** (branch `fix/death-penalty-halve-again`, STATIC gates only, awaiting integration + Will's in-game confirm `BL-R254-DEBT-2`). Measured first, as the item asked: the shipped state was R-80's pair (`deathPenaltyEquation` divisor **90**, `deathPenaltyMax` **50,000**), live on Steam through build92 and still in the build97 canonical arz. "Another 50% **from what it currently is at**" is therefore a scalar on THAT pair, not on vanilla: **divisor 90 -> 180, cap 50,000 -> 25,000**, `deathPenaltyMin` untouched at 0 = exactly half the build92 loss at every level on every difficulty (a uniform x0.05 of vanilla). **The cap had to move with the equation**: the penalty is cubic and this mod ships `maxPlayerLevel = 1000`, so at L100 Legendary the equation alone gives 250,000 and the old 50,000 cap would have clamped it right back - the player would have seen **no change at all** in exactly the high-level regime R-80 was opened about. **The R-109 coupling held with ZERO edits on the recovery side**, which is the whole reason R-109 was ruled as an invariant rather than a number: `Game.dll` hands the death marker the REALISED loss (`RegisterExperienceLoss` VA `0x10194540` -> `GraveInfo+0x0C`, read back by `GetPlayerExperienceRedemptionAmount` VA `0x10194f60`) and never reads `deathPenalty*` at all, so `RedemptionMultiplier = 1.0` follows any retune automatically. Proved, not asserted: 3,012 checked points and two negtest plants that retune/halve the penalty and require the equality to still ACCEPT untouched. Both-ways table: `docs/reports/r254_logs/r254_before_after_table.txt` (every `back/lost` row = 1.0000; every `LOST now` = exactly half of `LOST b92`). See the R-254 lane record. Original report kept verbatim below.
+**BL-W0814-4 DEATH PENALTY -50% MORE - ✅ FIXED BY R-254, LIVE ON DEV *AND* STEAM AS `build98` (arz `15dacc68c118f50900a5a7100225e2a8`, 2026-08-15); in-game confirm = `BL-R254-DEBT-2`.** Shipped record-diff vs build97 = **ADDED 0 / REMOVED 0 / MODIFIED 1**, two fields on `records\xpack\game\gameengine.dbr`, zero unexplained; the R-109 marker equality re-proved on the deployed DEV bytes. See BUILD98 GATE RECORD. Lane detail below. Measured first, as the item asked: the shipped state was R-80's pair (`deathPenaltyEquation` divisor **90**, `deathPenaltyMax` **50,000**), live on Steam through build92 and still in the build97 canonical arz. "Another 50% **from what it currently is at**" is therefore a scalar on THAT pair, not on vanilla: **divisor 90 -> 180, cap 50,000 -> 25,000**, `deathPenaltyMin` untouched at 0 = exactly half the build92 loss at every level on every difficulty (a uniform x0.05 of vanilla). **The cap had to move with the equation**: the penalty is cubic and this mod ships `maxPlayerLevel = 1000`, so at L100 Legendary the equation alone gives 250,000 and the old 50,000 cap would have clamped it right back - the player would have seen **no change at all** in exactly the high-level regime R-80 was opened about. **The R-109 coupling held with ZERO edits on the recovery side**, which is the whole reason R-109 was ruled as an invariant rather than a number: `Game.dll` hands the death marker the REALISED loss (`RegisterExperienceLoss` VA `0x10194540` -> `GraveInfo+0x0C`, read back by `GetPlayerExperienceRedemptionAmount` VA `0x10194f60`) and never reads `deathPenalty*` at all, so `RedemptionMultiplier = 1.0` follows any retune automatically. Proved, not asserted: 3,012 checked points and two negtest plants that retune/halve the penalty and require the equality to still ACCEPT untouched. Both-ways table: `docs/reports/r254_logs/r254_before_after_table.txt` (every `back/lost` row = 1.0000; every `LOST now` = exactly half of `LOST b92`). See the R-254 lane record. Original report kept verbatim below.
 > "lets reduce the penalty for dying by another 50% from what it currently is at." Halve the current death penalty again (measure current value first; the tombstone recovery = death loss coupling from R-109 must stay consistent).
 
 **BL-W0814-5 APHORYTEUS (sp?) DREAD HOARD chest over-nerfed - ✅ ADDRESSED BY R-251** (branch `fix/chest-generosity-shared-cause`; in-game confirm = `BL-R251-DEBT-3`). RECORD IDENTIFIED: "aphoryteus dread hoard" = **`tagSVCEphialtesHoard` = "Ephialtes's Dread-Hoard"** (`svc_ephialteshoard_*`, the Dread Halls uber). Cause was the shared one, not a per-chest nerf: all three tiers opened base-game `boss_default_*` and their own tables were orphans. Original report kept verbatim below.
@@ -15906,6 +15909,178 @@ travel-npc invariants, quest negatives, the canonical control, **and
   or delete it.
 - ⚠️ Untouched by this lane: `BL-R249-DEBT-1` (Garden -> Secret Place rift admits ENTRY?),
   `BL-R250-DEBT-1..6`, and Will's live-play queue `BL-W0814-2/3/4/5/7/8/9/10/11/12/13`.
+
+---
+
+## BUILD98 GATE RECORD (2026-08-15) - R-254 DYING COSTS EXACTLY HALF WHAT IT DID, AND THE TOMBSTONE STILL RETURNS ALL OF IT; **arz-ONLY**; DEPLOYED TO DEV **AND** STEAM
+
+**`Database/SoulvizierClassic.arz` = DEV `SoulvizierClassicDEV.arz` = Steam =
+`15dacc68c118f50900a5a7100225e2a8`** (55,608,036 B, **51,331 records**; **+1 byte / +0 records** over
+the shipped build97 `98741a4eb59957a4ebe3b6101bbcd49b` / 55,608,035 B / 51,331 - the single byte is
+the `/ 90)` -> `/ 180)` character in the equation string, which is the whole ship). **arz-ONLY:
+`Text.arc 82d5b810` / canonical `Levels.arc 1bf86461` / `Quests.arc 6271ceb2` / `Creatures.arc
+8c0d8d53` md5-proven BYTE-UNCHANGED** (re-hashed after the build, not assumed), **0 new tags**.
+Workshop item 3759792705, `Committing update...Success.`, workshop log `Upload finished for workshop
+item 3759792705 : OK`, **ManifestID `7915955164139761983`**, `-Update -Visibility 0` with the VDF
+read back `"visibility" "0"` (stays PUBLIC). `main` `318cc2f` (build97-ship) -> `d3f7780` -> `bbd73bf`
+(`git merge --no-ff fix/death-penalty-halve-again`) -> `13bb427` (built-artifact table + change note)
+-> this gate record. Tag **`build98-ship`**. Next sequential ship after build97 = **BUILD98**.
+
+- **STEP 0 RAN FIRST AND PASSED, and this time the dispatch was genuinely fresh** - the first
+  non-stale ship dispatch in six. `py tools/gate_already_shipped.py --lane fix/death-penalty-halve-again
+  --tag build98-ship`: **S1** the lane tip `bea1b51` is NOT contained in main, 5 commits to integrate;
+  **S2** `build98-ship` free locally and on the remote, next free build number 98; **S4** clean tree,
+  `main` not behind origin. Receipt written at HEAD `d3f7780`, then **CONSUMED by
+  `package_workshop.ps1`'s `--verify-receipt`** at 12:00:30Z - the single-use arm (`BL-b98-DEBT-4`,
+  closed one commit earlier) working on its first real ship. No further packaging can run on it.
+
+- **What it is:** `BL-W0814-4`, Will verbatim: *"lets reduce the penalty for dying by another 50%
+  from what it currently is at."* Measured against what he is actually playing, not against vanilla:
+  the shipped state was R-80's pair (divisor **90**, cap **50,000**), so "another 50% from what it
+  currently is at" resolves to **divisor 90 -> 180, cap 50,000 -> 25,000**, `deathPenaltyMin`
+  untouched at 0. Design: `docs/WILL_RULINGS.md` -> **R-254**.
+
+- **THE CAP HAD TO MOVE WITH THE EQUATION, and that is the half-fix this lane's gate exists to red.**
+  The penalty is cubic in level and the mod ships `maxPlayerLevel = 1000`, so above roughly L87
+  Legendary the old 50,000 cap, not the formula, was setting the number. Halving the equation alone
+  would have left L100 Legendary clamped at 50,000 - **no change at all** in exactly the high-level
+  regime the report was about. `BAL-DEATHXP-2` reds precisely that shape, and its evidence string is
+  required to name a level >= 80 because the bug is invisible at low level.
+
+- **RECORD-DIFF vs the SHIPPED build97 `98741a4e`: ADDED 0 / REMOVED 0 / MODIFIED 1, ZERO
+  unexplained.** The single modified record is `records\xpack\game\gameengine.dbr` and it carries
+  exactly **two** changed fields:
+  `deathPenaltyEquation '(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 90)' -> '... / 180)'`
+  and `deathPenaltyMax 50000 -> 25000`. Nothing else in 51,331 records moved. This is the narrowest
+  record-diff any build in this repo has shipped.
+
+- **THE R-109 COUPLING HELD WITH ZERO EDITS ON THE RECOVERY SIDE - the first live exercise of the
+  property R-109 was ruled for.** `tombstone_xp_recovery.py` was **not touched** by this wave.
+  `Game.dll` hands the death marker the **realised** loss (`RegisterExperienceLoss` VA `0x10194540`
+  stores it at `GraveInfo+0x0C`; `GetPlayerExperienceRedemptionAmount` VA `0x10194f60` reads it back)
+  and never reads `deathPenalty*` at all, so `RedemptionMultiplier = 1.0` follows any retune by
+  construction. Had R-109 shipped as the "10% of the original" form Will first floated, this retune
+  would have desynchronised the marker and re-opened the free-XP exploit R-109 named. The build's own
+  verify line proves it on the shipped bytes: *"XP recovered from the death marker == XP lost to the
+  death penalty EXACTLY on 3012 checked points (L1-1000 x Normal/Epic/Legendary against the LIVE
+  penalty - divisor 180, cap 25000, min 0 - plus the realised-loss domain up to the float32 bound)"*,
+  with the cap **671x** inside the float32 exact-integer bound 16,777,216.
+
+- **REPORTED BOTH WAYS, as R-109's reporting clause requires, and RE-MEASURED ON THE BUILT ARTIFACT**
+  (`docs/reports/r254_logs/r254_before_after_table_BUILT_b98.txt`, regenerated from the actual shipped
+  arz rather than from a plan, and again from the deployed DEV bytes):
+
+  | level | difficulty | LOST vanilla | LOST build97 | **LOST now** | BACK @0.5 | **BACK now** | back/lost |
+  | --- | --- | --- | --- | --- | --- | --- | --- |
+  | 25 | Legendary | 12,153 | 1,215 | **608** | 304 | **608** | 1.0000 |
+  | 55 | Legendary | 129,403 | 12,940 | **6,470** | 3,235 | **6,470** | 1.0000 |
+  | 85 | Normal | 68,236 | 6,824 | **3,412** | 1,706 | **3,412** | 1.0000 |
+  | 85 | Legendary | 477,653 | 47,765 | **23,883** | 11,941 | **23,883** | 1.0000 |
+  | 100 | Legendary | 500,000 | 50,000 | **25,000** | 12,500 | **25,000** | 1.0000 |
+
+  All 21 rows: `LOST now` is exactly half of `LOST build97`, and `back/lost` is exactly **1.0000** on
+  all three difficulties. The L100 Legendary row is the capped tail the half-fix would have missed.
+
+- **det byte identity (det-2x):** `15dacc68c118f50900a5a7100225e2a8` across **two independent COLD
+  builds** (`SVC_NO_CACHE=1`, `PYTHONHASHSEED=0`, `SVC_RELEASE_DROPS=1`, `SVC_REQUIRE_GATES=1`),
+  **exit 0 both**, MD5-equal AND `fc /b` byte-compared in full (55,608,036 B, *"no differences
+  encountered"*). run2 built into `local/b98_run2/` with a junction to work's `Resources/`.
+
+- **GATES GREEN - the coexisting battery, all re-measured on the POST-wave artifact:**
+  | gate | result on `15dacc68` |
+  | --- | --- |
+  | `contracts_balance` (R-80/R-254 + R-109, BAL-DEATHXP-1/2/3, BAL-TOMBSTONE-1/2, BAL-XPGAIN-1) | **PASS** - 0 violations |
+  | `tests_balance_negative` | **PASS 55/55** (incl. the 18 constant cross-check arms) |
+  | `death_xp_penalty --negtest` | **PASS 8/8** |
+  | `tombstone_xp_recovery --negtest` | **PASS 8/8** - plants 7+8 retune and then halve the penalty and require the equality to still ACCEPT with the recovery side untouched |
+  | `gate_arena_spawn_guarantee` (R-253) | **PASS** - every destination encounter spawns unconditionally |
+  | `gate_toxeus_boss_equipment` (R-252) | **PASS** - no champion can hold a bow or staff on any difficulty |
+  | `verify_soul_drop_rates --gate` (R-243/R-48) | **PASS** - 20 / 10 / 0 / **100** cohorts intact |
+  | `gate_uber_hoard_generosity` (R-251) | **PASS** - **33** hoard families still pinned at `*2.4/*2.8` |
+  | `gate_loot_volume` (R-240) | **PASS** - 39 canonical surfaces |
+  | `gate_loot_distribution` (R-181) | **PASS** |
+  | `gate_chest_loot_breadth` (R-180) | **PASS** - all 6 weapon classes, SPEAR included |
+  | `gate_orb_loot_breadth` (R-220) | **PASS** |
+  | `gate_relic_difficulty_tiers` (R-238) | **PASS** |
+  | `gate_chest_artifacts` (R-240) | **PASS** - 135 of 141 unreachable |
+  | `gate_orb_legendary` (R-242) | **PASS** - bands hold |
+  | `gate_supra_recipe_laws` (R-244) | **PASS** - S1 + S2 + S3 |
+  | `gate_ruling_ids` | **PASS** - 50 rulings, highest R-254, no collision |
+  | `validate_tags` | **PASS** - 394 referenced mod tags all present, **0 new** (Text.arc byte-unchanged), the 2 documented pre-existing WARN |
+  Plus the in-build battery: soul-leak / soul-augment / soul item-skill activation invariants OK,
+  `PET-*` OK, `dagon_anim_rig` OK, DLC-act cap T4/T5 OK, Atlantis voyage cap **PASS** (0 resolvable
+  routes), **`STRICT failures : 0`**.
+
+- **`BL-R254-DEBT-1` DISCHARGED AT INTEGRATION.** The registry re-derived on the merged tree:
+  **68 modules**, order `e90bcca8601c` (unchanged from build96/97), `damage_display` **14** ->
+  `death_xp_penalty` **15** -> `tombstone_xp_recovery` **16**, adjacent as the module comments
+  require. The collision gate names the record and **exactly the predicted TRIO**:
+  `records\xpack\game\gameengine.dbr <- damage_display, death_xp_penalty, tombstone_xp_recovery`.
+  **No fourth module** - which the debt says would have been a real finding. The apply log reports
+  the transition **actually performed off the pre-state actually observed** (a full cold build starts
+  from vanilla, so it prints *"pre-state: vanilla TQAE -> divisor 9->180, cap 500000->25000"*), never
+  a fixed headline describing an edit it did not make.
+
+- **Contracts, SET-DIFFED against the shipped build97 `98741a4e` on `(contract, severity, subject)`:**
+  new = **0 P0 / 0 P1 / 4513 P2**; baseline = **3 P0 / 0 P1 / 4513 P2**. **ONLY-IN-NEW = 0.
+  ONLY-IN-BASE = exactly the two keys this ship closes** (`BAL-DEATHXP-1` and `BAL-DEATHXP-2`, both
+  P0, both on `records\xpack\game\gameengine.dbr`). So the P2 debt floor is untouched and the only
+  contract movement in the whole suite is the ruling landing.
+
+- **ANTI-INERT, measured on the artifact that ACTUALLY SHIPPED:** `contracts_balance` run against the
+  **shipped build97 arz** **EXITS 1 with 3 P0s** - *"want '... / 180)', got '... / 90)'"*, *"want
+  25000, got 50000"*, and *"largest XP error at level 87 difficulty DV=2: vanilla 500000 XP ->
+  shipped 50000 XP (90.0% cut, want 95.0%; off by 25000 XP)"* - i.e. Will's report as an artifact
+  fact, at exactly the capped level the half-fix would have missed. It **PASSES on `15dacc68`**, and
+  again on the **LIVE DEV bytes** after deployment. The gate's messages name the ruled state as
+  "R-80 as retuned by R-254" and say a pre-R-254 arz shows `/ 90` here, so the red cannot be misread
+  as a revert.
+
+- **DEV:** targeted **arz-only** copy, md5 source==dest `15dacc68`, **TQ.exe NOT running** (nothing
+  killed, Steam not restarted). DEV md5-inventoried before and after: **1 of 62 files changed**, 0
+  added / 0 removed, the other 61 byte-identical. **DEV `Levels.arc` stays TESTHUB `666789ab`**
+  (Will's play surface) and DEV `Quests.arc` stays the TESTHUB `d9f8c316`. Post-deploy re-verified on
+  the live DEV bytes: `contracts_balance` exit 0 and the both-ways table regenerated from those bytes.
+
+- **PUSH-GATE PASS:** `dist == work` on all 5 artifacts (arz `15dacc68`, Text `82d5b810`, Levels
+  `1bf86461`, Quests `6271ceb2`, Creatures `8c0d8d53`); **TESTHUB guard PASS** - the packaged
+  `Levels.arc` is the canonical `1bf86461` and differs from the live DEV TESTHUB `666789ab`;
+  contracts on the **DIST payload** re-run end to end = **0 P0 / 0 P1 / 4513 P2**, identical to the
+  work-tree run; single wrapper, **56 files / 1188.4 MB**.
+
+- ✅ **`BL-b97-DEBT-1` HONOURED (the half of it an operator owns):** `docs/WORKSHOP_CHANGENOTE.bbcode`
+  was rewritten for THIS build and **committed BEFORE `package_workshop.ps1` ran** (commit `13bb427`),
+  so no stale note could ride along. The 2,910-character note discloses the change, the cap move, the
+  tombstone equality, and the measured scope. The tooling half - making `upload_workshop.ps1` refuse a
+  note byte-identical to the last one uploaded - is **still open**.
+  ⚠️ Also disclosed by the upload: *"WARNING: no preview image - the Workshop item will show a BLANK
+  tile"*, filed as `BL-b98-DEBT-5` (the item has had no `assets/workshop_preview.jpg` since launch;
+  unchanged by this ship, but it is a standing public-facing defect).
+
+- **Rollback (one step, uncoupled):** `local/DEV_arz_deployed_prev.arz` = build97
+  `98741a4eb59957a4ebe3b6101bbcd49b` -> copy back over
+  `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz`. Nothing else moves (arz-only, no Text or
+  map coupling). This build's arz at `local/build98_run1.arz`; the baseline verbatim at
+  `local/build97_shipped_98741a4e.arz`; the determinism twin at
+  `local/b98_run2/Database/SoulvizierClassic.arz`; logs under `local/b98_logs/`.
+
+- ⚠️ **NOT PROVEN IN-GAME (`BL-R254-DEBT-2`, P2).** Everything above is database, disassembly and
+  gate evidence; **nobody has died on this build.** The arithmetic is proved over 3,012 points and
+  the marker equality is derived from `Game.dll`'s own code, but live engine behaviour matching the
+  disassembly-derived model is the same standing uncertainty R-80 and R-109 already carry. Will's
+  check, full quit TQ + restart Steam first: **die on purpose at a level you know and note the XP
+  lost -> PASS = half what you are used to** (do this at a HIGH level too, that is where the cap fix
+  shows); **then walk back to the marker -> PASS = you get back exactly the number you just lost, not
+  half of it.** FAIL = the loss is unchanged (especially at high level), or the marker returns less
+  than it took. Test note: `docs/WILL_TEST_GUIDE.md` top entry.
+
+- **DEBTS carried forward:** `BL-R254-DEBT-2` (P2, Will's in-game confirm), **new `BL-b98-DEBT-5`**
+  (P2, the missing Workshop preview image), and the open tooling half of `BL-b97-DEBT-1`.
+- ⚠️ Untouched by this lane: `BL-R253-DEBT-1..8`, `BL-R252-DEBT-1..7` (incl. the P1 Crimson Verdict
+  ratification `-7`), `BL-R251-DEBT-1..6` (incl. the thrice-bitten `-6`, nothing reserves a ruling
+  number across concurrent lanes - it did NOT bite this build, R-254 was free at merge),
+  `BL-R250-DEBT-1..6`, `BL-R249-DEBT-1/2`, `BL-b94dev-DEBT-1..5`, and Will's remaining live-play
+  queue `BL-W0814-2/3/5/6/7/8/9/10/11/12/13`.
 
 ---
 
