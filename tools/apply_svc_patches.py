@@ -17148,8 +17148,67 @@ _SVC_CHEST_STD = {
     # record of what the supersession gives up - see BL-R251-DEBT-1.)
     'svc_mnemophagehoard': ('45-47', '63-65', '63-65'),    # Mnemophage[46,68,100] Pools of Mnemosyne (Act5/Judgment)
     'svc_diadochihoard':   ('57-59', '63-65', '63-65'),    # Helepolis [58,80,97]  Fields of the Diadochi (Act6/Elysian)
+    # ── R-253 (BL-W0814-12 (b)): 'svc_aithonhoard' is DELIBERATELY ABSENT here ──────
+    # The Olympian Arena apex guarded NOTHING (b43 RCA sec 6 item 5: zero chest/loot
+    # strings in the whole blob), so R-253 gives him the standard dedicated Boss-locked
+    # hoard (tools/patches/bossarena.py -> _svc_build_dedicated_hoard). Registering the
+    # family HERE would then repoint that brand-new chest at boss_default_55-57/63-65
+    # and strand the table it just built. MEASURED on the SHIPPED arz (build92), per
+    # chest, at 1 player, tier 01 - these are POST-R-240-trim values, i.e. what really
+    # ships:
+    #   bespoke svc_<fam>hoard_loot_01 : (3+1.8P)*0.2188/*0.25 -> 1.05/1.20 spawn
+    #       iterations; chances 40/40/100/21.2/40/40 -> group mass 2.812; loot3Chance
+    #       = 100 (svc_unique_weapons_n01 + 01_act4_relics, rolled EVERY iteration).
+    #   boss_default_55-57 / 63-65     : (3+1.6P)*1.5/*1.7 -> 6.90/7.82 iterations;
+    #       chances 14/27/10/21.2/25/14 -> group mass 1.112; loot3Chance = 10
+    #       (01_l_boss_misc).
+    # Read honestly, the bespoke table runs ~6.5x FEWER iterations and pays FEWER items
+    # overall (expected group hits 2.95-3.37 against 7.67-8.70). The advantage that
+    # SURVIVES the trim is the GUARANTEED unique+relic slot - expected 1.05-1.20 rolls
+    # of it against 0.69-0.78, and it is the only one of the two that guarantees that
+    # slot at all - plus not stranding a table this wave just built. R-253 round 1
+    # quoted (3+1.8P)*2.4/*2.8 here as MEASURED; that is what _svc_build_dedicated_hoard
+    # WRITES, and R-240's trim (tools/svc_loot_volume.py) rewrites it before ship - the
+    # arena family sits in that trim's scope exactly like its 27 siblings
+    # (is_mod_owned=True, in_scope=True, _r247_exempt=False). Check C9 of
+    # tools/gate_arena_spawn_guarantee.py now asserts the SHIPPED equality against a
+    # peer family instead of trusting a comment.
+    # That repoint is the ONE shared cause Will
+    # filed five times on 2026-08-14 (BL-W0814-2/5/7/11/13: "are you kidding me. this
+    # is outrageous", "a terrible chest", "nerfed too much"), and it is what left 18 of
+    # 27 svc_*hoard_loot_0N records with zero references in the shipped arz. A NEW
+    # chest does not get to ship into that defect on the same day it was reported five
+    # times, so the arena chest keeps its own table.
+    # INTEGRATION NOTE: when the chest-generosity lane lands and this pass stops
+    # repointing (it becomes a WIRING pass that points each chest at its OWN
+    # svc_<family>hoard_loot_<tier>), do BOTH of these in the SAME commit:
+    #   1. set `_SVC_CHEST_STD_REPOINTS = False` (declared just below this dict) - that
+    #      is what retires gate check C8's static half; and
+    #   2. add the row back - it becomes the family roster:
+    #     'svc_aithonhoard':  ('55-57', '63-65', '63-65'),   # Aithon [55,69,75] Olympian Arena
+    # Doing (2) without (1) is exactly the false red the R-253 vet round 3 closed: C8
+    # used to key off the function NAME, so an in-place conversion (same name, wiring
+    # semantics) would have blocked a correct configuration.
+    # tools/gate_arena_spawn_guarantee.py check C8 enforces exactly this in BOTH
+    # worlds: it reds if a REPOINTING pass exists AND the arena family is registered,
+    # and (with --arz) it reds if the arena chest's `tables` is not its own loot record.
 }
 _SVC_BOSS_DEFAULT_TABLE = r'records\item\containers\defaultloot\boss_default_%s.dbr'
+
+# ── The pass DECLARES its own semantics (R-253 vet round 3) ──────────────────────────
+# True  = _svc_standardize_boss_chests REPOINTS every registered chest away from its
+#         bespoke hoard table, at the base game's boss_default_<bracket>. While this is
+#         True, being listed in _SVC_CHEST_STD means "my dedicated table gets stranded".
+# False = the pass has become a WIRING pass (each chest -> its OWN
+#         svc_<family>hoard_loot_<tier>) and _SVC_CHEST_STD is a harmless family roster
+#         that every family SHOULD join.
+# The chest-generosity lane (fix/chest-generosity-shared-cause) flips this to False in
+# the same commit that changes the pass, whether it renames the function or converts it
+# in place. tools/gate_arena_spawn_guarantee.py check C8 reads this flag instead of
+# guessing from the function NAME, so an in-place conversion retires C8 correctly rather
+# than reddening a correct configuration. A missing flag on an EXISTING pass is read as
+# True (a pre-R-253 monolith still repoints), so the gate fails loud, never silently open.
+_SVC_CHEST_STD_REPOINTS = True
 
 
 def _svc_wire_boss_hoard_chests(db):

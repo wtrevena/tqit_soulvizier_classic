@@ -1749,9 +1749,12 @@ def _build_area_quests() -> dict:
             # Q4-2 rides the same port: align the honor-branch chest watch.
             out[name] = _fix_widowletter_chest_branch(
                 _neutralize_widowletter_spawn(data))
-        elif name == 'bossarena.qst':
-            # Q4-1: retarget the arena-entry volume to the placed record.
-            out[name] = _fix_bossarena_entervolume(data)
+        elif name == BOSSARENA_QUEST:
+            # Q4-1: retarget the arena-entry volume to the placed record, then
+            # R-253: drop the ONE-SHOT arena-boss spawn (the boss is now placed
+            # statically in boss_arena.lvl so he is there on EVERY visit).
+            out[name] = _neutralize_bossarena_spawn(
+                _fix_bossarena_entervolume(data))
         else:
             out[name] = data
 
@@ -2722,6 +2725,141 @@ def _fix_bossarena_entervolume(data: bytes) -> bytes:
         data, 'bossarena.qst', 'volumeRecord',
         {r'records\quests\portal_olympianarena.dbr'},
         r'records\quests\volume_startolympianarena.dbr', expect=1)
+
+
+# ── R-253 (BL-W0814-12): the Boss Arena boss must spawn on EVERY visit ───────
+BOSSARENA_QUEST = 'bossarena.qst'
+BOSSARENA_SPAWN_ENTITY = r'records\proxies custom\bossarena\boss_satyrshaman.dbr'
+BOSSARENA_SPAWN_LOCATION = r'records\quests\location_bossarenacenter.dbr'
+
+
+def _drop_spawn_entity_action(data: bytes, quest_label: str, entity: str,
+                              location: str, expect: int = 1) -> bytes:
+    """Remove every Action_SpawnEntityAtLocation that spawns `entity` at
+    `location`, leaving the owning trigger (and its conditions) otherwise
+    byte-identical: drop the (actionClassName field, action-fields block) pair
+    and decrement that trigger's actionCount. Fails loud unless exactly
+    `expect` actions are dropped, the reference is gone from every actions
+    block afterwards, and the result round-trips stably.
+
+    This is the generalized form of the proven `_neutralize_widowletter_spawn`
+    surgery (kept separate so that shipped path stays byte-for-byte the code
+    that has ridden every build since build22). A trigger's ACTIONS block is a
+    flat sequence:
+      [ ('field','actionCount',...),
+        ('field','actionClassName',...), ('block', <action fields>),  # repeated
+        ... ]
+    Trigger/step counts are never touched (an action-less trigger is the shape
+    of the always-present zero-action sentinel trigger, so it is well-formed).
+    """
+    ent = entity.replace('\\', '/').lower()
+    loc = location.replace('\\', '/').lower()
+
+    def str_fields(items):
+        out = set()
+        for it in items:
+            if it[0] == 'block':
+                out |= str_fields(it[1])
+            elif it[0] == 'field' and it[2][0] == 'str':
+                out.add(it[2][1].replace('\\', '/').lower())
+        return out
+
+    def block_positions(items):
+        return [i for i, it in enumerate(items) if it[0] == 'block']
+
+    def triples(items):
+        bp = block_positions(items)
+        return [bp[i:i + 3] for i in range(0, len(bp), 3)]
+
+    def spawns_ours(actions_items, i):
+        it = actions_items[i]
+        if not (it[0] == 'field' and it[1] == 'actionClassName'
+                and it[2][0] == 'str'
+                and it[2][1] == 'Action_SpawnEntityAtLocation'):
+            return False
+        if i + 1 >= len(actions_items) or actions_items[i + 1][0] != 'block':
+            return False
+        fld = str_fields(actions_items[i + 1][1])
+        return ent in fld and loc in fld
+
+    tree = qst_format.parse(data)
+    steps_container = tree[1]
+    removed = 0
+
+    for _stepdef_pos, trigcont_pos, _sentinel_pos in triples(steps_container):
+        trigcont = steps_container[trigcont_pos][1]
+        for (_hpos, _cpos, apos) in triples(trigcont):
+            actions_block = trigcont[apos][1]
+            new_items, i, dropped_here = [], 0, 0
+            while i < len(actions_block):
+                if spawns_ours(actions_block, i):
+                    i += 2
+                    dropped_here += 1
+                    removed += 1
+                    continue
+                new_items.append(actions_block[i])
+                i += 1
+            if dropped_here:
+                for idx, it in enumerate(new_items):
+                    if it[0] == 'field' and it[1] == 'actionCount':
+                        new_items[idx] = ('field', 'actionCount',
+                                          ('int', it[2][1] - dropped_here))
+                        break
+                new_trigcont = list(trigcont)
+                new_trigcont[apos] = ('block', new_items)
+                steps_container[trigcont_pos] = ('block', new_trigcont)
+                trigcont = new_trigcont
+
+    if removed != expect:
+        raise ValueError(
+            f'{quest_label}: expected exactly {expect} Action_SpawnEntityAtLocation '
+            f'spawning {entity} at {location}, found {removed}. Upstream changed; '
+            f'review before shipping.')
+
+    out = qst_format.serialize(tree)
+    reparsed = qst_format.parse(out)
+    for _sd, tc, _sn in triples(reparsed[1]):
+        tcb = reparsed[1][tc][1]
+        for (_h, _c, a) in triples(tcb):
+            items = tcb[a][1]
+            for i in range(len(items)):
+                if spawns_ours(items, i):
+                    raise ValueError(
+                        f'{quest_label}: neutralization failed - a spawn of {entity} '
+                        f'at {location} survives')
+    if qst_format.serialize(qst_format.parse(out)) != out:
+        raise ValueError(f'{quest_label}: neutralized quest does not round-trip stably')
+    return out
+
+
+def _neutralize_bossarena_spawn(data: bytes) -> bytes:
+    """R-253: remove bossarena.qst's ONE-SHOT arena-boss spawn action.
+
+    Will 2026-08-14: "when i went to the boss arena this time there was no boss
+    there. does he not spawn 100% of the time?" SV's bossarena.qst spawns the
+    arena boss proxy from a TWO-step quest: STEP-2's Condition_EnterVolume is
+    isResettable=0 and its Action_SpawnEntityAtLocation carries no canReFire, so
+    the step completes ONCE per character and the completion persists in the
+    .que save - after the first clear the arena is empty forever. A quest is
+    structurally incapable of "spawns on every visit".
+
+    The fix is the widow-letter shape: the boss proxy is now placed STATICALLY
+    in boss_arena.lvl (build_section_surgery ARENA_BOSS_PROXY_DBR, flags=0 so
+    the engine re-spawns it on every level stream), and this drops the quest's
+    duplicate spawn so exactly ONE spawn source can ever exist - without it, a
+    character who has not yet fired STEP-2 would meet static + quest = two boss
+    sets. Everything else in the quest (STEP-1's ShowNpc/OpenDynGridEntrance/
+    UnlockFixedItem on portal_olympianarena1, which the doors/hub machinery
+    reuses by record name) is preserved byte-identically, and the quest keeps
+    its slot inside the ~256-entry QUESTS load window.
+
+    COUPLED SHIP (Levels+Quests together): shipping this Quests.arc without the
+    map's static placement leaves the arena permanently empty; shipping the map
+    without this leaves the double-spawn. Both land in the same deploy.
+    """
+    return _drop_spawn_entity_action(
+        data, BOSSARENA_QUEST, BOSSARENA_SPAWN_ENTITY, BOSSARENA_SPAWN_LOCATION,
+        expect=1)
 
 
 def _fix_widowletter_chest_branch(data: bytes) -> bytes:

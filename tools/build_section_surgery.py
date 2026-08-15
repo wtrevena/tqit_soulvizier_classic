@@ -807,6 +807,77 @@ REMOVE_ARENA_BLOCKOUT_SPECS = {
     ],
 }
 
+# ── R-253 (BL-W0814-12): the Boss Arena boss must spawn on EVERY visit ────────────────
+# Will 2026-08-14, verbatim: "when i went to the boss arena this time there was no boss
+# there. does he not spawn 100% of the time? the boss arena needs more work."
+#
+# ROOT CAUSE (measured, not guessed - three independent one-shot/gate defects stacked):
+#   (1) THE SPAWN WAS QUEST-ONE-SHOT. SV's bossarena.qst is a TWO-step quest whose STEP-2
+#       Condition_EnterVolume(volume_startolympianarena, isResettable=0) fires exactly one
+#       Action_SpawnEntityAtLocation. A TQ quest step completes ONCE per character and the
+#       completion is persisted in the .que save, so after the first clear the arena is
+#       empty FOREVER for that character - precisely Will's "this time". (Parsed from both
+#       the upstream SV qst and our built Quests.arc: max=2 steps, isResettable=0, and the
+#       spawn action carries no canReFire at all.)
+#   (2) A PLAYER-LEVEL WINDOW. The proxy's difficultyLimitsFile was the base quest-proxy
+#       limit records\xpack\quests\proxies\limit_quest.dbr = min/max player level
+#       [29..36] Normal, [41..55] Epic, [60..75] Legendary. A character OUTSIDE that band
+#       gets no spawn at all - so even a fresh quest state can produce an empty arena.
+#   (3) IT WAS CONFIGURED AS A QUEST PROXY, not a placeable one: quest=1 and NO chanceToRun
+#       field, against the shipped placed-uber exemplar (q_tantalus_lone: quest=0,
+#       chanceToRun=100, difficulty_04 budget).
+# (2) + (3) are fixed DB-side in tools/patches/bossarena.py; (1) is fixed HERE + in
+# build_quest_files (_neutralize_bossarena_spawn drops the quest's spawn action, so this
+# static placement is the SINGLE spawn source - exactly the widow-letter precedent that
+# guarantees "exactly one" instead of static+quest double-spawn).
+#
+# MECHANISM: the shipped uber-placement pattern (q_tantalus_lone / q_bloodtoxeus_ambush /
+# the b41 apexes) - a static 0x05 Proxy instance, flags=0, exemplar rotation, no 0x14. A
+# flags=0 instance is NOT tracked/unique, so the engine re-spawns it every time the level
+# streams in: the arena boss is there on EVERY visit, for fresh AND existing characters,
+# with zero quest-state dependency.
+# COORDS: the EXACT position of SV's own spawn marker location_bossarenacenter (0x05
+# inst[26] in the deployed map, local (131.68, 27.11, 129.08)) - i.e. the boss now stands
+# where SV's quest used to put him, the spot Will has already fought him on. Surveyed on
+# the deployed map (survey_uberboss_spots): d=0.03u, clr@3.5 and clr@6.0 = 100% on ALL
+# THREE tilesets - so the proxy's placementExtents=4.0 spread and the boss + 2 Ember
+# Warden escorts all land on mesh.
+# WHICH COMPONENT (this level has TWO and the SMALLER one is the arena): boss_arena's
+# navmesh splits into comp#1 = 1,381,391 cells (the unreachable LOW floor, y~0) and
+# comp#2 = 92,026 cells (the raised dais island, floor y=27.20) of 1,473,417 walkable.
+# The boss spot is on comp#2, and so is the R-248 traveler/return landing at local
+# (136.0, 28.1, 104.0) - d=0.14u, clr 100%, comp#2 - which is what makes the encounter
+# REACHABLE (b43-r2's whole point; the module docstring in tools/patches/bossarena.py
+# says the same). Any later reasoning about arena reachability must use comp#2: on this
+# level "the largest component" is the floor nobody can stand on.
+ARENA_BOSS_PROXY_DBR = b'records\\proxies custom\\bossarena\\boss_satyrshaman.dbr'
+ARENA_BOSS_SPAWN_XYZ = (131.68, 27.11, 129.08)   # == location_bossarenacenter, measured
+
+# ── R-253 POLISH: the ring of fire (b43's light ring gets actual flame) ───────────────
+# b43 framed the bare Olympus plate with 6 orange point-lights but nothing BURNS there -
+# the glow has no source. pit_fx02 is an EffectEntity (Effect.tpl, effectFile
+# DRXeffects\other\pitfx2.pfx) already shipped in our arz and already placed by the C4
+# atmosphere wave, so it is proven-to-resolve; being an EffectEntity it carries NO mesh
+# and NO collision, so it can never block the fight or the navmesh (the same reason b43
+# chose lights over props). Co-located with the six b43 lights at radius ~14u so each
+# light finally sits on a fire, and thematically it is Aithon the Ember-Crowned's
+# volcanic fire scorching the cold arena.
+ARENA_FIRE_RING_XZ = ((146.0, 130.0),   # E
+                      (118.0, 130.0),   # W
+                      (132.0, 144.0),   # N
+                      (132.0, 116.0),   # S
+                      (142.0, 120.0),   # SE
+                      (122.0, 140.0))   # NW
+# Y is DERIVED, not copied. `py tools/debug/navmesh_floor_y.py <map> --level
+# bossarena/boss_arena.lvl --pt ...` reads the navmesh floor at all six ring XZ as
+# 27.20 (and 27.20 at the boss spot itself - same surface; the R-248 landing pad at
+# (136,104) is a different, higher surface at 28.20). b43's six LIGHTS deliberately sit
+# at 28.0, i.e. 0.8u above the floor, because a point light should hang above what it
+# lights; a FLAME must stand ON the floor, so the FX ring gets the measured 27.20 and
+# not the light Y. (R-248 spent a whole wave unburying literals copied from a
+# neighbouring surface - this is that class of defect, so it is measured.)
+ARENA_FIRE_RING_Y = 27.2                # measured navmesh floor Y at every ring XZ
+
 # ── M8 PHASE-1 PILOT: the PORTAL-MASTER NPC (Model C, Will-approved 2026-07-09) ──────
 # Will chose Model C (an NPC you talk to who teleports you) as the portal model going
 # forward; Model B (FixedItemTeleport class-swap) is DEAD (its destination is encoded
@@ -1991,6 +2062,16 @@ INJECT_SPECS = {
         (LIGHT_5M_DYN_ORANGE_DBR, 132.0, 28.0, 116.0),   # S
         (LIGHT_5M_DYN_ORANGE_DBR, 142.0, 28.0, 120.0),   # SE
         (LIGHT_5M_DYN_ORANGE_DBR, 122.0, 28.0, 140.0),   # NW
+        # ── R-253 (BL-W0814-12): the arena boss, statically placed = spawns EVERY visit.
+        # See the ARENA_BOSS_PROXY_DBR block above for the 3-defect RCA + the survey.
+        # COUPLED SHIP: needs build_quest_files _neutralize_bossarena_spawn in the SAME
+        # deploy (Levels+Quests together), or a character who never fired SV's STEP-2
+        # would get static + quest = two boss sets.
+        (ARENA_BOSS_PROXY_DBR, ARENA_BOSS_SPAWN_XYZ[0], ARENA_BOSS_SPAWN_XYZ[1],
+         ARENA_BOSS_SPAWN_XYZ[2], {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+        # ── R-253 POLISH: real flame under each of b43's six ring lights.
+        *[(PIT_FX02_DBR, _fx_x, ARENA_FIRE_RING_Y, _fx_z)
+          for (_fx_x, _fx_z) in ARENA_FIRE_RING_XZ],
     ],
     # Widow Letter questline (WAVE E): restore the 3 SV entities the widowletter.qst
     # conditions reference. widow_ling = the NPC (Condition_ConversationStart),

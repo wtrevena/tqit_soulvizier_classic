@@ -596,12 +596,47 @@ def print_result(r):
 # V1 = the DEPLOYED-map wiring. Preferred source = the LIVE build_quest_files
 # (imported below); this embedded copy is a provenance-pinned fallback ONLY.
 # Provenance: build_quest_files.HELOS_HUB_TRAVEL @ da918c5 (world signed-int).
+#
+# ⚠️ BOSSARENA_LANDING_NOTE (R-253 vet rounds 2+3, and the reason BL-R253-DEBT-6 exists).
+# The LIVE import is DEAD on main: R-246 retired HELOS_HUB_TRAVEL and TRAVELER_ENTER_OFFERS
+# from build_quest_files, so every run falls back to THIS table - which is a snapshot from
+# da918c5 and has been drifting ever since. Both sets carried `bossarena` at world
+# (-433, 0, -3602), and this lane measured what that actually is: boss_arena.lvl's grid
+# corner is (-561, 0, -3642), so that world point is level-local (128.0, 40.0) - a spot on
+# navmesh component #1, the 1,381,391-cell UNREACHABLE low floor, 64.1u from the landing
+# the player really arrives on and 89.2u from the boss spawn.
+#
+# ROUND-3 CORRECTION (vet). Round 2 replaced that with world (-425, 28, -3538) and cited
+# `build_section_surgery.INJECT_SPECS -> (SVC_RETURN_BOSSARENA_DBR, 136.0, 28.1, 104.0)`.
+# BOTH halves were wrong, and this gate's own output proved it: the row measured d=0.00u to
+# `svc_testhub_return_bossarena.dbr`, because it WAS that NPC.
+#   - WRONG ENTITY. (136.0, 28.1, 104.0) is the RETURN NPC. build_section_surgery.py says so
+#     itself where that row lives: "This return NPC = 4u E of that landing", and it states
+#     the landing outright as "world(-429,27,-3538)=local(132,27,104)".
+#   - WRONG SOURCE. That row is not in INJECT_SPECS at all; it lives in
+#     `build_section_surgery.build_hub_extra_specs()`, the TESTHUB-only hub-extra set merged
+#     by merge_hub_into_inject_specs, where it is documented as the one return that stays
+#     TESTHUB-only. INJECT_SPECS[...boss_arena.lvl] holds 13 rows: 6 ring lights, the boss
+#     proxy, 6 pit FX. No landing, no return NPC.
+# The AUTHORITATIVE outbound landing for THIS EXACT TAG is live and survived R-246 (only
+# HELOS_HUB_TRAVEL / TRAVELER_ENTER_OFFERS were retired) - `build_quest_files`
+# `R248_TESTHUB_STEPS`:
+#     (...\svc_helos_trav_bossarena.dbr, (-429, 28, -3538), 'tagSVCTestHubToBossArena')
+# With that grid corner it is level-local (132.0, 28.0, 104.0), on component #2 (the
+# 92,026-cell dais), 25.1u south of the boss spawn. That is the value now in both tables, so
+# the arena row audits the REAL landing instead of an island the encounter is not on
+# (round 1) or the return NPC standing 4u east of it (round 2).
+# STILL OPEN (BL-R253-DEBT-6): the other rows are unverified against whatever R-246
+# replaced HELOS_HUB_TRAVEL with, including three landings this gate reports as pinned
+# inside placed uber proxies (charon / mnemophage / ephialtes) in levels no lane has
+# re-derived. Only the bossarena row was corrected here, because it is the only one this
+# lane has ground truth for; correcting rows by guesswork would be the same defect again.
 V1_LANDINGS = [
     ('garden', (1173, -39, -4001), 'tagSVCHelosToGarden'),
     ('secret', (-2396, 2, -5790), 'tagSVCHelosToSecret'),
     ('sparta', (-5602, -2, -1409), 'tagSVCHelosToSparta'),
     ('uber', (-2438, 10, -2450), 'tagSVCHelosToUber'),
-    ('bossarena', (-433, 0, -3602), 'tagSVCTestHubToBossArena'),
+    ('bossarena', (-429, 28, -3538), 'tagSVCTestHubToBossArena'),  # R-253 CORRECTION (round 3), see BOSSARENA_LANDING_NOTE
     ('warband', (5680, 1, 3285), 'tagSVCHelosToWarband'),
     ('dorus', (312, 1, -8462), 'tagSVCHelosToDorus'),
     ('tantalus', (-342, -15, -10095), 'tagSVCHelosToTantalus'),
@@ -626,7 +661,7 @@ V2_LANDINGS = [
     ('secret', (-2396, 2, -5790), 'tagSVCHelosToSecret'),
     ('sparta', (-6587, 1, -3180), 'tagSVCHelosToSparta'),        # Athens catacomb DOOR (retarget); b44 NUDGE off AG_Beastmen_Gorgon (was -6588: 2.72u -> 3.69u clr)
     ('uber', (-7793, 1, -3793), 'tagSVCHelosToUber'),            # Knossos->Uber maze03 DOOR (retarget)
-    ('bossarena', (-433, 0, -3602), 'tagSVCTestHubToBossArena'),
+    ('bossarena', (-429, 28, -3538), 'tagSVCTestHubToBossArena'),  # R-253 CORRECTION (round 3), see BOSSARENA_LANDING_NOTE
     ('warband', (5699, 1, 3315), 'tagSVCHelosToWarband'),
     ('dorus', (330, 1, -8380), 'tagSVCHelosToDorus'),            # Medea tomb ENTRANCE (~82u off Dorus)
     ('tantalus', (-346, -12, -10131), 'tagSVCHelosToTantalus'),  # Styx swamp stairs (~36u off)
@@ -709,6 +744,49 @@ def b42_model_placements():
     return specs
 
 
+# ── R-253 (BL-W0814-12) ARENA placements ────────────────────────────────────────────
+# The Boss Arena wave puts a boss SPAWNER (placementExtents 4.0, spawning 1 apex + 2
+# champions) and 6 flame FX into boss_arena.lvl, which already hosts the R-248 traveler
+# return landing at local (136.0, 28.1, 104.0). This gate exists precisely to prove a
+# landing stays clear of placed 0x05 entities, so a wave that adds entities to a level
+# with a landing has to be gateable BEFORE the map is built.
+# LIVE-DERIVED from build_section_surgery.INJECT_SPECS (one source of truth - the same
+# idiom as load_landings_arg('v1')), with an embedded fallback so the gate still runs in
+# a checkout where the import fails.
+BOSSARENA_LEVEL_KEY = 'levels/world/bossarena/boss_arena.lvl'
+_R253_FALLBACK = {
+    BOSSARENA_LEVEL_KEY: [
+        (r'records\proxies custom\bossarena\boss_satyrshaman.dbr', 131.68, 27.11, 129.08),
+        (r'records\drxmap\effects\pit_fx02.dbr',146.0, 27.2, 130.0),
+        (r'records\drxmap\effects\pit_fx02.dbr',118.0, 27.2, 130.0),
+        (r'records\drxmap\effects\pit_fx02.dbr',132.0, 27.2, 144.0),
+        (r'records\drxmap\effects\pit_fx02.dbr',132.0, 27.2, 116.0),
+        (r'records\drxmap\effects\pit_fx02.dbr',142.0, 27.2, 120.0),
+        (r'records\drxmap\effects\pit_fx02.dbr',122.0, 27.2, 140.0),
+    ],
+}
+
+
+def r253_placements():
+    """The R-253 arena entities, read live from INJECT_SPECS when importable."""
+    try:
+        from build_section_surgery import INJECT_SPECS
+        rows = []
+        for lk, specs in INJECT_SPECS.items():
+            if lk.replace('\\', '/').lower() != BOSSARENA_LEVEL_KEY:
+                continue
+            for s in specs:
+                dbr = s[0]
+                if isinstance(dbr, bytes):
+                    dbr = dbr.decode('latin1')
+                rows.append((dbr, float(s[1]), float(s[2]), float(s[3])))
+        if rows:
+            return {BOSSARENA_LEVEL_KEY: rows}
+    except Exception as e:                                   # noqa: BLE001
+        print(f'  (live INJECT_SPECS import failed: {e}; using embedded R-253 fallback)')
+    return _R253_FALLBACK
+
+
 def placements_to_extra(specs):
     """specs {level_key: [(dbr, x, y, z), ...]} -> {level_key: [(dbr,x,y,z,0,klass)]}
     normalized to lowercase '/' level keys for matching resolve_level output."""
@@ -754,24 +832,42 @@ def load_landings_arg(wiring):
     return list(mod.LANDINGS), f'file:{p.name}'
 
 
-def load_extra_arg(placements):
-    if not placements or placements == 'none':
-        return {}, 'none'
-    if placements == 'b41':
-        return placements_to_extra(B41_PLACEMENTS), 'b41 (map-pass plan)'
-    if placements == 'b41b42':
-        merged = dict(B41_PLACEMENTS)
-        for lk, rows in b42_model_placements().items():
-            merged.setdefault(lk, [])
-            merged[lk] = list(merged[lk]) + rows
-        return placements_to_extra(merged), 'b41 + b42-model (3 chests/boss)'
-    if placements == 'b42':
-        return placements_to_extra(b42_model_placements()), 'b42-model (3 chests/boss)'
-    p = Path(placements)
+def _merge_specs(into, rows_by_level):
+    for lk, rows in rows_by_level.items():
+        into.setdefault(lk, [])
+        into[lk] = list(into[lk]) + list(rows)
+    return into
+
+
+def _one_extra_arg(sel):
+    """One selector -> ({level_key: [(dbr,x,y,z)]}, label)."""
+    if sel == 'b41':
+        return dict(B41_PLACEMENTS), 'b41 (map-pass plan)'
+    if sel == 'b41b42':
+        return _merge_specs(dict(B41_PLACEMENTS), b42_model_placements()), \
+            'b41 + b42-model (3 chests/boss)'
+    if sel == 'b42':
+        return b42_model_placements(), 'b42-model (3 chests/boss)'
+    if sel == 'r253':
+        return r253_placements(), 'r253 (arena spawner + flame ring, live INJECT_SPECS)'
+    p = Path(sel)
     spec = importlib.util.spec_from_file_location('_extra_mod', p)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return placements_to_extra(mod.SPECS), f'file:{p.name}'
+    return dict(mod.SPECS), f'file:{p.name}'
+
+
+def load_extra_arg(placements):
+    """Selectors may be COMBINED with ',' (R-253) so a wave can gate its own planned
+    entities alongside an existing set: --placements b41,r253."""
+    if not placements or placements == 'none':
+        return {}, 'none'
+    merged, labels = {}, []
+    for sel in [s.strip() for s in str(placements).split(',') if s.strip()]:
+        rows, label = _one_extra_arg(sel)
+        _merge_specs(merged, rows)
+        labels.append(label)
+    return placements_to_extra(merged), ' + '.join(labels)
 
 
 DEFAULT_MAPS = [
@@ -836,7 +932,8 @@ def main():
     ap.add_argument('--wiring', default='v1',
                     help="'v1' (live) | 'v2' (b39 hub-v2) | path to a .py exposing LANDINGS")
     ap.add_argument('--placements', default='none',
-                    help="extra planned placements: 'none'|'b41'|'b42'|'b41b42'|path to .py (SPECS)")
+                    help="extra planned placements: 'none'|'b41'|'b42'|'b41b42'|'r253'|"
+                         "path to .py (SPECS); comma-combine e.g. 'b41,r253'")
     ap.add_argument('--strict-check', action='store_true',
                     help='treat CHECK (off-mesh/void) as a failure for the exit code')
     ap.add_argument('--nudge', action='store_true',
