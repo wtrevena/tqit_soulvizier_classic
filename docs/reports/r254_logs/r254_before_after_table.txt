@@ -1,4 +1,4 @@
-﻿  Loaded: 51312 records, 143700 strings
+﻿  Loaded: 51331 records, 143726 strings
     death_xp_penalty: applied (pre-state: the superseded R-80 pair (build92)) -> divisor 90->180, cap 50000->25000 (L85 Legendary 477653 -> 23883 XP, -95.0% of vanilla; -50.0% of the build92 47765)
     tombstone_xp_recovery: ALREADY RULED (no-op) RedemptionMultiplier 0.5 -> 1.0  (L85 Legendary: lose 23883 XP, recover 23883 XP; was 11941)
 
@@ -39,5 +39,5 @@ ARZ: C:\Users\willi\repos\tqit_soulvizier_classic\work\SoulvizierClassic\Databas
 
   RATIO recovered/lost at the SHIPPED multiplier 1.00: worst 1.0000 over the
   rows above (R-109 requires exactly 1.0000 - equality, not <=).
-  LOST b92 -> LOST now: every row is exactly half - this is R-251 ("another 50%")
+  LOST b92 -> LOST now: every row is exactly half - this is R-254 ("another 50%")
   Every LOST / BACK column above is an INTEGER because the engine rounds (x + 0.5, chop) before the clamp; the recovery then multiplies that integer.

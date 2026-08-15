@@ -37,7 +37,7 @@ ENGINE GROUND TRUTH (measured 2026-07-28 from the shipped binaries):
     difficulty entering ONLY through `gameDifficultyDV` (0/1/2).
   * Vanilla TQAE, SV 0.98i, SV 0.9 and SV 0.41 all ship the identical vanilla triple
     `(currentPlayerLevel^3) * ((1+ (3 * gameDifficultyDV)) / 9)` / 500000 / 0, so any
-    deviation from the R-80 values is a regression, never inherited upstream drift.
+    deviation from the ruled values is a regression, never inherited upstream drift.
 
 INTERFACE (composes with the other domain modules without shared files):
   run(cfg: dict) -> list[dict]      cfg keys used: arz
@@ -270,8 +270,10 @@ def check_deathxp_values(ctx):
     eq = ctx.value(GAMEENGINE, 'deathPenaltyEquation')
     if eq != RULED_EQUATION:
         out.append(_v(cid, 'P0', GAMEENGINE,
-                      'deathPenaltyEquation is not the R-80 value (death XP penalty '
-                      'reverted or re-tuned without a ruling)',
+                      'deathPenaltyEquation is not the ruled value (death XP penalty '
+                      'reverted, or re-tuned without a ruling). The ruled state is '
+                      'R-80 as retuned by R-254; an arz built before R-254 lands '
+                      'shows the superseded "/ 90" here',
                       'want %r, got %r' % (RULED_EQUATION, eq)))
     elif ctx.dtype(GAMEENGINE, 'deathPenaltyEquation') != DTYPE_STRING:
         out.append(_v(cid, 'P0', GAMEENGINE,
@@ -286,7 +288,8 @@ def check_deathxp_values(ctx):
         mx_i = None
     if mx_i != RULED_MAX:
         out.append(_v(cid, 'P0', GAMEENGINE,
-                      'deathPenaltyMax is not the R-80 cap',
+                      'deathPenaltyMax is not the ruled cap (R-80 as retuned by '
+                      'R-254; an arz built before R-254 lands shows 50000 here)',
                       'want %d, got %r' % (RULED_MAX, mx)))
     elif ctx.dtype(GAMEENGINE, 'deathPenaltyMax') != DTYPE_INT:
         out.append(_v(cid, 'P0', GAMEENGINE,
