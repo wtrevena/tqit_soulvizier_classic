@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-r"""R-250 GATE (BL-W0814-12): a REPEATABLE-DESTINATION encounter may never depend on
+r"""R-252 GATE (BL-W0814-12): a REPEATABLE-DESTINATION encounter may never depend on
 one-shot quest state, a player-level window, or a sub-100 spawn chance.
 
 THE DEFECT CLASS
@@ -43,9 +43,18 @@ THE INVARIANT (per registered destination encounter)
                charLevel is inside the window on all three difficulties.
   C6 (--quests) the BUILT Quests.arc really has zero such spawn actions.
   C7 (--map)    the BUILT map really places the proxy exactly once in the host level.
+  C8 REWARD  : the destination PAYS, and keeps paying. A place the player travels to
+               must guard something, and the hoard built for it must still be the hoard
+               it opens: statically, the chest is not enrolled in a pass that repoints
+               it at a base-game boss_default_* bracket (the single shared cause behind
+               Will's five 2026-08-14 chest reports, which also left 18 of 27
+               svc_*hoard_loot_0N records unreferenced in the shipped arz); with --arz,
+               each tier's chest names its OWN loot record and that record still carries
+               its guaranteed high-value slot.
 
-C1-C4 are STATIC (source + the pristine upstream .qst): they run in any worktree with no
-build. C5-C7 are the same invariant re-proved on real artifacts at ship time.
+C1-C4 + C8's static half are STATIC (source + the pristine upstream .qst): they run in
+any worktree with no build. C5-C8 are the same invariant re-proved on real artifacts at
+ship time.
 
 USAGE
   py tools/gate_arena_spawn_guarantee.py
@@ -289,6 +298,84 @@ def check_declaration(d, decl, problems):
                         f"{decl.get('min_guaranteed_mains')!r}; must be >= 1.")
 
 
+def _hoard_records(prefix):
+    base = r'records\drxitem\container'
+    return {t: (rf'{base}\svc_{prefix}hoard_{t}.dbr',
+                rf'{base}\svc_{prefix}hoard_loot_{t}.dbr') for t in ('01', '02', '03')}
+
+
+def check_reward_static(d, decl, problems):
+    """C8 (static half): the encounter's chest must not be enrolled in a pass that
+    REPOINTS it away from the table it just built.
+
+    `_svc_standardize_boss_chests` walks `_SVC_CHEST_STD` and rewrites each listed
+    chest's `tables` to the base game's `boss_default_<bracket>`. Measured on the
+    shipped arz at 1 player, per chest: bespoke = (3+1.8P)*2.4/2.8 spawn iterations,
+    group chance-mass 2.81, loot3Chance=100 with a guaranteed unique + relic;
+    boss_default_55-57/63-65 = (3+1.6P)*1.5/1.7, chance-mass 1.11, loot3Chance=10,
+    nothing guaranteed - and the bespoke table is left unreferenced. That is the single
+    shared cause behind five separate 2026-08-14 reports from Will
+    (BL-W0814-2/5/7/11/13), so a chest shipped for a destination encounter may not opt
+    into it.
+
+    SELF-RETIRING: the check only fires while a repointing pass EXISTS. When the
+    chest-generosity lane replaces it with a wiring pass (each chest -> its own
+    svc_<family>hoard_loot_<tier>), `_SVC_CHEST_STD` becomes a harmless family roster
+    and this check goes quiet on its own instead of blocking that lane."""
+    prefix = decl.get('hoard_prefix')
+    key = decl.get('chest_std_key')
+    if not prefix or not key:
+        problems.append(f"{d['label']}: SPAWN_GUARANTEE declares no reward "
+                        f"(hoard_prefix/chest_std_key) - a destination encounter must "
+                        f"declare the hoard it pays out, or C8 is vacuous.")
+        return
+    try:
+        import apply_svc_patches as MONO
+    except Exception as e:                                       # noqa: BLE001
+        problems.append(f"{d['label']}: cannot import apply_svc_patches for C8 ({e})")
+        return
+    repointer = getattr(MONO, '_svc_standardize_boss_chests', None)
+    roster = getattr(MONO, '_SVC_CHEST_STD', {})
+    if repointer is not None and key in roster:
+        problems.append(
+            f"{d['label']}: '{key}' is registered in _SVC_CHEST_STD while "
+            f"_svc_standardize_boss_chests still REPOINTS registered chests at "
+            f"records{BS}item{BS}containers{BS}defaultloot{BS}boss_default_*. That "
+            f"strands the dedicated hoard this wave builds and ships the exact chest "
+            f"Will rejected five times on 2026-08-14. Remove the row (the chest then "
+            f"keeps its own table), or land this after the pass stops repointing.")
+
+
+def check_reward_arz(d, decl, db, problems):
+    """C8 (arz half): each tier's chest really opens its OWN loot record, and that
+    record still carries the guaranteed high-value slot. Works in BOTH worlds - it
+    asserts the end state, not the mechanism that produced it."""
+    prefix = decl.get('hoard_prefix')
+    if not prefix:
+        return
+    want_chance = float(decl.get('guaranteed_loot_chance', 100.0))
+    for t, (chest, loot) in sorted(_hoard_records(prefix).items()):
+        if not db.has_record(chest):
+            problems.append(f"{d['label']}: arz is missing the reward chest {chest} - "
+                            f"the arena would ship reward-less again.")
+            continue
+        tables = db.get_field_value(chest, 'tables')
+        tables = tables[0] if isinstance(tables, list) else tables
+        if _norm(tables or '') != _norm(loot):
+            problems.append(
+                f"{d['label']}: {chest}.tables = {tables!r}, expected its own "
+                f"{loot}. A dedicated hoard that points at someone else's table (a "
+                f"boss_default_* bracket or a shared family) is the BL-W0814-2/5/7/11/13 "
+                f"defect, and it strands {loot}.")
+            continue
+        got = db.get_field_value(loot, 'loot3Chance')
+        got = got[0] if isinstance(got, list) else got
+        if got is None or float(got) < want_chance:
+            problems.append(
+                f"{d['label']}: {loot}.loot3Chance = {got!r} (want >= {want_chance}) - "
+                f"the guaranteed unique + relic slot is what makes the hoard a hoard.")
+
+
 def check_arz(d, decl, db, problems):
     """C5: a BUILT arz matches the declaration."""
     proxy, pool, main, limit = (decl['proxy'], decl['pool'],
@@ -426,9 +513,12 @@ def run(dests, arz=None, quests=None, map_path=None, verbose=True):
                             f"SPAWN_GUARANTEE declaration")
         else:
             check_declaration(d, decl, problems)
+            check_reward_static(d, decl, problems)
             if arz:
                 from arz_patcher import ArzDatabase
-                check_arz(d, decl, ArzDatabase.from_arz(Path(arz)), problems)
+                _db = ArzDatabase.from_arz(Path(arz))
+                check_arz(d, decl, _db, problems)
+                check_reward_arz(d, decl, _db, problems)
         if quests:
             check_built_quest(d, ArcArchive.from_file(Path(quests)), problems)
         if map_path:
@@ -450,7 +540,7 @@ def negtest():
     cases = []
     base = DESTINATIONS[0]
 
-    # N1: the placement is missing entirely (the pre-R-250 state)
+    # N1: the placement is missing entirely (the pre-R-252 state)
     saved = BSS.INJECT_SPECS[base['level_key']]
     BSS.INJECT_SPECS[base['level_key']] = [s for s in saved
                                            if _norm(s[0]) != _norm(base['proxy_dbr'])]
@@ -498,19 +588,46 @@ def negtest():
     cases.append(('N4 neutralizer eats an unrelated action', run([base], verbose=False)))
     setattr(BQF, base['neutralizer'], real)
 
-    # N5..N8: declaration suppressors
+    # N5..N9: declaration suppressors
     real_decl = MOD.SPAWN_GUARANTEE
     for label, mut in (
             ('N5 player-level window reintroduced', {'limit_window': (29, 36)}),
             ('N6 sub-100 spawn chance', {'chance_to_run': 50.0}),
             ('N7 quest-only proxy', {'quest_flag': 1}),
             ('N8 champion crowd-out', {'min_guaranteed_mains': 0}),
-            ('N9 spawn-count equation left on', {'pool_equation': 'poolValue*1'})):
+            ('N9 spawn-count equation left on', {'pool_equation': 'poolValue*1'}),
+            ('N10 reward not declared at all', {'hoard_prefix': None,
+                                                'chest_std_key': None})):
         bad = copy.deepcopy(real_decl)
         bad.update(mut)
         MOD.SPAWN_GUARANTEE = bad
         cases.append((label, run([base], verbose=False)))
     MOD.SPAWN_GUARANTEE = real_decl
+
+    # N11 (C8): the reward chest gets enrolled in the repointing roster - the wiring
+    # that gutted five chests on 2026-08-14. Must be caught with NO build.
+    import apply_svc_patches as MONO
+    _key = real_decl['chest_std_key']
+    _had = _key in MONO._SVC_CHEST_STD
+    MONO._SVC_CHEST_STD[_key] = ('55-57', '63-65', '63-65')
+    cases.append(('N11 reward chest repointed to a base boss_default_* table',
+                  run([base], verbose=False)))
+    if not _had:
+        del MONO._SVC_CHEST_STD[_key]
+
+    # N12 (C8): ... and the check must RETIRE ITSELF once nothing repoints, or it
+    # blocks the chest-generosity lane forever.
+    _repointer = MONO._svc_standardize_boss_chests
+    del MONO._svc_standardize_boss_chests
+    MONO._SVC_CHEST_STD[_key] = ('55-57', '63-65', '63-65')
+    _retired = run([base], verbose=False)
+    MONO._svc_standardize_boss_chests = _repointer
+    if not _had:
+        del MONO._SVC_CHEST_STD[_key]
+    print('  %s N12 C8 self-retires when no repointing pass exists (roster becomes safe)'
+          % ('PASS   ' if not _retired else 'FAIL   '))
+    for p in _retired:
+        print(f'      - {p}')
 
     ok = True
     for label, probs in cases:
@@ -523,7 +640,7 @@ def negtest():
     print(f'  {"PASS   " if not live else "FAIL   "} P0 the shipped configuration is clean')
     for p in live:
         print(f'      - {p}')
-    return ok and not live
+    return ok and not live and not _retired
 
 
 def main():

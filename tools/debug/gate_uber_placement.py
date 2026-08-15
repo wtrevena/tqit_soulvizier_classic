@@ -64,6 +64,17 @@ Operationalised on the level's own 0x0b navmesh, with no hand-drawn routes:
   the deployed map is clean: Elysian_Fields_03 (the Helepolis) sits far above the
   threshold, the Hades Palace / Dread Halls corridor hosts far below.
 
+  WHICH COMPONENT (R-252). "The level's main component" used to mean comps[0], the
+  LARGEST walkable component. That is a guess, and on a level with an isolated shelf it
+  is the wrong one: boss_arena.lvl is 1,381,391 cells of unreachable low floor plus
+  92,026 cells of raised dais, and the arena - boss, traveler landing, return NPC - is
+  entirely on the SMALL one. The oracle now selects the component the ENCOUNTER stands
+  on (Nav.component_for / Nav.on_component), so gateways, BFS and routes are computed
+  where the player actually is. Every placement sitting on comps[0] is unaffected. A
+  placement off EVERY component (>3u from any walkable cell) is now a hard OFF-MESH
+  failure instead of a printed remark, because that reading can no longer be an artefact
+  of looking at the wrong island.
+
 RADII are grounded in this repo's own established encounter numbers, not invented:
   R_FOOTPRINT 6.0u - the "boss + 2 champion escorts + hoard chest" ring every uber survey
                      in build_section_surgery already reports as clr@6.
@@ -76,6 +87,7 @@ Usage:
   py tools/debug/gate_uber_placement.py <map.arc> --negtest       # planted negatives
 """
 import sys
+import copy
 import math
 import struct
 import argparse
@@ -129,9 +141,9 @@ EXPECTED_AREA = {
     'connector04.lvl':                          ('Aniketos (SV restore)', None),
     'random05a.lvl':                            ('Vashkarr', None),
     'drxfirstxistion_connection.lvl':           ('Blood-Toxeus parchment ambush', None),
-    # R-250 (BL-W0814-12): the arena boss stopped being quest-spawned and became a real
+    # R-252 (BL-W0814-12): the arena boss stopped being quest-spawned and became a real
     # placed encounter, so he now falls under this gate like every other uber we place.
-    'boss_arena.lvl':                           ('R-250 Aithon, the Ember-Crowned', 'Olympian Arena'),
+    'boss_arena.lvl':                           ('R-252 Aithon, the Ember-Crowned', 'Olympian Arena'),
 }
 
 # ── AUDITED + ACCEPTED on-path placements (R-100 #16b audit, 2026-07-30) ───────────
@@ -174,16 +186,20 @@ ACCEPTED_ON_PATH = {
         'Obsidian roulette CORNER - a random 25% mini-event prop, not an uber monster we '
         'place. The 4 corners deliberately span both Obsidian levels.',
     ('boss_arena.lvl', 'boss_satyrshaman.dbr'):
-        'R-250: the ARENA. The fight stands at SV own location_bossarenacenter, dead '
+        'R-252: the ARENA. The fight stands at SV own location_bossarenacenter, dead '
         'centre of a one-room destination level whose only gateways are the traveler '
         'landing and the two return portals - so "beside the route" does not exist here: '
         'the centre IS the destination (the Ephialtes reward-vault precedent). Moving it '
-        'off-centre would move the boss out of the arena Will travels to.',
+        'off-centre would move the boss out of the arena Will travels to. '
+        'NOT CURRENTLY EXERCISED, and that is measured, not assumed: on the encounter '
+        'component (comp#2, the dais) the level yields 1 gateway cluster and 0 connected '
+        'pairs, so the ON-PATH oracle has no route to test and stays silent. This row is '
+        'the standing judgment for the day the arena gains a second mouth.',
 }
 
 
 # Records this gate treats as OUR placed encounters (bosses/hordes) and OUR chests.
-# R-250: the arena spawner lives in SV own namespace (records\proxies custom\bossarena\),
+# R-252: the arena spawner lives in SV own namespace (records\proxies custom\bossarena\),
 # not drxmap\proxy\q_*, so it needs its own marker or the gate would silently ignore the
 # newest placed encounter.
 BOSS_MARKERS = ('drxmap' + BS + 'proxy' + BS + 'q_', 'minobossproxy_aniketos',
@@ -287,8 +303,61 @@ class Nav:
         self.off = (gc[0] - origin[0], gc[2] - origin[2])
         self.cellmap, self.cs = S.build_indexed_cells(doc, set_idx)
         comps = S.components_of(self.cellmap)
+        # R-252: keep ALL components, not just the biggest. "Largest component" is a
+        # LEVEL-wide guess at where the player walks, and it is wrong on any level whose
+        # encounter lives on an isolated shelf: boss_arena.lvl splits into 1,381,391
+        # cells of unreachable low floor and 92,026 cells of raised dais, and the whole
+        # arena (boss + traveler landing + return) is on the SMALL one. Running the
+        # gateway/BFS/route oracle on the other component is not a strict check, it is a
+        # vacuous one - it reasons about a component the encounter is not on and then
+        # reports "nearest walkable OFF-MESH>3u" for a placement that is 0.03u on-mesh.
+        # So the caller picks the component per ENCOUNTER (see component_for/
+        # on_component); comps[0] stays the default, so every level whose placement is
+        # on the largest component is evaluated exactly as before.
+        self.comps = comps
         self.main = comps[0] if comps else frozenset()
+        self.comp_idx = 0
         self.ncomp = len(comps)
+
+    def component_for(self, x, z, radius=3.0):
+        """Index into self.comps of the component this 0x05-local point stands on.
+
+        Exact cell hit first; otherwise the component owning the nearest walkable cell
+        within `radius`. None when the point is off EVERY component (a genuinely
+        off-mesh placement, which the caller must report as such rather than silently
+        re-home to some other island)."""
+        if not self.comps:
+            return None
+        k0 = self.key(x, z)
+        for i, c in enumerate(self.comps):
+            if k0 in c:
+                return i
+        best, best_i = None, None
+        rr = int(math.ceil(radius / self.cs))
+        for dx in range(-rr, rr + 1):
+            for dz in range(-rr, rr + 1):
+                k = (k0[0] + dx, k0[1] + dz)
+                if k not in self.cellmap:
+                    continue
+                lx, lz = self.local(k)
+                d = math.hypot(lx - x, lz - z)
+                if d > radius or (best is not None and d >= best):
+                    continue
+                for i, c in enumerate(self.comps):
+                    if k in c:
+                        best, best_i = d, i
+                        break
+        return best_i
+
+    def on_component(self, i):
+        """A view of this Nav whose `main` is component i. Shares the parsed navmesh
+        (no re-decode); only the walkable set the oracles reason over changes."""
+        if i is None or not self.comps or i == self.comp_idx:
+            return self
+        other = copy.copy(self)
+        other.main = self.comps[i]
+        other.comp_idx = i
+        return other
 
     def key(self, x, z):
         """0x05-local (x,z) -> cell index key."""
@@ -582,8 +651,33 @@ def negtest(mappath, r_foot, r_eng):
           'on-path=%s offpath=%.0f%% (< %.0f%% threshold)'
           % (bool(gao['onpath']), 100 * lr5['offpath_frac'], 100 * OFFPATH_MIN))
 
+    # N5 R-252 COMPONENT SELECTION: the oracle must follow the encounter onto its own
+    # navmesh island. boss_arena.lvl is the case that exposed the old comps[0] rule -
+    # its largest component is the unreachable low floor. N5 proves the OLD behaviour
+    # was blind here (so the fix is not cosmetic) and N5b proves the NEW behaviour sees
+    # the placement. If a future map change ever merges the arena into one component,
+    # N5 fails loudly rather than passing vacuously.
+    lv6, blob6 = S.get_blob(data, levels, 'boss_arena.lvl')
+    nav6 = Nav(blob6, lv6, 0)
+    ax, az = 131.68, 129.08                      # location_bossarenacenter, the R-252 spot
+    ci6 = nav6.component_for(ax, az)
+    lr6_main = level_routes(nav6, lv6, blob6, r_eng)
+    old6 = analyse(nav6, lv6, blob6, ax, az, r_foot, r_eng, lr6_main)
+    check('N5 arena spot is NOT on the largest component, and comps[0] reads it OFF-MESH',
+          ci6 is not None and ci6 != 0 and old6['onmesh'] is None,
+          'component=%s of %d (sizes %s); comps[0] onmesh=%s'
+          % (ci6, nav6.ncomp, [len(c) for c in nav6.comps[:3]], old6['onmesh']))
+
+    nav6b = nav6.on_component(ci6)
+    lr6 = level_routes(nav6b, lv6, blob6, r_eng)
+    new6 = analyse(nav6b, lv6, blob6, ax, az, r_foot, r_eng, lr6)
+    check('N5b encounter-selected component reads the SAME spot on-mesh',
+          new6['onmesh'] is not None and new6['onmesh'] <= 1.0,
+          'onmesh=%s on component #%s (%d cells)'
+          % (new6['onmesh'], (ci6 or 0) + 1, len(nav6b.main)))
+
     print('\n%s: %d/%d planted negatives behaved as specified'
-          % ('NEGTEST GREEN' if not fails else 'NEGTEST RED', 6 - len(fails), 6))
+          % ('NEGTEST GREEN' if not fails else 'NEGTEST RED', 8 - len(fails), 8))
     return 1 if fails else 0
 
 
@@ -669,10 +763,21 @@ def main():
         contain = 'n/a'
         if want is not None:
             contain = 'OK' if any(want.lower() in r.lower() for r in regions) else 'FAIL'
+        # R-252: the route oracle runs on the component this ENCOUNTER stands on, not
+        # on whichever component happens to be biggest. Identical to the old behaviour
+        # everywhere the placement is on comps[0]; the difference only shows on levels
+        # like boss_arena.lvl whose encounter lives on a small raised island.
         if suffix not in navcache:
-            nav = Nav(blob, lv, 0)
-            navcache[suffix] = (nav, level_routes(nav, lv, blob, a.r_eng))
-        nav, lr = navcache[suffix]
+            navcache[suffix] = {'base': Nav(blob, lv, 0)}
+        base = navcache[suffix]['base']
+        ci = base.component_for(x, z)
+        off_mesh = ci is None
+        if off_mesh:
+            ci = 0
+        if ci not in navcache[suffix]:
+            nav_i = base.on_component(ci)
+            navcache[suffix][ci] = (nav_i, level_routes(nav_i, lv, blob, a.r_eng))
+        nav, lr = navcache[suffix][ci]
         r = analyse(nav, lv, blob, x, z, a.r_foot, a.r_eng, lr)
         W, H = tile_rect(lv)
         avoidable = r['offpath_frac'] >= OFFPATH_MIN
@@ -680,6 +785,12 @@ def main():
         notes = []
         if contain == 'FAIL':
             verdict.append('OUT-OF-AREA')
+        if off_mesh:
+            # R-252: now that the component is chosen per encounter, "off mesh" means
+            # off EVERY walkable component of the host level - a boss standing in the
+            # void, which no clearance or path arithmetic can excuse. Before this it
+            # was a printed remark on an oracle that was looking at the wrong island.
+            verdict.append('OFF-MESH')
         if r['blocks']:
             verdict.append('BLOCKS-ROUTE')
         acc_key = (suffix, dbr.split(BS)[-1])
@@ -700,6 +811,10 @@ def main():
               % (' | '.join(regions) or '(none)', want, contain))
         print('    local    : (%.1f, %.1f, %.1f)   nearest walkable %s'
               % (x, y, z, ('%.2fu' % r['onmesh']) if r['onmesh'] is not None else 'OFF-MESH>3u'))
+        print('    navmesh  : component #%d of %d (%d of %d walkable cells)%s'
+              % (nav.comp_idx + 1, base.ncomp, len(nav.main),
+                 sum(len(c) for c in base.comps),
+                 '   <- ENCOUNTER-SELECTED (not the largest)' if nav.comp_idx else ''))
         print('    gateways : %d clusters, %d connected pairs ; off-path share %.0f%% (%s)'
               % (r['gateways'], r['pairs'], 100 * r['offpath_frac'],
                  'alternatives exist' if avoidable else 'level is essentially all corridor'))

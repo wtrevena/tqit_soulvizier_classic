@@ -709,6 +709,49 @@ def b42_model_placements():
     return specs
 
 
+# ── R-252 (BL-W0814-12) ARENA placements ────────────────────────────────────────────
+# The Boss Arena wave puts a boss SPAWNER (placementExtents 4.0, spawning 1 apex + 2
+# champions) and 6 flame FX into boss_arena.lvl, which already hosts the R-248 traveler
+# return landing at local (136.0, 28.1, 104.0). This gate exists precisely to prove a
+# landing stays clear of placed 0x05 entities, so a wave that adds entities to a level
+# with a landing has to be gateable BEFORE the map is built.
+# LIVE-DERIVED from build_section_surgery.INJECT_SPECS (one source of truth - the same
+# idiom as load_landings_arg('v1')), with an embedded fallback so the gate still runs in
+# a checkout where the import fails.
+BOSSARENA_LEVEL_KEY = 'levels/world/bossarena/boss_arena.lvl'
+_R252_FALLBACK = {
+    BOSSARENA_LEVEL_KEY: [
+        (r'records\proxies custom\bossarena\boss_satyrshaman.dbr', 131.68, 27.11, 129.08),
+        (r'records\drxmap\effects\pit_fx02.dbr',146.0, 27.2, 130.0),
+        (r'records\drxmap\effects\pit_fx02.dbr',118.0, 27.2, 130.0),
+        (r'records\drxmap\effects\pit_fx02.dbr',132.0, 27.2, 144.0),
+        (r'records\drxmap\effects\pit_fx02.dbr',132.0, 27.2, 116.0),
+        (r'records\drxmap\effects\pit_fx02.dbr',142.0, 27.2, 120.0),
+        (r'records\drxmap\effects\pit_fx02.dbr',122.0, 27.2, 140.0),
+    ],
+}
+
+
+def r252_placements():
+    """The R-252 arena entities, read live from INJECT_SPECS when importable."""
+    try:
+        from build_section_surgery import INJECT_SPECS
+        rows = []
+        for lk, specs in INJECT_SPECS.items():
+            if lk.replace('\\', '/').lower() != BOSSARENA_LEVEL_KEY:
+                continue
+            for s in specs:
+                dbr = s[0]
+                if isinstance(dbr, bytes):
+                    dbr = dbr.decode('latin1')
+                rows.append((dbr, float(s[1]), float(s[2]), float(s[3])))
+        if rows:
+            return {BOSSARENA_LEVEL_KEY: rows}
+    except Exception as e:                                   # noqa: BLE001
+        print(f'  (live INJECT_SPECS import failed: {e}; using embedded R-252 fallback)')
+    return _R252_FALLBACK
+
+
 def placements_to_extra(specs):
     """specs {level_key: [(dbr, x, y, z), ...]} -> {level_key: [(dbr,x,y,z,0,klass)]}
     normalized to lowercase '/' level keys for matching resolve_level output."""
@@ -754,24 +797,42 @@ def load_landings_arg(wiring):
     return list(mod.LANDINGS), f'file:{p.name}'
 
 
-def load_extra_arg(placements):
-    if not placements or placements == 'none':
-        return {}, 'none'
-    if placements == 'b41':
-        return placements_to_extra(B41_PLACEMENTS), 'b41 (map-pass plan)'
-    if placements == 'b41b42':
-        merged = dict(B41_PLACEMENTS)
-        for lk, rows in b42_model_placements().items():
-            merged.setdefault(lk, [])
-            merged[lk] = list(merged[lk]) + rows
-        return placements_to_extra(merged), 'b41 + b42-model (3 chests/boss)'
-    if placements == 'b42':
-        return placements_to_extra(b42_model_placements()), 'b42-model (3 chests/boss)'
-    p = Path(placements)
+def _merge_specs(into, rows_by_level):
+    for lk, rows in rows_by_level.items():
+        into.setdefault(lk, [])
+        into[lk] = list(into[lk]) + list(rows)
+    return into
+
+
+def _one_extra_arg(sel):
+    """One selector -> ({level_key: [(dbr,x,y,z)]}, label)."""
+    if sel == 'b41':
+        return dict(B41_PLACEMENTS), 'b41 (map-pass plan)'
+    if sel == 'b41b42':
+        return _merge_specs(dict(B41_PLACEMENTS), b42_model_placements()), \
+            'b41 + b42-model (3 chests/boss)'
+    if sel == 'b42':
+        return b42_model_placements(), 'b42-model (3 chests/boss)'
+    if sel == 'r252':
+        return r252_placements(), 'r252 (arena spawner + flame ring, live INJECT_SPECS)'
+    p = Path(sel)
     spec = importlib.util.spec_from_file_location('_extra_mod', p)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return placements_to_extra(mod.SPECS), f'file:{p.name}'
+    return dict(mod.SPECS), f'file:{p.name}'
+
+
+def load_extra_arg(placements):
+    """Selectors may be COMBINED with ',' (R-252) so a wave can gate its own planned
+    entities alongside an existing set: --placements b41,r252."""
+    if not placements or placements == 'none':
+        return {}, 'none'
+    merged, labels = {}, []
+    for sel in [s.strip() for s in str(placements).split(',') if s.strip()]:
+        rows, label = _one_extra_arg(sel)
+        _merge_specs(merged, rows)
+        labels.append(label)
+    return placements_to_extra(merged), ' + '.join(labels)
 
 
 DEFAULT_MAPS = [
@@ -836,7 +897,8 @@ def main():
     ap.add_argument('--wiring', default='v1',
                     help="'v1' (live) | 'v2' (b39 hub-v2) | path to a .py exposing LANDINGS")
     ap.add_argument('--placements', default='none',
-                    help="extra planned placements: 'none'|'b41'|'b42'|'b41b42'|path to .py (SPECS)")
+                    help="extra planned placements: 'none'|'b41'|'b42'|'b41b42'|'r252'|"
+                         "path to .py (SPECS); comma-combine e.g. 'b41,r252'")
     ap.add_argument('--strict-check', action='store_true',
                     help='treat CHECK (off-mesh/void) as a failure for the exit code')
     ap.add_argument('--nudge', action='store_true',

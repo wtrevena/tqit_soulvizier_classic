@@ -17074,13 +17074,28 @@ _SVC_CHEST_STD = {
     # is satisfied by measurement, not by hope.
     'svc_mnemophagehoard': ('45-47', '63-65', '63-65'),    # Mnemophage[46,68,100] Pools of Mnemosyne (Act5/Judgment)
     'svc_diadochihoard':   ('57-59', '63-65', '63-65'),    # Helepolis [58,80,97]  Fields of the Diadochi (Act6/Elysian)
-    # R-250 (BL-W0814-12 (b), Will "the boss arena needs more work"): the Olympian
-    # Arena apex guarded NOTHING (b43 RCA sec 6 item 5 - 0 chest/loot strings in the
-    # whole blob). Aithon now carries the same dedicated Boss-locked hoard as every
-    # other apex (tools/patches/bossarena.py), on the identical region-tuned chain.
-    # Bracket derived the same way as every row above: his charLevel per difficulty
-    # snapped to the nearest base bracket, capped at 63-65 (the top loot tier).
-    'svc_aithonhoard':     ('55-57', '63-65', '63-65'),    # Aithon    [55,69,75]  Olympian Arena (Olympus)
+    # ── R-252 (BL-W0814-12 (b)): 'svc_aithonhoard' is DELIBERATELY ABSENT here ──────
+    # The Olympian Arena apex guarded NOTHING (b43 RCA sec 6 item 5: zero chest/loot
+    # strings in the whole blob), so R-252 gives him the standard dedicated Boss-locked
+    # hoard (tools/patches/bossarena.py -> _svc_build_dedicated_hoard). Registering the
+    # family HERE would then repoint that brand-new chest at boss_default_55-57/63-65
+    # and strand the table it just built. MEASURED on the shipped arz, per chest, at
+    # 1 player: bespoke = (3+1.8P)*2.4/2.8 spawn iterations, group chances
+    # 40/40/100/21.2/40/40, loot3Chance=100 with a guaranteed unique + relic; the
+    # boss_default_* pair = (3+1.6P)*1.5/1.7, chances 14/27/10/21.2/25/14,
+    # loot3Chance=10, nothing guaranteed. That repoint is the ONE shared cause Will
+    # filed five times on 2026-08-14 (BL-W0814-2/5/7/11/13: "are you kidding me. this
+    # is outrageous", "a terrible chest", "nerfed too much"), and it is what left 18 of
+    # 27 svc_*hoard_loot_0N records with zero references in the shipped arz. A NEW
+    # chest does not get to ship into that defect on the same day it was reported five
+    # times, so the arena chest keeps its own table.
+    # INTEGRATION NOTE: when the chest-generosity lane lands and this pass stops
+    # repointing (it becomes a WIRING pass that points each chest at its OWN
+    # svc_<family>hoard_loot_<tier>), add the row back - it becomes the family roster:
+    #     'svc_aithonhoard':  ('55-57', '63-65', '63-65'),   # Aithon [55,69,75] Olympian Arena
+    # tools/gate_arena_spawn_guarantee.py check C8 enforces exactly this in BOTH
+    # worlds: it reds if a repointing pass exists AND the arena family is registered,
+    # and (with --arz) it reds if the arena chest's `tables` is not its own loot record.
 }
 _SVC_BOSS_DEFAULT_TABLE = r'records\item\containers\defaultloot\boss_default_%s.dbr'
 

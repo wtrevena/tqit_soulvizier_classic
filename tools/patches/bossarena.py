@@ -85,11 +85,11 @@ MODULE_NAME = 'Aithon, the Ember-Crowned (Olympian Arena boss finish)'
 S, F, I = M.DATA_TYPE_STRING, M.DATA_TYPE_FLOAT, M.DATA_TYPE_INT
 
 # ── The arena chain (all present in build38; ref-scan proved the containment) ──
-_PROXY = r'records\proxies custom\bossarena\boss_satyrshaman.dbr'          # the arena spawner Proxy (R-250: now MAP-PLACED, not quest-spawned)
+_PROXY = r'records\proxies custom\bossarena\boss_satyrshaman.dbr'          # the arena spawner Proxy (R-252: now MAP-PLACED, not quest-spawned)
 _POOL = r'records\proxies custom\bossarena\pools\satyr_shaman_01.dbr'      # ProxyPool (spawned 3 bosses)
 _BOSS = r'records\creature\monster\bossarena\boss_satyrshaman_55.dbr'      # the apex (upgraded in place)
 
-# ── R-250 (BL-W0814-12): spawn-eligibility records ────────────────────────────
+# ── R-252 (BL-W0814-12): spawn-eligibility records ────────────────────────────
 _LIMIT = r'records\proxies custom\bossarena\limit_bossarena.dbr'           # NEW: our own always-on ProxyLimits [1..110]
 _HOARD_PREFIX = 'aithon'                                                   # -> svc_aithonhoard_{01,02,03}
 _HOARD_TAG = 'tagSVCAithonHoard'
@@ -110,7 +110,7 @@ _SK_FIRE_AURA = r'records\skills\monster skills\auras\damage_arenafirebonus.dbr'
 _SK_FLAMESURGE = r'records\skills\monster skills\attack_projectile\arena_flamesurge.dbr'
 _SK_ARMOR = r'records\skills\monster skills\defense\armor_passive.dbr'
 
-# ── R-250 SPAWN-GUARANTEE DECLARATION (read by tools/gate_arena_spawn_guarantee.py) ──
+# ── R-252 SPAWN-GUARANTEE DECLARATION (read by tools/gate_arena_spawn_guarantee.py) ──
 # The machine-readable contract this module promises about the arena spawn chain. The
 # gate asserts (a) that these declared values are UNCONDITIONAL (no player-level window,
 # no sub-100 chance, no quest flag, >=1 guaranteed main) and (b) that a built arz matches
@@ -127,6 +127,16 @@ SPAWN_GUARANTEE = {
     'limit_window': (1, 110),    # min/max PLAYER level, all three difficulties
     'pool_equation': '',         # empty => the literal spawnMin/Max are the runtime counts
     'min_guaranteed_mains': 1,   # spawnMax - championMax
+    # ── REWARD (check C8): the arena chest must open its OWN loot family ──────────
+    # A destination the player travels to has to PAY, and the payout must survive the
+    # later chest passes. `hoard_prefix` names the family _svc_build_dedicated_hoard
+    # mints: svc_<prefix>hoard_loot_<tier> (the table) -> svc_<prefix>hoard_<tier> (the
+    # Boss-locked chest, whose `tables` must name that table) -> svc_<prefix>hoard_
+    # pool_<tier> (the proxy accessory). `chest_std_key` is the roster key that must NOT
+    # be registered for repointing while a repointing pass still exists.
+    'hoard_prefix': _HOARD_PREFIX,
+    'chest_std_key': 'svc_%shoard' % _HOARD_PREFIX,
+    'guaranteed_loot_chance': 100.0,   # loot3Chance: the guaranteed unique + relic slot
 }
 
 # ── Soul design (amgoz1 voice) ────────────────────────────────────────────────
@@ -161,7 +171,7 @@ def apply(db, tags):
     sf(_PROXY, 'castsShadows', 0)
     db._modified.add(_PROXY)
 
-    # ── 1c. R-250 (BL-W0814-12): SPAWN 100%, EVERY VISIT ──────────────────────
+    # ── 1c. R-252 (BL-W0814-12): SPAWN 100%, EVERY VISIT ──────────────────────
     # Will 2026-08-14: "when i went to the boss arena this time there was no boss
     # there. does he not spawn 100% of the time? the boss arena needs more work."
     # THREE stacked defects, all measured against the shipped arz + the built
@@ -284,10 +294,11 @@ def apply(db, tags):
     sf(P, 'championMin', 2)
     sf(P, 'championMax', 2)
     db._modified.add(P)
-    # spawnMax - championMax >= 1 LAW (asserted inline; NOT registered in the
-    # global spawn-eligibility gate because this QUEST boss intentionally scales
-    # to player level - its limit_quest window [Normal 29-36] is BELOW his L55, by
-    # SV design - so the gate's (B) level<=window check would false-fail).
+    # spawnMax - championMax >= 1 LAW. Asserted inline AND (since R-252, section 4b
+    # below) registered in the mod-wide spawn-eligibility gate - b43's reason for
+    # excluding it (the base limit_quest window [Normal 29-36] sits below his L55, so
+    # the gate's (B) level<=window check would false-fail) died with 1c's repoint to
+    # limit_bossarena [1..110].
     _spawn_max = db.get_field_value(P, 'spawnMax')
     _champ_max = db.get_field_value(P, 'championMax')
     _spawn_max = _spawn_max[0] if isinstance(_spawn_max, list) else _spawn_max
@@ -297,7 +308,7 @@ def apply(db, tags):
             f'BOSSARENA: champion-crowd-out - guaranteed main slots = '
             f'{_spawn_max - _champ_max} (spawnMax={_spawn_max}, championMax={_champ_max}); '
             f'the apex would never spawn. Need spawnMax - championMax >= 1.')
-    # R-250: exactly ONE apex (the shipped q_tantalus_lone pool's limit1=1 shape) and
+    # R-252: exactly ONE apex (the shipped q_tantalus_lone pool's limit1=1 shape) and
     # NO spawn-count equation. The inherited proxypoolequation_quest is identity
     # (poolValue*1), but an equation present at all means the literal spawnMin/Max are
     # not what the gate can reason about - _svc_neutralize_pool_equation empties it, so
@@ -308,7 +319,7 @@ def apply(db, tags):
     M._svc_neutralize_pool_equation(db, P)
     db._modified.add(P)
 
-    # ── 4b. R-250: register the arena chain in the MOD-WIDE spawn-eligibility gate ──
+    # ── 4b. R-252: register the arena chain in the MOD-WIDE spawn-eligibility gate ──
     # b43 deliberately kept this pool OUT of _verify_mod_spawn_proxies_eligible because
     # check (B) (main charLevel <= the limit window max) would false-fail against the
     # base quest window [29..36]. That reason is now GONE: 1c repointed the proxy at
@@ -321,7 +332,7 @@ def apply(db, tags):
         {'proxy': _PROXY, 'pool': _POOL, 'main_monster': _BOSS,
          'name': 'Aithon, the Ember-Crowned (Olympian Arena)'})
 
-    # ── 4c. R-250 POLISH: the arena finally PAYS (b43 RCA sec 6 item 5) ───────────
+    # ── 4c. R-252 POLISH: the arena finally PAYS (b43 RCA sec 6 item 5) ───────────
     # "the arena has no loot and no chest (verified: 0 chest/loot strings in the blob)."
     # A hub destination whose apex is a stat-wall with no hoard is exactly the
     # "underbaked" Will flagged. Build the standard dedicated Boss-locked hoard chain
@@ -332,9 +343,17 @@ def apply(db, tags):
     # (accessory hoard on the proxy), NOT the b42 world-chest pattern - the arena boss
     # is not in _SVC_FIXED_UBER_CHESTS, whose invariant requires EMPTY accessory tiers.
     # ONE chest, per R-108 (Will: "he has three chests ... where he should only have
-    # one"). Content is region-tuned by _svc_standardize_boss_chests: 'svc_aithonhoard'
-    # is registered in _SVC_CHEST_STD (Aithon charLevel [55,69,75] -> 55-57/63-65/63-65),
-    # and that battery runs AFTER this registry module, so the tuning applies.
+    # one").
+    # THE CHEST KEEPS ITS OWN TABLE. 'svc_aithonhoard' is deliberately NOT registered
+    # in _SVC_CHEST_STD: that roster drives _svc_standardize_boss_chests, which
+    # REPOINTS a chest's `tables` at the base game's boss_default_<bracket> and strands
+    # the bespoke table. Measured per chest at 1 player: bespoke = (3+1.8P)*2.4/2.8
+    # iterations, chance-mass 2.81, guaranteed unique + relic; boss_default_55-57/63-65
+    # = (3+1.6P)*1.5/1.7, chance-mass 1.11, nothing guaranteed. That repoint is the
+    # single shared cause behind Will's five 2026-08-14 chest reports
+    # (BL-W0814-2/5/7/11/13), so a chest built THIS wave does not opt into it. See the
+    # comment block at _SVC_CHEST_STD, and check C8 in
+    # tools/gate_arena_spawn_guarantee.py, which reds if that ever changes.
     _hoard = M._svc_build_dedicated_hoard(db, _HOARD_PREFIX, _HOARD_TAG)
     if not _hoard:
         raise SystemExit(
@@ -392,9 +411,9 @@ def apply(db, tags):
     tags[_MON_TAG] = 'Aithon, the Ember-Crowned'
     tags[_CHAMP_TAG] = 'Satyr ~ Ember Warden'
     tags[_SOUL_TAG] = '{^F}Aithon, the Ember-Crowned Soul'
-    tags[_HOARD_TAG] = "Ember-Crowned Hoard"       # R-250: the arena's reward chest
+    tags[_HOARD_TAG] = "Ember-Crowned Hoard"       # R-252: the arena's reward chest
 
-    print("  Olympian Arena R-250 (BL-W0814-12): spawn made UNCONDITIONAL - proxy "
+    print("  Olympian Arena R-252 (BL-W0814-12): spawn made UNCONDITIONAL - proxy "
           "quest=0 + chanceToRun=100 + limit_bossarena [1..110] (was the base quest "
           "window [29-36]/[41-55]/[60-75]) + difficulty_04 budget + pool limit1=1 and "
           "no spawn-count equation; registered in the mod-wide spawn-eligibility gate; "

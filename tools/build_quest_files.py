@@ -1751,7 +1751,7 @@ def _build_area_quests() -> dict:
                 _neutralize_widowletter_spawn(data))
         elif name == BOSSARENA_QUEST:
             # Q4-1: retarget the arena-entry volume to the placed record, then
-            # R-250: drop the ONE-SHOT arena-boss spawn (the boss is now placed
+            # R-252: drop the ONE-SHOT arena-boss spawn (the boss is now placed
             # statically in boss_arena.lvl so he is there on EVERY visit).
             out[name] = _neutralize_bossarena_spawn(
                 _fix_bossarena_entervolume(data))
@@ -2727,7 +2727,7 @@ def _fix_bossarena_entervolume(data: bytes) -> bytes:
         r'records\quests\volume_startolympianarena.dbr', expect=1)
 
 
-# ── R-250 (BL-W0814-12): the Boss Arena boss must spawn on EVERY visit ───────
+# ── R-252 (BL-W0814-12): the Boss Arena boss must spawn on EVERY visit ───────
 BOSSARENA_QUEST = 'bossarena.qst'
 BOSSARENA_SPAWN_ENTITY = r'records\proxies custom\bossarena\boss_satyrshaman.dbr'
 BOSSARENA_SPAWN_LOCATION = r'records\quests\location_bossarenacenter.dbr'
@@ -2833,7 +2833,7 @@ def _drop_spawn_entity_action(data: bytes, quest_label: str, entity: str,
 
 
 def _neutralize_bossarena_spawn(data: bytes) -> bytes:
-    """R-250: remove bossarena.qst's ONE-SHOT arena-boss spawn action.
+    """R-252: remove bossarena.qst's ONE-SHOT arena-boss spawn action.
 
     Will 2026-08-14: "when i went to the boss arena this time there was no boss
     there. does he not spawn 100% of the time?" SV's bossarena.qst spawns the
