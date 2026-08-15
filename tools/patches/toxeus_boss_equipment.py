@@ -399,7 +399,8 @@ def apply(db, tags):
                 members.append(str(nm))
         bow = _BOW_ROWS.get(tab)
         if bow is None:
-            if any(_norm(m) in (_norm(v) for v in _BOW_ROWS.values()) for m in members):
+            known_bows = {_norm(v) for v in _BOW_ROWS.values()}
+            if any(_norm(m) in known_bows for m in members):
                 raise SystemExit("[toxeus_boss_equipment] unexpected bow in %s: %r"
                                  % (tab, members))
             continue

@@ -8,7 +8,7 @@
 
 **BL-W0814-2 OBSIDIAN HOARD CHESTS over-nerfed + RECORD SEPARATION:** "the obsidian hoard chests that we have added in the game in locations such as the obsidian halls are still nerfed too much. if these share the same record as the chest - toxeus the murderer, devourer of blood hidden's chest we need to seperate those records since those should be tuned differently." => obsidian-halls chests (svc_obsidianhoard_*) drop too little; if they share a loot record with the Devourer's hidden chest, CLONE-and-separate so each tunes independently; then bump the obsidian hoards toward SV richness. (Note: prior recon flagged svc_obsidianhoard_loot_02/03 as orphaned pattern-clones - re-verify against LIVE placements now that Will sees them in-game.)
 
-**BL-W0814-3 ENDLESS HUNT NO EQUIPMENT/WEAPON:** "toxeus the murderer the endless hunt is not wearing any equipment and i dont think he has a weapon." DESPITE the R-247 spear-RIG work (anim rows bound), he is not actually EQUIPPED - no armor, likely no weapon in hand. Distinct from the rig fix: this is equip chance/slot on um_toxeus_hunt_99 (+ his equipment loadout). Give him the spear + armor the family wears.
+**BL-W0814-3 ENDLESS HUNT NO EQUIPMENT/WEAPON — FIXED BY R-251 (branch `fix/toxeus-boss-equipment-and-soul`, awaiting integration + in-game confirm `BL-R251-DEBT-2`):** measured root cause = both Hunt records carry NO `lootTorso*`/`lootLowerBody*`/`lootForearm*`/`lootHead*`/`lootLeftHand*` fields AT ALL, plus `Finger1/Misc1/Misc2/Misc3` at 0.0 (literally naked). His SPEAR was correct all along (RightHand 100% -> `runbreaker_guaranteed` -> `Weapon_Spear`; spears ride RightHand 130-to-0 in the base game), so R-247's animation work had a real weapon under it. Fix = Torso/LowerBody/Forearm at 100% on his own tier-02 loot family + the family Finger1/Misc chances; Head + LeftHand stay off by design. Original report kept verbatim below. "toxeus the murderer the endless hunt is not wearing any equipment and i dont think he has a weapon." DESPITE the R-247 spear-RIG work (anim rows bound), he is not actually EQUIPPED - no armor, likely no weapon in hand. Distinct from the rig fix: this is equip chance/slot on um_toxeus_hunt_99 (+ his equipment loadout). Give him the spear + armor the family wears.
 
 **BL-W0814-4 DEATH PENALTY -50% MORE:** "lets reduce the penalty for dying by another 50% from what it currently is at." Halve the current death penalty again (measure current value first; the tombstone recovery = death loss coupling from R-109 must stay consistent).
 
@@ -25,9 +25,9 @@
   - **(c) Invisible walls in some passageways.** "there are also some invisible walls in some of the passage ways. it seems like this area never got finished."
   FORK TO RESOLVE (drives fix scope): was crypt_floor1 ALWAYS an empty/unfinished stub in source SV/base, or was it populated in the reference source and DROPPED in our Levels.arc merge (the known MERGE-DROPPED failure mode, cf. el_boss_audit.md)? Read-only forensic STAGED at `docs/wip_workflows/uber_dungeon_forensic.js` (NOT run - Will deferred investigation 2026-08-14; fire it when the Uber Dungeon lane is greenlit). If merge-dropped -> restore from source (map lane). If never finished -> full content-population lane (chests + champion/boss spawns + navmesh/collision pass for the invisible walls). Invisible walls = navmesh/collision mismatch (blocked passages with no walkable mesh, or props with collision where floor should be).
 
-**BL-W0814-9 DEVOURER OF BLOOD IS WIELDING A BOW** (Will 2026-08-14): "toxeus the murderer devourer of blood is using a bow which makes no sense." The Devourer (record `um_bloodtoxeus_99`, the blood-cave stash guardian) has a ranged BOW equipped - wrong for a melee/blood boss. Fix = audit his equipment slots (weapon1/weapon2 + any equip-pool loot rolling a bow onto him) and replace with an appropriate melee weapon (or clear the bow). SAME CLASS as BL-W0814-3 (Endless Hunt no equipment/weapon) - both are Toxeus-boss weapon-rig bugs; candidate to batch into one boss-equipment lane.
+**BL-W0814-9 DEVOURER OF BLOOD IS WIELDING A BOW — FIXED BY R-251 (branch `fix/toxeus-boss-equipment-and-soul`, awaiting integration + in-game confirm `BL-R251-DEBT-2`):** measured root cause = `lootLeftHandItem1` = `bleed_affix_high_{n,e,l}` at chance 100 / weight 100, and LeftHand IS the engine's shield / two-handed-ranged slot (base-game census over 6,085 Monster.tpl records: Bow 0-to-48, Staff 0-to-60, Shield 0-to-123, Spear 130-to-0). Those tables were curated by AFFIX not class and carry `u_n_tendonripper` / the Nemesis recurve, both `Weapon_Bow`. Fix = off-hand -> the Enslaver's shield array, weapon hand -> a NEW guaranteed `veinrender_guaranteed_{n,e,l}` table, both bleed tables de-bowed. Original report kept verbatim below. "toxeus the murderer devourer of blood is using a bow which makes no sense." The Devourer (record `um_bloodtoxeus_99`, the blood-cave stash guardian) has a ranged BOW equipped - wrong for a melee/blood boss. Fix = audit his equipment slots (weapon1/weapon2 + any equip-pool loot rolling a bow onto him) and replace with an appropriate melee weapon (or clear the bow). SAME CLASS as BL-W0814-3 (Endless Hunt no equipment/weapon) - both are Toxeus-boss weapon-rig bugs; candidate to batch into one boss-equipment lane.
 
-**BL-W0814-10 DEVOURER OF BLOOD DID NOT DROP HIS SOUL** (Will 2026-08-14): "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul." The Devourer (`um_bloodtoxeus_99`) killed, but his named SOUL item did not drop despite an intended 100% guaranteed drop. Fix = audit the Devourer's loot table / lootMasterTable chain for the soul entry: confirm the soul item is present in his drop pool AND that its drop CHANCE is 100% (not gated by difficulty, championChance, or a percentage roll). Check whether the drop is on the base record vs a difficulty/uber variant and whether the killed instance is the one carrying the loot ref. RELATED to the R-247 soul/summon wave (tiered souls, Enslaver-summon, EoAT forge formula visibility) and BL-W0814-9 (Devourer bow) - same boss; candidate to batch into the Devourer/boss-equipment+loot lane.
+**BL-W0814-10 DEVOURER OF BLOOD DID NOT DROP HIS SOUL — ANOMALY REMOVED BY R-251, CLOSURE IS WILL'S NEXT KILL (`BL-R251-DEBT-1`, branch `fix/toxeus-boss-equipment-and-soul`):** the audit this item asked for was run and it CLEARED every listed suspect: `chanceToEquipFinger2` = 100.0 (R-243's pin, byte-unchanged), `lootFinger2Item1` = `blood_toxeus_soul_{n,e,l}` all resolving as `Jewelry_Ring`/`Magical`/`itemLevel 40` (structurally identical to the Enslaver + Hunt souls that have never failed), no difficulty or championChance gate, and EXACTLY ONE record in the DB carries `tagMonsterHemorrheus` with every spawn pool (`q_bloodtoxeus_lone`, `egg_blooddragon`, the ambush) naming it - so "base record vs difficulty/uber variant" is REFUTED. The ONE structural anomaly his three siblings do not share was the cross-class hand wiring of BL-W0814-9 (weapon hand rolling a 3/4-ARMOUR table, off-hand rolling weapons) - the same equip system the soul rides; R-251 removes it. HONEST: the engine path from a class-mismatched hand roll to a skipped Finger2 equip is NOT provable from the bytes, so this closes in-game. Escalation if it still fails = move the soul onto the Misc4 channel R-247.6a proved delivers ("Will's kill DID drop it"). Original report kept verbatim below. "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul." The Devourer (`um_bloodtoxeus_99`) killed, but his named SOUL item did not drop despite an intended 100% guaranteed drop. Fix = audit the Devourer's loot table / lootMasterTable chain for the soul entry: confirm the soul item is present in his drop pool AND that its drop CHANCE is 100% (not gated by difficulty, championChance, or a percentage roll). Check whether the drop is on the base record vs a difficulty/uber variant and whether the killed instance is the one carrying the loot ref. RELATED to the R-247 soul/summon wave (tiered souls, Enslaver-summon, EoAT forge formula visibility) and BL-W0814-9 (Devourer bow) - same boss; candidate to batch into the Devourer/boss-equipment+loot lane.
 
 **BL-W0814-11 GREAT HALL OF PROPONTIS UBER-BOSS CHEST OVER-NERFED (only 2 items)** (Will 2026-08-14, "are you kidding me. this is outrageous"): the chest in the Great Hall of Propontis that is locked behind that area's uber boss "literally just dropped two items one thing of gold and incarnation of guan-yu's grace." An uber-boss-gated chest dropping gold + ONE relic is absurdly stingy. SAME OVER-NERF CLASS as BL-W0814-2 (obsidian hoard chests), BL-W0814-5 (Aphoryteus Dread Hoard), and the R-247.7a Devourer-stash reverts. Fix = identify the Propontis uber-boss chest record + its loot table, and restore it to proper uber-tier generosity (multiple guaranteed high-tier items, not a 1-item roll). BATCH with the other over-nerfed-chest items into ONE chest-generosity audit lane (also covers BL-W0814-7 Secret Place gift box +3x). Root question for the lane: was there a mod-wide chest nerf that hit all these uber chests at once? If so, find + fix the shared cause, not one chest at a time.
 
@@ -41,6 +41,124 @@
 
 ---
 
+
+## LANE RECORD - R-251 TOXEUS BOSS EQUIPMENT + SOUL (branch `fix/toxeus-boss-equipment-and-soul` from `0ea001a`/build92-ship, 2026-08-14; **arz-only by construction** - no Text tag minted, no map, no quest, no `Levels`/`Quests`/`Text`/`Creatures` input touched; STATIC gates only in this lane, the Ship phase owns the build + record-diff)
+
+**MERGES THREE WILL REPORTS (BL-W0814-3, -9, -10) - one boss family, one system.** Verbatim quotes
+and the full design law: `docs/WILL_RULINGS.md` -> **R-251**. Player-facing test: `docs/WILL_TEST_GUIDE.md`
+top section.
+
+**THE MEASUREMENT THAT DECIDED THE LANE.** A base-game census over all **6,085 `Monster.tpl`
+records** (every armed hand row expanded to leaf `templateName`s) establishes the engine's slot law:
+
+| class | RightHand | LeftHand |
+|---|---|---|
+| `Weapon_Spear` | **130** | 0 |
+| `Weapon_Sword` | 100 | 21 |
+| `Weapon_Axe` | 68 | 26 |
+| `Weapon_Mace` | 88 | 8 |
+| `Weapon_Bow` | 0 | **48** |
+| `Weapon_Staff` | 0 | **60** |
+| `WeaponArmor_Shield` | 0 | **123** |
+
+LeftHand is the shield / two-handed-ranged slot; RightHand is the one-handed melee slot. Everything
+below follows from that one table plus the shipped bytes of `b888f022`.
+
+**ROOT CAUSES (all measured on the SHIPPED build91/92 arz `b888f022`, read-only):**
+- **(-9) the bow is a real equip.** `um_bloodtoxeus_99.lootLeftHandItem1` = `bleed_affix_high_{n,e,l}`
+  at `chanceToEquipLeftHand` 100 / weight 100 against the unique-shield row at 19. Those tables were
+  curated by AFFIX, not class: `_n` = `u_n_tendonripper` (**`Weapon_Bow`**) + 2 axes, `_l` = the
+  Nemesis recurve (**`Weapon_Bow`**) + 2 axes, `_e` = 3 axes. LeftHand is exactly where the engine
+  expects a bow. Origin: `apply_svc_patches._wire_blood_toxeus_loot` (line ~16394) used the two hand
+  slots as generic "guaranteed drop" channels rather than as equipment slots - which also put
+  `crimsonverdict_guaranteed_*` (**3 of its 4 members are ARMOUR**) into his weapon hand.
+- **(-3) the Hunt is literally naked.** `um_toxeus_hunt_99` + `um_toxeus_hunt_l_99` carry **no**
+  `lootTorso*` / `lootLowerBody*` / `lootForearm*` / `lootHead*` / `lootLeftHand*` fields at all, and
+  `chanceToEquipFinger1 / Misc1 / Misc2 / Misc3` are all **0.0**. His spear was correct the whole
+  time (RightHand 100% -> `runbreaker_guaranteed_{n,e,l}` -> exactly one `Weapon_Spear`), so this is
+  DISTINCT from the R-247 rig work exactly as the triage said. His mesh can wear armour:
+  `SkeletonRumorBoss.msh` has **18 base-game carriers**, and its boss-tier ones
+  (`jg17_undeadtyrant_{17,19,22}`) wire Head 20 / Torso 100 / LowerBody 50 / Forearm 50 / LeftHand
+  100 / RightHand 100.
+- **(-10) the soul pin is intact; every listed suspect cleared.** `chanceToEquipFinger2` = 100.0
+  (R-243's pin, and the R-243 record-diff proof that all 16 pin records were byte-unchanged still
+  holds), `lootFinger2Item1` = the 3-tier soul array, all three resolve, all three are
+  `Jewelry_Ring` / `itemClassification Magical` / `itemLevel 40` / `levelRequirement 35` -
+  field-for-field the same shape as the Enslaver and Hunt souls that have never been reported
+  missing. No difficulty gate, no `championChance` gate. **Exactly one** record in the DB carries
+  `tagMonsterHemorrheus` and **every** spawn pool names it (`q_bloodtoxeus_lone`, `egg_blooddragon`,
+  `q_bloodtoxeus_ambush`), so the base-record-vs-variant hypothesis is REFUTED. `BL-R247-DEBT-6` was
+  read first as instructed: its "bytes were already 100% on N/E/L" finding is CONSISTENT with this
+  one and neither closes the other. The only structural anomaly the Devourer has and his three
+  siblings do not is the cross-class hand wiring above - the same equip system the soul rides.
+
+**SHIPPED IN THIS LANE (commit `c1fd3fb` + this docs commit):**
+- **NEW `tools/patches/toxeus_boss_equipment.py`** (registry slot **66 of 67**, immediately after
+  `r247_bloodcave_rulings`, before the no-op `visuals` - it must be the LAST writer of these equip
+  fields, so it sits after every other writer of the two records: `toxeus_hunt_encounter`,
+  `enslaver_shroud`, `devourer_kit`, `r247_boss_forms`, `toxeus_hunt_endless`, `champion_mesh`,
+  `toxeus_champion_kits`, `r247_bloodcave_rulings`). `apply()` FAILS LOUD on any pre-state it did not
+  measure (8 distinct pre-state assertions).
+  - DEVOURER: `lootLeftHandItem1` -> `shields\commondynamic\shield_{n01b,e01,l01}` (the Enslaver's
+    byte-identical array) + the unique-shield row at 19; `lootRightHandItem1` -> **3 NEW**
+    `veinrender_guaranteed_{n,e,l}` FixedWeight tables (one row, `svc_{t}_veinrender` @100 - the
+    Runbreaker pattern); the set table demoted to `RightHandItem2` @19 and the de-bowed bleed table
+    to `RightHandItem3` @19 (both keep their drop channel - RETIREMENT PROTOCOL, no orphan, no
+    reachability regression); `bleed_affix_high_n` / `_l` de-bowed (bow row dropped, the 2
+    `Weapon_Axe` rows compacted to lootName1/2, row 3 blanked at weight 0). `_e` asserted bow-free
+    and left byte-untouched.
+  - HUNT (both records): `Torso` / `LowerBody` / `Forearm` at 100 on his own **tier-02** loot family
+    (common @5000 + unique @19 = his brothers' weight shape) + `Finger1` 100 / `Misc1` 100 /
+    `Misc2` 18 / `Misc3` 50 on tables already present and dead on his record. Spear, soul pin and
+    Misc4 EoAT rite ASSERTED, never written. `Head` + `LeftHand` deliberately left off.
+  - **NOT written:** `controller` on any Toxeus record (the R-250 `enslaver_shroud` lane owns that
+    field on the 4 roster surfaces - **field intersection with this lane is EMPTY**, so the two lanes
+    can merge in either order; the shared FILES are `tools/patches/__init__.py` (one REGISTRY block
+    each) and the three docs), `chanceToEquipFinger2` anywhere, and no Pet.tpl record.
+- **NEW `tools/gate_toxeus_boss_equipment.py`** - standalone twin of the in-build `verify()`, plus a
+  `--dryrun` mode that runs the module's own `apply()` in memory and re-gates (nothing written).
+
+**GATE CONTRACT (in-build `verify()`, post-finalization, over the FINAL assembled db):** E1 no
+Toxeus champion slot yields `Weapon_Bow`/`Weapon_Staff`; E2 slot-class integrity per the census law,
+with the sanctioned pure-drop rows named in `_MIXED_DROP_ROWS` (set row, Misc4 rite, potion/relic/
+formula rows) so the allowlist can never be widened silently, plus the Devourer's dominant weapon row
+asserted to be the guaranteed sword; E3 both Hunt records wear the three armour slots at 100 on
+class-correct tables and still hold the Runbreaker spear @100 and the EoAT rite @100; E4 all four
+R-48 champions keep the 100% pin on a soul that resolves to a real `Jewelry_Ring`; E5 MOD-WIDE every
+`chanceToEquipFinger2 == 100` soul carrier resolves to a real ring.
+
+| gate | result |
+|---|---|
+| `py -m py_compile` (module + gate + registry) | **PASS** |
+| `py tools/patches/_check_registry.py` | **PASS** - 67 modules, 0 duplicates, order hash `0544b615c5f780f6e1dbaf5630ab3df1...`, slot 66 = `toxeus_boss_equipment` between `r247_bloodcave_rulings` and `visuals` |
+| `py tools/patches/toxeus_boss_equipment.py --negtest` | **19/19 plants caught + positive control green** (bow row surviving the de-bow, a bow/staff pool back in the off-hand, armour back as the dominant weapon row, the dominant row demoted, the Vein Render table losing its sword, each Hunt armour slot switched off, a Hunt table repointed at the wrong class, armour weight drift, the spear lost / its chance dropped, the rite unwired, misc chance drift, the R-243 pin moved, the soul reference not resolving, a soul item that is not a ring, a ring slot repointed at an amulet, and the mod-wide arm on a foreign 100%-pinned carrier) |
+| **ANTI-INERT** `py tools/gate_toxeus_boss_equipment.py <shipped b888f022>` | **EXIT 1, 36 problems** - it names `bleed_affix_high_n` yielding `Weapon_Bow` in the Devourer's LeftHand, `crimsonverdict_guaranteed_n` yielding 3 armour classes in his RightHand, and all three Hunt armour slots at 0.0 on BOTH records. The gate reproduces all three of Will's reports as artifact facts |
+| **RED -> GREEN** `... --dryrun` on the same shipped arz | **PASS** - 36 problems before `apply()`, **0** after, in memory only, nothing written |
+| `tools/verify_soul_drop_rates.py --gate` | **UNAFFECTED BY CONSTRUCTION** - this lane writes no `chanceToEquipFinger2` on any record (asserted only); its 4-champions-at-100 cohort arm is independently re-asserted by E4 |
+
+**EXPECTED BUILD FOOTPRINT (for the Ship phase's record-diff):** ADDED **3**
+(`veinrender_guaranteed_{n,e,l}`), MODIFIED **5** (`um_bloodtoxeus_99` - 8 hand fields;
+`um_toxeus_hunt_99` + `um_toxeus_hunt_l_99` - 15 fields each: 3x(loot item1/item5 + 2 weights +
+chance) + 4 family chances; `bleed_affix_high_n` + `bleed_affix_high_l` - 3 loot rows each),
+REMOVED 0. **0 new Text tags** -> arz-only, `Text.arc` coupling satisfied trivially.
+
+**DEBTS (registered per the no-new-surface-without-a-gate law):**
+- `BL-R251-DEBT-1` (**P1, WILL / in-game - the closing proof for BL-W0814-10**): kill the Devourer of
+  Blood and confirm the soul drops. The anomaly is gone and the pin is proven, but the engine link
+  from a class-mismatched hand roll to a skipped `Finger2` equip is NOT derivable from the bytes.
+  Escalation, pre-designed: relocate the soul onto the **Misc4** channel, which R-247.6a proved
+  delivers in-game ("Will's kill DID drop it").
+- `BL-R251-DEBT-2` (WILL / in-game): confirm the Endless Hunt visibly WEARS the armour on the
+  `SkeletonRumorBoss` mesh (base-game-proven pairing, not yet seen in-mod - the same class of
+  unconfirmed-visual as `BL-R247-DEBT-3`), and that the Devourer reads as sword-and-shield.
+- `BL-R251-DEBT-3` (design, one lane): the Crimson Verdict **helm** has no worn slot (the family
+  ships `Head` 0 by design), so it is reachable only via the demoted set-piece drop row. Natural
+  home = the Devourer's own stash chest -> folded into the chest-generosity lane's surface.
+- `BL-R251-DEBT-4` (audit, cheap): the same class-vs-slot audit has never been run on the mod's
+  OTHER hand-authored bosses. The gate is champion-scoped today; widening E2 mod-wide needs a
+  curated allowlist first (base-game monsters legitimately carry 2H weapons in LeftHand).
+
+---
 
 ## LANE RECORD - R-249 WARDEN FIX + ALMYROS TRIM (branch `feat/warden-fix-almyros-trim` from 40ea6d9/build91-ship, 2026-08-14; **QUESTS-ONLY** wave - Levels/arz/Text BYTE-UNCHANGED by construction; BUILT det-2x + ALL TRAVEL GATES GREEN in the lane worktree, NOT deployed/promoted - integration is the orchestrator's)
 

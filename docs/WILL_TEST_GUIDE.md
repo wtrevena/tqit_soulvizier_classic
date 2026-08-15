@@ -1,6 +1,48 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> # 🛠️ R-249 WARDEN FIX + ALMYROS TRIM (2026-08-14) - READ THIS FIRST; it amends the R-248 section below
+> # ⚔️ R-251 TOXEUS BOSS EQUIPMENT (2026-08-14) - the Hunt gets dressed, the Devourer drops the bow
+>
+> **Your three reports, verbatim:** "toxeus the murderer the endless hunt is not wearing any equipment
+> and i dont think he has a weapon" + "toxeus the murderer devourer of blood is using a bow which
+> makes no sense" + "i killed toxeus the murderer devourer of blood and he did not drop his soul even
+> though he should have 100% chance of dropping his soul."
+>
+> **What was actually wrong (measured in the shipped build, not guessed):**
+>
+> - **The bow was real.** In this engine the LEFT hand is the shield / two-handed-ranged slot (I
+>   counted every base-game monster: 123 shields and 48 bows ride the left hand, zero ride the right).
+>   The Devourer's left hand was pointed at a "high bleed gear" pool that had been picked by AFFIX
+>   instead of by weapon type - and two of its three entries on Normal and Legendary are BOWS. So he
+>   equipped one and fought as an archer. Now his left hand can only ever hold a **shield**, and his
+>   right hand holds a **guaranteed Vein Render** (his own sword), so he is sword-and-shield every
+>   time. The bows are removed from that pool outright.
+> - **The Hunt really was naked - but he DID have his spear.** His record had no torso, legs or arm
+>   equipment fields at all, and his ring/potion/relic/amulet slots were all switched off. His spear
+>   was fine the whole time (right hand, 100%, the Runbreaker) - spears ride the right hand 130-to-0
+>   in the base game - so what you were seeing was a spearman in no armour. He now wears **torso,
+>   greaves and armbands at 100%** from his own loot bracket, plus the ring / potion / relic / amulet
+>   rolls his two brothers have. He stays **bare-headed on purpose** (so does the Enslaver and so does
+>   the Devourer - that skull is deliberate) and carries no shield (his spear is two-handed).
+> - **The soul: his 100% is genuinely still set.** I re-read the shipped bytes: the Devourer's soul
+>   chance is 100%, the soul item exists, it is a proper ring, and there is exactly ONE Devourer
+>   record in the game with every spawn pointing at it - so it is not a "wrong copy of the boss"
+>   problem. The one thing that WAS wrong on his record and on nobody else's in the family is the
+>   cross-wired hands above, which is the same system the soul is equipped through. That is now
+>   clean. **I cannot prove from the files that this was the cause, so this one closes on your next
+>   kill, not on my gate** (BL-R251-DEBT-1). If it still does not drop, tell me and I move the soul
+>   onto the drop channel that provably works in-game (the same one that delivered your End of All
+>   Things formula).
+>
+> **THE TEST (fully quit TQ + restart Steam first):**
+> 1. **Devourer of Blood** (blood cave, his stash / the parchment ambush): he must be holding a
+>    **sword and a shield - never a bow**. Kill him: **PASS = his soul drops** (and you should see
+>    Vein Render drop as well). FAIL = a bow in his hands, or still no soul.
+> 2. **Toxeus the Murderer, the Endless Hunt:** he must be **wearing armour** (chest, legs, arms) and
+>    still carrying his spear. FAIL = still naked, or the spear is gone.
+> 3. Kill each of them a couple of times if you can - the armour rolls are per-spawn, so a second look
+>    tells us whether it is consistent.
+
+> # 🛠️ R-249 WARDEN FIX + ALMYROS TRIM (2026-08-14) - it amends the R-248 section below
 >
 > **Your ruling, verbatim:** "no steam should not have a traveler from helos to the secret place or the
 > uber place. remove those from the steam build now. no we dont want to do the typhon-style fix, the

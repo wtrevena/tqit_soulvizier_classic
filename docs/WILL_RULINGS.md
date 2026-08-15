@@ -7774,3 +7774,127 @@ characterLifeRegen, or an undead-leech partial-bypass on his record. OPEN - Will
   fallbacks are (secondary) `isResettable=1` on the per-connection awakening step and (tertiary)
   dropping the Warden's `messageDialogTag` - both deliberately withheld here to keep the A/B clean
   and the no-churn law intact.
+
+---
+
+## R-251 [2026-08-14] IMPLEMENTED (branch `fix/toxeus-boss-equipment-and-soul`) - THE FOUGHT TOXEUS CHAMPIONS WEAR AND WIELD WHAT THEIR SLOTS CAN HOLD: the Endless Hunt gets the family's armour, the Devourer of Blood loses the bow, and every hand slot is class-correct
+
+**WILL'S REPORTS, VERBATIM (2026-08-14, three in one sitting - one boss family, one system):**
+
+> (BL-W0814-3) "toxeus the murderer the endless hunt is not wearing any equipment and i dont think he has a weapon"
+
+> (BL-W0814-9) "toxeus the murderer devourer of blood is using a bow which makes no sense"
+
+> (BL-W0814-10) "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul"
+
+**THE MEASUREMENT THAT DECIDES ALL THREE (base-game census, 6,085 `Monster.tpl` records, every hand
+slot's loot chain expanded to leaf `templateName`s):**
+
+| class | RightHand | LeftHand |
+|---|---|---|
+| `Weapon_Spear` | **130** | 0 |
+| `Weapon_Sword` | 100 | 21 |
+| `Weapon_Axe` | 68 | 26 |
+| `Weapon_Mace` | 88 | 8 |
+| `Weapon_Bow` | 0 | **48** |
+| `Weapon_Staff` | 0 | **60** |
+| `WeaponArmor_Shield` | 0 | **123** |
+
+In this engine **LeftHand is the shield / two-handed-ranged slot and RightHand is the one-handed
+melee slot.** That one table is the design law this ruling rests on.
+
+**WHAT THIS RULES (design law):**
+
+1. **(-9) THE BOW IS A REAL EQUIP, NOT A COSMETIC GLITCH - AND THE SLOT IS THE CAUSE.**
+   `um_bloodtoxeus_99.lootLeftHandItem1` = `bleed_affix_high_{n,e,l}` at `chanceToEquipLeftHand`
+   100 with weight 100 (against the unique shield row at 19). Those three tables were curated by
+   **affix, not by class**: `bleed_affix_high_n` carries `u_n_tendonripper` and `bleed_affix_high_l`
+   carries the Nemesis recurve - both `Weapon_Bow`. LeftHand is exactly where the engine expects a
+   bow, so the Devourer equips one and fights as an archer, precisely as Will saw. Origin:
+   `apply_svc_patches._wire_blood_toxeus_loot` used the two hand slots as generic "guaranteed drop"
+   channels rather than as equipment slots. **RULED:** the Devourer's off-hand may only ever hold a
+   **shield** (his brother the Enslaver's byte-identical `shields\commondynamic\shield_{n01b,e01,l01}`
+   array), and his weapon hand holds a **guaranteed Vein Render**
+   (NEW `veinrender_guaranteed_{n,e,l}`, the Runbreaker pattern: FixedWeight, one row, @100). The
+   4-piece `crimsonverdict_guaranteed_*` set table and the (now de-bowed) `bleed_affix_high_*` table
+   are DEMOTED to weight-19 drop rows on the weapon hand, so neither loses its drop channel
+   (RETIREMENT PROTOCOL satisfied - no record orphaned, no reachability regression) and neither can
+   be the dominant roll. The two bow rows are removed from `bleed_affix_high_n` / `_l`
+   (`_e` was already bow-free and is asserted, not written).
+
+2. **(-3) THE ENDLESS HUNT'S WEAPON WAS NEVER THE PROBLEM; HIS LOADOUT WAS.** Measured on the
+   shipped arz: `um_toxeus_hunt_99` and `um_toxeus_hunt_l_99` carry **no `lootTorso*`,
+   `lootLowerBody*`, `lootForearm*`, `lootHead*` or `lootLeftHand*` fields at all**, and
+   `chanceToEquipFinger1 / Misc1 / Misc2 / Misc3` all sit at **0.0** - three worn slots missing
+   outright and four more switched off. He is literally naked, exactly as Will described. His SPEAR
+   is correct and is **asserted, never written**: RightHand 100% -> `runbreaker_guaranteed_{n,e,l}`
+   -> exactly one `Weapon_Spear` (`svc_{t}_runbreaker`), and spears ride RightHand 130-to-0 in the
+   base game, so R-247's round-3 animation work has a real weapon under it.
+   **RULED:** he wears the family's armour - `Torso` / `LowerBody` / `Forearm` at 100% on **his own
+   tier-02 loot family** (the bracket his record already uses for `finger_n02`, `amulet_n02`,
+   `relic_15-21`), common @5000 + unique @19 = his two brothers' exact weight shape - plus the
+   family chances `Finger1` 100 / `Misc1` 100 / `Misc2` 18 / `Misc3` 50 on loot tables that were
+   already present and dead on his record. **Head and LeftHand stay OFF by design:** both brothers
+   ship `Head` 0 (the family's bare skull, deliberately tuned by R-102 and R-247.5a) and his spear
+   is two-handed. His mesh can carry this: `SkeletonRumorBoss.msh` has **18 base-game carriers** and
+   the boss-tier ones (`jg17_undeadtyrant_{17,19,22}`) wire Head 20 / Torso 100 / LowerBody 50 /
+   Forearm 50 / LeftHand 100 / RightHand 100 - the pairing is base-game-PROVEN, not assumed.
+
+3. **(-10) THE 100% SOUL PIN IS INTACT; THE HANDS WERE THE ONLY ANOMALY - AND CLOSURE IS WILL'S
+   NEXT KILL.** Verified byte-for-byte in the shipped arz: `chanceToEquipFinger2` = 100.0 (R-243's
+   pin, byte-unchanged), `lootFinger2Item1` = `blood_toxeus_soul_{n,e,l}`, all three resolve, all
+   three are `Jewelry_Ring` / `Magical` / `itemLevel 40` - **structurally identical** to the Enslaver
+   and Hunt souls that have never been reported missing. Exactly ONE record in the whole DB carries
+   `tagMonsterHemorrheus`, and every spawn pool (`q_bloodtoxeus_lone`, `egg_blooddragon`, the
+   parchment ambush) names that same record, so "the killed instance was a different variant" is
+   REFUTED. The only structural difference between the Devourer's equip block and his three
+   siblings' is the cross-class hand wiring above (his weapon hand rolled a table that is 3/4
+   ARMOUR; his off-hand rolled weapons). This ruling removes that anomaly. **HONEST LIMIT, recorded
+   on purpose:** the engine path from a class-mismatched hand roll to a skipped `Finger2` equip is
+   **not provable from the bytes**, so -10 closes on Will's next Devourer kill, not on this gate.
+   The escalation lever is pre-designed and evidence-backed: move the soul onto the **Misc4** drop
+   channel, which R-247.6a proved delivers in-game ("Will's kill DID drop it").
+
+4. **(THE STANDING INVARIANT) NO TOXEUS CHAMPION MAY CARRY A TWO-HANDED RANGED WEAPON IN ANY SLOT,
+   AND NO CHAMPION SLOT MAY ROLL A CLASS THAT SLOT CANNOT WEAR** unless the row is named in the
+   module's `_MIXED_DROP_ROWS` allowlist with a reason (the sanctioned pure-drop channels: the
+   Crimson Verdict set row, the Misc4 EoAT rite, the potion/relic/formula rows). Enforced in-build
+   by `tools/patches/toxeus_boss_equipment.py::verify` and standalone by
+   `tools/gate_toxeus_boss_equipment.py`.
+
+**WHAT THIS RULING DOES NOT TOUCH (asserted, never written):** `chanceToEquipFinger2` anywhere
+(R-243's pin - so `tools/verify_soul_drop_rates.py --gate` stays green by construction), the Hunt's
+Runbreaker spear and his Misc4 EoAT rite (R-247.6a/6b), the `controller` field on any Toxeus roster
+record (the R-250 `enslaver_shroud` lane owns that field - **zero field intersection**), the
+Devourer's stash tables and guard pool (R-247.7a/7b), and every Pet.tpl record (the
+Monster-equipment-onto-Pet crash law is never approached).
+
+**GATE + ANTI-INERT PROOF:** the gate EXITS 1 on the SHIPPED build91/92 arz `b888f022` with **36
+problems**, naming the Devourer's bow rows and the Hunt's three missing armour slots - it reproduces
+all three of Will's reports as artifact facts, so it is not a gate that can only ever be green.
+`py tools/gate_toxeus_boss_equipment.py <arz> --dryrun` proves RED -> GREEN by running the module's
+own `apply()` in memory over that same arz. Planted negatives: **19/19 caught + positive control
+green** (`py tools/patches/toxeus_boss_equipment.py --negtest`).
+
+**WILL DECISIONS FLAGGED (each one constant, veto-friendly):**
+1. The Devourer's off-hand is a **shield** rather than a second blade. Alternative: a class-correct
+   1H melee off-hand table (the base game does that 26 times for axes) - one constant.
+2. The Hunt stays **bare-headed and shieldless** (family convention + two-handed spear). His mesh's
+   own base-game boss exemplar wears a helm at 20%, so turning `Head` on is one constant if Will
+   would rather see him crowned.
+3. The Hunt's armour is drawn from the **tier-02** bracket (his own loot tier), not his brothers'
+   tier-01 - one constant per slot.
+4. `bleed_affix_high_{n,l}` lose their bow row rather than gaining a replacement melee unique; the
+   tables drop from 3 members to 2. Restoring a third high-bleed 1H melee pick is a one-line
+   addition if Will wants the breadth back.
+
+**DEBT:**
+- `BL-R251-DEBT-1` (WILL / in-game, the closing proof for -10): kill the Devourer of Blood and
+  confirm the soul drops. If it still does not, the engine channel is confirmed and the escalation
+  is the Misc4 relocation above.
+- `BL-R251-DEBT-2` (WILL / in-game): confirm the Endless Hunt now visibly WEARS armour on the
+  `SkeletonRumorBoss` mesh (base-game-proven, but not yet seen in-mod) and that the Devourer is
+  visibly sword-and-shield.
+- `BL-R251-DEBT-3` (design, one lane): the Crimson Verdict **helm** has no worn slot - the family
+  ships `Head` 0 by design, so it is reachable only through the demoted set-piece drop row. The
+  natural home is the Devourer's own stash chest; folded into the chest-generosity lane's surface.
