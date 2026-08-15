@@ -2,6 +2,11 @@
 
 > # 💰 R-251 THE UBER CHESTS PAY LIKE UBER CHESTS AGAIN (2026-08-14) - READ THIS FIRST
 >
+> **✅ LIVE ON DEV *AND* STEAM as `build95` (arz `694fd88150b37d027dcf6b170c5e1bdb`).** arz-only:
+> no map, no quest, no Text and no new item (all four sibling artifacts md5-proven byte-identical to
+> build93). Closes `BL-W0814-2`, `-5`, `-7`, `-11` and `-13` - all five of your chest reports, with
+> one fix. **Fully quit TQ and restart Steam before testing** (standing rule).
+>
 > **Your five reports, verbatim:** "are you kidding me. this is outrageous ... literally just dropped
 > two items one thing of gold and incarnation of guan-yu's grace" (Propontis) / "same problem with the
 > chest guarded by tantalus" / "aphoryteus (spelled wrong) dread hoard is a terrible chest, it got
