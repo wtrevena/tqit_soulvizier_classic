@@ -249,6 +249,18 @@ is a Will design decision the lane deliberately did not make for him).
    dedup. `run_registry` calls `apply()` once so it was not reachable, but a dry run / double pass /
    test harness would double-register the arena and inflate the "Spawn-eligibility invariant OK: N
    proxies" count. Now guarded on the proxy path, matching the `diadochi` / `toxeus_hunt_*` idiom.
+4. **INFO - the round-2 "the ring may be dark" side observation is CLOSED, measured, no defect.**
+   The vet noted `5mlight_dyn_orange.dbr` (b43's six arena ring lights, the ones this lane put
+   `pit_fx02` flames under) has no record in our arz and warned the ring might not light. Checked
+   both databases directly: the record IS in the **BASE** TQAE database as `Class=EffectEntity`,
+   inside a 30-record `records\lights\dynamiclights\` family, and our arz carries **zero** of that
+   family. That is the expected shape - `SoulvizierClassic.arz` is a mod **overlay**, not a full
+   database, and the engine resolves base union mod. The complementary case proves the same point
+   from the other side: `records\drxmap\effects\pit_fx02.dbr` is `Class=EffectEntity` in OUR arz and
+   absent from base. Independent corroboration that the family works in-game today: the 10m sibling
+   `10mlight_dyn_orange.dbr` is a live placed entity at the Uber landing on the SHIPPED map (it
+   appears in `gate_landing_clearance`'s clearance listing). **No lane owns a fix here; nothing to
+   register.**
 
 ---
 
