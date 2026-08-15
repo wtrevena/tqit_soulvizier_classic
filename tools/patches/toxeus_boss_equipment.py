@@ -169,6 +169,14 @@ _W_COMMON, _W_UNIQUE = 5000, 19
 # the family chances the Hunt's dead slots are switched on to
 _HUNT_MISC_CHANCES = {'Finger1': 100.0, 'Misc1': 100.0, 'Misc2': 18.0, 'Misc3': 50.0}
 
+# STRUCTURAL GUARD (import-time, not a runtime hope): the two slot sets this module
+# writes may never include Finger2. R-243 pinned the four champions' soul rate at 100
+# and its record-diff proved all 16 pin records byte-unchanged; this lane asserts that
+# pin and must never touch it, which is what keeps `tools/verify_soul_drop_rates.py
+# --gate` green by construction rather than by luck.
+assert 'Finger2' not in _HUNT_ARMOUR, 'R-243: Finger2 is asserted, never written'
+assert 'Finger2' not in _HUNT_MISC_CHANCES, 'R-243: Finger2 is asserted, never written'
+
 # the bow rows this module removes (measured in the shipped arz b888f022)
 _BOW_ROWS = {
     _BLEED[0]: 'records\\item\\equipmentweapon\\bow\\u_n_tendonripper.dbr',
