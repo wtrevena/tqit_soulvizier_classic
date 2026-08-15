@@ -109,7 +109,7 @@ x1, SecretForest2 x2, PillagedVillage x2 - hence "the secret **places**") ->
 
 | contract | BEFORE (shipped `b888f022`) | AFTER (wave applied in memory) |
 | --- | --- | --- |
-| R-250 uber hoard generosity (H1-H8) | **RED - 83 findings** (21 H1 + 18 H2 + 27 H3 + H6 + H7) | **GREEN** |
+| R-250 uber hoard generosity (H1-H8) | **RED - 85 findings** (21 H1 + 18 H2 + 27 H3 + H6 + H7 + **2 H8**) | **GREEN** |
 | R-240 loot volume (V1-V7b) | GREEN | **GREEN** |
 | R-181 loot distribution (D1-D9, incl. D7/D7X2) | GREEN | **GREEN** |
 | R-181 loot ownership (OWN1/OWN2) | GREEN | **GREEN** |
@@ -173,7 +173,8 @@ multiplier, and the scope proofs fail the build if anything else drifts.
   missing record and the build stops rather than shipping a chest that pays nothing. (Every other
   hoard family degrades to "no chest" instead - `_svc_build_dedicated_hoard` returns `None` and
   authors nothing - so Dorus is the one path where a donor gap is a hard abort.)
-- `gate_uber_hoard_generosity` REDS on every PRE-R-250 artifact by design (83 findings). Read a
+- `gate_uber_hoard_generosity` REDS on every PRE-R-250 artifact by design (**85** findings; round 1
+  measured 83, the extra 2 are H8 on the Obsidian tier leak). Read a
   pre-R-250 red as the anchor PASSING, exactly like `BL-R240-DEBT-8`'s D7X2 note. Run it on a
   POST-R-250 arz.
 - Build-log line to look for: `R-250 hoard wiring: 30 uber/boss hoard chest(s) now open their OWN

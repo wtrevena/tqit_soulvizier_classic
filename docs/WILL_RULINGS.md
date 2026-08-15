@@ -7870,7 +7870,7 @@ the wire so a table that is both orphaned and wrong-tier reds on its own - the e
 
 | contract | BEFORE | AFTER |
 | --- | --- | --- |
-| R-250 uber hoard generosity (H1-H8) | **RED, 83 findings** | GREEN |
+| R-250 uber hoard generosity (H1-H8) | **RED, 85 findings** (83 + 2 H8) | GREEN |
 | R-240 loot volume (V1-V7b) | GREEN | GREEN |
 | R-181 loot distribution (D1-D9, incl. D7/D7X2) | GREEN | GREEN |
 | R-181 loot ownership (OWN1/OWN2) | GREEN | GREEN |
