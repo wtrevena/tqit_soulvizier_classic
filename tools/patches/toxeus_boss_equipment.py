@@ -16,22 +16,40 @@ be re-derived: over all 6,085 `Monster.tpl` records in the base-game `database.a
 record is counted ONCE per class its hand can yield - every armed row of that hand
 (chanceToEquip<Hand> > 0, row weight > 0) is expanded through the loot chain to leaf
 `templateName` stems, the per-record class sets are unioned, and each class gets one tick.
-(A per-ARMED-ROW rule instead of a per-RECORD rule shifts every non-zero count - Spear
-196/0, Sword 166/27, Bow 0/55, Shield 0/160 - and changes NO zero. The law lives in the
-zeros, so it is rule-independent.)
+Item template stems are spelled inconsistently in the game data, so BOTH spellings are
+listed and the module folds case everywhere.
 
-    class                RightHand   LeftHand
-    Weapon_Spear             122          0      <- the Hunt's Runbreaker is CORRECT
-    Weapon_Sword             144         24
-    Weapon_Axe                78         27
-    Weapon_Mace               94         11
-    weapon_rangedonehand     125         10
-    Weapon_Bow                 0         49      <- LeftHand IS the bow slot
-    Weapon_Staff               0        113
-    WeaponArmor_Shield         0        144      <- LeftHand IS the shield slot
+    class stem (as spelled)   RightHand   LeftHand
+    Weapon_Spear                  493          0    <- the Hunt's Runbreaker is CORRECT
+    Weapon_Sword                 1164        244
+    Weapon_Axe / weapon_axe      1074 / 132  221 / 36
+    Weapon_Mace / weapon_mace    1069 / 105  172 / 33
+    weapon_rangedonehand          127         12
+    Weapon_Bow                     17        514    <- LeftHand IS the bow slot
+    Weapon_Staff                   17        710
+    WeaponArmor_Shield              0        805    <- LeftHand IS the shield slot
 
 So in this engine LeftHand is the shield / two-handed-ranged slot and RightHand is the
-one-handed melee slot. That single table explains two of the three reports.
+one-handed melee slot. That table explains two of the three reports.
+
+TWO ZEROS ARE ABSOLUTE and one pair is merely overwhelming, stated precisely because a
+round-2 draft of this docstring claimed all four were zero and was WRONG:
+  * WeaponArmor_Shield NEVER rides RightHand (0) and Weapon_Spear NEVER rides LeftHand (0).
+  * Weapon_Bow and Weapon_Staff ride LeftHand 514 / 710 times against 17 / 17 on RightHand,
+    and those 17 are the SAME 17 records for both classes - the tombrot / creeping-slime /
+    repugnant-decay pile and the three earth elementals, none of which has a humanoid hand.
+    All 17 reach a bow AND a staff through one shared chain
+    (`...\MasterTables\All_Dyn_N0{1b,2,3}.dbr`), i.e. they use lootRightHandItem1 as a
+    GENERIC DROP CHANNEL rather than as an equipment slot. That is precisely the
+    anti-pattern this lane removes from the Devourer, so they corroborate the design rather
+    than weaken it - but they are not zero, and this module does not pretend they are.
+ROUND-3 CORRECTION, recorded rather than quietly overwritten: the census published at
+rounds 1-2 (Spear 122/0, Sword 144/24, Bow 0/49, Shield 0/144) was an artefact of THIS
+MODULE'S OWN BUG. `db.has_record()` is an exact-case dict lookup; the arz stores record
+NAMES lowercase but its internal REFERENCES mixed-case, so every mixed-case chain resolved
+to nothing, was classified as an "unresolved leaf" and was dropped by every caller. The
+old table was therefore a census of the ~1/8 of chains whose reference spelling happened to
+be lowercase. `_resolve()` below fixes the lookup; the numbers above are the re-derivation.
 
 (-9) THE BOW IS REAL AND IT IS EQUIPPED. `um_bloodtoxeus_99.lootLeftHandItem1` =
 `bleed_affix_high_{n,e,l}` at `chanceToEquipLeftHand` 100 / weight 100 (vs the unique
@@ -138,7 +156,10 @@ records (`toxeus_hunt_encounter`, `toxeus_hunt_endless`, `enslaver_shroud`, `dev
 `champion_mesh`, `r247_boss_forms`, `toxeus_champion_kits`, `r247_bloodcave_rulings`) is
 registered earlier, and apply() FAILS LOUD on any pre-state it did not measure.
 
-GATE (verify, post-finalization, over the FINAL assembled db):
+GATE (verify, post-finalization, over the FINAL assembled db). EVERY arm resolves record
+references CASE-INSENSITIVELY via `_resolve` and compares class stems CASE-FOLDED, so a
+violating row can no longer hide behind a mixed-case table reference (2,435 references in
+the shipped mod arz resolve only case-insensitively) or behind a lowercase template stem:
   E1 no Toxeus champion slot's loot chain yields Weapon_Bow or Weapon_Staff anywhere, on
      ANY difficulty (the shipped bug was Normal+Legendary-only, so every arm below walks
      all three difficulty tables of every row, never just tier N);
@@ -146,16 +167,25 @@ GATE (verify, post-finalization, over the FINAL assembled db):
      except the single row named in `_MIXED_DROP_ROWS` - an allowlist that is validated at
      import time to contain nothing but governed slots, so it can neither be widened
      silently nor accumulate entries the gate never consults;
+  E2b the Devourer's literal hand wiring, INCLUDING `chanceToEquipRightHand` /
+     `chanceToEquipLeftHand` themselves at 100. E1/E2 SKIP any slot whose chanceToEquip is
+     0, so switching a hand off would otherwise delete it from the sweep instead of failing
+     it - and "he has no weapon" is the literal text of Will's -3 report;
   E2c the MEASURED roll arithmetic of the Devourer's two hands (armed / signature / shield
      shares, minimum over the three difficulties) clears the named floors - this is the arm
-     that makes the player-facing claim falsifiable;
+     that makes the player-facing claim falsifiable. A hand whose selectable distribution is
+     EMPTY (slot on, every row weight 0) is reported as DEAD and fails; it is never scored
+     as a vacuous 100%;
   E3 both Hunt records wear Torso + LowerBody + Forearm at 100 on class-correct tables,
      and still carry the Runbreaker spear at RightHand 100 and the Misc4 rite at 100;
   E4 all four R-48 champions keep `chanceToEquipFinger2` = 100 with a soul table that
      resolves to a real Jewelry_Ring (the -10 defect class);
-  E5 MOD-WIDE: every creature pinned at `chanceToEquipFinger2` = 100 has a soul reference
-     that resolves to a Jewelry_Ring item - a 100% pin pointing at nothing is the
-     "did not drop his soul" bug in its purest form.
+  E5 MOD-WIDE: EVERY creature pinned at `chanceToEquipFinger2` = 100 must have a Finger2
+     chain that resolves to a Jewelry_Ring - a 100% pin pointing at nothing, or at a class
+     the ring slot cannot hold, is the "did not drop his soul" bug in its purest form. The
+     seven PRE-EXISTING offenders measured in b888f022 (outside this lane's surface) are
+     named individually in `_E5_PREEXISTING` and registered as BL-R251-DEBT-4, so the arm is
+     live for anything NEW without this lane reding the build on someone else's records.
 Standalone twin: `py tools/gate_toxeus_boss_equipment.py [arz]`
 Negative test:   `py tools/patches/toxeus_boss_equipment.py --negtest`
 """
@@ -231,22 +261,30 @@ _BOW_ROWS = {
 }
 
 # ── the slot-class law (base-game census, see docstring) ────────────────────
-_ONE_HAND_MELEE = {'Weapon_Sword', 'Weapon_Axe', 'Weapon_Mace', 'Weapon_Spear',
-                   'WeaponMelee_Sword', 'weapon_rangedonehand'}
+# STORED LOWERCASE, COMPARED CASE-FOLDED, and `_validate_class_sets` refuses any entry that
+# is not lowercase. The base game spells the same class both ways - Weapon_Axe 407 records
+# / weapon_axe 50, Weapon_Mace 469 / weapon_mace 42, Weapon_Sword 558 / weapon_sword 6,
+# Weapon_Spear 439 / weapon_spear 1, Armor_Head 1382 / armor_head 2, Armor_UpperBody 1397 /
+# armor_upperbody 1 - and the mod arz adds Weapon_RangedOneHand beside the base game's
+# lowercase weapon_rangedonehand. A set written in one spelling silently fails to recognise
+# the other, which is fail-CLOSED noise on a legitimate item (round-2 shipped exactly that:
+# 'weapon_rangedonehand' was listed and 'Weapon_RangedOneHand' was not).
+_ONE_HAND_MELEE = {'weapon_sword', 'weapon_axe', 'weapon_mace', 'weapon_spear',
+                   'weaponmelee_sword', 'weapon_rangedonehand'}
 _SLOT_CLASSES = {
-    'Head': {'Armor_Head'},
-    'Torso': {'Armor_UpperBody'},
-    'LowerBody': {'Armor_LowerBody'},
-    'Forearm': {'Armor_Forearm'},
-    'LeftHand': {'WeaponArmor_Shield'},
+    'Head': {'armor_head'},
+    'Torso': {'armor_upperbody'},
+    'LowerBody': {'armor_lowerbody'},
+    'Forearm': {'armor_forearm'},
+    'LeftHand': {'weaponarmor_shield'},
     'RightHand': set(_ONE_HAND_MELEE),
-    'Finger1': {'Jewelry_Ring'},
-    'Finger2': {'Jewelry_Ring'},
-    'Misc3': {'Jewelry_Amulet'},
+    'Finger1': {'jewelry_ring'},
+    'Finger2': {'jewelry_ring'},
+    'Misc3': {'jewelry_amulet'},
 }
 # Classes that must never appear in ANY Toxeus champion slot, governed or not: the
 # two-handed ranged families. This is Will's -9 defect class, stated as an invariant.
-_BANNED_CLASSES = {'Weapon_Bow', 'Weapon_Staff'}
+_BANNED_CLASSES = {'weapon_bow', 'weapon_staff'}
 
 # THE ALLOWLIST. Exactly one row in this lane is deliberately mixed-class: the 4-piece
 # Crimson Verdict set's only drop channel, parked in the OFF hand so a mis-class roll can
@@ -268,6 +306,51 @@ _SLOTS = ('Head', 'Torso', 'LowerBody', 'Forearm', 'LeftHand', 'RightHand',
 _MIN_ARMED_HAND_PCT = 100.0     # every armed RightHand row is a one-handed melee weapon
 _MIN_SIGNATURE_PCT = 70.0       # ... and most of them are his own sword
 _MIN_SHIELD_PCT = 85.0          # the off hand is a shield, bar the set-drop roll
+
+
+# E5's PRE-EXISTING offenders, measured in the shipped b888f022 and named individually so
+# the arm stays LIVE for anything new. All seven are outside this lane's surface (harpy
+# quest bosses and the DRX bloodwitch reavers), all seven predate R-251, and all seven are
+# registered as BL-R251-DEBT-4. An entry here is a dated exception, not a blessing.
+_E5_PREEXISTING = {
+    'records\\creature\\monster\\harpy\\quest_celtheano_19.dbr':
+        'pinned 100% with lootFinger2Item1 EMPTY (base-game harpy quest boss)',
+    'records\\creature\\monster\\harpy\\quest_celtheano_20.dbr':
+        'pinned 100% with lootFinger2Item1 EMPTY (base-game harpy quest boss)',
+    'records\\drxcreatures\\bloodwitch\\d_reaver_40.dbr':
+        'pinned 100% with Finger2 pointed at a WAND master table (DRX upstream)',
+    'records\\drxcreatures\\bloodwitch\\d_reaver_41.dbr':
+        'pinned 100% with Finger2 pointed at a WAND master table (DRX upstream)',
+    'records\\drxcreatures\\bloodwitch\\d_reaver_42.dbr':
+        'pinned 100% with Finger2 pointed at a WAND master table (DRX upstream)',
+    'records\\drxcreatures\\bloodwitch\\x2d_reaver_01.dbr':
+        'pinned 100% with Finger2 pointed at a WAND master table (DRX upstream)',
+    'records\\drxcreatures\\bloodwitch\\svc_leinth_guard_reaver.dbr':
+        'pinned 100% with Finger2 pointed at a WAND master table (DRX upstream)',
+}
+# (spelled out rather than via `_norm`, which is defined further down)
+_E5_PREEXISTING_LC = {k.replace('/', '\\').strip().lower() for k in _E5_PREEXISTING}
+
+
+def _validate_class_sets():
+    """Every class name compared against must be stored lowercase.
+
+    Comparisons are case-folded because the game data spells the same class both ways (see
+    the block above `_ONE_HAND_MELEE`). A set entry that is NOT lowercase can therefore
+    never match anything, which turns a coverage set into dead weight without any symptom.
+    This refuses at import rather than at some later build.
+    """
+    sets = [('_ONE_HAND_MELEE', _ONE_HAND_MELEE), ('_BANNED_CLASSES', _BANNED_CLASSES)]
+    sets += [('_SLOT_CLASSES[%s]' % k, v) for k, v in sorted(_SLOT_CLASSES.items())]
+    bad = sorted({'%s: %r' % (n, c) for n, s in sets for c in s if c != c.lower()})
+    if bad:
+        raise AssertionError(
+            "class sets must be stored lowercase because every comparison is case-folded; "
+            "these are not: %s" % '; '.join(bad))
+    return True
+
+
+_validate_class_sets()
 
 
 def _validate_allowlist(rows):
@@ -335,6 +418,70 @@ def _same(got, want):
     return [_norm(x) for x in got] == [_norm(x) for x in want]
 
 
+def _rec_count(db):
+    """Cheap record count, used only to invalidate the case-fold index."""
+    for attr in ('_raw_records', 'd'):
+        m = getattr(db, attr, None)
+        if isinstance(m, dict):
+            return len(m)
+    return len(db.record_names())
+
+
+def _rec_index(db):
+    """{lowercased record name: the db's own spelling}, built once and cached on the db.
+
+    THE BUG THIS EXISTS TO KILL (round 3). `db.has_record()` is an exact-case dict lookup.
+    The arz stores record NAMES lowercase (0 of the base game's 74,013 contain an uppercase
+    letter) but its internal REFERENCES mixed-case - 2,436 references in the shipped mod arz
+    resolve ONLY case-insensitively. Every such reference used to miss, `_leaf_items` filed
+    the chain as an "unresolved leaf", and every caller then IGNORED it by design. Two
+    consequences, both shipped at round 2: the class arms carrying Will's -9 invariant were
+    BLIND to any violating row reached through a mixed-case reference, and the base-game
+    census this lane published as design law counted only the ~1/8 of chains whose reference
+    spelling happened to be lowercase.
+
+    The index is invalidated by record COUNT, which is sound here because the only records
+    this module creates are the three `veinrender_guaranteed_*` tables it spells itself in
+    lowercase (so they resolve by exact match regardless) and because nothing in the build
+    renames a record in place.
+    """
+    cached = getattr(db, '_r251_rec_index', None)
+    n = _rec_count(db)
+    if cached is not None and cached[0] == n:
+        return cached[1]
+    idx = {}
+    for name in db.record_names():
+        idx.setdefault(_norm(name), name)
+    try:
+        db._r251_rec_index = (n, idx)
+    except AttributeError:                 # a db that refuses attributes: rebuild each call
+        pass
+    return idx
+
+
+def _resolve(db, path):
+    """The db's own spelling of `path`, or None when the record genuinely does not exist."""
+    if not path:
+        return None
+    if db.has_record(path):
+        return path
+    return _rec_index(db).get(_norm(path))
+
+
+def _has(db, path):
+    return _resolve(db, path) is not None
+
+
+def _banned_of(classes):
+    """The banned class stems in `classes`, in their ORIGINAL spelling (for the message)."""
+    return {c for c in classes if str(c).lower() in _BANNED_CLASSES}
+
+
+def _wrong_of(classes, allowed):
+    """The stems in `classes` that `allowed` (a lowercase set) does not permit."""
+    return {c for c in classes if str(c).lower() not in allowed}
+
+
 def _set(db, rec, field, value, dtype_if_new=None):
     """Write a field, passing an explicit dtype ONLY when the field is NEW.
 
@@ -373,26 +520,32 @@ def _leaf_items(db, table, weight=1.0, depth=0, seen=(), out=None):
     caller IGNORES them (an unresolved leaf is never a violation - that would cry wolf on
     half the base game). Measured on b888f022: ZERO of the tables this lane touches has an
     unresolved leaf, so the shares below are exact, not lower bounds.
+
+    CASE (round 3): resolution goes through `_resolve`, so a reference that differs from the
+    stored record name only by case is FOLLOWED, not written off as unresolved. Before that
+    fix the "unresolved leaf is never a violation" rule silently swallowed 2,436 references
+    that do resolve, which is how a violating row could hide behind a mixed-case spelling.
     """
     if out is None:
         out = {}
     if not table or weight <= 0 or depth > 6 or _norm(table) in seen:
         return out
-    if not db.has_record(table):
+    real = _resolve(db, table)
+    if real is None:
         out[table] = out.get(table, 0.0) + weight
         return out
     kids = []
-    for kk in _base_fields(db, table):
+    for kk in _base_fields(db, real):
         low = kk.lower()
         if not low.startswith(('lootname', 'itemname', 'bothname')):
             continue
         idx = ''.join(ch for ch in kk if ch.isdigit())
-        w = _f(_gv(db, table, 'lootWeight%s' % idx, 0)) if idx else 0.0
-        paths = [x for x in _gl(db, table, kk) if x.lower().endswith('.dbr')]
+        w = _f(_gv(db, real, 'lootWeight%s' % idx, 0)) if idx else 0.0
+        paths = [x for x in _gl(db, real, kk) if x.lower().endswith('.dbr')]
         for p in paths:
             kids.append((p, w / len(paths)))
     if not kids:
-        out[table] = out.get(table, 0.0) + weight
+        out[real] = out.get(real, 0.0) + weight
         return out
     total = sum(w for _p, w in kids)
     if total <= 0:                     # unweighted table: treat members as equiprobable
@@ -405,10 +558,15 @@ def _leaf_items(db, table, weight=1.0, depth=0, seen=(), out=None):
 
 
 def _class_of(db, path):
-    """The item's templateName stem, or '' when the record is not in this db."""
-    if not db.has_record(path):
+    """The item's templateName stem in its ORIGINAL spelling, '' if not in this db.
+
+    Callers compare case-folded (`_banned_of` / `_wrong_of` / `_pct_class`); the original
+    spelling is kept so an offender message names the stem the way the record spells it.
+    """
+    real = _resolve(db, path)
+    if real is None:
         return ''
-    stem = str(_gv(db, path, 'templateName', '') or '').replace('/', '\\').rsplit('\\', 1)[-1]
+    stem = str(_gv(db, real, 'templateName', '') or '').replace('/', '\\').rsplit('\\', 1)[-1]
     return stem[:-4] if stem.lower().endswith('.tpl') else stem
 
 
@@ -443,7 +601,9 @@ def _slot_dist(db, rec, slot, diff):
 
 
 def _pct_class(db, dist, classes):
-    return 100.0 * sum(q for p, q in dist.items() if _class_of(db, p) in classes)
+    """`classes` is a LOWERCASE set; the comparison is case-folded like every other."""
+    return 100.0 * sum(q for p, q in dist.items()
+                       if str(_class_of(db, p)).lower() in classes)
 
 
 def _pct_items(dist, items):
@@ -495,7 +655,7 @@ def apply(db, tags):
     print("\n=== patches-registry: %s ===" % MODULE_NAME)
 
     for rec in _CHAMPIONS:
-        if not db.has_record(rec):
+        if not _has(db, rec):
             raise SystemExit("[toxeus_boss_equipment] champion record MISSING: %s" % rec)
 
     # ── 1. the Devourer's off-hand: bow pool -> the Enslaver's shield array ──
@@ -528,7 +688,7 @@ def apply(db, tags):
             "[toxeus_boss_equipment] PRE-STATE DRIFT: Devourer lootRightHandItem1 = %r, "
             "expected the shipped crimsonverdict_guaranteed_{n,e,l}." % (rh,))
     for tab, item, tier in zip(_VEINRENDER_TAB, _VEINRENDER_ITEM, 'NEL'):
-        if not db.has_record(item):
+        if not _has(db, item):
             raise SystemExit("[toxeus_boss_equipment] Vein Render item MISSING: %s" % item)
         _fixedweight(db, tab, [item], 'Vein Render guaranteed - the Devourer of Blood (%s)' % tier)
     _set(db, _DEVOURER, 'lootRightHandItem1', list(_VEINRENDER_TAB), S)
@@ -598,7 +758,7 @@ def apply(db, tags):
                     "Another writer got there first; measure before writing."
                     % (rec, slot, _gv(db, rec, 'chanceToEquip%s' % slot)))
             for tab in common + unique:
-                if not db.has_record(tab):
+                if not _has(db, tab):
                     raise SystemExit("[toxeus_boss_equipment] armour table MISSING: %s" % tab)
             _set(db, rec, 'loot%sItem1' % slot, list(common), S)
             _set(db, rec, 'loot%sItem5' % slot, list(unique), S)
@@ -624,17 +784,34 @@ def apply(db, tags):
 
 # ── the gate ────────────────────────────────────────────────────────────────
 def _hand_metrics(db):
-    """Measured roll shares for the Devourer's two hands, minimum over difficulties."""
+    """Measured roll shares for the Devourer's two hands, minimum over difficulties.
+
+    Returns (armed, signature, shield, dead). `dead` names every hand/difficulty whose
+    selectable distribution is EMPTY - the slot is switched on but no row can be picked.
+
+    ROUND-3 FIX, and it was the ugly one: this used to seed all three shares at 100.0 and
+    only ever LOWER them, so a hand with nothing selectable reported "armed 100.00%" - the
+    exact number the ruling and the test guide hand Will as proof he is always armed. An
+    empty distribution now zeroes the shares AND is named, so it fails E2c loudly instead of
+    passing vacuously. A gate that reports 100% armed for a boss holding nothing is not a
+    gate for "i dont think he has a weapon".
+    """
     armed = signature = shield = 100.0
-    for diff in (0, 1, 2):
-        rh = _slot_dist(db, _DEVOURER, 'RightHand', diff)
-        lh = _slot_dist(db, _DEVOURER, 'LeftHand', diff)
-        if rh:
-            armed = min(armed, _pct_class(db, rh, _ONE_HAND_MELEE))
-            signature = min(signature, _pct_items(rh, _VEINRENDER_ITEM))
-        if lh:
-            shield = min(shield, _pct_class(db, lh, _SLOT_CLASSES['LeftHand']))
-    return armed, signature, shield
+    dead = []
+    for diff, tier in enumerate('NEL'):
+        for slot in ('RightHand', 'LeftHand'):
+            dist = _slot_dist(db, _DEVOURER, slot, diff)
+            if not dist:
+                dead.append('%s [%s]' % (slot, tier))
+                continue
+            if slot == 'RightHand':
+                armed = min(armed, _pct_class(db, dist, _ONE_HAND_MELEE))
+                signature = min(signature, _pct_items(dist, _VEINRENDER_ITEM))
+            else:
+                shield = min(shield, _pct_class(db, dist, _SLOT_CLASSES['LeftHand']))
+    if dead:
+        armed = signature = shield = 0.0
+    return armed, signature, shield, dead
 
 
 def _check(db):
@@ -647,7 +824,7 @@ def _check(db):
     # recurve is a Legendary-only bow), so a tier-N-only sweep is exactly the blind spot
     # that produced it.
     for rec in _CHAMPIONS:
-        if not db.has_record(rec):
+        if not _has(db, rec):
             out.append("E1 champion record MISSING: %s" % rec)
             continue
         short = rec.rsplit('\\', 1)[-1]
@@ -658,7 +835,7 @@ def _check(db):
             for idx, _w, tabs in _slot_rows(db, rec, slot):
                 for tier, tab in zip('NEL', tabs):
                     classes = {c for c in _leaf_classes(db, tab) if c}
-                    banned = classes & _BANNED_CLASSES
+                    banned = _banned_of(classes)
                     if banned:
                         out.append("E1 %s %s item%d [%s] -> %s yields %s - a two-handed "
                                    "ranged weapon on a Toxeus champion (Will's 'using a "
@@ -669,7 +846,7 @@ def _check(db):
                         continue
                     if (rec, slot, idx) in _MIXED_DROP_ROWS:
                         continue
-                    wrong = classes - allowed
+                    wrong = _wrong_of(classes, allowed)
                     if wrong:
                         out.append("E2 %s %s item%d [%s] -> %s yields %s, which %s cannot "
                                    "wear (allowed: %s). Either fix the table or allowlist "
@@ -686,16 +863,30 @@ def _check(db):
             out.append("E4 %s lootFinger2Item1 has %d entries, expected the 3-difficulty "
                        "soul array" % (short, len(souls)))
         for s in souls:
-            if not db.has_record(s):
+            real = _resolve(db, s)
+            if real is None:
                 out.append("E4 %s soul reference does NOT resolve: %s" % (short, s))
                 continue
-            if 'jewelry_ring' not in _norm(_gv(db, s, 'templateName', '')):
+            if 'jewelry_ring' not in _norm(_gv(db, real, 'templateName', '')):
                 out.append("E4 %s soul %s is templateName %r, not a Jewelry_Ring - the "
                            "engine cannot equip it into Finger2, so it never drops"
-                           % (short, s.rsplit('\\', 1)[-1], _gv(db, s, 'templateName', '')))
+                           % (short, s.rsplit('\\', 1)[-1], _gv(db, real, 'templateName', '')))
 
     # E2b - the Devourer's hands, spelled out.
-    if db.has_record(_DEVOURER):
+    if _has(db, _DEVOURER):
+        # THE HAND SWITCHES THEMSELVES. E1/E2 above `continue` on any slot whose
+        # chanceToEquip<Slot> is 0, so a hand switched OFF would be DELETED from the sweep
+        # rather than failed by it - and "i dont think he has a weapon" is the literal text
+        # of Will's report. These two lines are the only arms that can see that state.
+        for hand, why in (('RightHand', "his weapon hand - Will's 'i dont think he has a "
+                                        "weapon', filed against this boss's brother"),
+                          ('LeftHand', 'his shield hand')):
+            got = _gv(db, _DEVOURER, 'chanceToEquip%s' % hand)
+            if not _close(got, 100.0):
+                out.append("E2b Devourer chanceToEquip%s = %r, must be 100.0 - a hand "
+                           "switched off holds NOTHING no matter how clean its loot rows "
+                           "are, and every class arm skips a slot at chance 0 (%s)"
+                           % (hand, got, why))
         if not _same(_gl(db, _DEVOURER, 'lootLeftHandItem1'), _SHIELD_COMMON):
             out.append("E2 Devourer lootLeftHandItem1 = %r, must be the shield array %r"
                        % (_gl(db, _DEVOURER, 'lootLeftHandItem1'), _SHIELD_COMMON))
@@ -714,12 +905,17 @@ def _check(db):
                        "(the guaranteed Vein Render) so his own sword is the usual roll"
                        % dom[0])
         for tab in _VEINRENDER_TAB:
-            classes = {c for c in _leaf_classes(db, tab) if c}
-            if classes != {'Weapon_Sword'}:
+            classes = {str(c).lower() for c in _leaf_classes(db, tab) if c}
+            if classes != {'weapon_sword'}:
                 out.append("E2 %s yields %r, must be exactly one Weapon_Sword"
                            % (tab.rsplit('\\', 1)[-1], sorted(classes)))
         # E2c - the MEASURED arithmetic behind the player-facing claim.
-        armed, signature, shield = _hand_metrics(db)
+        armed, signature, shield, dead = _hand_metrics(db)
+        if dead:
+            out.append("E2c Devourer hand(s) %s have an EMPTY selectable distribution - the "
+                       "slot is switched on but every row weight is 0, so the engine equips "
+                       "NOTHING there. This is not a 100%% share, it is a bare hand"
+                       % ', '.join(dead))
         if armed + 1e-6 < _MIN_ARMED_HAND_PCT:
             out.append("E2c Devourer's weapon hand holds a one-handed melee weapon only "
                        "%.2f%% of spawns (floor %.2f%%) - the remaining %.2f%% roll a class "
@@ -735,18 +931,17 @@ def _check(db):
 
     # E1b - no bow row survives anywhere in the bleed tables.
     for tab in _BLEED:
-        if not db.has_record(tab):
+        if not _has(db, tab):
             out.append("E1 bleed table MISSING: %s" % tab)
             continue
-        classes = {c for c in _leaf_classes(db, tab) if c}
-        if classes & _BANNED_CLASSES:
+        banned = _banned_of({c for c in _leaf_classes(db, tab) if c})
+        if banned:
             out.append("E1 %s still yields %s - the de-bow did not hold"
-                       % (tab.rsplit('\\', 1)[-1],
-                          '/'.join(sorted(classes & _BANNED_CLASSES))))
+                       % (tab.rsplit('\\', 1)[-1], '/'.join(sorted(banned))))
 
     # E3 - the Hunt wears armour and keeps his spear + rite.
     for rec in _HUNTS:
-        if not db.has_record(rec):
+        if not _has(db, rec):
             out.append("E3 Hunt record MISSING: %s" % rec)
             continue
         short = rec.rsplit('\\', 1)[-1]
@@ -780,46 +975,81 @@ def _check(db):
 
 
 def _check_modwide(db):
-    """E5 - mod-wide: a 100% soul pin that points at nothing IS the -10 bug."""
+    """E5 - mod-wide: a 100% Finger2 pin that cannot deliver a ring IS the -10 bug.
+
+    ROUND-3 WIDENING. The arm used to filter to carriers whose `lootFinger2Item1` already
+    contained the substring "soul", which meant the headline case in its own docstring - a
+    pin pointing at NOTHING - could never be reached. It now covers EVERY record pinned at
+    `chanceToEquipFinger2` = 100:
+      * no Finger2 loot at all                                 -> FAIL
+      * a reference that does not resolve                      -> FAIL
+      * a chain whose leaves are not Jewelry_Ring              -> FAIL
+    The seven offenders that already exist in b888f022 sit outside this lane's surface, so
+    each is named individually in `_E5_PREEXISTING` with its reason and registered as
+    BL-R251-DEBT-4. Naming them one by one (rather than narrowing the arm) keeps it LIVE:
+    an eighth offender, or a change to one of the seven, still reds the build.
+
+    Returns (problems, checked, waived) where `checked` counts the carriers actually held to
+    the contract and `waived` the named pre-existing exceptions that were skipped.
+    """
     out = []
     checked = 0
+    waived = 0
     for name in db.record_names():
         if not _close(_gv(db, name, 'chanceToEquipFinger2'), 100.0):
             continue
+        if _norm(name) in _E5_PREEXISTING_LC:
+            waived += 1
+            continue
+        short = name.rsplit('\\', 1)[-1]
         souls = [s for s in _gl(db, name, 'lootFinger2Item1') if s.lower().endswith('.dbr')]
-        if not souls:
-            continue
-        if not any('soul' in _norm(s) for s in souls):
-            continue
         checked += 1
+        if not souls:
+            out.append("E5 %s is pinned at chanceToEquipFinger2 = 100 but has NO "
+                       "lootFinger2Item1 at all - a 100%% pin pointing at nothing is the "
+                       "'did not drop his soul' bug in its purest form" % short)
+            continue
         for s in souls:
-            if not db.has_record(s):
-                out.append("E5 %s is pinned at a 100%% soul drop but %s does NOT resolve"
-                           % (name.rsplit('\\', 1)[-1], s))
-            elif 'jewelry_ring' not in _norm(_gv(db, s, 'templateName', '')):
-                out.append("E5 %s is pinned at 100%% but its soul %s is not a Jewelry_Ring"
-                           % (name.rsplit('\\', 1)[-1], s.rsplit('\\', 1)[-1]))
-    return out, checked
+            real = _resolve(db, s)
+            if real is None:
+                out.append("E5 %s is pinned at a 100%% Finger2 drop but %s does NOT resolve"
+                           % (short, s))
+                continue
+            classes = {c for c in _leaf_classes(db, real) if c}
+            if not classes:
+                continue                       # every leaf is a base-game record: unknowable
+            wrong = _wrong_of(classes, _SLOT_CLASSES['Finger2'])
+            if wrong:
+                out.append("E5 %s is pinned at 100%% but its Finger2 chain %s yields %s, "
+                           "which the ring slot cannot hold - the engine cannot equip it, "
+                           "so it never drops"
+                           % (short, s.rsplit('\\', 1)[-1], '/'.join(sorted(wrong))))
+    return out, checked, waived
 
 
 def verify(db, tags):
     problems = _check(db)
-    modwide, checked = _check_modwide(db)
+    modwide, checked, waived = _check_modwide(db)
     problems += modwide
     if problems:
         for p in problems[:25]:
             print("  R-251 OFFENDER: %s" % p)
         raise SystemExit("[toxeus_boss_equipment] verify FAILED: %d problem(s)"
                          % len(problems))
-    armed, signature, shield = _hand_metrics(db)
+    armed, signature, shield, dead = _hand_metrics(db)
+    if dead:                       # unreachable: _check fails on `dead` first. Belt+braces.
+        raise SystemExit("[toxeus_boss_equipment] verify FAILED: dead hand(s) %s"
+                         % ', '.join(dead))
     print("  [toxeus_boss_equipment] verify OK: no Toxeus champion can hold a bow or staff "
-          "in any slot on any difficulty; the Devourer's weapon hand is a one-handed melee "
-          "weapon %.2f%% of spawns (his own Vein Render %.2f%%) and his off hand a shield "
-          "%.2f%%; both Endless Hunt records wear torso/legs/arms at 100%% and keep the "
-          "Runbreaker spear + the EoAT rite; all 4 champions hold R-243's 100%% soul pin on "
-          "a soul that resolves to a real ring; %d 100%%-pinned soul carrier(s) mod-wide all "
-          "resolve. BL-W0814-10 remains OPEN pending Will's next kill (BL-R251-DEBT-1)."
-          % (armed, signature, shield, checked))
+          "in any slot on any difficulty; the Devourer holds both hands at 100%% and his "
+          "weapon hand is a one-handed melee weapon %.2f%% of spawns (his own Vein Render "
+          "%.2f%%) with a shield in the off hand %.2f%%; both Endless Hunt records wear "
+          "torso/legs/arms at 100%% and keep the Runbreaker spear + the EoAT rite; all 4 "
+          "champions hold R-243's 100%% soul pin on a soul that resolves to a real ring; "
+          "%d mod-wide 100%%-pinned Finger2 carrier(s) all deliver a ring (%d pre-existing "
+          "offender(s) waived by name, BL-R251-DEBT-4). BL-W0814-10 remains OPEN pending "
+          "Will's next kill (BL-R251-DEBT-1)."
+          % (armed, signature, shield, checked, waived))
 
 
 # ── planted negatives (stub db) ─────────────────────────────────────────────
@@ -961,7 +1191,10 @@ def _negtest():
         for p in full(base):
             print("   ", p)
         return 1
-    a, s, sh = _hand_metrics(base)
+    a, s, sh, dead = _hand_metrics(base)
+    if dead:
+        print("negtest BROKEN: the healthy stub has dead hand(s): %s" % ', '.join(dead))
+        return 1
     print("  negtest baseline shares: armed=%.2f%% signature=%.2f%% shield=%.2f%%"
           % (a, s, sh))
 
@@ -975,7 +1208,56 @@ def _negtest():
         d.d['t\\bowtab.dbr'] = table(['i\\bow.dbr'])
         d.d[_DEVOURER]['lootLeftHandItem1'] = ['t\\bowtab.dbr'] * 3
 
+    def plant_mixedcase_bow(d):
+        """The SAME violation, reached through a reference that differs only in CASE.
+
+        Round 2 shipped blind to this: `has_record` is exact-case, the chain came back as an
+        unresolved leaf, and every class arm ignores unresolved leaves by design. The table
+        is stored lowercase (as the arz stores every record name) and referenced mixed-case
+        (as the arz references them) - exactly the shape of the 2,436 such references in the
+        shipped mod arz.
+        """
+        d.d['i\\bow.dbr'] = item('Weapon_Bow')
+        d.d['t\\vet_bowtab.dbr'] = table(['i\\bow.dbr'])
+        d.d[_DEVOURER]['lootLeftHandItem5'] = ['T\\Vet_BowTab.dbr'] * 3
+
+    def plant_mixedcase_wrongclass(d):
+        """A class violation on a row with NO literal assert and NO arithmetic backstop.
+
+        The Hunt's Forearm row is class-governed but is not one of the shares E2c measures,
+        so if the class arm cannot see through a mixed-case reference nothing else catches
+        it. This is the latent half of the same defect.
+        """
+        d.d['t\\vet_wrongarm.dbr'] = table(['i\\sword.dbr'])
+        d.d[_HUNT_L]['lootForearmItem5'] = ['T\\Vet_WrongArm.dbr'] * 3
+        d.d[_HUNT_L]['chanceToEquipForearmItem5'] = _W_UNIQUE
+
     plants = [
+        # the hands switched OFF - the defect class E1/E2 structurally cannot see, because
+        # they `continue` on any slot at chance 0 (round-2 gate missed all three)
+        ("the Devourer's WEAPON hand switched off entirely (he holds nothing)",
+         lambda d: d.d[_DEVOURER].__setitem__('chanceToEquipRightHand', 0.0)),
+        ("the Devourer's SHIELD hand switched off entirely",
+         lambda d: d.d[_DEVOURER].__setitem__('chanceToEquipLeftHand', 0.0)),
+        ("the Devourer's off-hand rows all zeroed (slot on, nothing selectable)",
+         lambda d: [d.d[_DEVOURER].__setitem__('chanceToEquipLeftHandItem%d' % i, 0)
+                    for i in range(1, 7)]),
+        ("the Devourer's weapon rows all zeroed (slot on, nothing selectable)",
+         lambda d: [d.d[_DEVOURER].__setitem__('chanceToEquipRightHandItem%d' % i, 0)
+                    for i in range(1, 7)]),
+        # case-blindness
+        ("a bow reached through a MIXED-CASE table reference", plant_mixedcase_bow),
+        ("a wrong-class Hunt row reached through a MIXED-CASE table reference",
+         plant_mixedcase_wrongclass),
+        # E5 widened: the docstring's own headline case
+        ("mod-wide: a 100%-pinned carrier with NO Finger2 loot at all (pin -> nothing)",
+         lambda d: d.d.__setitem__('records\\creature\\empty_pin_99.dbr',
+                                   {'chanceToEquipFinger2': 100.0})),
+        ("mod-wide: a 100%-pinned carrier whose Finger2 points at a non-ring class",
+         lambda d: (d.d.__setitem__('t\\wandtab.dbr', table(['i\\axe.dbr'])),
+                    d.d.__setitem__('records\\creature\\wand_pin_99.dbr',
+                                    {'chanceToEquipFinger2': 100.0,
+                                     'lootFinger2Item1': ['t\\wandtab.dbr'] * 3}))),
         ("the bow row survives de-bowing", plant_bow),
         ("a bow pool back in the Devourer's off-hand", plant_lefthand_bow),
         ("staff in the Devourer's off-hand", lambda d: (
@@ -1048,7 +1330,7 @@ def _negtest():
             print("  negtest FAIL (missed): %s" % label)
             bad += 1
 
-    # the allowlist guard is import-time, so it is negtested by calling it directly
+    # the two import-time guards are negtested by calling them directly
     try:
         _validate_allowlist({(_DEVOURER, 'Misc1', 1): 'a slot the gate never class-checks'})
         print("  negtest FAIL (missed): an allowlist entry naming an ungoverned slot")
@@ -1056,14 +1338,51 @@ def _negtest():
     except AssertionError:
         print("  negtest OK  (caught): an allowlist entry naming an ungoverned slot")
 
+    global _BANNED_CLASSES
+    _saved = _BANNED_CLASSES
+    _BANNED_CLASSES = set(_saved) | {'Weapon_Crossbow'}
+    try:
+        _validate_class_sets()
+        print("  negtest FAIL (missed): a NON-lowercase entry in a case-folded class set")
+        bad += 1
+    except AssertionError:
+        print("  negtest OK  (caught): a NON-lowercase entry in a case-folded class set")
+    finally:
+        _BANNED_CLASSES = _saved
+
+    # POSITIVE CONTROLS - the other half of a case-folded comparison. Round 2 listed
+    # 'weapon_rangedonehand' and not 'Weapon_RangedOneHand' (10 records in the mod arz), and
+    # omitted the lowercase stems the base game really uses (weapon_axe 50 records,
+    # weapon_mace 42, weapon_sword 6, weapon_spear 1, armor_head 2, armor_upperbody 1), so a
+    # legitimate item spelled the other way would have RED the build. These prove it cannot.
+    for label, plant in (
+            ("a legitimate LOWERCASE weapon stem in the weapon hand",
+             lambda d: d.d.__setitem__('i\\axe.dbr', item('weapon_axe'))),
+            ("a legitimate MIXED-CASE weapon stem in the weapon hand",
+             lambda d: d.d.__setitem__('i\\axe.dbr', item('Weapon_RangedOneHand'))),
+            ("a legitimate LOWERCASE armour stem on a Hunt armour row",
+             lambda d: d.d.__setitem__('i\\torso.dbr', item('armor_upperbody'))),
+            ("a Devourer loot table referenced in MIXED CASE but otherwise clean",
+             lambda d: (d.d.__setitem__('t\\vet_okshield.dbr', table(['i\\shield.dbr'])),
+                        d.d[_DEVOURER].__setitem__('lootLeftHandItem5',
+                                                   ['T\\Vet_OkShield.dbr'] * 3)))):
+        db = healthy()
+        plant(db)
+        found = full(db)
+        if found:
+            print("  negtest FAIL (false positive): %s -> %s" % (label, found[0]))
+            bad += 1
+        else:
+            print("  negtest OK  (no false positive): %s" % label)
+
     # positive control: an untouched healthy stub must still pass at the end
     if full(healthy()):
         print("  negtest FAIL: positive control went red")
         bad += 1
     else:
         print("  negtest OK  (positive control stays green)")
-    total = len(plants) + 1
-    print("negtest: %d/%d plants caught" % (total - bad, total))
+    total = len(plants) + 2 + 4
+    print("negtest: %d/%d checks clean" % (total - bad, total))
     return 1 if bad else 0
 
 

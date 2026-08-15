@@ -29,8 +29,8 @@ DEFAULT_ARZ = HERE.parent / 'work' / 'SoulvizierClassic' / 'Database' / 'Soulviz
 
 def _run(db):
     problems = TBE._check(db)
-    modwide, checked = TBE._check_modwide(db)
-    return problems + modwide, checked
+    modwide, checked, waived = TBE._check_modwide(db)
+    return problems + modwide, checked, waived
 
 
 def main(argv):
@@ -43,10 +43,10 @@ def main(argv):
     print("gate_toxeus_boss_equipment: %s" % arz)
     db = ArzDatabase.from_arz(arz)
 
-    problems, checked = _run(db)
+    problems, checked, waived = _run(db)
     if dryrun:
-        print("  BEFORE apply(): %d problem(s), %d 100%%-pinned soul carrier(s) scanned"
-              % (len(problems), checked))
+        print("  BEFORE apply(): %d problem(s), %d 100%%-pinned Finger2 carrier(s) checked, "
+              "%d pre-existing waived" % (len(problems), checked, waived))
         for p in problems[:12]:
             print("     RED: %s" % p)
         if not problems:
@@ -54,7 +54,7 @@ def main(argv):
                   "run proves nothing about apply(). Point it at the pre-fix arz.")
             return 1
         TBE.apply(db, {})
-        problems, checked = _run(db)
+        problems, checked, waived = _run(db)
         if problems:
             print("  DRYRUN FAILED: apply() did NOT close the contract - %d problem(s) left"
                   % len(problems))
@@ -69,8 +69,9 @@ def main(argv):
             print("  R-251 OFFENDER: %s" % p)
         print("gate_toxeus_boss_equipment: FAIL (%d problem(s))" % len(problems))
         return 1
-    print("gate_toxeus_boss_equipment: PASS (%d 100%%-pinned soul carrier(s) all resolve)"
-          % checked)
+    print("gate_toxeus_boss_equipment: PASS (%d 100%%-pinned Finger2 carrier(s) all deliver "
+          "a ring; %d pre-existing offender(s) waived by name - BL-R251-DEBT-4)"
+          % (checked, waived))
     return 0
 
 
