@@ -9228,7 +9228,14 @@ someone else's build failure.
   dead end (measured above). Clearing them is a one-line map-lane change plus a
   `gate_uber_placement` re-run, **and must not happen without Will's word**; if he says yes, the
   retirement protocol applies (ledger + wave-report check before touching base-game content).
-- `BL-R256-DEBT-5` (**P1, ship lane**): the module has still never run inside a real COLD BUILD.
+- `BL-R256-DEBT-5` ✅ **CLOSED by build100 (2026-08-16).** The first full cold build **EXITED 0**
+  with the module at registry slot [12/69], and the proof it was actually exercised rather than
+  skipped is the module's own line printed *inside* the build: `Boss-kit clone-shape invariant OK:
+  3 clone pair(s) keep donor field shape`, alongside the build-wide 25-pair arm and `STRICT
+  failures : 0`. The downstream hoard gates the debt named all ran green on the built artifact
+  (`gate_uber_hoard_generosity` **36** families, up from 33 = the Ushkaret chain; volume /
+  distribution / breadth all PASS). Original text follows.
+  ~~(**P1, ship lane**): the module has still never run inside a real COLD BUILD.~~
   `--negtest` applies it to an already-built arz standalone, and V12 turns the downstream
   interaction into a live assertion, but the first full cold build plus the hoard
   generosity/breadth/distribution/volume gates remain the real proof. The ship lane must treat
@@ -9260,3 +9267,34 @@ someone else's build failure.
 component rank is #9, not #1. That is CORRECT and EXPECTED for an island reached through a door.
 Any future landing or containment gate must anchor on the MOUTH's component, never on rank 1, or
 it will red a perfect spot.
+
+### SHIPPED AS build100 (2026-08-16) - DEV **AND** STEAM
+
+arz `6b89bb5d91174e1b9de6ae61d9498886` (55,634,737 B, **51,357 records**, +26 over build99's
+51,331), Text `1be898a05c67baafc880971bc56e8368`, canonical map `08f3639e424d19b3c8d9c108aef2671a`,
+canonical Quests `6271ceb2` **rebuilt byte-identical**, DEV TESTHUB map
+`821ceaa94212228c13c375a39a0538ff`, DEV TESTHUB Quests `d9f8c316` **rebuilt byte-identical**.
+Workshop ManifestID **`5905234666463375389`**, VDF read back `"visibility" "0"`. Full evidence:
+the **BUILD100 GATE RECORD** at the tail of `docs/BACKLOG.md`.
+
+Headlines: record-diff **ADDED 26 / REMOVED 0 / MODIFIED 3, zero unexplained** (the 3 MODIFIED are
+the "any soul" potion-of-experience reagent lists, each gaining exactly its own difficulty tier's
+new soul - +9 entries / -0 across the three); map blob-diff **exactly ONE level blob changed in
+BOTH variants** (`Rhakotis05` +1,038 B, its `0x0b` navmesh byte-identical, the `QUESTS` section
+byte-identical so the 256-window never moved); det-2x byte-proven by `fc /b` on **all five**
+artifact families; `gate_uber_placement`'s R-256 row **VERDICT PASS** on the built map *and* again
+on the live DEV bytes, with `area: Lookout Cave ... -> OK` and `component #9 of 115 (23960 of
+1071942 cells)` reproducing the lane's survey exactly; `--negtest` **39/39**; `validate_tags`
+**463/463** authoritative, up from 455 = exactly the 8 tags this lane sets; contracts **0 P0 /
+0 P1**, ONLY-IN-NEW = 3 (the new hoard chests joining the inherited DRX `lockedSound` P2 class
+their 33 siblings already carry), ONLY-IN-BASE = 0.
+
+**🆕 `BL-R256-DEBT-8` (P1, IN-GAME CONFIRMATION OWED).** Nobody has walked out of that cave.
+Everything above is artifact, map-byte and gate evidence. The named FAIL modes are in
+`docs/WILL_TEST_GUIDE.md`, and the sharpest one is the round-4 Larder defect returning: **if he
+barely drains, or only drains at point-blank rather than across most of the terrace**, the
+authored aura is not reaching the player and the boss's name, soul and only counterplay are a lie
+again. Two Will decisions ride along unanswered: `BL-R256-DEBT-4` (the vanilla dune-raider camp
+and its golden chest still share the terrace - a cleared shelf shows TWO chests) and
+`BL-R256-DEBT-6` (the hoard name "The Larder of Ushkaret" is unvetted). Both are disclosed in the
+Steam change note and the test guide rather than left to surprise him.

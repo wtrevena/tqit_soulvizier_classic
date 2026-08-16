@@ -2,9 +2,13 @@
 
 > # 🦅 R-256 THERE IS SOMETHING AT THE END OF LOOKOUT CAVE NOW (2026-08-15)
 >
-> **⏳ CODE COMPLETE, NOT YET BUILT OR DEPLOYED** (branch `feat/lookout-uber`). Nothing to test
-> until the next build ships; this is what to expect when it does. **The newest thing you can
-> actually test on your machine today is R-255 below, which is live on Steam as `build99`.**
+> **✅ SHIPPED AS `build100` - LIVE ON YOUR DEV SURFACE *AND* ON STEAM (2026-08-16).** arz
+> `6b89bb5d`, Text `1be898a0`, canonical map `08f3639e`, your DEV TESTHUB map `821ceaa9`;
+> Workshop ManifestID `5905234666463375389`. **Full quit of TQ and a Steam restart first**, so
+> the new database and the new map both load.
+>
+> **He is placed in the WORLD, not in the test hub** (`BL-R256-DEBT-3`, deliberate) - there is no
+> yard proxy and no portal to him. You have to walk the cave.
 >
 > **Your order, verbatim:** "we should add a uber boss (a new unique one) at the end of lookout
 > cave in the area outside the back of the cave that you get through after you walk through the

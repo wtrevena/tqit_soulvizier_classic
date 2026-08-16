@@ -4,7 +4,7 @@
 
 **WIN Will confirmed:** "all the portals from helos are consistenly working now, i think your fix has addressed the major issues." + "now the portals from helos consistently send you to the same location" (deterministic, not random) => R-248 one-shot-arming ADDRESSED the major scramble. He greenlit shipping this approach to Steam (build91 = canonical, 26 rows). The `feat/lookout-uber` lane merged `main` at `27fd8bc` (build99 ship) on 2026-08-15 - three doc conflicts, all keep-both, zero code conflicts.
 
-**BL-W0815-2 LOOKOUT CAVE UBER: 🔧 BUILT, code complete, NOT BUILT-INTO-ARTIFACTS (R-256, branch `feat/lookout-uber`).** Will (2026-08-15, verbatim): *"we should add a uber boss (a new unique one) at the end of lookout cave in the area outside the back of the cave that you get through after you walk through the whole cave, it is a dead end"*. Delivered as **{^r}Ushkaret, the Sky-Burial**, the 17th placed uber.
+**BL-W0815-2 LOOKOUT CAVE UBER: ✅ SHIPPED build100 (R-256, arz `6b89bb5d`, canonical map `08f3639e`, DEV + Steam 2026-08-16, ManifestID `5905234666463375389`; gate record at the tail of this file). IN-GAME CONFIRMATION OWED: `BL-R256-DEBT-8`.** Will (2026-08-15, verbatim): *"we should add a uber boss (a new unique one) at the end of lookout cave in the area outside the back of the cave that you get through after you walk through the whole cave, it is a dead end"*. Delivered as **{^r}Ushkaret, the Sky-Burial**, the 17th placed uber.
 
 > **THE PLACE, MEASURED.** Rhakotis03 `CliffEntranceA01_Ext` -> RhakotisOptTombB -> B01 -> back out of `CliffEntranceA01_Ext` onto a cliff terrace in **Rhakotis05** at local (201,17,37). That terrace is navmesh **component #9 of 115, 23,960 cells at cs 0.2 = 958 sq u**, an ISLAND touching no other component: the cave mouth is its only door and the mouth is on the same component. A dead end in the strictest sense the engine supports, exactly as Will described it. Rhakotis05 is the **ONLY level of all 2282** binding the `Lookout Cave` region guid, so ORACLE 1 (R-130 banner containment) is decisive, and R-100 #16b (never the main walking path) is satisfied **by construction** - there is no through-route on that component to sit on.
 >
@@ -15982,6 +15982,84 @@ travel-npc invariants, quest negatives, the canonical control, **and
   or delete it.
 - ⚠️ Untouched by this lane: `BL-R249-DEBT-1` (Garden -> Secret Place rift admits ENTRY?),
   `BL-R250-DEBT-1..6`, and Will's live-play queue `BL-W0814-2/3/4/5/7/8/9/10/11/12/13`.
+
+---
+
+## BUILD100 GATE RECORD (2026-08-16) - R-256 USHKARET, THE SKY-BURIAL TAKES THE DEAD END BEYOND THE BACK OF LOOKOUT CAVE; **MAP + arz + Text COUPLED (Quests re-verified byte-identical)**; DEPLOYED TO DEV **AND** STEAM
+
+**THE SHIPPED SET:**
+
+| artifact | build99 | **build100** | size |
+|---|---|---|---|
+| `Database/SoulvizierClassic.arz` | `1113f2c69fc3f188b0b5bece340614f2` | **`6b89bb5d91174e1b9de6ae61d9498886`** | 55,634,737 B (+26,721) |
+| `Resources/Text.arc` | `82d5b810e5aad75fa82a1c8dd8886a8c` | **`1be898a05c67baafc880971bc56e8368`** | 90,201 B (+361) |
+| `Resources/Levels.arc` (canonical) | `1bf86461ddec02e363a1337d6238922c` | **`08f3639e424d19b3c8d9c108aef2671a`** | 688,691,118 B (+302) |
+| `Resources/Quests.arc` (canonical) | `6271ceb250ebb07bf7aabbc469a184da` | **REBUILT, BYTE-IDENTICAL** | 194,422 B |
+| `Resources/Creatures.arc` | `8c0d8d53610f0cbe50ee78ffe63839be` | **unchanged** | 42,617,179 B |
+| DEV TESTHUB `Levels.arc` | `666789abc1795bce389d90d2f7b91159` | **`821ceaa94212228c13c375a39a0538ff`** | 688,679,337 B |
+| DEV TESTHUB `Quests.arc` | `d9f8c31654cbd8c80efe5ab7be573d77` | **REBUILT, BYTE-IDENTICAL** | 195,612 B |
+
+Records **51,331 -> 51,357 (+26)**. Workshop item 3759792705, `Committing update...Success.`, workshop log `Upload finished for workshop item 3759792705 : OK`, **ManifestID `5905234666463375389`**, `-Update -Visibility 0` with the VDF read back `"visibility" "0"` (stays PUBLIC). `main` `27fd8bc` (build99-ship) -> `6fb976a` (`git merge --no-ff feat/lookout-uber`) -> `29e9008` (the Steam change note, written and committed BEFORE packaging) -> `3689ba2` (two ship-operator MISTAKES entries) -> `8a0e578` (change-note quote fix) -> this gate record. Tag **`build100-ship`**. Next sequential ship after build99 = **BUILD100**.
+
+- **STEP 0 RAN FIRST AND PASSED.** `py tools/gate_already_shipped.py --lane feat/lookout-uber --tag build100-ship`: **S1** the lane tip `d642a61` is NOT contained in main, 10 commits to integrate; **S2** `build100-ship` free locally and on the remote, next free build number **100**. Receipt written at HEAD `27fd8bc`, then **CONSUMED by `package_workshop.ps1`'s `--verify-receipt`** at 09:54:41Z. No further packaging can run on it.
+
+- **What it is:** `BL-W0815-2`, Will verbatim: *"we should add a uber boss (a new unique one) at the end of lookout cave in the area outside the back of the cave that you get through after you walk through the whole cave, it is a dead end"*. Design: `docs/WILL_RULINGS.md` -> **R-256**. Delivered as **{^r}Ushkaret, the Sky-Burial**, the 17th placed uber, on the Rhakotis05 cliff terrace that is navmesh **component #9 of 115** - an island whose only door is the `CliffEntranceA01_Ext` mouth.
+
+- 🔴 **`BL-R256-DEBT-5` WAS THE WHOLE POINT OF THIS LANE AND IT CAME BACK CLEAN.** The debt said the module *"has still never run inside a real cold build"*, and vet round 4 had already cashed it in once (a P0 that killed the build outright: 22 clone-shape violations). **The first b100 cold build EXITED 0**, and the module's own arm proves it was actually exercised rather than skipped: `Boss-kit clone-shape invariant OK: 3 clone pair(s) keep donor field shape` fires **inside the build**, and the build-wide arm reports **25 pairs** OK. `lookout_uber gate PASS` prints its full 18-arm summary on the shipped bytes. **`STRICT failures : 0`.** The debt is discharged; it is the reason this ship treated the cold build as the proof and not as a formality.
+
+- **RECORD-DIFF vs the SHIPPED build99 `1113f2c6`: ADDED 26 / REMOVED 0 / MODIFIED 3, ZERO unexplained.** The 26 ADDs are exactly the lane: the boss `um_ushkaret_99` + `svc_ushkaret_mourner_30` + `svc_ushkaret_carrionmote_26`; the 9-record `svc_ushkarethoard_*` chain (3 chests + 3 loot tables + 3 pools); `q_ushkaret_lone` proxy + its pool + `svc_ushkaret_chest`; `limit_ushkaret`; 3 skills (`svc_ushkaret_skyburial`, `svc_ushkaret_larder`, `svc_ushkaret_larderbuff`); `summon_ushkaret` + 3 pet tiers; and the 3 soul tiers. **The 3 MODIFIED records are NOT the lane's own ADDs and were measured rather than waved through:** `{n,e,l}_02_lesserpotionofexperience_formula.dbr`, whose `reagent1/2/3BaseName` are the "any soul" lists. Set-diffed per field: **+9 entries / -0 across the three records**, and every one of the nine is that formula's OWN difficulty tier of the new soul (`ushkaret_soul_n` into the `n_` formula, `_e` into `e_`, `_l` into `l_`), list lengths 131->132 / 120->121 / 120->121. Nothing else in 51,357 records moved.
+
+- **MAP-DIFF, the decisive map-side proof, BOTH variants: exactly ONE level blob changed, and it is Will's dead end.** `Rhakotis05` 3,513,853 -> 3,514,891 B (+1,038) in **both** canonical and TESTHUB, its **`0x0b` navmesh byte-identical** (1,449,213 -> 1,449,213), blob struct OK both sides, guid count 4/4 distinct unchanged. **`LEVELS` / `GROUPS` / `SD` / `BITMAPS` / `DATA2` / `0x10` and - the build22 law - the `QUESTS` section (11,460 B) are ALL byte-identical**, so the ~256-entry load window is provably untouched and no quest slot moved. `EXPECT-SET MATCH: exactly 1 intended blobs changed` on both maps.
+  ⚠️ **Read the TESTHUB file size honestly:** the canonical `.arc` grew +302 B while the TESTHUB `.arc` **shrank 3,864 B**, which looks alarming and is not. Both maps' `DATA` sections grew by **exactly the same +1,038 B**, and the archive is compressed roughly 2:1 (1.35 GB of `DATA` in a 688 MB file); the file-size delta is the compressor re-packing around the insert, not content. The section-and-blob walk above is the claim that matters, and it says the two variants changed identically.
+
+- **QUEST-DIFF: the Levels+Quests coupling honoured with ZERO quest changes.** Both Quests variants were rebuilt from the pristine SVAERA base anyway (the build22 law: the pair ships together even when one half does not move) and both came out **byte-identical to build99** - canonical `6271ceb2`, TESTHUB `d9f8c316` - which is the correct result for a lane that adds no quest and registers nothing in QUESTS(0x1b).
+
+- **det byte identity (det-2x) on ALL FIVE artifact families, every one `fc /b` byte-compared in full, not just md5:** arz `6b89bb5d` across **two independent COLD builds** (`SVC_NO_CACHE=1`, `PYTHONHASHSEED=0`, `SVC_RELEASE_DROPS=1`, `SVC_REQUIRE_GATES=1`), exit 0 both, run2 into `local/b100_run2/` with a junction to work's `Resources/`; canonical map `08f3639e`; TESTHUB map `821ceaa9`; canonical Quests `6271ceb2`; TESTHUB Quests `d9f8c316`. **All five: *"FC: no differences encountered"*.** The determinism twin was built BEFORE the Text/Quests rebuild on purpose, so both arz runs saw the identical `work/Resources` inputs.
+
+- **GATES GREEN - the coexisting battery, re-measured on the POST-wave artifacts. Every row below was run with its FULL argv printed beside its exit code (the 2026-08-15 `validate_tags` guard), and every non-zero exit was read in the log before it was written here:**
+  | gate | result |
+  |---|---|
+  | `lookout_uber` in-build `verify()` (R-256) | **PASS** - 18 arms incl. V16 running the REAL `_verify_boss_kit_clone_shape` over this lane's 3 pairs |
+  | `lookout_uber --negtest <build99 arz>` | **PASS 39/39** planted defects reddened, baseline green (incl. the round-3 P0 replanted verbatim) |
+  | `gate_uber_placement <built canonical map>` | **R-256 row VERDICT PASS**; whole run **38 verdicts / 37 PASS / 1 FAIL** |
+  | `validate_tags` (4 positional paths) | **PASS** - **463/463** authoritative tags present, up from 455 = **exactly the 8 tags this lane sets**; the 2 documented pre-existing WARN |
+  | `gate_uber_hoard_generosity` (R-251) | **PASS** - **36** hoard families (was 33; +3 = the Ushkaret chain), all pinned at `*2.4/*2.8` |
+  | `gate_ruling_ids --branches` | **PASS** - 52 rulings, highest **R-256** |
+  | patches-registry selfcheck | **69 modules**, order `d83e97440709b372...` |
+  | `verify_merged_bc_navmeshes` | **PASS** - 24/24 real navmeshes present, `0x0a` stripped |
+  | `gate_doors_hub` / `gate_testhub_portal_rig` | **PASS** both, canonical + TESTHUB |
+  | `gate_travel_y_terrain` canonical / TESTHUB | **PASS** / **PASS** (30 NPCs + 36 dests) |
+  | `gate_boatdialog_budget` canonical / TESTHUB | **PASS** (24 armed) / **PASS** (49 armed == frozen roster) |
+  | `gate_arena_spawn_guarantee` (R-253) / `gate_boat_npc_awakening` / `gate_travel_npc_invariants` | **PASS** |
+  | `gate_loot_volume` / `gate_loot_distribution` / `gate_chest_loot_breadth` / `gate_orb_loot_breadth` | **PASS** |
+  | `gate_relic_difficulty_tiers` / `gate_chest_artifacts` / `gate_orb_legendary` / `gate_supra_recipe_laws` | **PASS** |
+  | `gate_toxeus_boss_equipment` (R-252) / `verify_soul_drop_rates --gate` (R-243/R-48) | **PASS** |
+  | `gate_atlantis_voyage_cap` (R-211) / `gate_dlc_act_ui_cap` | **PASS** - 0 resolvable routes, 0 DLC-act entries |
+  | `contracts_balance` (R-80/R-254 + R-109) / `tests_balance_negative` | **PASS** - 0 violations |
+  Plus the in-build battery: soul-leak / soul-augment / soul-activation / boss-kit clone-shape all OK, `PET-*` OK, **`STRICT failures : 0`**.
+
+- ⚠️ **THE TWO NON-ZERO EXITS THAT ARE NOT OURS, AND THE TWO THAT WERE MY OWN MIS-INVOCATIONS (all four stated rather than buried):**
+  1. `gate_uber_placement` exits **1**, and the single red is `tombobs01.lvl q_obs_roulette_b.dbr BLOCKS-ROUTE, ON-MAIN-PATH` at `local (220.8, 1.0, 89.6)`, `blocks=[(0, 1)]` - byte-for-byte the row the lane's round-3 **clean-`main` control** reproduced. This lane adds **exactly one** placement to that gate and it **PASSES**. Registered `BL-R130-DEBT-3`.
+  2. `gate_build32_parseback` exits **1** with **3 [FAIL] / 53 [PASS]**: `M9 random05a` + `M8 farmland06d` appended/removed sets, all `got []` - the identical **known non-blocking** shape build97 recorded, whose M8/M9 modules encode build32-era wave expectations that are vacuous against a modern baseline. Its **generic half all PASS**: blob section walk to exact end, 0x05 flag-aware stride, instance census, sections `0x06`/`0x0b`/`0x14`/`0x17` byte-identical, navmesh byte-identical, no stale `0x0a`. The map-diff above proves the point directly.
+  3. `lookout_uber --negtest` was first pointed at the arz **this wave had just built**; the module asserts it is `um_ushkaret_99.dbr`'s FIRST author and exited 1 before a single plant ran. **Operator error, logged in `MISTAKES.md`**, re-run against the pre-lane build99 arz: 39/39.
+  4. `gate_travel_y_terrain --hub <path>` exited **2** on a usage line - `--hub` is a `store_true` FLAG, not a path. **Operator error, logged**; re-run as `--map <TESTHUB> --hub`: PASS. Both were caught in one read *because* the battery prints argv beside every exit code.
+
+- **Contracts, SET-DIFFED against the SHIPPED build99 set (its arz, its Text, its Quests, its map - like for like) on `(contract, severity, subject)`:** new = **0 P0 / 0 P1 / 4516 P2**; baseline = **0 P0 / 0 P1 / 4513 P2**. **ONLY-IN-BASE = 0. ONLY-IN-NEW = exactly 3**, all `C-RES-DBR-1 / P2` on the three new hoard chests - byte-for-byte the same inherited DRX `lockedSound` debt their 33 shipped siblings already carry, and precisely the class build97's three new Aithon chests joined. Not a new defect: the new chests joined an existing P2 class. Contracts re-run end to end on the **DIST payload**: same **0 P0 / 0 P1 / 4516 P2, GATE PASS**.
+
+- **DEV:** targeted **coupled** copy (arz + Text + **TESTHUB** Levels + **TESTHUB** Quests), md5 source==dest on all four, **TQ.exe NOT running before, during or after** (nothing killed, Steam not restarted). DEV md5-inventoried before and after: **3 of 62 files changed** (arz, Levels, Text - Quests re-copied and byte-identical), **0 added / 0 removed**, the other 59 byte-identical. Post-deploy gates re-run **on the live DEV bytes**: `gate_uber_placement` R-256 row **PASS** with `area: Lookout Cave ... -> OK`, `local (208.0, 17.0, 52.0)`, `nearest walkable 0.14u`, `component #9 of 115 (23960 of 1071942 cells)`, `off-path share 100%`, `blocks=none`; travel-Y TESTHUB **PASS**; boatdialog TESTHUB **PASS**.
+
+- **PUSH-GATE PASS:** `dist == work` on **all 5** artifacts (arz `6b89bb5d`, Text `1be898a0`, Levels `08f3639e`, Quests `6271ceb2`, Creatures `8c0d8d53`); **TESTHUB guard PASS** - *"packaged MD5 08F3639E... differs from TESTHUB MD5 821CEAA9..."*, and that TESTHUB hash is also byte-identical to what is live on DEV, so the guard was not comparing against a stale file; single `SoulvizierClassic` wrapper, **56 files / 1188.4 MB**.
+
+- ✅ **`BL-b97-DEBT-1` HONOURED (the operator half):** `docs/WORKSHOP_CHANGENOTE.bbcode` was rewritten for THIS build and **committed BEFORE `package_workshop.ps1` ran** (commit `29e9008`). ⚠️ **Disclosed:** the first upload attempt was **refused by `upload_workshop.ps1`** - *"change note contains a double-quote or backslash (VDF-unsafe)"* - because the note quoted the hoard name. The quotes were stripped, the fix committed (`8a0e578`) and the upload re-run; the payload never changed. The tooling half of the debt (refusing a note byte-identical to the last uploaded) is **still open**, as is `BL-b98-DEBT-5` (no preview image).
+
+- **Rollback (one step, but COUPLED - restore all four together or none):** `local/DEV_arz_deployed_prev.arz` `1113f2c6` + `local/DEV_text_deployed_prev.arc` `82d5b810` + `local/DEV_levels_deployed_prev.arc` `666789ab` + `local/DEV_quests_deployed_prev.arc` `d9f8c316`. Canonical baselines preserved verbatim at `local/build99_shipped_1113f2c6.arz`, `local/build99_shipped_text_82d5b810.arc`, `local/build99_shipped_quests_6271ceb2.arc`, `local/Levels_merged.build99-baseline.arc`, `local/Levels_merged_TESTHUB.build99-baseline.arc`. This build's artifacts at `local/b100_run1.arz` + `local/b100_run2/` + `local/b100_map_r2/`; all logs under `local/b100_logs/`.
+
+- ⚠️ **NOT PROVEN IN-GAME (🆕 `BL-R256-DEBT-8`, P1).** Everything above is artifact, map-byte and gate evidence; **nobody has walked out of that cave.** **Will's test, full quit TQ + restart Steam first: Act 2, Rhakotis03, the cave mouth in the cliff face. Walk both rooms, come out the far side. The banner flips to `Lookout Cave` and you are on a terrace with no way down.** PASS = a giant vulture about 17u out from the mouth with two smaller champions and a nest of bones; he opens at range, then STOOPS on you; the flock he calls never exceeds 6 and each bird fades; killing him leaves a chest that opens. **FAIL, and each of these is a specific bug worth naming:** he is not there at all; he feels like a wall (his HP band is deliberately between the Coin-Drowned King and Ephialtes); birds pile up and the game chugs (that is the b76 freeze class returning); or **he barely drains you / only drains at point-blank** - that last one is the round-4 Larder defect coming back, and it is the difference between "the Larder" and "a big vulture". Test note: `docs/WILL_TEST_GUIDE.md` top entry.
+
+- **OPEN WILL DECISIONS carried by this ship:** `BL-R256-DEBT-4` (**P1**) the vanilla dune-raider camp + its golden chest still share the terrace, deliberately left in place under the retirement protocol - a cleared shelf shows **two** chests and the raiders join the fight; `BL-R256-DEBT-6` (**P2**) the hoard name **"The Larder of Ushkaret"** is this project's invention and unvetted. Both are disclosed to Will in the change note and the test guide rather than left to surprise him.
+
+- **DEBTS carried forward:** `BL-R256-DEBT-1` (Larder is a wide leech aura, not a bleed-conditional feed - engine limit), `-DEBT-2` (no dormant-carcass approach), `-DEBT-3` (no TESTHUB yard proxy - Will walks the cave), `-DEBT-7` (the shared soul-wiring helper flips `dropItems` BOOL->INT roster-wide; needs its own lane). `BL-R256-DEBT-5` is **CLOSED by this build**.
+- ⚠️ Untouched by this lane: `BL-R255-DEBT-1/2`, `BL-R254-DEBT-2`, `BL-R253-DEBT-1..8`, `BL-R252-DEBT-1..7`, `BL-R251-DEBT-1..6`, `BL-R250-DEBT-1..6`, `BL-R249-DEBT-1/2`, `BL-b94dev-DEBT-1..5`, `BL-b97-DEBT-1` (tooling half), `BL-b98-DEBT-5`, `BL-R130-DEBT-3`, and Will's remaining live-play queue `BL-W0814-2/3/5/6/7/8/9/10/11/12/13`.
 
 ---
 
