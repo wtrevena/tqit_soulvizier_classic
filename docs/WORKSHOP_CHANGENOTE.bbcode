@@ -1,23 +1,38 @@
-[h2]The Enslaver of Souls and the pets you summon from his soul now carry the black shroud[/h2]
+[h2]There is something at the end of Lookout Cave now[/h2]
 [list]
-[*]The Enslaver's own summoned demons have always smoked. He did not, and neither did the versions of him you summon from his soul. The previous update said it had fixed that. It had not, and this note is the correction: the effect was written into monster skill slots [b]the engine does not read[/b].
-[*]The game's monster skill manager declares slots 1 through 17 and nothing above them. Across all 74,013 base-game records, no monster and no pet ever uses a higher slot. The last update parked the shroud at slot 19 on the boss and slot 18 on all three summoned tiers, so four fields were written and none of them were ever loaded. Everything built on top of them was correct and unreachable.
-[*]The shroud now rides the two always-on channels that template actually declares: the skill cast once at spawn, so it is on from the first frame and never waits on combat AI, and the self-buff channel the creature's own controller re-applies whenever possible. Both are ordinary skill fields, which is the only class this game's pet records tolerate.
+[*]In Act 2 there is a cave mouth in the cliff face of the Rhakotis slums. Walk the whole of it, both rooms, and come out the far side, and you step onto a cliff terrace above the desert with no path down and no path on. The game has always called that terrace [b]Lookout Cave[/b] and it is the only place in the entire world that carries that name. Nothing has ever been up there worth the walk.
+[*]Now [b]Ushkaret, the Sky-Burial[/b] is. He is the seventeenth placed uber boss in this mod, and he is the one you have to walk a dead end to reach.
 [/list]
 
-[h2]The whole household is now checked, not just half of it[/h2]
+[h2]What he is, measured rather than asserted[/h2]
 [list]
-[*]The earlier check only ever covered the boss and the three pet tiers his soul summons. It never looked at the marauders he raises, nor at the marauders that a summoned Enslaver raises in turn. Those were smoking by luck, because their rig carries the effect compiled into the mesh, and a mesh swap could have removed that silently at any time.
-[*]The build now walks the entire family (boss, escorts, summoned tiers, and the pets those pets raise) and refuses to build unless every member carries the shroud by one of two proven routes: compiled into its rig, or present in both always-on channels. On this build that resolves to eight family members, four covered by their mesh and four by the fields.
+[*][b]The first Boss-rank bird in the game.[/b] Across all 5,075 monster records the vulture family runs 9 commons, 5 champions and 5 heroes, and it has never had a boss. The only red uber on any flying body at all was a level-17 bat. The sky over Rhakotis is already full of his children; nothing was ever at the top of it.
+[*]He wears a skin exactly one other creature in the database wears, so the corpsewake heroes read as his brood, and he stands about 2.7 times the size of a normal vulture next to two Cliffside Mourner champions who keep the ordinary one.
+[*][b]He does not land.[/b] He opens by raking a fan of quills across the terrace and punishes anyone who closes on him. Then he folds and stoops on you as an area slam. That move exists on exactly three records in the whole game, all of them the vanilla Charon, who is not even in this mod any more. No red uber here has ever left melee range vertically before. On the ground he bleeds you and drains you, and then he calls a flock.
+[*][b]Bleed resistance is the stat that matters[/b], and he cannot be bled himself. He is the larder.
 [/list]
 
-[h2]Your existing souls already in the stash are fine[/h2]
+[h2]The flock is capped and it expires, and that is on purpose[/h2]
 [list]
-[*]This effect lives on the pet records, which the game resolves from the database at the moment the summon fires. It is not baked into the soul item when you pick it up, the way item stats are. So the Enslaver souls already in your stash pick this up with no re-drop and no new character. A full restart to reload the database is enough.
+[*]Never more than six at once, each one fading after fifteen seconds, and every one of them a plain common so the screen does not fill. This is a direct answer to a player-reported freeze from an earlier build, where a summon shipped with a cap but no expiry at all and the game locked up.
+[*]The body this summon is built from was changed late for exactly that reason: the first version cloned a skill that carries no expiry, and the build now refuses to compile unless both bounds are present. That check is permanent and it covers future summons too.
 [/list]
 
-[i]Scope, measured rather than asserted: this update changes [b]four records[/b] and sixteen fields, all of them on the Enslaver and his three summoned tiers. No records were added or removed, nothing else in 51,331 records moved, and no item, drop rate, chest, quest, area or map data changed. The world map, quest archive, text archive and creature archive are byte for byte identical to the previous update.[/i]
+[h2]What he drops[/h2]
+[list]
+[*]The mystical orb, like every other red uber, at the tier the surrounding act uses.
+[*][b]One chest.[/b] One. It stands beside him and unlocks when he dies, and it opens its own dedicated loot table rather than a base-game one, paying at the same rates as every other uber hoard in the mod.
+[*][b]Soul of the Sky-Burial[/b], in Normal, Epic and Legendary versions. The soul is a manual summon button that raises a permanent bird of your own on his body, and it carries a real cost: it opens your own hide, so you take more pierce and bleeding damage while you wear it.
+[/list]
 
-[i]Not yet confirmed in play: this is the fourth attempt at this one request and the first three were record-level claims that were wrong in game. What is proved here is that the shroud now sits on channels the engine declares and reads, and that the gate reproduces the old bug as an artifact fact. What is not proved is how it looks on screen.[/i]
+[h2]Two things worth knowing before you go up there[/h2]
+[list]
+[*][b]The terrace is not his alone.[/b] The base game already stands a dune-raider camp with its own golden chest on that shelf, roughly eleven units from where he waits. It is a live encounter, not scenery, and it will join the fight. It was deliberately left in place rather than deleted, so a cleared terrace shows you [b]two[/b] chests. If that reads as clutter rather than as an ambush, say so and it can go.
+[*][b]The hoard is named "The Larder of Ushkaret".[/b] That name was chosen here, not requested, and it is a one-line change if it should be something else.
+[/list]
+
+[i]Scope: this update adds records and rebuilds the world map. The map change is confined to a [b]single level blob[/b] - the terrace itself - with every navmesh in the world byte for byte identical to the previous update, the quest registry untouched, and no change to any existing monster, item, drop rate, chest, area or entrance. The quest archive is byte for byte identical to the previous update and is republished only because the map and the quest archive must always ship as a pair.[/i]
+
+[i]Not yet confirmed in play: everything above is build and gate evidence. Nobody has walked out of that cave and fought him yet.[/i]
 
 [i]Credits: [b]amgoz1[/b] for Soulvizier and the emblem, used with permission - [b]soa[/b] for Soulvizier AERA - [b]Dragonlord[/b] for DRX.[/i]
