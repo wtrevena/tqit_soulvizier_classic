@@ -84,8 +84,14 @@ R-254 guard from the b93 lesson:
   * THE LARDER. `character_vampiriaura` has 6 carriers (1 Champion, 5 Hero,
     **zero Boss**). Every drain uber in the roster drains ON CONTACT. See section 3
     for exactly what this lane could and could not build out of that.
-  * THE FLOCK. `summon_swarm` has **exactly 1 carrier** (`um_gustleech_28`, Hero) and
-    `leechstrike` exactly 1 (the same Hero). Ushkaret is the first Boss on either.
+  * THE LEECH. `leechstrike` has **exactly 1 carrier** (`um_gustleech_28`, Hero).
+    Ushkaret is the first Boss on it.
+    ⚠️ ROUND-4 CORRECTION: rounds 1-3 also claimed the FLOCK as a first, on the
+    grounds that `summon_swarm` has exactly one carrier. That claim is RETIRED, not
+    softened: the flock summon no longer derives from `summon_swarm` at all (it could
+    not - see apply() step 2 and section 3a), so there is no first there to claim.
+    The flock is now a clone of `melalos_zombie_summon3`, a skill a shipped Boss
+    already casts, and the module says so instead of banking a first it no longer has.
 
 The name is clean too: "ushkaret", "sky-burial", "mourner" and "larder" return
 **zero hits** across all 51,331 arz record paths (the C3 cross-family rule).
@@ -107,6 +113,39 @@ and `leechstrike`, the FIGHT still reads "it feeds while you bleed" and bleed re
 is still the counter - but the mechanic that exists is a wide, strong life-leech
 aura, NOT a bleed-conditional feed, and this file, the report and WILL_TEST_GUIDE all
 say so. Registered as `BL-R256-DEBT-1`.
+
+⚠️ AND IT ONLY REACHES THE PLAYER BECAUSE OF A ROUND-4 FIX. The donor drives its
+vampiric aura through TWO fields - `skillName5` AND `buffSelfSkillName` - and rounds
+1-3 repointed only the kit slot. The shipped boss therefore named the AUTHORED aura in
+a slot and the STOCK, shared, 6-carrier one in the channel the engine reads: either
+the player got the plain 8.0-radius aura and every value above was dead config, or the
+AI refused a skill absent from its kit and nothing fired at all. Both readings make
+this whole section a lie. Both always-on channels (`buffSelfSkillName` +
+`initialSkillName`, the R-255 pair) now name the authored aura, and gate arm V14 reds
+if either is ever left on the donor's record.
+
+===============================================================================
+3a. THE OTHER THING THE ENGINE WOULD NOT GIVE US - the flock's donor
+===============================================================================
+The b76 law says a hostile summon carries TWO bounds: a concurrent cap AND a finite
+spawn TTL. Rounds 1-3 built the flock by cloning `summon_swarm` and ADDING the TTL.
+Measured, that donor carries no `spawnObjectsTimeToLive`, no `FileDescription` and a
+TWENTY-entry `spawnObjects`, so the clone added two fields the donor lacks and left
+nineteen donor `.dbr` slots empty - **22 violations of the B-TOXEUS-2 clone-shape
+invariant, which `run_registry_gates()` runs UNCONDITIONALLY. The cold build was
+dead, and this file claimed the invariant held.** The claim was never measured; that
+is `BL-R256-DEBT-5` exactly as registered, and it was not a formality.
+
+The fix is a donor, not a waiver. `melalos_zombie_summon3` is the only base-data
+monster spawn skill that ships BOTH bounds NATIVELY (petLimit 6, TTL 15.0) with a
+one-entry `spawnObjects`, so every value this lane needs is an existing-field override
+and the clone's shape is a strict SUBSET of its donor's. Cost, stated: the flock is no
+longer a `summon_swarm` first (section 2), and the donor's `Summon` animation demand
+is DELETED because the Corpsewake rig's two special-attack ref slots are both spoken
+for (`SwoopStomp` and `Hemorrage`). Gain: the shape is one a shipped Boss already
+casts, and gate arm V16 now re-runs the REAL shared clone-shape function over this
+lane's own three pairs, so the claim in this paragraph is measured by the module that
+makes it.
 
 Two smaller honest notes:
   * THE APPROACH (graft G3, "the boss reads as a carcass until you walk in") is NOT
@@ -130,21 +169,37 @@ P1 THE VIGIL   - it does not land. `attackSkillName = razorquill_megaburst`
                  (Skill_AttackProjectileFan) raked across the shelf; passive
                  `razorbird_retaliation` punishes anyone who closes.
 P2 THE STOOP   - it folds and drops on you: `charon_swoopstomp` (Skill_AttackRadius,
-                 radius 7.0), then fights on the ground with `hemorrage` (bleed +
-                 movement slow) and `leechstrike`.
+                 radius 7.0) at the AUTHORED level [1,4,7], then fights on the ground
+                 with `hemorrage` (bleed + movement slow) and `leechstrike`.
+                 THE LEVEL IS PART OF THE FIGHT, not bookkeeping. That skill's damage
+                 is a NINE-row ladder and its only three carriers in the whole game -
+                 vanilla `boss_charonform2_39|41|43` - use [1,4,7]/[2,5,8]/[3,6,9].
+                 Rounds 1-3 reused the donor's `bladestorm` slot and kept its
+                 skillLevel6 [10,13,16], i.e. off the end of the authored ladder: on
+                 NORMAL that clamps to 445 cold + 870 vitality + 12%-of-current-life
+                 + a 2.0s stun where vanilla's own level-1 row is 419 / 805 / 2%.
+                 Ushkaret is charLevel 30 and Charon-39 is the weakest carrier, so
+                 Ushkaret gets Charon-39's row and not one above it. Gate arm V15.
+                 AND IT CAN AFFORD TO: the stoop costs a flat 250 mana, nothing in the
+                 boss furniture returns any, and the donor's Hero pool is 500/5 - two
+                 casts and then ~50s of regen each. Mana is 3000/30 (the shipped
+                 placed-red band; Charon, who owns this skill, runs exactly 3000/30).
+                 Gate arm V18 derives the requirement from the kit rather than pinning
+                 it, so a costlier skill added later reds instead of starving quietly.
 P3 SKY-BURIAL  - `svc_ushkaret_skyburial` calls the flock (Common carrion-motes only,
                  never Champions - the neferkha no-crowd-out shape); on death
                  `ondeath_bladeorb` scatters the last quills.
-                 THE FLOCK IS BOUNDED TWO WAYS, and vet round 2 shipped only one of
-                 them: `petLimit` 6 (concurrent) AND `spawnObjectsTimeToLive` 20.0s
-                 (expiry). The donor `summon_swarm` carries NO TTL at all, so a plain
-                 clone summons PERMANENT minions and the boss refills the cap forever -
-                 the b76 P0 Will filed as "the infinite summon ... the game is frozen".
-                 A petLimit does not substitute: every b76 offender `summon_caps`
-                 repaired already had one. And no shared gate can catch ours, because
-                 `summon_caps.check_no_new_unbounded` only fires on records with NEITHER
-                 bound - a healthy petLimit HIDES a permanent flock from it. So this
-                 module owns the TTL and gate arm V13 asserts it on the final db.
+                 THE FLOCK IS BOUNDED TWO WAYS: `petLimit` 6 (concurrent) AND
+                 `spawnObjectsTimeToLive` 20.0s (expiry). Round 2 shipped only the cap,
+                 which is the b76 P0 Will filed as "the infinite summon ... the game is
+                 frozen"; a petLimit does NOT substitute (every b76 offender
+                 `summon_caps` repaired already had one), and no shared gate can catch
+                 ours because `summon_caps.check_no_new_unbounded` only fires on
+                 records with NEITHER bound - a healthy petLimit HIDES a permanent
+                 flock from it. So this module owns both bounds and gate arm V13
+                 asserts them on the final db. Round 3 added the TTL to the wrong donor
+                 and killed the cold build; section 3a is the whole story. Both bounds
+                 are now INHERITED from `melalos_zombie_summon3` rather than added.
                  20.0s is quoted, not chosen: it is what every `svc_`-authored summon in
                  the shipped arz already carries (the four_generals musters x4 and
                  `svc_leinth_guard_bloodbeast`) and one of the two values `summon_caps`
@@ -171,9 +226,11 @@ larder.
   um_ushkaret_99                 the boss (Monster derive from um_corpsewake_28)
   svc_ushkaret_mourner_30        the Champion escort, x2 (em_razorbird_24 derive)
   svc_ushkaret_carrionmote_26    the Common flock body (am_plaguevulture_20 derive)
-  svc_ushkaret_larder(+buff)     the widened life-leech aura pair
-  svc_ushkaret_skyburial         the flock summon (summon_swarm derive, Commons only,
-                                 bounded: petLimit 6 + a 20.0s spawn TTL - see P3)
+  svc_ushkaret_larder(+buff)     the widened life-leech aura pair, driven from BOTH
+                                 always-on channels on the boss (R-255)
+  svc_ushkaret_skyburial         the flock summon (melalos_zombie_summon3 derive - see
+                                 section 3a; Commons only, both b76 bounds INHERITED:
+                                 petLimit 6 + a spawn TTL set to the svc_ value 20.0s)
   limit_ushkaret                 the [1..110] no-downscale window
   q_ushkaret_lone (+pool)        the lone-boss placer the map lane injects
   svc_ushkaret_chest             the ONE world chest (R-108 / UBER_CHEST_COUNT = 1)
@@ -226,7 +283,20 @@ DONOR_MOURNER = _V + r'\em_razorbird_24.dbr'           # Champion, scale 1.10, r
 DONOR_MOTE    = _V + r'\am_plaguevulture_20.dbr'       # Common, chanceToEquipFinger2 already 0.0
 DONOR_LARDER  = r'records\skills\monster skills\auras\character_vampiriaura.dbr'      # Skill_BuffRadiusToggled
 DONOR_LARDERB = r'records\skills\monster skills\auras\character_vampiricbuff.dbr'     # SkillBuff_Passive
-DONOR_SWARM   = r'records\skills\sv\gustleech\summon_swarm.dbr'                       # Skill_SpawnPet -> Monster.tpl bodies
+# THE FLOCK DONOR - CHANGED IN VET ROUND 4, and the reason is a hard build failure.
+# Round 3 cloned `records\skills\sv\gustleech\summon_swarm.dbr` and then ADDED
+# `spawnObjectsTimeToLive` to it (the b76 bound), ADDED `FileDescription`, and shortened
+# its 20-entry `spawnObjects` to one. All three are B-TOXEUS-2 clone-shape violations, and
+# `_verify_boss_kit_clone_shape` runs UNCONDITIONALLY on the build path - 22 problems, a
+# dead cold build. See the long note in apply() step 2. The replacement is the only
+# base-data monster spawn skill that ships BOTH b76 bounds NATIVELY (petLimit 6 +
+# spawnObjectsTimeToLive 15.0) with a 1-entry `spawnObjects`, so every value this module
+# needs is an EXISTING-field override and the invariant holds by construction rather than
+# by assertion. It is also a BOSS's own flock summon in the shipped data (um_melalos_19
+# raises zombies with it), so the shape is proven to cast on a Boss - which the Hero-only
+# summon_swarm never was. Measured untouched by any other patch module (zero hits for
+# `melalos_zombie_summon3` across tools/), so cloning it at registry slot 12 is safe.
+DONOR_FLOCK   = r'records\skills\monster skills\summoning_pets\melalos_zombie_summon3.dbr'
 DONOR_POOL    = r'records\drxmap\proxy\pools\q_leinth_lone.dbr'
 DONOR_PROXY   = r'records\drxmap\proxy\q_leinth_lone.dbr'
 
@@ -266,6 +336,30 @@ BAND        = [30, 52, 68]
 HP          = [14000.0, 19000.0, 26000.0]
 HP_REGEN    = [20.0, 40.0, 70.0]
 SCALE       = 2.7
+# THE STOOP'S LEVEL, and it is not a taste call (vet round 4). The donor drove
+# `bladestorm` on slot 6 at skillLevel6 [10,13,16]; round 3 reused the slot for
+# `charon_swoopstomp` and left the level alone. Measured, that skill's damage is a
+# NINE-entry ladder (offensiveColdMin/offensiveLifeMin/offensivePercentCurrentLife 9
+# rows each) and its only three carriers - vanilla boss_charonform2_39|41|43 - use
+# [1,4,7] / [2,5,8] / [3,6,9], i.e. the clean 1..9 grid. Nothing in the game has ever
+# cast it above 9, so [10,13,16] runs off the end of the authored ladder: clamped that
+# is 445 cold + 870 vitality + 12%-of-current-life + a 2.0s stun on NORMAL, where
+# vanilla's own level-1 row is 419 / 805 / 2%. Ushkaret is charLevel 30; Charon-39 is
+# the weakest carrier and casts [1,4,7]; a level-30 Act 2 uber gets that row and not
+# one above it. Gate arm V15 re-derives the ladder depth and reds on any slot above it.
+SWOOP_LEVEL = [1, 4, 7]
+# MANA, measured instead of inherited (vet round 4). `charon_swoopstomp` costs a FLAT
+# 250 per cast and the flock costs 50; the donor Corpsewake Hero ships characterMana
+# 500 / regen 5, and NOTHING in the furniture gives mana back (globalproperties_*,
+# boss_scaling and armor_passive all read 0.0 on every mana field). At 500/5 the stoop
+# fires twice and then costs 50 seconds of regen per cast while the flock drains the
+# same pool - the single most expensive skill in the roster on the smallest pool in it.
+# The only three carriers of that skill carry 8000/50. 3000/30 puts Ushkaret exactly on
+# the shipped placed-red band (Ephialtes 3000/5, Charon 3000/30, Charon form 2 3000/21,
+# the Polis Gaoler 3000/2) and makes the arithmetic honest: 3000 pool = 12 consecutive
+# stoops, 30/s regen = a sustained stoop every ~8.3s with the flock still affordable.
+MANA        = 3000.0
+MANA_REGEN  = 30.0
 MOURNER_BAND = [28, 50, 66]
 MOURNER_HP   = [1400.0, 2400.0, 3600.0]        # strictly ascending (the R-100 #18 escort invariant)
 MOTE_BAND    = [26, 46, 60]
@@ -288,6 +382,40 @@ TAG_PET     = 'tagSVCPetPatientWing'
 _ALL_TAGS = (TAG_BOSS, TAG_MOURNER, TAG_MOTE, TAG_HOARD, TAG_SOUL, TAG_SOUL + 'DESC',
              TAG_SUMMON, TAG_PET)
 
+# The three skill clones this module registers into the shared B-TOXEUS-2 clone-shape
+# gate. Named once so apply() (which registers them) and verify() (which re-runs the
+# REAL gate function over exactly these pairs, so the two can never drift) agree.
+_CLONE_PAIRS = ((DONOR_LARDERB, LARDER_BUFF),
+                (DONOR_LARDER, LARDER),
+                (DONOR_FLOCK, SKYBURIAL))
+
+# ── THE KIT TABLE (slot, skill, level). `None` = KEEP the donor's own skillLevel for
+#    that slot, which is only ever legal when the slot still holds the donor's own
+#    skill (or this module's clone of it) - see `_KIT_LEVEL_INHERITABLE` and gate arm
+#    V15. Every slot this module re-points to a DIFFERENT skill authors its level.
+KIT_SLOTS = (
+    (1,  SK_ARMOR,       None),                   # donor
+    (2,  SK_MEGABURST,   None),                   # donor - P1 the vigil
+    (3,  SK_RETALIATE,   None),                   # donor - closing costs blood
+    (4,  SK_BLADEORB,    None),                   # donor - P3 the last quills
+    (5,  LARDER,         None),                   # this module's clone of the donor's own
+                                                  # character_vampiriaura: identical ladder,
+                                                  # so the donor's [3,6,9] still fits
+    (6,  SK_SWOOP,       SWOOP_LEVEL),            # was bladestorm - P2 the stoop
+    (7,  SK_HEMORRAGE,   None),                   # donor - the bleed
+    (8,  SK_LEECHSTRIKE, [2, 5, 8]),              # NEW slot (gustleech's own levels)
+    (9,  SKYBURIAL,      [1, 2, 3]),              # NEW slot - P3 the flock
+    (12, SK_BOSSSCALE,   [1, 2, 3]),              # was hero_scaling (donor level, authored)
+    (13, SK_GP_L,        [0, 0, 1]),              # was hero_modifier
+    (14, SK_CONVIMM,     [1, 1, 1]),              # NEW slot
+)
+# The only slots allowed to INHERIT a level: those still holding the donor's own skill,
+# plus slot 5, whose skill is this module's clone of the donor's own aura (same record
+# shape, same ladder). Anything else reusing a slot inherits a level tuned for a
+# DIFFERENT skill - the round-3 defect where charon_swoopstomp ran at bladestorm's
+# [10,13,16] against its own 9-row ladder.
+_KIT_LEVEL_INHERITABLE = {5: DONOR_LARDER}
+
 
 # ── small readers (kept local; the module must not depend on monolith privates
 #    beyond the sanctioned builders) ──────────────────────────────────────────
@@ -304,6 +432,51 @@ def _v1(db, rec, field):
 
 def _soul_paths():
     return [r'%s\%s_soul_%s.dbr' % (A._SOUL_DIR, SOUL_BASE, t) for t in ('n', 'e', 'l')]
+
+
+def _dtype_of(db, rec, field):
+    """The declared dtype of `field` on `rec` (None if the field is absent)."""
+    for k, tf in (db.get_fields(rec) or {}).items():
+        if k.split('###')[0] == field:
+            return getattr(tf, 'dtype', None)
+    return None
+
+
+def _del_field(db, rec, field):
+    """Remove a field slot entirely rather than blanking it to ''.
+
+    The repo's own precedent (`enslaver_shroud._del_field`): an ABSENT field is the
+    shipped way to say "this record does not use this"; a blanked one is a loader
+    hazard. It also keeps a clone's shape a strict SUBSET of its donor's, which is
+    what the B-TOXEUS-2 invariant wants (rule 1 only sees fields the clone ADDS)."""
+    ff = db.get_fields(rec)
+    if not ff:
+        return False
+    gone = [k for k in list(ff) if k.split('###')[0] == field]
+    for k in gone:
+        del ff[k]
+    if gone:
+        db._modified.add(rec)
+    return bool(gone)
+
+
+def _ladder_depth(db, skill):
+    """The authored per-level DAMAGE depth of a skill record.
+
+    = the longest `offensive*Min` / `offensive*Max` array on it. That is the array the
+    engine indexes with the skill level, so a level above it runs off the end of what
+    the designer wrote. Deliberately NOT `skillMaxLevel` (a blanket 20 on almost every
+    skill in the database, including ones with a 9-row ladder) and deliberately the
+    LONGEST rather than the shortest array, because vanilla itself runs level 9 against
+    charon_swoopstomp's 3-entry `offensiveStunMin`. Returns 0 when the skill authors no
+    damage ladder at all (a passive / a summon), in which case there is nothing to
+    overrun and the check is skipped."""
+    depth = 0
+    for k, tf in (db.get_fields(skill) or {}).items():
+        b = k.split('###')[0]
+        if b.startswith('offensive') and (b.endswith('Min') or b.endswith('Max')):
+            depth = max(depth, len(tf.values or []))
+    return depth
 
 
 def _sibling(name):
@@ -370,7 +543,7 @@ def apply(db, tags):
 
     # ── 0. FAIL LOUD on any missing donor (exact path; has_record is exact) ──
     for donor in (DONOR_BOSS, DONOR_MOURNER, DONOR_MOTE, DONOR_LARDER, DONOR_LARDERB,
-                  DONOR_SWARM, DONOR_POOL, DONOR_PROXY, ORB,
+                  DONOR_FLOCK, DONOR_POOL, DONOR_PROXY, ORB,
                   SK_ARMOR, SK_MEGABURST, SK_RETALIATE, SK_BLADEORB, SK_SWOOP,
                   SK_HEMORRAGE, SK_LEECHSTRIKE, SK_BURST, SK_CONVIMM, SK_BOSSSCALE,
                   SK_GP_N, SK_GP_E, SK_GP_L,
@@ -384,14 +557,17 @@ def apply(db, tags):
                 "record's first author (measured absent on main). Another lane now "
                 "owns it; make the ordering explicit and re-measure." % path)
 
-    # ── 1. THE LARDER (aura + its buff). Both are single-purpose clones with only
-    #    EXISTING fields overridden, so the boss-kit clone-shape invariant holds.
-    #    See section 3: this is a WIDE, STRONG life-leech aura. It is NOT a
-    #    bleed-conditional feed - the shape has no conditional channel at all. ──
+    # ── 1. THE LARDER (aura + its buff). Both are single-purpose clones that override
+    #    ONLY fields their donor already carries, so the B-TOXEUS-2 clone-shape
+    #    invariant holds - MEASURED this round, not asserted: round 3 also set
+    #    `FileDescription` on the BUFF, and `character_vampiricbuff` (619 fields) does
+    #    not carry one, so that single cosmetic line was a rule-1 violation that reds
+    #    the build. It is gone. The AURA's donor (5 fields) DOES carry FileDescription,
+    #    so that one stays. See section 3: this is a WIDE, STRONG life-leech aura. It is
+    #    NOT a bleed-conditional feed - the shape has no conditional channel at all. ──
     db.clone_record(DONOR_LARDERB, LARDER_BUFF)
     _radius_before = _v1(db, LARDER_BUFF, 'skillTargetRadius')
     sf(LARDER_BUFF, 'skillTargetRadius', 14.0)            # 8.0 -> the plate IS the shelf
-    sf(LARDER_BUFF, 'FileDescription', 'Ushkaret larder: wide life-leech aura (R-256)')
     # raise the two leech ladders ~1.35x on their own 20-step shape (never a new field)
     for fld, mult in (('offensiveLifeLeechMin', 1.35), ('offensiveSlowLifeLeachMin', 1.35),
                       ('defensiveSlowLifeLeach', 1.20)):
@@ -405,46 +581,59 @@ def apply(db, tags):
     sf(LARDER, 'FileDescription', 'Ushkaret larder aura (life leech + leech resist)')
     db._modified.add(LARDER)
 
-    # ── 2. THE FLOCK SUMMON. `summon_swarm` is a Skill_SpawnPet whose stock
-    #    spawnObjects are themselves Monster.tpl records (stingingswarm_01 is
-    #    Class=Monster, measured), so repointing it at our Common carrion-mote is
-    #    the SAME shape, not a class change. It carries NO
-    #    skillSpecialAnimationName, so it needs nothing from the vulture rig.
-    #    Commons ONLY - the neferkha no-champion-crowd-out law.
+    # ── 2. THE FLOCK SUMMON, REBUILT IN VET ROUND 4 ON A DIFFERENT DONOR.
     #
-    #    ⚠️ THE FLOCK IS BOUNDED TWO WAYS, AND ROUND 2 SHIPPED ONLY ONE OF THEM.
-    #    Measured on the shipped arz, the donor `summon_swarm` carries petLimit 5,
-    #    skillCooldownTime [7,6,5] and NO `spawnObjectsTimeToLive` AT ALL - so a
-    #    straight clone summons PERMANENT minions: nothing expires, the boss
-    #    re-summons on cooldown the instant one dies to refill the cap, and the
-    #    fight never reaches a steady state. That is verbatim the b76 defect class
-    #    Will filed as a P0 ("so much lag with the monsters ... the game is frozen
-    #    ... the infinite summon"), and the b76 offenders `summon_caps` repaired ALL
-    #    HAD petLimits too (aktaios 9, alastor 8, undeadmelee01 5) - the concurrent
-    #    cap was never what made them safe, the missing TTL was the defect.
-    #    Worse, no shared gate can see ours: `summon_caps.check_no_new_unbounded`
-    #    only flags records with NEITHER a positive petLimit NOR a positive TTL, so
-    #    petLimit 6 makes this record invisible to it. So the TTL is authored HERE
-    #    and asserted by V13 below.
-    #    THE VALUE IS QUOTED, NOT CHOSEN: 20.0 is what every `svc_`-authored summon
-    #    in the shipped arz already carries - the four_generals musters
-    #    (`svc_general_summonarchers_a|b|c` petLimit 3, `svc_marshal_summonarchers`
-    #    petLimit 5) and `svc_leinth_guard_bloodbeast` (petLimit 2), all ttl=20.0 -
-    #    and it is one of the two values `summon_caps` itself restores. Against the
-    #    [12,10,8] cooldown it means the flock overlaps and pressures without ever
-    #    accumulating, under a hard concurrent cap of 6 Commons. The field is ABSENT
-    #    on the donor, so it needs its dtype declared (the same call shape
-    #    `summon_caps` uses); this is not the "never pass dtype to a cloned record's
-    #    EXISTING field" trap, which is about overwriting a typed field in place. ──
-    db.clone_record(DONOR_SWARM, SKYBURIAL)
-    _swarm_ttl_before = _v1(db, DONOR_SWARM, 'spawnObjectsTimeToLive')
-    sf(SKYBURIAL, 'spawnObjects', [CARRIONMOTE])
-    sf(SKYBURIAL, 'petLimit', FLOCK_CAP)
+    #    THE FLOCK MUST BE BOUNDED TWO WAYS (the b76 law): a concurrent cap AND a
+    #    finite spawn TTL. Round 2 shipped only the cap; round 3 added the TTL to a
+    #    clone of `summon_swarm` - and THAT is what broke. `summon_swarm` carries NO
+    #    `spawnObjectsTimeToLive` and NO `FileDescription`, and its `spawnObjects` is
+    #    twenty entries long, so round 3's clone ADDED two fields the donor lacks and
+    #    left nineteen donor .dbr slots reading empty. `_verify_boss_kit_clone_shape`
+    #    (B-TOXEUS-2) runs UNCONDITIONALLY inside `run_registry_gates()` on the build
+    #    path and reds on exactly those three shapes: 22 problems, a dead cold build.
+    #    The module's own docstring claimed the invariant held. It did not, and the
+    #    only reason no gate caught it is that `--negtest` runs this module standalone
+    #    against an already-built arz (that is `BL-R256-DEBT-5`, and it was not a
+    #    formality).
+    #
+    #    THE FIX IS A DONOR, NOT A WAIVER. `melalos_zombie_summon3` is the one
+    #    base-data monster spawn skill that ships BOTH b76 bounds NATIVELY -
+    #    `petLimit 6` (already our cap) and `spawnObjectsTimeToLive 15.0` - with a
+    #    ONE-entry `spawnObjects`, a `skillCooldownTime` and a `skillManaCost`. So
+    #    every value below is an EXISTING-FIELD OVERRIDE, the clone's shape is a
+    #    strict subset of its donor's, and the invariant holds BY CONSTRUCTION instead
+    #    of by assertion. It is also a Boss's own flock summon in the shipped data
+    #    (`um_melalos_19` raises zombies with it, on both `skillName2` and
+    #    `specialAttack2SkillName`), so the shape is proven to cast on a Boss - which
+    #    the Hero-only `summon_swarm` never was - and its spawn body is a Monster.tpl
+    #    record, so repointing it at our Common carrion-mote is the same shape, not a
+    #    class change. NOT un-registering the pair from `_BOSS_KIT_CLONES` was the
+    #    other option and it is the wrong one: that disarms a fail-loud gate.
+    #
+    #    THE ONE SUBTRACTION: the donor demands the `Summon` animation, and the
+    #    Corpsewake rig has exactly two special-attack ref slots - `Bladestorm` (this
+    #    lane repoints it to `SwoopStomp`) and `Hemorrage` (this lane KEEPS hemorrage
+    #    in the kit, so it is spoken for). There is no third clip on the rig to bind,
+    #    so the demand is DELETED rather than left dangling or blanked: an absent
+    #    `skillSpecialAnimationName` is the shipped way to say "no special animation"
+    #    (`summon_swarm` itself has none) and deletion keeps the clone a subset of the
+    #    donor. `FileDescription` is likewise NOT set - the donor has none.
+    #
+    #    THE TTL VALUE IS QUOTED, NOT CHOSEN: 20.0 is what every `svc_`-authored
+    #    summon in the shipped arz carries (the four_generals musters x4 and
+    #    `svc_leinth_guard_bloodbeast`) and one of the two values `summon_caps`
+    #    restores. No shared gate can enforce it for us -
+    #    `summon_caps.check_no_new_unbounded` only fires on records with NEITHER
+    #    bound, so a healthy petLimit HIDES a permanent flock from it. V13 below owns
+    #    it. Commons ONLY - the neferkha no-champion-crowd-out law. ──────────────────
+    db.clone_record(DONOR_FLOCK, SKYBURIAL)
+    _flock_ttl_before = _v1(db, DONOR_FLOCK, 'spawnObjectsTimeToLive')
+    _flock_anim_before = _v1(db, DONOR_FLOCK, 'skillSpecialAnimationName')
+    sf(SKYBURIAL, 'spawnObjects', [CARRIONMOTE])          # 1-for-1 ref swap (donor len 1)
+    sf(SKYBURIAL, 'petLimit', FLOCK_CAP)                  # donor already 6; explicit anyway
     sf(SKYBURIAL, 'skillCooldownTime', [12.0, 10.0, 8.0])
-    sf(SKYBURIAL, 'spawnObjectsTimeToLive', FLOCK_TTL, F)
-    sf(SKYBURIAL, 'FileDescription',
-       'Ushkaret sky-burial: calls the carrion-mote flock (bounded: petLimit 6 + %.1fs TTL)'
-       % FLOCK_TTL)
+    sf(SKYBURIAL, 'spawnObjectsTimeToLive', FLOCK_TTL)    # donor 15.0 -> the svc_ value
+    _del_field(db, SKYBURIAL, 'skillSpecialAnimationName')
     db._modified.add(SKYBURIAL)
 
     # ── 3. THE FLOCK BODY (Common). The donor already reads
@@ -454,7 +643,7 @@ def apply(db, tags):
     sf(CARRIONMOTE, 'description', TAG_MOTE)
     sf(CARRIONMOTE, 'monsterClassification', 'Common')
     sf(CARRIONMOTE, 'charLevel', list(MOTE_BAND))
-    sf(CARRIONMOTE, 'dropItems', 0, I)
+    sf(CARRIONMOTE, 'dropItems', 0)                       # BOOL on the donor - NO dtype
     A._svc_clear_soul_loot(db, CARRIONMOTE)
     db._modified.add(CARRIONMOTE)
 
@@ -467,7 +656,12 @@ def apply(db, tags):
     sf(MOURNER, 'monsterClassification', 'Champion')
     sf(MOURNER, 'charLevel', list(MOURNER_BAND))
     sf(MOURNER, 'characterLife', list(MOURNER_HP))
-    sf(MOURNER, 'dropItems', 0, I)                        # R-125: an escort is not a loot faucet
+    # dropItems is BOOL on all three donors (measured). Passing an explicit dtype to
+    # set_field() OVERWRITES tf.dtype on an existing field, so `, I` shipped INT where
+    # every other monster in the database declares BOOL - the standing CLAUDE.md law
+    # ("never pass explicit dtype to set_field() on cloned records"), and an unexplained
+    # type change in the ship lane's record-diff. Gate arm V17 asserts the dtypes match.
+    sf(MOURNER, 'dropItems', 0)                           # R-125: an escort is not a loot faucet
     A._svc_clear_soul_loot(db, MOURNER)                   # only the Sky-Burial drops the soul
     db._modified.add(MOURNER)
 
@@ -489,43 +683,65 @@ def apply(db, tags):
     sf(B, 'defensivePhysical', 25.0)
     sf(B, 'defensiveLife', 45.0)
     sf(B, 'defensiveBleeding', 100.0)                     # signature: the larder cannot be bled
+    # MANA (vet round 4). See the MANA/MANA_REGEN note above: the donor's Hero pool of
+    # 500/5 cannot pay for a 250-cost stoop, and nothing in the furniture returns mana.
+    # Both fields exist on the donor, so this is an ordinary existing-field override.
+    _mana_before = _v1(db, B, 'characterMana')
+    sf(B, 'characterMana', MANA)
+    sf(B, 'characterManaRegen', MANA_REGEN)
     # THE ANIMATION ANSWER (section 3): the donor's own ref slot 1 pointed at
     # 'Bladestorm', a skill this boss is losing. Repoint it - an EXISTING field on
     # a cloned record, no new field, no template guess - so the dive plays
     # Vulture_AttBeta.anm instead of falling through to the generic attack.
     _anim_before = _v1(db, B, 'unarmedSpecialAnimRef1')
     sf(B, 'unarmedSpecialAnimRef1', 'SwoopStomp')
-    # the kit. Slots 1-7 + 10-13 come from the donor; 8, 9 and 14 are free and are
-    # well inside MonsterSkillManager's declared skillName1..17 ceiling (R-255).
-    for slot, skill, lvl in (
-            (1,  SK_ARMOR,      None),                    # donor
-            (2,  SK_MEGABURST,  None),                    # donor - P1 the vigil
-            (3,  SK_RETALIATE,  None),                    # donor - closing costs blood
-            (4,  SK_BLADEORB,   None),                    # donor - P3 the last quills
-            (5,  LARDER,        None),                    # was character_vampiriaura
-            (6,  SK_SWOOP,      None),                    # was bladestorm - P2 the stoop
-            (7,  SK_HEMORRAGE,  None),                    # donor - the bleed
-            (8,  SK_LEECHSTRIKE, [2, 5, 8]),              # NEW slot (gustleech's own levels)
-            (9,  SKYBURIAL,     [1, 2, 3]),               # NEW slot - P3 the flock
-            (12, SK_BOSSSCALE,  None),                    # was hero_scaling
-            (13, SK_GP_L,       [0, 0, 1]),               # was hero_modifier
-            (14, SK_CONVIMM,    [1, 1, 1]),               # NEW slot
-    ):
+    # the kit (KIT_SLOTS, module level so verify() reads the SAME table). Slots 1-7 +
+    # 10-13 come from the donor; 8, 9 and 14 are free and are well inside
+    # MonsterSkillManager's declared skillName1..17 ceiling (R-255).
+    for slot, skill, lvl in KIT_SLOTS:
         sf(B, 'skillName%d' % slot, skill)
         if lvl is not None:
             sf(B, 'skillLevel%d' % slot, list(lvl))
+    # THE ALWAYS-ON CHANNEL (vet round 4, and it is the fix that makes the Larder
+    # REACH the player). The donor drives its vampiric aura through TWO fields:
+    # `skillName5` AND `buffSelfSkillName`, both naming `character_vampiriaura`.
+    # Round 3 repointed only the kit slot, so the shipped boss named the AUTHORED
+    # aura on skillName5 and the STOCK, shared, 6-carrier one on buffSelfSkillName -
+    # meaning either the player got the stock 8.0-radius aura and every authored
+    # value (radius 14.0, the raised leech ladders) was dead config, or the AI
+    # refused a skill absent from its kit and nothing fired at all. Both are lies
+    # against R-256, the docstring and WILL_TEST_GUIDE, and THE LARDER is this
+    # lane's whole identity. `_ALWAYS_ON_FIELDS` in `enslaver_shroud` (R-255, one day
+    # old) names the two channels the skill manager actually reads for a self-buff;
+    # `buffSelfSkillName` is a repoint of a field the donor already carries, and
+    # `initialSkillName` is added on the same law (923 of 5,075 Monster.tpl records
+    # carry it, 2 of them vultures) so the aura is ON from the first frame instead of
+    # waiting on BuffSelfBehavior. Gate arm V14 asserts no always-on channel is left
+    # pointing at the donor's stock record.
+    for _chan in ('buffSelfSkillName', 'initialSkillName'):
+        sf(B, _chan, LARDER)
     # AI rotation: the stoop is the beat, the flock is the escalation, the bleed is
-    # the constant. attackSkillName stays the donor's megaburst fan.
+    # the constant. attackSkillName stays the donor's megaburst fan. Slots 1 and 2
+    # keep the donor's fully-specified Delay/Range/Timeout; slot 3 is NEW on this
+    # record, so it is given the SAME tuning the donor used to drive hemorrage on
+    # slot 2 (Delay 5.0 / AnyRange / Timeout 2.0) rather than left at engine defaults
+    # while its neighbours are specified - of the 543 mod carriers of
+    # specialAttack3SkillName, 515 also set Delay, 469 Range and 424 Timeout.
     sf(B, 'specialAttackSkillName', SK_SWOOP)
     sf(B, 'specialAttackChance', 35.0)
     sf(B, 'specialAttack2SkillName', SKYBURIAL)
     sf(B, 'specialAttack2Chance', 30.0)
     sf(B, 'specialAttack3SkillName', SK_HEMORRAGE)
     sf(B, 'specialAttack3Chance', 40.0)
+    sf(B, 'specialAttack3Delay', _v1(db, DONOR_BOSS, 'specialAttack2Delay') or 5.0)
+    sf(B, 'specialAttack3Range', _v1(db, DONOR_BOSS, 'specialAttack2Range') or 'AnyRange')
+    sf(B, 'specialAttack3Timeout', _v1(db, DONOR_BOSS, 'specialAttack2Timeout') or 2.0)
     # the mystical orb on death (R-200: every red uber drops one). ADD the field
-    # with an explicit dtype - the donor carries no treasureProxyName at all.
+    # with an explicit dtype - the donor carries no treasureProxyName at all, so
+    # there is no existing dtype to clobber (this is the legitimate half of the
+    # dtype rule, unlike `dropItems` above, which the donor already declares BOOL).
     sf(B, 'treasureProxyName', ORB, S)
-    sf(B, 'dropItems', 1, I)
+    sf(B, 'dropItems', 1)
     db._modified.add(B)
 
     # ── 6. Placement chain: no-downscale limit -> lone pool -> proxy. The pool
@@ -619,7 +835,7 @@ def apply(db, tags):
             db._modified.add(sp)
 
     # ── 9. Register with the shared gate-input registries (all idempotent). ─────
-    for pair in ((DONOR_LARDERB, LARDER_BUFF), (DONOR_LARDER, LARDER), (DONOR_SWARM, SKYBURIAL)):
+    for pair in _CLONE_PAIRS:
         if pair not in A._BOSS_KIT_CLONES:
             A._BOSS_KIT_CLONES.append(pair)               # clone-shape gate (B-TOXEUS-2)
     spec = {'proxy': PROXY, 'pool': POOL, 'main_monster': BOSS,
@@ -650,24 +866,34 @@ def apply(db, tags):
         'bird, and it takes the hide off your back to do it.')
 
     print("  Ushkaret, the Sky-Burial: Boss %s HP %s scale %.1f on the Corpsewake rig "
-          "(exclusive corpsewake.tex) - quill fan + the ONLY custom swoop-stomp "
-          "(anim answered by repointing unarmedSpecialAnimRef1 %r -> 'SwoopStomp') + "
-          "hemorrage + leechstrike + the Larder aura (radius %s -> 14.0) + the "
-          "carrion-mote flock (BOUNDED: petLimit %d + spawn TTL %r -> %.1fs, the b76 "
-          "law - the donor ships no TTL at all); 2 Cliffside Mourner champions; limit "
+          "(exclusive corpsewake.tex) - quill fan + the ONLY custom swoop-stomp at the "
+          "authored level %s (anim answered by repointing unarmedSpecialAnimRef1 %r -> "
+          "'SwoopStomp') + hemorrage + leechstrike + the Larder aura (radius %s -> "
+          "14.0) driving BOTH always-on channels (buffSelfSkillName + initialSkillName, "
+          "R-255) + the carrion-mote flock on the %s donor (petLimit %d + TTL %r -> "
+          "%.1fs, both INHERITED not added, anim demand %r deleted); mana %r -> %.0f/%.0f "
+          "so the %d-cost stoop can be paid for; 2 Cliffside Mourner champions; limit "
           "[1..110]; lone pool + proxy (accessories EMPTY - the chest stands in the "
           "world); ONE world chest on the dedicated '%s' hoard chain; "
           "genericbossorb_02; '{^F}Soul of the Sky-Burial' (manual 'Give It to the "
           "Sky' -> The Patient Wing, 66%% Finger2); %d tags set. Map lane places it on "
           "the Lookout shelf."
-          % (BAND, HP, SCALE, _anim_before, _radius_before, FLOCK_CAP,
-             _swarm_ttl_before, FLOCK_TTL, HOARD_PREFIX, len(_ALL_TAGS)))
+          % (BAND, HP, SCALE, SWOOP_LEVEL, _anim_before, _radius_before,
+             DONOR_FLOCK.rsplit('\\', 1)[-1], FLOCK_CAP, _flock_ttl_before, FLOCK_TTL,
+             _flock_anim_before, _mana_before, MANA, MANA_REGEN,
+             int(float(_v1(db, SK_SWOOP, 'skillManaCost') or 0)),
+             HOARD_PREFIX, len(_ALL_TAGS)))
 
 
 # ── verify: THE GATE (runs post-finalization over the FINAL db) ──────────────
 def verify(db, tags=None):
-    """Fail-loud invariants for everything this lane claims. Twelve checks; each one
-    corresponds to a claim in the docstring, so a claim cannot rot into a lie."""
+    """Fail-loud invariants for everything this lane claims. Each arm corresponds to a
+    claim in the docstring, so a claim cannot rot into a lie. Round 4 added the five
+    that would have caught the round-3 defects at authoring time instead of at build
+    time: V14 (the Larder actually reaches the player), V15 (no kit slot keeps a level
+    tuned for a different skill, and none runs off its ladder), V16 (the REAL shared
+    B-TOXEUS-2 clone-shape function, re-run over this lane's own pairs), V17 (donor
+    dtypes preserved on cloned records) and V18 (the fight can pay its own mana)."""
     problems = []
     tagset = set(tags or ())
 
@@ -748,6 +974,150 @@ def verify(db, tags=None):
         ref = gv(BOSS, slot)
         if isinstance(ref, str) and ref.strip() and not db.has_record(ref):
             problems.append("%s %s -> %r does not resolve" % (BOSS, slot, ref))
+
+    # V14 THE ALWAYS-ON CHANNEL. The Larder is this lane's signature and it only
+    #     reaches the player if the channel the engine reads names OUR aura. The donor
+    #     drives its vampiric aura through `buffSelfSkillName` as well as `skillName5`,
+    #     so a kit-slot-only repoint leaves the boss on the STOCK shared record with
+    #     every authored value dead - round 3 shipped exactly that. `_ALWAYS_ON_FIELDS`
+    #     (enslaver_shroud, R-255) is the codified list of channels the skill manager
+    #     reads without being chosen by combat AI.
+    for chan in ('buffSelfSkillName', 'initialSkillName'):
+        got = gv(BOSS, chan)
+        if _n(got or '') == _n(DONOR_LARDER):
+            problems.append(
+                "%s %s still names the STOCK %s. That record is shared by 6 carriers and "
+                "carries NONE of this lane's authored values (radius 14.0, the raised "
+                "leech ladders), so THE LARDER - the boss's name, its soul, its lore and "
+                "its counterplay - would not reach the player at all."
+                % (BOSS, chan, DONOR_LARDER.rsplit('\\', 1)[-1]))
+        elif _n(got or '') != _n(LARDER):
+            problems.append("%s %s=%r, expected the authored aura %s (R-255: this is a "
+                            "channel the engine actually reads)." % (BOSS, chan, got, LARDER))
+
+    # V15 KIT LEVELS. A re-slotted skill may never keep a level tuned for the skill
+    #     that used to sit in that slot, and no level may run off the end of the
+    #     skill's own authored damage ladder. Round 3 put charon_swoopstomp into
+    #     bladestorm's slot 6 and kept skillLevel6 [10,13,16] against a NINE-row
+    #     ladder whose only three carriers in the whole game use levels 1..9.
+    for slot, skill, lvl in KIT_SLOTS:
+        got_lvl = db.get_field_value(BOSS, 'skillLevel%d' % slot)
+        got_lvl = got_lvl if isinstance(got_lvl, list) else ([got_lvl] if got_lvl is not None else [])
+        nums = [int(float(x)) for x in got_lvl if isinstance(x, (int, float))]
+        if lvl is None:
+            donor_skill = _v1(db, DONOR_BOSS, 'skillName%d' % slot)
+            # legal to inherit iff the slot still holds the donor's OWN skill, or this
+            # module's clone of it (slot 5: svc_ushkaret_larder IS character_vampiriaura,
+            # same record shape, same ladder). The whitelist names the ANCESTOR, and the
+            # donor must still be on it - so if the donor's slot 5 ever changes skill,
+            # this reds instead of silently blessing a mismatched level.
+            ancestor = _KIT_LEVEL_INHERITABLE.get(slot)
+            ok = _n(skill) == _n(donor_skill or '') or (
+                ancestor is not None and _n(ancestor) == _n(donor_skill or ''))
+            if not ok:
+                problems.append(
+                    "%s slot %d holds %s but INHERITS skillLevel%d=%r, which was tuned "
+                    "for the donor's %r. A re-slotted skill must author its own level."
+                    % (BOSS, slot, skill.rsplit('\\', 1)[-1], slot, got_lvl,
+                       (donor_skill or '').rsplit('\\', 1)[-1]))
+        elif nums != [int(x) for x in lvl]:
+            problems.append("%s skillLevel%d=%r, expected the authored %r"
+                            % (BOSS, slot, got_lvl, lvl))
+        depth = _ladder_depth(db, skill)
+        if depth > 1 and nums and max(nums) > depth:
+            problems.append(
+                "%s slot %d casts %s at level %d, but that skill authors only %d damage "
+                "rows - every level above %d reads off the end of the ladder the "
+                "designer wrote (the round-3 charon_swoopstomp defect)."
+                % (BOSS, slot, skill.rsplit('\\', 1)[-1], max(nums), depth, depth))
+        cap = _v1(db, skill, 'skillMaxLevel')
+        try:
+            cap = int(float(cap))
+        except (TypeError, ValueError):
+            cap = 0
+        if cap > 0 and nums and max(nums) > cap:
+            problems.append("%s slot %d casts %s at level %d above its declared "
+                            "skillMaxLevel %d" % (BOSS, slot, skill.rsplit('\\', 1)[-1],
+                                                  max(nums), cap))
+
+    # V16 CLONE SHAPE, run through the REAL shared gate rather than a copy of it.
+    #     `_verify_boss_kit_clone_shape` (B-TOXEUS-2) runs UNCONDITIONALLY on the build
+    #     path inside run_registry_gates(), and round 3 violated it 22 ways while this
+    #     module's docstring claimed the invariant held. Re-running the genuine
+    #     function over exactly this lane's pairs means the claim is MEASURED here, in
+    #     the module that makes it, and attributed to this lane instead of surfacing as
+    #     an anonymous build abort. Narrowed to our pairs so a neighbour's regression is
+    #     still that lane's gate to fail, never ours.
+    _saved = list(A._BOSS_KIT_CLONES)
+    try:
+        A._BOSS_KIT_CLONES[:] = list(_CLONE_PAIRS)
+        A._verify_boss_kit_clone_shape(db)
+    except SystemExit as e:
+        problems.append("B-TOXEUS-2 CLONE SHAPE (this lane's %d pair(s)): %s"
+                        % (len(_CLONE_PAIRS), e))
+    finally:
+        A._BOSS_KIT_CLONES[:] = _saved
+
+    # V17 DTYPE PRESERVATION on the cloned monsters. CLAUDE.md, verbatim: "never pass
+    #     explicit dtype to set_field() on cloned records - INT/FLOAT corruption
+    #     silently zeroes values". `set_field` overwrites tf.dtype whenever a dtype is
+    #     passed, so one stray `, I` on `dropItems` shipped INT where every monster in
+    #     the database declares BOOL. Asserted against each record's OWN donor.
+    #
+    #     SCOPE, MEASURED AND STATED RATHER THAN QUIETLY CHOSEN: `dropItems` on the
+    #     BOSS is deliberately NOT asserted. This lane's own three `, I` slips are gone,
+    #     but the shared soul-wiring helper (`apply_svc_patches` line 17634 /
+    #     `_wire_souls_to_monsters`) re-sets `dropItems` with an explicit INT on EVERY
+    #     soul-dropping monster after this module runs, so the flip on the boss is
+    #     roster-wide pre-existing behaviour, not ours: 25 of the 53 shipped `um_`/`svc_`
+    #     Boss records already declare INT, including Vashkarr, Neferkha, Mnemophage and
+    #     Ephialtes - four of the exact reds this lane bands itself against. Asserting it
+    #     here would red the build for a defect in code this lane does not own, and
+    #     FIXING that helper is a roster-wide record-diff that belongs in its own lane
+    #     (registered `BL-R256-DEBT-7`). The escorts, which no shared helper touches
+    #     because they drop nothing, ARE asserted on it - so this lane's own discipline
+    #     is still under a live gate.
+    for rec, donor, flds in (
+            (BOSS, DONOR_BOSS, ('charLevel', 'characterLife', 'scale', 'characterMana')),
+            (MOURNER, DONOR_MOURNER, ('dropItems', 'charLevel', 'characterLife', 'scale')),
+            (CARRIONMOTE, DONOR_MOTE, ('dropItems', 'charLevel', 'scale'))):
+        for fld in flds:
+            want, got = _dtype_of(db, donor, fld), _dtype_of(db, rec, fld)
+            if want is not None and got is not None and want != got:
+                problems.append(
+                    "%s %s is declared dtype %s but its donor %s declares %s. A cloned "
+                    "record must keep its donor's field TYPES (CLAUDE.md standing law); "
+                    "a type flip also shows up as an unexplained record-diff in the ship "
+                    "lane." % (rec, fld, got, donor.rsplit('\\', 1)[-1], want))
+
+    # V18 THE FIGHT CAN PAY FOR ITSELF. The stoop costs a flat 250 mana and nothing in
+    #     the boss furniture (globalproperties_*, boss_scaling, armor_passive) returns
+    #     any - all read 0.0 on every mana field. On the donor's Hero pool of 500/5 the
+    #     three-beat fight fires the stoop twice and then stalls for ~50s a cast while
+    #     the flock drains the same pool. Derived from the kit, not pinned, so adding a
+    #     costlier skill later reds instead of quietly starving the boss.
+    _pool = float(gv(BOSS, 'characterMana') or 0)
+    _regen = float(gv(BOSS, 'characterManaRegen') or 0)
+    _worst, _worst_sk = 0.0, ''
+    for _slot, _sk, _lv in KIT_SLOTS:
+        _c = db.get_field_value(_sk, 'skillManaCost')
+        _c = max([float(x) for x in _c if isinstance(x, (int, float))] or [0.0]) \
+            if isinstance(_c, list) else float(_c or 0)
+        if _c > _worst:
+            _worst, _worst_sk = _c, _sk
+    if _worst > 0:
+        if _pool < _worst * 4:
+            problems.append(
+                "%s carries characterMana %.0f against a %.0f-cost %s. Four casts is the "
+                "floor for a three-phase fight; every comparable placed red in this mod "
+                "runs 1370-3000 (Charon, who owns this skill, runs 3000/30)."
+                % (BOSS, _pool, _worst, _worst_sk.rsplit('\\', 1)[-1]))
+        if _regen <= 0 or _worst / _regen > 20.0:
+            problems.append(
+                "%s characterManaRegen %.1f means %.0fs of regen per %s cast. Nothing in "
+                "the boss furniture restores mana, so the beat would never come back."
+                % (BOSS, _regen, (_worst / _regen) if _regen > 0 else float('inf'),
+                   _worst_sk.rsplit('\\', 1)[-1]))
 
     # V6 THE ORB. Present, resolving, and still the minimum-distance tier for this
     #    boss's charLevel - re-derived from the FINAL db so the pin cannot rot.
@@ -1023,6 +1393,11 @@ def verify(db, tags=None):
                          % (len(problems), "\n  - ".join(problems)))
     print("  lookout_uber gate PASS: Ushkaret is a Boss %s, HP %s inside the shipped "
           "red band, on its donor's own rig+skin with the swoop animation answered; "
+          "the Larder drives BOTH always-on channels (never the stock shared aura); "
+          "every kit slot's level is authored where the slot was re-pointed and none "
+          "runs off its skill's ladder or skillMaxLevel; the three registered kit "
+          "clones pass the REAL B-TOXEUS-2 shape function; cloned monsters keep their "
+          "donors' field dtypes; the mana pool pays for the kit's costliest skill; "
           "kit resolves within skillName1..17; orb02 is still the minimum-distance "
           "tier; ONE world chest on its own R-251 table with the boss proxy's "
           "accessories empty; the placement spec is the surveyed (208,17,52) spot; "
@@ -1056,6 +1431,26 @@ def _break(db, rec, field, value):
                 del ff2[k]
             else:
                 ff2[k].values = list(old)
+        db._modified.add(rec)
+    return undo
+
+
+def _break_dtype(db, rec, field, dtype):
+    """Flip only the declared dtype of an EXISTING field, leaving its values alone.
+
+    The V17 defect is invisible to a value-level plant: `sf(rec,'dropItems',1,I)` ships
+    the same payload and only the declared type changes, which is precisely why it
+    survived three rounds of review."""
+    ff = db.get_fields(rec) or {}
+    key = next((k for k in ff if k.split('###')[0] == field), None)
+    if key is None:
+        raise SystemExit("negtest: %s has no %s to retype" % (rec, field))
+    old = ff[key].dtype
+    ff[key].dtype = dtype
+    db._modified.add(rec)
+
+    def undo():
+        (db.get_fields(rec) or {})[key].dtype = old
         db._modified.add(rec)
     return undo
 
@@ -1177,6 +1572,38 @@ def _negtest():
           lambda: _break(db, POOL, 'championMax', 1))
     plant('a referenced tag never authored',
           lambda: _break_tag(tags, TAG_SOUL))
+    # V14, the always-on-channel arm. The first plant is EXACTLY the state round 3
+    # shipped in: the kit slot repointed, the channel the engine reads left on the
+    # stock shared aura, so every authored Larder value was dead config.
+    plant('the Larder left on the STOCK shared aura in buffSelfSkillName (the round-3 '
+          'state - authored radius/leech never reach the player)',
+          lambda: _break(db, BOSS, 'buffSelfSkillName', DONOR_LARDER))
+    plant('the always-on initialSkillName channel pointed somewhere else',
+          lambda: _break(db, BOSS, 'initialSkillName', SK_HEMORRAGE))
+    # V15, the kit-level arm. Plant 1 is the round-3 defect verbatim.
+    plant('the stoop left at the donor bladestorm level [10,13,16], off the end of '
+          'charon_swoopstomp\'s 9-row ladder (the round-3 state)',
+          lambda: _break(db, BOSS, 'skillLevel6', [10, 13, 16]))
+    plant('a kit slot pushed above its skill\'s declared skillMaxLevel',
+          lambda: _break(db, BOSS, 'skillLevel14', [1, 1, 9]))
+    # V16, the B-TOXEUS-2 clone-shape arm, run through the REAL shared gate function.
+    # Plant 1 is the round-3 P0 shape: a field ADDED that the donor does not carry.
+    plant('a zero-precedent field ADDED to a registered kit clone (the round-3 P0 that '
+          'killed the cold build)',
+          lambda: _break(db, LARDER_BUFF, 'FileDescription', 'zero-precedent'))
+    plant('a registered kit clone left with an EMPTY ref where its donor held one',
+          lambda: _break(db, SKYBURIAL, 'spawnObjects', ['']))
+    # V17, the dtype arm - the standing CLAUDE.md law, planted as the exact `, I` slip.
+    plant('dropItems dtype flipped BOOL -> INT on a cloned escort (the exact `, I` slip; '
+          'planted on the Mourner because the BOSS\'s dropItems is owned downstream by '
+          'the shared soul-wiring helper - see V17)',
+          lambda: _break_dtype(db, MOURNER, 'dropItems', I))
+    # V18, the mana arm. Plant 1 is the donor's own Hero pool, which is what round 3
+    # shipped against a 250-cost stoop.
+    plant('the donor Hero mana pool (500) left against the 250-cost stoop',
+          lambda: _break(db, BOSS, 'characterMana', 500.0))
+    plant('mana regen dropped so the stoop can never come back',
+          lambda: _break(db, BOSS, 'characterManaRegen', 1.0))
     # V12, the downstream-coverage arm. The R-251 volume is the half of it that a single
     # field CAN break, and it is the half that matters most: it is what would actually
     # happen if svc_loot_volume's trim carve-out ever stopped covering this family.

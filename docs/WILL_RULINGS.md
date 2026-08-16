@@ -9086,8 +9086,12 @@ the minimum-distance tier, never hardcoded), and `{^F}Soul of the Sky-Burial` wi
 
 **THE FIGHT.** P1 THE VIGIL - it does not land; `razorquill_megaburst` raked across the shelf with
 `razorbird_retaliation` punishing anyone who closes. P2 THE STOOP - it folds and drops on you
-(`charon_swoopstomp`), then fights on the ground with `hemorrage` + `leechstrike`. P3 SKY-BURIAL -
-it calls a bounded Common carrion-mote flock; on death `ondeath_bladeorb` scatters the last quills.
+(`charon_swoopstomp` at the authored level `[1,4,7]`), then fights on the ground with `hemorrage` +
+`leechstrike`. P3 SKY-BURIAL - it calls a bounded Common carrion-mote flock; on death
+`ondeath_bladeorb` scatters the last quills. The Larder aura is driven from **both** always-on
+channels (`buffSelfSkillName` + `initialSkillName`, the R-255 pair), and the boss carries
+**3000 mana / 30 regen** - the shipped placed-red band, and what the 250-cost stoop actually costs.
+See "VET ROUND 4" below for why all three of those sentences are corrections.
 
 **THE MEASURED FIRSTS** (re-counted over all 5,075 `Monster.tpl` records in the shipped arz,
 every namespace - the R-254 guard from the b93 path-prefix lesson): the vulture family is
@@ -9095,9 +9099,13 @@ Common 9 / Champion 5 / Hero 5 / **Boss 0**, so a Boss-rank bird did not exist; 
 on any flying rig is `um_elephantsnatcher_17` (a bat, level 17). `razorquill_megaburst` **1
 carrier**; `charon_swoopstomp` **3 carriers, all vanilla `boss_charonform2_*`, zero custom** (and
 proven-to-cast, which is why it was chosen over a zero-carrier skill); `character_vampiriaura` 6
-carriers, **zero Boss**; `summon_swarm` and `leechstrike` **1 carrier each**. "ushkaret",
-"sky-burial", "mourner" and "larder" return **0 hits** across all 51,331 record paths (the C3
-cross-family rule).
+carriers, **zero Boss**; `leechstrike` **1 carrier**. "ushkaret", "sky-burial", "mourner" and
+"larder" return **0 hits** across all 51,331 record paths (the C3 cross-family rule).
+
+⚠️ **RETIRED IN VET ROUND 4: the `summon_swarm` first.** Rounds 1-3 also claimed the flock as a
+measured first ("`summon_swarm` 1 carrier, Ushkaret is the first Boss on it"). The flock summon no
+longer derives from `summon_swarm` at all - it could not, see below - so there is no first there.
+The claim is struck rather than softened.
 
 **THE MAP SIDE.** `LOOKOUT_HOST_KEY = 'levels/world/egypt/rhakotis/rhakotis05.lvl'` (LEVELS index
 147, corner (-2649,-1,4353), blob v0x11 -> the proven `inject_into_0x05_v11` branch). Boss proxy
@@ -9139,6 +9147,73 @@ the existence of a vanilla chest in the same room, and we still ship exactly one
 and the raider camp joins the fight.** That is disclosed in `WILL_TEST_GUIDE.md` rather than left
 to surprise him. `BL-R256-DEBT-4` is the lever if he wants the dead end to be Ushkaret's alone.
 
+### VET ROUND 4 - THE ROUND THAT PROVED THE CLAIMS INSTEAD OF REPEATING THEM
+
+Round 3 shipped a module whose own docstring said "only EXISTING fields overridden, so the
+boss-kit clone-shape invariant holds", and **this ruling carried that sentence forward**. Measured,
+it was false, and the consequence was not cosmetic - it was a dead cold build.
+
+1. **P0, THE COLD BUILD DIED.** The lane registers three pairs into the shared B-TOXEUS-2
+   clone-shape gate, and `_verify_boss_kit_clone_shape` runs UNCONDITIONALLY inside
+   `run_registry_gates()` - which `build_svc_database.py` calls immediately after `run_registry()`.
+   Loading the shipped arz, applying the module and calling the real gate returned
+   **`SystemExit: Boss-kit clone-shape invariant FAILED: 22 problem(s)`**: the flock clone ADDED
+   `spawnObjectsTimeToLive` and `FileDescription` to a donor (`summon_swarm`) that carries neither,
+   and shortened its 20-entry `spawnObjects` to one, leaving 19 donor `.dbr` slots reading empty.
+   The Larder buff clone ADDED `FileDescription` to a 619-field donor that has none.
+   **FIXED BY A DONOR, NOT A WAIVER** (un-registering the pairs would have disarmed a fail-loud
+   gate, which is the opposite of the lesson): the flock now clones
+   `records\skills\monster skills\summoning_pets\melalos_zombie_summon3.dbr`, the one base-data
+   monster spawn skill that ships BOTH b76 bounds NATIVELY (`petLimit 6`,
+   `spawnObjectsTimeToLive 15.0`) with a one-entry `spawnObjects`, so every value is an
+   existing-field override and the clone's shape is a strict SUBSET of its donor's. It is also a
+   skill a shipped Boss already casts (`um_melalos_19`), which `summon_swarm` - a Hero's skill -
+   never was. Cost, stated: the donor's `Summon` animation demand is DELETED (the Corpsewake rig's
+   two special-attack ref slots are both spoken for by `SwoopStomp` and `Hemorrage`), and the
+   `summon_swarm` first is struck. The surplus `FileDescription` writes are gone.
+   **This is exactly what `BL-R256-DEBT-5` warned about and it was not a formality.**
+2. **HIGH, THE LARDER NEVER REACHED THE PLAYER.** The donor drives its vampiric aura through
+   `skillName5` **and** `buffSelfSkillName`. Rounds 1-3 repointed only the kit slot, so the shipped
+   boss named the authored aura in a slot and the STOCK, shared, 6-carrier `character_vampiriaura`
+   in the channel the engine reads - meaning either the player got the plain 8.0-radius aura and
+   every authored value (radius 14.0, the raised leech ladders) was dead config, or the AI refused
+   a skill absent from its kit and nothing fired. Both make the boss's name, soul, lore and
+   counterplay - and this ruling's own text - a lie. Both always-on channels (the `_ALWAYS_ON_FIELDS`
+   pair codified by R-255 one day earlier) now name the authored aura.
+3. **HIGH, THE STOOP RAN OFF ITS LADDER.** Slot 6 was reused from `bladestorm` and kept its
+   `skillLevel6 [10,13,16]`. `charon_swoopstomp` authors a NINE-row damage ladder and its only
+   three carriers in the game use `[1,4,7]`/`[2,5,8]`/`[3,6,9]`. Level 10+ reads off the end:
+   clamped, that is 445 cold + 870 vitality + 12%-of-current-life + a 2.0s stun on NORMAL where
+   vanilla's own level-1 row is 419/805/2%. Ushkaret is charLevel 30, Charon-39 is the weakest
+   carrier, so Ushkaret ships Charon-39's row: **`[1,4,7]`**.
+4. **MEDIUM, THE FIGHT COULD NOT PAY FOR ITSELF.** The stoop costs a flat 250 mana; the donor Hero
+   pool is 500/5; `globalproperties_*`, `boss_scaling` and `armor_passive` all read 0.0 on every
+   mana field. Two casts, then ~50s of regen each while the flock drained the same pool. Now
+   **3000/30** - the modal shipped placed-red pool, and Charon (who owns this skill) runs exactly
+   3000/30.
+5. **MEDIUM, dtype discipline.** Three `sf(..., 'dropItems', n, I)` calls flipped a field the
+   donors declare BOOL. The `, I` is gone. Scope stated honestly: the BOSS's `dropItems` is INT
+   anyway because the shared soul-wiring helper re-sets it with an explicit INT on every
+   soul-dropping monster **after** this module runs - 25 of the 53 shipped `um_`/`svc_` Boss
+   records already declare INT, Vashkarr/Neferkha/Mnemophage/Ephialtes among them. That is
+   pre-existing, roster-wide and not this lane's to fix here (`BL-R256-DEBT-7`).
+6. **LOW, slot-3 AI parameters.** `hemorrage` moved to `specialAttack3` with only a Chance; it now
+   carries the donor's own slot-2 tuning (Delay 5.0 / AnyRange / Timeout 2.0), the majority shape
+   among the 543 mod carriers of `specialAttack3SkillName`.
+
+**FIVE NEW GATE ARMS, each planted in `--negtest`:** V14 (no always-on channel left on the donor's
+stock record), V15 (a re-slotted skill authors its own level; no level above the skill's authored
+ladder depth or its `skillMaxLevel`), V16 (**the REAL `_verify_boss_kit_clone_shape` re-run over
+this lane's own three pairs**, so the claim is measured by the module that makes it and attributed
+to this lane instead of surfacing as an anonymous build abort), V17 (cloned records keep their
+donors' field dtypes) and V18 (the mana pool pays for the kit's costliest skill, derived from the
+kit rather than pinned).
+
+**STANDING CONSEQUENCE, and it generalises past this lane:** a module that registers itself into a
+shared fail-loud gate must RUN that gate in its own `verify()`. Registering into a gate you never
+execute is indistinguishable from not being covered at all, and it converts your defect into
+someone else's build failure.
+
 ### DEBTS
 
 - `BL-R256-DEBT-1` (**P2, engine limit, DISCLOSED**): the Larder ships as a wide life-leech aura,
@@ -9161,6 +9236,15 @@ to surprise him. `BL-R256-DEBT-4` is the lever if he wants the dead end to be Us
 - `BL-R256-DEBT-6` (**P2, WILL NAMING**): the hoard's player-visible name, **"The Larder of
   Ushkaret"**, is this lane's invention in the shipped `<Boss>'s <flavour>-Hoard` convention and is
   **UNVETTED BY WILL**. Renaming it is a one-tag change (`tagSVCUshkaretHoard`).
+- `BL-R256-DEBT-7` (**P3, shared code, NOT this lane's to fix here**): the shared soul-wiring
+  helper (`apply_svc_patches.py` `db.set_field(monster,'dropItems',1,DATA_TYPE_INT)`, ~11 call
+  sites) flips `dropItems` from the donors' BOOL to INT on every soul-dropping monster. Measured
+  roster-wide: **25 of the 53 shipped `um_`/`svc_` Boss records declare INT**, including Vashkarr,
+  Neferkha, Mnemophage and Ephialtes; 28 declare BOOL. The payload survives (both branches pack
+  `<i`), so this is a discipline + record-diff issue rather than a proven runtime break, but it
+  contradicts the standing CLAUDE.md law. Fixing it changes the record-diff of half the red roster
+  and needs its own lane with a full both-ways measurement. `lookout_uber.verify()` V17 asserts the
+  invariant on the records this lane fully owns and states this exclusion out loud.
 
 ### GATES
 
