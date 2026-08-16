@@ -4484,6 +4484,20 @@ def main():
 
     output_path = Path(sys.argv[4])
 
+    # --- THE SHIPPING ANCHOR (R-257 round 2, a P0 fix) ---------------------------
+    # Declared BEFORE any patch module or gate runs, because asset-level gates must
+    # ask about the archive THIS build ships, not about every staged tree the glob
+    # can see. It is the same anchor `validate_render_chain` has always used
+    # (`output.parent.parent / 'Resources'`), now stated once so `enslaver_shroud`'s
+    # rig arm, `champion_mesh` and the render chain all answer about one tree.
+    # Round 1 of this lane had the rig arm demand its asset in EVERY glob hit, which
+    # a scratch tree under `local/` could red forever.
+    import mesh_assets as _mesh_assets
+    _ship_resources = _mesh_assets.set_shipping_resource_dir(
+        output_path.resolve().parent.parent / 'Resources')
+    print(f"  shipping Resources anchor: {_ship_resources} "
+          f"({'present' if _ship_resources.is_dir() else 'ABSENT - scratch layout'})")
+
     # --- BUILD-INPUT PREFLIGHT (tools/check_build_inputs.py, BL-b90-DEBT-2) -------
     # argv wins whenever the file is actually there, so every existing invocation is
     # byte-identical to the pre-preflight build. When an argv path is missing (the

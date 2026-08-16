@@ -412,6 +412,31 @@ def add_to_arc(arc):
     return len(rig)
 
 
+def check_arc(path):
+    r"""(problems, detail) - does THIS archive carry the byte-identical rig?
+
+    The standalone form of `enslaver_shroud`'s M2 arm, so a shell step can assert
+    the R-257 BUILD-TIME PRECONDITION on one named file without loading a database.
+    `bootstrap_working_mod.ps1` Step 2e calls it to prove the archive it staged in
+    Step 0e survived the upstream copy + strip passes; a ship operator can call it
+    on the deployed archive.
+    """
+    p = Path(path)
+    if not p.exists():
+        return (['%s does not exist' % p], None)
+    want = rig_bytes_checked()
+    got = entry_in(ArcArchive.from_file(p))
+    if got is None:
+        return (['%s does NOT carry %r - the Enslaver family would resolve NO MESH'
+                 % (p, SHROUD_RIG_ENTRY)], None)
+    if got != want:
+        return (['%s carries %r at %d bytes; the derived+verified rig is %d - the '
+                 'shipped asset is not the one this build verified'
+                 % (p, SHROUD_RIG_ENTRY, len(got), len(want))], None)
+    return ([], '%s carries %r byte-identical to the derived rig (%d bytes)'
+            % (p, SHROUD_RIG_ENTRY, len(want)))
+
+
 # ── selftest / negtest ──────────────────────────────────────────────────────
 
 def _selftest():
@@ -537,6 +562,9 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--out', help='write the derived rig to this path')
     ap.add_argument('--check', action='store_true', help='derive + verify, write nothing')
+    ap.add_argument('--check-arc', metavar='CREATURES_ARC',
+                    help='assert this Creatures.arc carries the byte-identical rig '
+                         '(the R-257 BUILD-TIME PRECONDITION, on one named file)')
     ap.add_argument('--selftest', action='store_true')
     ap.add_argument('--negtest', action='store_true')
     a = ap.parse_args()
@@ -544,6 +572,14 @@ def main():
         return _selftest()
     if a.negtest:
         return _negtest()
+    if a.check_arc:
+        probs, detail = check_arc(a.check_arc)
+        for p in probs:
+            print('[build_shroud_rig] ARC OFFENDER: %s' % p)
+        if probs:
+            return 1
+        print('[build_shroud_rig] %s' % detail)
+        return 0
     rig = rig_bytes_checked()
     print('[build_shroud_rig] %s  %d bytes  (donor + the exemplar block, verified)'
           % (SHROUD_RIG, len(rig)))

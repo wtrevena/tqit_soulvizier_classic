@@ -454,6 +454,40 @@ def pfx_resolution(pfx=_DEMON_PFX):
         return ('SKIP', 'could not read the archives (%s)' % e)
 
 
+def shipping_creatures_arcs():
+    r"""(kind, [paths]) - the `Creatures.arc` THIS BUILD SHIPS. Never a glob sweep.
+
+    ROUND 2 OF THIS LANE EXISTS BECAUSE ROUND 1 ASKED THE WRONG ADDRESS. It
+    demanded the rig in EVERY `mesh_assets.mod_resource_dirs()` hit, and that list
+    is a SEARCH PATH: `work/*/Resources` plus `local/*/Resources`, six rows in the
+    ship checkout. Any stale tree under `local/` could therefore red a build whose
+    own shipped archive was perfect - a permanent ship-blocker nobody could clear
+    by rebuilding the right file. (The measured six turned out to be ONE archive
+    seen through five det-2x junctions, but the defect class is real and the
+    address was wrong either way.)
+
+    The right address is the anchor `validate_render_chain` has always used and
+    that `build_svc_database` now declares once: the `Resources` dir beside the
+    `.arz` being written.
+
+      kind 'ANCHORED'   - the build declared its anchor; that ONE archive answers.
+      kind 'STAGED'     - no anchor (a CLI dry-run): fall back to the staged deploy
+                          source `work/*/Resources` ONLY. `local/*` is scratch
+                          output and ships nothing, so it can never gate a build.
+      kind 'NO-ANCHOR-DIR' - an anchor was declared and its dir does not exist:
+                          a scratch layout, honestly unanswerable, never a pass.
+    """
+    from pathlib import Path as _P
+    import mesh_assets
+    anchor = mesh_assets.shipping_resource_dir()
+    if anchor is not None:
+        if not anchor.is_dir():
+            return ('NO-ANCHOR-DIR', [anchor / 'Creatures.arc'])
+        return ('ANCHORED', [anchor / 'Creatures.arc'])
+    return ('STAGED', sorted(d / 'Creatures.arc' for d in _P('.').glob('work/*/Resources')
+                             if d.is_dir()))
+
+
 def rig_asset_state():
     r"""(status, detail) for the authored rig - M1 derivability + M2 staging.
 
@@ -461,12 +495,15 @@ def rig_asset_state():
     put through `build_shroud_rig.verify_rig()`. It has no dependency on staging
     order, so every build proves the asset is derivable and correct.
 
-    M2 runs whenever a mod `Creatures.arc` is reachable: the staged archive MUST
-    carry the entry and it MUST be byte-identical to the derived bytes. This is
-    the arm that catches the new DEPLOY COUPLING - an operator who rebuilds the
-    `.arz` without restaging `Resources\Creatures.arc` would otherwise ship four
-    records pointing at a mesh that resolves NOWHERE, which is an INVISIBLE boss,
-    a far worse regression than no smoke.
+    M2 asks the SHIPPING archive (see `shipping_creatures_arcs`) whether it carries
+    the entry, byte-identical to the derived bytes. This is the arm that enforces
+    the R-257 BUILD-TIME PRECONDITION: the Enslaver family's `mesh` resolves ONLY
+    out of the mod archive, so an `.arz` built beside an archive without the rig
+    would ship four records pointing at a mesh that resolves NOWHERE - an INVISIBLE
+    boss, a far worse regression than the missing smoke this lane fixes. Two more
+    build gates (`validate_render_chain` A9 and `champion_mesh.verify`) fail on the
+    same state, which is why `bootstrap_working_mod.ps1` stages the archive in
+    Step 0e, BEFORE the database build, and not at deploy time.
     """
     if _RIG_ASSET_OVERRIDE is not None:
         return _RIG_ASSET_OVERRIDE
@@ -478,33 +515,46 @@ def rig_asset_state():
         return ('SKIP', 'the base archives are not reachable (%s)' % e)
 
     try:
-        import mesh_assets
         from arc_patcher import ArcArchive
-        mod_dirs = mesh_assets.mod_resource_dirs()
-        staged = [d / 'Creatures.arc' for d in mod_dirs if (d / 'Creatures.arc').exists()]
+        kind, staged = shipping_creatures_arcs()
     except Exception as e:                                   # noqa: BLE001
         return ('SKIP', 'M1 PASS (%d bytes derived + verified); M2 not run (%s)'
                 % (len(want), e))
+
+    if kind == 'NO-ANCHOR-DIR':
+        return ('SKIP', 'M1 PASS (%d bytes derived + verified); M2 NOT RUN - this '
+                        'build declared %s as its shipping Resources dir and that '
+                        'directory does not exist (a scratch layout), so the '
+                        'BUILD-TIME PRECONDITION is unproven here'
+                % (len(want), staged[0].parent))
     if not staged:
         return ('SKIP', 'M1 PASS (%d bytes derived + verified); M2 NOT RUN - no mod '
                         'Creatures.arc reachable from this working tree, so the '
-                        'DEPLOY COUPLING is unproven here and must be proven at ship'
-                % len(want))
+                        'BUILD-TIME PRECONDITION is unproven here and must be proven '
+                        'in the build that ships' % len(want))
     for p in staged:
+        if not p.exists():
+            return ('FAIL', 'the shipping mod archive %s DOES NOT EXIST. The Enslaver '
+                            'family names %r, which ships only from that archive, so '
+                            'this arz would give them NO MESH AT ALL. Build it BEFORE '
+                            'the database (bootstrap Step 0e): '
+                            'py tools/build_creatures_dye_skins_arc.py --out %s'
+                    % (p, SHROUD_RIG_ENTRY, p))
         got = _rig.entry_in(ArcArchive.from_file(p))
         if got is None:
-            return ('FAIL', 'the staged mod archive %s does NOT carry %r. The '
+            return ('FAIL', 'the shipping mod archive %s does NOT carry %r. The '
                             'Enslaver family names that mesh, so shipping this arz '
-                            'beside this arc gives them NO MESH AT ALL. Rebuild it: '
+                            'beside this arc gives them NO MESH AT ALL. Build it '
+                            'BEFORE the database (bootstrap Step 0e): '
                             'py tools/build_creatures_dye_skins_arc.py --out %s'
                     % (p, SHROUD_RIG_ENTRY, p))
         if got != want:
             return ('FAIL', 'the staged %r in %s is %d bytes, the derived rig is %d - '
                             'the shipped asset is not the one this build verified'
                     % (SHROUD_RIG_ENTRY, p, len(got), len(want)))
-    return ('PASS', 'M1+M2: %s derived from %s + the exemplar block (%d bytes, A1..A8 '
-                    'verified) and byte-identical in %s'
-            % (SHROUD_RIG_ENTRY, DONOR_RIG.rsplit('\\', 1)[-1], len(want),
+    return ('PASS', 'M1+M2 [%s]: %s derived from %s + the exemplar block (%d bytes, '
+                    'A1..A8 verified) and byte-identical in %s'
+            % (kind, SHROUD_RIG_ENTRY, DONOR_RIG.rsplit('\\', 1)[-1], len(want),
                ', '.join(str(p) for p in staged)))
 
 
@@ -939,14 +989,29 @@ def verify(db, tags=None):
                     "charFxPak on a SpawnPet skill - the build28 crash trap."
                     % (rec, i, sk, bad))
 
-    # ── THE RETIRED RECORDS MUST BE REFERENCED FROM NOWHERE ────────────────
+    # ── ONE SWEEP OF THE WHOLE DATABASE, THREE QUESTIONS ───────────────────
+    #   1. does anything still REFERENCE the retired R-250 shroud chain?
+    #   2. does anything still RUN an svc_alwayson_* controller clone?
+    #   3. which (mesh, charAnimationTableName) pairs does a MONSTER vouch for?
     retired = {_norm(r) for r in _RETIRED_RECORDS}
     leaks = []
+    monster_pairings = {}
     for n in db.record_names():
         for k, tf in (db.get_fields(n) or {}).items():
             for v in (tf.values or []):
                 if _norm(v) in retired:
                     leaks.append('%s :: %s -> %s' % (n, k.split('###')[0], v))
+        c = _gv1(db, n, 'controller')
+        if c and _is_ours_ctrl(c):
+            problems.append(
+                "RETIRED CHANNEL: %s runs the retired always-on controller clone %s."
+                % (n, c))
+        if str(_gv1(db, n, 'Class') or '').startswith('Monster'):
+            m = _gv1(db, n, 'mesh')
+            if m:
+                monster_pairings.setdefault(
+                    (_norm(m), _norm(_gv1(db, n, 'charAnimationTableName') or '')),
+                    []).append(n)
     # the retired chain naturally references ITSELF when the records survive a
     # re-run over an already-built arz; only references from OUTSIDE it are a leak.
     leaks = [s for s in leaks if _norm(s.split(' :: ')[0]) not in retired]
@@ -957,13 +1022,35 @@ def verify(db, tags=None):
             "double-emits the shroud or teaches the next reader the wrong design."
             % (len(leaks), leaks[:6]))
 
-    # ── SHARED-RECORD LAW: no always-on clone may survive anywhere ─────────
-    for n in db.record_names():
-        c = _gv1(db, n, 'controller')
-        if c and _is_ours_ctrl(c):
+    # ── B-SUMMON-1 SAFETY PROPERTY THE MESH SWAP QUIETLY NARROWED ──────────
+    # `validate_summon_pets` step (b) requires every summoned pet's
+    # (mesh, charAnimationTableName) to appear in `proven_pairings`, collected from
+    # real Monster/Pet records. While the tiers rode the BASE rig, dozens of base
+    # records vouched for them. On the mod-authored R-257 rig the ONLY witness in
+    # existence is `um_toxeus_enslaver_99`, a mod Monster that happens to share the
+    # tiers' anim table - so the day a future lane moves the boss off this rig (which
+    # is exactly what champion_mesh's b102 swap once did to him) the three pets'
+    # pairing goes unproven and B-SUMMON-1 reds the build with a message about
+    # rendering rather than about this lane's choice. This arm makes the dependency
+    # explicit and names the cause.
+    ours = _norm(SHROUD_RIG)
+    for rec in roster:
+        if _norm(rigs.get(rec)) != ours:
+            continue
+        if str(_gv1(db, rec, 'Class') or '').startswith('Monster'):
+            continue                              # a Monster vouches for itself
+        anim = _norm(_gv1(db, rec, 'charAnimationTableName') or '')
+        if not monster_pairings.get((ours, anim)):
             problems.append(
-                "RETIRED CHANNEL: %s runs the retired always-on controller clone %s."
-                % (n, c))
+                "RIG PAIRING UNVOUCHED: %s rides the mod-authored %s with "
+                "charAnimationTableName=%r and NO Monster record wears that same "
+                "(mesh, anim) pair. `validate_summon_pets` B-SUMMON-1 step (b) would "
+                "red this build. The rig is mod-authored, so no base record can ever "
+                "vouch for it: the witness has to be a mod Monster on the same rig "
+                "(today `um_toxeus_enslaver_99`). If a lane deliberately moves the "
+                "boss off this rig, it must move the pets or supply another witness "
+                "in the SAME change."
+                % (rec, SHROUD_RIG, _gv1(db, rec, 'charAnimationTableName')))
 
     # the running channel's provenance must still hold on the exemplar itself
     if db.has_record(_MARAUDER):
@@ -1203,6 +1290,21 @@ def _negtest():
                                r'Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr')]),
              globals().__setitem__('_DEMON_ATTACH_OVERRIDE', 'Smoke02'))),
 
+        # ── the B-SUMMON-1 pairing property the mesh swap narrowed ──────────
+        # These two cannot be seen by ANY other arm: the family still smokes, the
+        # rig is still correct, every retirement still holds. Only the pairing
+        # witness is gone, and the build would red much later in
+        # validate_summon_pets with a message about rendering.
+        ('PAIRING WITNESS LOST: the boss is moved onto the demons\' rig - he still '
+         'smokes, so every FX arm is happy - and the three pet tiers left on the '
+         'mod-authored rig now have NO Monster vouching their (mesh, anim) pair',
+         lambda db: db.d[_ENSLAVER].__setitem__('mesh', [_MESH_D])),
+        ('PAIRING WITNESS LOST the other way: a pet tier is given an anim table no '
+         'Monster on its rig uses',
+         lambda db: db.d[_PETS[1]].__setitem__(
+             'charAnimationTableName',
+             [r'records\creature\pc\anm_something_else.dbr'])),
+
         # ── roster integrity (the R-255 half, unchanged) ────────────────────
         ('the summon spawns nothing, so the pet-tier roster goes silently empty',
          lambda db: db.d[_ENSLAVER_SUMMON].__setitem__('spawnObjects', [])),
@@ -1288,8 +1390,17 @@ def _negtest():
         _os.environ.pop('SVC_REQUIRE_GATES', None)
     else:
         _os.environ['SVC_REQUIRE_GATES'] = _REQ_GATES_WAS
-    print("negtest: %d/%d plants caught" % (len(plants) - bad, len(plants)))
-    return 1 if bad else 0
+    stub_caught = len(plants) - bad
+    print("  stub plants: %d/%d caught" % (stub_caught, len(plants)))
+
+    # The half that runs the REAL function against REAL archives. Kept in the same
+    # command deliberately: a `--negtest` that green-lights a module while the
+    # build-deciding function was never executed is the defect this lane shipped.
+    ra_ok, ra_n = _negtest_rig_asset()
+    print("negtest: %d/%d caught (%d/%d stubbed plants + %d/%d unstubbed rig-asset "
+          "arms)" % (stub_caught + ra_ok, len(plants) + ra_n,
+                     stub_caught, len(plants), ra_ok, ra_n))
+    return 1 if (bad or ra_ok != ra_n) else 0
 
 
 def _clear_overrides():
@@ -1300,6 +1411,113 @@ def _clear_overrides():
     _DEMON_ATTACH_OVERRIDE = None
     _MESH_SMOKE_OVERRIDE = None
     _RIG_ASSET_OVERRIDE = None
+
+
+# ── NEGATIVE TEST, PART 2: THE REAL rig_asset_state() ────────────────────────
+
+def _negtest_rig_asset():
+    r"""py tools/patches/enslaver_shroud.py --negtest   (this half runs unstubbed)
+
+    ROUND 1'S NEGTEST COULD NOT SEE EITHER OF ITS OWN P0s, AND THAT WAS STRUCTURAL.
+    Every plant above runs against a dict stub with `_RIG_ASSET_OVERRIDE` injected,
+    so the function that walks the staged archives and decides the build's fate -
+    `rig_asset_state()` - was executed by NO plant. `docs/MISTAKES.md` had logged
+    exactly that shape for R-256 one day earlier ("--negtest runs this module
+    STANDALONE ... and never the shared gates the module opts into") and this lane
+    reproduced the blind spot while citing the entry.
+
+    So this half plants REAL archives on disk, points the REAL shipping anchor at
+    them and runs the REAL function. It needs the base binaries (the rig is derived,
+    never checked in); when they are unreachable it says so and passes nothing.
+    """
+    import os as _os
+    import shutil as _shutil
+    import tempfile as _tempfile
+    from pathlib import Path as _P
+
+    print('--- rig-asset arm, UNSTUBBED (real archives on disk) ---')
+    _clear_overrides()
+    import mesh_assets
+    from arc_patcher import ArcArchive
+    try:
+        rig = _rig.rig_bytes_checked()
+    except Exception as e:                                   # noqa: BLE001
+        print('  SKIP: the base archives are not reachable, so no real rig can be '
+              'derived and none of these arms can run (%s)' % e)
+        return 0, 0
+
+    was_ship = _os.environ.get('SVC_SHIP_RESOURCES')
+    was_mod = _os.environ.get('SVC_MOD_RESOURCES')
+    was_cwd = _os.getcwd()
+    root = _P(_tempfile.mkdtemp(prefix='svc_rigasset_'))
+
+    def _arc(path, entries):
+        a = ArcArchive()
+        for name, data in entries.items():
+            a.add_file(name, data)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        a.write(path)
+        return path
+
+    DYE = 'pc/male/svc_dummy_skin.tex'          # stands in for the PR-2 dye payload
+    good = {DYE: b'x' * 64, SHROUD_RIG_ENTRY: rig}
+    stale = {DYE: b'x' * 64}                    # the SHIPPED build100 shape: no rig
+    torn = {DYE: b'x' * 64, SHROUD_RIG_ENTRY: rig[:-40]}
+
+    _arc(root / 'ship_ok' / 'Resources' / 'Creatures.arc', good)
+    _arc(root / 'ship_stale' / 'Resources' / 'Creatures.arc', stale)
+    _arc(root / 'ship_torn' / 'Resources' / 'Creatures.arc', torn)
+    (root / 'ship_noarc' / 'Resources').mkdir(parents=True, exist_ok=True)
+    # a STALE scratch tree in the CWD glob path - round 1 let this red the build
+    _arc(root / 'cwd' / 'local' / 'b100_run2' / 'Resources' / 'Creatures.arc', stale)
+    _arc(root / 'cwd' / 'work' / 'SoulvizierClassic' / 'Resources' / 'Creatures.arc', good)
+
+    arms = [
+        ('the shipping archive CARRIES the byte-identical rig',
+         root / 'ship_ok' / 'Resources', root / 'cwd', 'PASS'),
+        ('THE ROUND-1 P0: the shipping archive is the build100-era dye arc with NO '
+         'rig, so the family would resolve no mesh at all',
+         root / 'ship_stale' / 'Resources', root / 'cwd', 'FAIL'),
+        ('the shipping Resources dir exists but holds NO Creatures.arc',
+         root / 'ship_noarc' / 'Resources', root / 'cwd', 'FAIL'),
+        ('the shipping archive carries a TORN rig (right name, wrong bytes)',
+         root / 'ship_torn' / 'Resources', root / 'cwd', 'FAIL'),
+        ('the anchor names a Resources dir that does not exist (scratch layout) - '
+         'honestly unanswerable, never a pass',
+         root / 'ship_missing' / 'Resources', root / 'cwd', 'SKIP'),
+        ('THE ROUND-1 P0, OTHER HALF: the shipping archive is GOOD while a STALE '
+         'scratch archive sits in local/*/Resources - round 1 asked every glob hit '
+         'and would have red-locked this build forever',
+         root / 'cwd' / 'work' / 'SoulvizierClassic' / 'Resources', root / 'cwd',
+         'PASS'),
+    ]
+
+    bad = 0
+    try:
+        for label, anchor, cwd, want in arms:
+            _os.chdir(str(cwd))
+            _os.environ.pop('SVC_MOD_RESOURCES', None)
+            mesh_assets.set_shipping_resource_dir(anchor)
+            st, detail = rig_asset_state()
+            ok = (st == want)
+            print('  %-7s %s%s\n          -> %s: %s'
+                  % ('OK' if ok else 'WRONG', label,
+                     '' if ok else '   <<< expected %s, got %s' % (want, st),
+                     st, detail[:150]))
+            if not ok:
+                bad += 1
+    finally:
+        _os.chdir(was_cwd)
+        _os.environ.pop('SVC_SHIP_RESOURCES', None)
+        _os.environ.pop('SVC_MOD_RESOURCES', None)
+        if was_ship is not None:
+            _os.environ['SVC_SHIP_RESOURCES'] = was_ship
+        if was_mod is not None:
+            _os.environ['SVC_MOD_RESOURCES'] = was_mod
+        mesh_assets._ARC_CACHE.clear()
+        _shutil.rmtree(root, ignore_errors=True)
+    print('  rig-asset arms: %d/%d correct' % (len(arms) - bad, len(arms)))
+    return len(arms) - bad, len(arms)
 
 
 # ── INSTRUMENT SELF-TEST (the round-1 failure mode, closed) ─────────────────
