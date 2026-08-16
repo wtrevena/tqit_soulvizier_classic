@@ -12,17 +12,20 @@
 >
 > ## How to walk there
 >
-> 1. **Act 2, Rhakotis.** Find the cave mouth in **Rhakotis03** - the `Lookout Cave` entrance in
->    the cliff face. (If you have the area already, the top-right banner says **Lookout Cave** the
->    moment you are in the right place. That banner is not decoration here: Rhakotis05 is the only
->    level in the entire world bound to that region, which is how we proved this is the spot you
->    meant and not the other Rhakotis cave.)
+> 1. **Act 2, Rhakotis.** Find the cave mouth in **Rhakotis03**, in the cliff face.
+>    **Do NOT look for a "Lookout Cave" banner at the entrance - there isn't one, and an earlier
+>    draft of this guide wrongly told you there would be.** I measured every one of the 2,282
+>    levels: Rhakotis03 reads *City of Rhakotis / Rhakotis Slums / Rhakotis Library*, and the two
+>    cave rooms carry no region at all. **"Lookout Cave" appears only when you come OUT the far
+>    side** - Rhakotis05 is the single level in the entire world bound to that region. So the
+>    banner is not how you find the cave; it is your confirmation that you found the right one.
 > 2. **Walk the whole cave.** Two rooms, in and through.
-> 3. **Come out the far side.** You step onto a cliff terrace roughly 20 units above the desert.
->    It is a genuine dead end - there is no path down and no path on. You can only come out of the
->    cave onto it, and walk back.
-> 4. **He is about 17 units in front of you, slightly right.** You will see the nest before you see
->    him: animal bones, refuse piles and an urn dragged up out of the cave. That is deliberate. The
+> 3. **Come out the far side.** The banner flips to **Lookout Cave** and you step onto a cliff
+>    terrace roughly 20 units above the desert. It is a genuine dead end - there is no path down
+>    and no path on. You can only come out of the cave onto it, and walk back.
+> 4. **He is about 17 units out from the mouth**, and he stands about 11 units to the near side of
+>    the vanilla dune-raider camp (see the note below). You will see the nest before you see him:
+>    animal bones, refuse piles and an urn dragged up out of the cave. That is deliberate. The
 >    shelf is a larder, and the dressing is what he carried up.
 >
 > ## What you are fighting
@@ -82,10 +85,33 @@
 > that; a spawn proxy always produces a live monster, so there is no dormant state to use), and
 > there is **no test-hub shortcut to him this wave** - you walk the cave.
 >
-> **THE TEST:** walk the cave, come out the back. **PASS =** a red-named giant vulture with two
-> champion escorts is standing on the terrace, the banner reads Lookout Cave, there is **exactly
-> one** chest, and he drops an orb plus (usually) the soul. **FAIL =** empty terrace, two of him
-> side by side, more than one chest, or a fight that feels like a wall.
+> ## ⚠️ And one more: THE SHELF WAS ALREADY OCCUPIED, and I only found out on the second pass
+>
+> **The base game has always had a small encounter and a chest up there, and I did not know that
+> when I wrote the first version of this page.** I went and read the actual base-game database. The
+> record is `08_RhakotisLookout` and it is live, not scenery:
+>
+> - **1 to 3 sandvipers**, and a **55% chance of one champion** - usually a mounted marauder, with a
+>   small chance of one of five named Egypt heroes (Ammet, Satef, Udje, Morloc, Hazur).
+> - **A golden chest**, in Normal / Epic / Legendary versions. Vanilla's, not mine.
+>
+> **So when you clear that terrace you will find TWO chests: my Larder, and the base game's golden
+> one that has been sitting there since 2006.** That is not a bug and it is not the three-chest
+> problem you filed twice - that rule is about *me* stacking chests on one uber, and I still ship
+> exactly one. **I chose to leave vanilla's content alone**, because you asked me to add a boss, not
+> to delete anything, and ripping out base-game content is your call and not mine.
+>
+> They do not spawn on top of each other: his ring and theirs are about 11 units apart and do not
+> touch. But they are close enough that the raiders will join in, which makes the fight a bit
+> busier than the numbers above suggest. **If you want that camp gone so the dead end is his alone,
+> say the word and I will clear it** - it is one line in the map lane. That is `BL-R256-DEBT-4`.
+>
+> **THE TEST:** walk the cave, come out the back. **PASS =** the banner reads Lookout Cave, a
+> red-named giant vulture with two champion escorts is standing on the terrace, and when he dies he
+> drops an orb, (usually) the soul, and **exactly one chest of mine - "The Larder of Ushkaret"**.
+> (The plain golden chest next to it is vanilla's and was always there. Two chests total is the
+> EXPECTED result, not a failure.) **FAIL =** empty terrace, two of HIM side by side, two of MY
+> chests, or a fight that feels like a wall.
 
 > # 🖤 R-255 THE ENSLAVER'S SUMMONED PETS FINALLY SMOKE (2026-08-15) - READ THIS FIRST (it is LIVE)
 >

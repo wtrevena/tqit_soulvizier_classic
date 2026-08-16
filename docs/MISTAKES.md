@@ -8,6 +8,51 @@
 
 ## 2026-08-15
 
+- **2026-08-15 | R-256 lookout-uber lane: I called a LIVE base-game encounter "a faceless
+  boss proxy" in three shipped documents, without ever opening the record** - the lane
+  wrote, in `tools/patches/lookout_uber.py`, in `tools/build_section_surgery.py` (twice)
+  and in `docs/BACKLOG.md`, that the base game "already stands a boss proxy on that shelf
+  ... and it has never had a face". `Records/Proxies Boss/LE_New/08_RhakotisLookout.dbr`
+  is a live encounter: `pool1 = duneraider_01_general02` (1-3 sandvipers, championChance
+  55.0 / championMax 1 from two mounted marauders and five named heroes) with
+  `accessory1/Epic1/Legendary1 = {normal,epic,legendary}_goldenchest_02`. **Cost: caught
+  by the round-1 vet before any build; zero shipped damage.** But the WORST part had
+  already reached a Will-facing page: `WILL_TEST_GUIDE.md` stated the PASS criterion as
+  "there is **exactly one** chest", and a player who clears that terrace sees two. That
+  wording would have manufactured a false FAIL report from Will on content that is
+  working correctly - the most expensive kind of documentation bug this project has,
+  because it burns HIS time and his trust in the guide. **Root cause: inferring a
+  record's behaviour from its NAME and its role in the level ("a boss proxy with no boss
+  in this mod must be a marker") instead of reading it**, compounded by treating an
+  absent `chanceToRun` as a disable when 3,650 of the base game's 5,393 `Class=Proxy`
+  records omit it. **Guard:** any claim about what base-game content DOES is now read out
+  of `database.arz` and quoted field-by-field in the same commit that makes the claim
+  (this round's commit does exactly that); and every Will-facing PASS criterion is
+  written from the measured end state of the AREA, never from the list of what our own
+  lane placed into it. The decision that follows (leave vanilla's camp and chest alone -
+  base-game deletion is WILL-VETO) is now stated in all four places instead of implied.
+
+- **2026-08-15 | the same lane sent Will to look for an area banner at a spot where that
+  banner does not exist** - `WILL_TEST_GUIDE.md` step 1 told him the top-right banner
+  "says **Lookout Cave** the moment you are in the right place" at the Rhakotis03
+  entrance. Measured with the placement gate's own `level_regions()` over all 2,282
+  levels: rhakotis03 binds *City of Rhakotis / Rhakotis Slums / Rhakotis Library*, both
+  cave rooms bind NOTHING, and `Lookout Cave` is bound by exactly one level in the whole
+  world - rhakotis05, the shelf on the FAR side. Following the guide, Will looks for a
+  banner at the entrance, does not see it, and concludes he is at the wrong cave. Cost:
+  caught by the round-1 vet, nothing shipped. **Root cause: the lane proved a fact for
+  the GATE (ORACLE 1: exactly one level binds the region) and then re-used it in the
+  player instructions in the opposite direction** - "only rhakotis05 has it" is precisely
+  why the entrance does not. **Guard:** navigation steps in WILL_TEST_GUIDE now name the
+  measured region of each level the player actually stands on, in walking order, and the
+  banner is presented as the CONFIRMATION at the far side rather than as the wayfinding
+  cue. Two smaller drifts from the same round, both fixed here: a nest-prop distance
+  comment carried the previous line's value (7.81u where the computed answer is 8.20u),
+  and `BACKLOG.md` said the negtest plants 17 defects when it planted 24 (now 26). While
+  rewriting the guide this pass I also typed "about 11 units in front of you" for a
+  distance that is 16.55u from the cave mouth - self-caught and corrected before commit,
+  logged here because the rule is every error, not every expensive one.
+
 - **2026-08-15 | R-256 lookout-uber lane: the first negative test was written with a
   per-plant `copy.deepcopy(db)` and wedged the machine** - `_negtest` deep-copied the
   whole built database (51,331 records x ~618 fields) once per planted defect, 17 times.
@@ -21,8 +66,9 @@
   returns an `undo()` that puts the exact prior values back, or deletes the field if it
   did not exist), and it re-runs `verify()` after every undo so a leaked mutation fails
   the test rather than silently poisoning the next plant. Same coverage - 24 planted
-  defects, all red - in about a minute. Anyone writing a future module negtest against a
-  built `.arz` should copy that shape, never `deepcopy`.
+  defects, all red - in about a minute (26 after vet round 2 added the two R-251-volume
+  plants). Anyone writing a future module negtest against a built `.arz` should copy that
+  shape, never `deepcopy`.
 
 - **2026-08-15 | the build99 ship operator ran `validate_tags` with NO arguments and
   banked the result as a gate row** - the b99 gate battery script called
