@@ -105,6 +105,16 @@ REGISTRY = [
     'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
     'polis_vault',          # build37: Polis Daemonai Warden's Vault-Cage
     'neferkha',             # build37: Neferkha, the Rimebound Pharaoh (Cold Tombs Tier-1)
+    'lookout_uber',         # R-256 (Will 2026-08-15): "a uber boss (a new unique one) at the
+                            # end of lookout cave in the area outside the back of the cave ...
+                            # it is a dead end" -> Ushkaret, the Sky-Burial, on the Rhakotis05
+                            # cliff shelf. Ordered HERE, beside the other content bosses and
+                            # well ahead of chest_loot_breadth / armor_loot_breadth /
+                            # orb_loot_breadth / orb_armor_rows / loot_volume_trim /
+                            # uber_hoard_generosity, because his hoard family is authored in
+                            # THIS module and every one of those later modules derives its
+                            # scope from the svc_<fam>hoard_* name shape - authored late, the
+                            # chest would ship un-widened and un-trimmed (the diadochi note).
     'bossarena',            # b43: Aithon, the Ember-Crowned (Olympian Arena boss finish);
                             # disjoint - upgrades the bossarena chain in place + adds 1 champion + 1 soul
     'hunting_occult_improvements',  # build37: Will-approved H/O skill edits; runs late (was the

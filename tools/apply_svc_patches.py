@@ -17299,6 +17299,12 @@ _SVC_FIXED_UBER_CHESTS = {
     # if a later lane deletes either hoard, the build reds.
     'mnemophage': r'records\drxmap\proxy\q_mnemophage_lone.dbr',
     'diadochi':   r'records\drxmap\proxy\q_diadochi_lone.dbr',
+    # R-256 (Will 2026-08-15, the Lookout Cave uber): Ushkaret, the Sky-Burial is born
+    # on this invariant rather than being retro-fitted onto it. His hoard stands in the
+    # WORLD on the shelf beside him (ONE chest - UBER_CHEST_COUNT / R-108), so his boss
+    # proxy's accessory tiers must be EMPTY. tools/patches/lookout_uber.py authors both
+    # halves through the same two helpers every row above uses.
+    'ushkaret':   r'records\drxmap\proxy\q_ushkaret_lone.dbr',
 }
 
 

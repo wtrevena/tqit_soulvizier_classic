@@ -155,6 +155,15 @@ EXPECTED_AREA = {
     # R-253 (BL-W0814-12): the arena boss stopped being quest-spawned and became a real
     # placed encounter, so he now falls under this gate like every other uber we place.
     'boss_arena.lvl':                           ('R-253 Aithon, the Ember-Crowned', 'Olympian Arena'),
+    # R-256 (Will 2026-08-15, "at the end of lookout cave ... it is a dead end"). Rhakotis05
+    # is the ONLY level of all 2282 that binds the Lookout Cave region guid, so ORACLE 1 is
+    # decisive here rather than approximate. ORACLE 2 is satisfied by construction: the
+    # encounter stands on component #9, a 23,960-cell shelf ISLAND whose only door is the
+    # CliffEntranceA01_Ext cave mouth - and that mouth is on the same component, so there is
+    # no through-route for the fight to sit on. Expect the R-253 island advisory, not a
+    # verdict: the component is far larger than R_FOOTPRINT, and it is reached by a door
+    # this oracle models (the 0x14 mouth), so it should not even trip the advisory.
+    'rhakotis05.lvl':                           ('R-256 Ushkaret, the Sky-Burial', 'Lookout Cave'),
 }
 
 # ── AUDITED + ACCEPTED on-path placements (R-100 #16b audit, 2026-07-30) ───────────

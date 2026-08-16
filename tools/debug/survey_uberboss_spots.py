@@ -368,6 +368,22 @@ BOSS_SPOTS = [
       ('HELEPOLIS CHEST A margin x2', 72.6, 80.0, 2.0),
       ('HELEPOLIS b41 spot (0.0u from a shortest route - Will: "right in the walking path", RETIRED)',
        20.7, 81.7, 4.0)]),
+    # R-256 (Will 2026-08-15): USHKARET, THE SKY-BURIAL on the Lookout Cave shelf - the
+    # terrace the Rhakotis03 -> RhakotisOptTombB -> B01 cave exits onto, and a dead end.
+    # ⚠️ EXPECT `CHECK`, NOT `OK`, ON EVERY ROW BELOW, for ONE reason: the component rank is
+    # #9, not #1. That is CORRECT. The shelf IS an island (23,960 cells / 958 sq u) whose
+    # only door is the cave mouth at local (201,17,37) - and the mouth is in the SAME
+    # component, so the boss is perfectly reachable. Anything reading rank 1 as a pass
+    # criterion will red a spot that measures d=0.14 / clr 100% in all three tilesets out to
+    # extent 8.0, which is the widest clean ring of any fixed uber spot in the mod.
+    ('egypt/rhakotis/rhakotis05.lvl',
+     [('M9 Ushkaret SPEC-PRIMARY (shipped, R-256)', 208.0, 52.0, 3.5),
+      ('M9 Ushkaret escort ring', 208.0, 52.0, 6.0),
+      ('M9 Ushkaret full arena (boss 2.7 + 2 champs + chest)', 208.0, 52.0, 8.0),
+      ('M9 Ushkaret CHEST A (R-108: exactly one)', 210.6, 52.0, 1.0),
+      ('M9 Ushkaret CHEST A margin x2', 210.6, 52.0, 2.0),
+      ('M9 Mourner escort L', 204.5, 55.5, 2.0),
+      ('M9 Mourner escort R', 204.5, 48.5, 2.0)]),
 ]
 
 WARDEN_SPOTS = [

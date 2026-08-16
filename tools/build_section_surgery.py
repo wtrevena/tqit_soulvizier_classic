@@ -1177,6 +1177,18 @@ Q_MNEMOPHAGE_LONE_DBR = b'records\\drxmap\\proxy\\q_mnemophage_lone.dbr'
 # M8 EPHIALTES, THE DREAD - Dread Halls back corner, Judgment_StoneCity_Exit01 [931], corner (-1844,0,-13320), v0x11
 DREAD_HOST_KEY = 'xpack/levels/area05_judgment/undergrounds/judgment_stonecity_exit01.lvl'
 Q_EPHIALTES_LONE_DBR = b'records\\drxmap\\proxy\\q_ephialtes_lone.dbr'
+# M9 USHKARET, THE SKY-BURIAL (R-256, Will 2026-08-15: "a uber boss ... at the end of lookout
+# cave in the area outside the back of the cave ... it is a dead end"). Host = Rhakotis05
+# [147], corner (-2649,-1,4353), v0x11 (base-72 -> inject_into_0x05_v11, the proven M5-M8
+# branch; the svaera step-6 inject loop dispatches on the host's ACTUAL blob version, so this
+# routes automatically). The arena is the cliff TERRACE the Rhakotis03 -> RhakotisOptTombB ->
+# B01 cave exits onto through `CliffEntranceA01_Ext` at local (201,17,37): navmesh component
+# #9 of 115, 23,960 cells at cs 0.2 = 958 sq u, an ISLAND whose only door is that mouth. So
+# R-100 #16b (never the main walking path) is satisfied BY CONSTRUCTION - there is no
+# through-route on this component to block. Banner: Rhakotis05 is the ONLY level in the world
+# binding the `Lookout Cave` region guid, so ORACLE 1 reads Will's own words.
+LOOKOUT_HOST_KEY = 'levels/world/egypt/rhakotis/rhakotis05.lvl'
+Q_USHKARET_LONE_DBR = b'records\\drxmap\\proxy\\q_ushkaret_lone.dbr'
 
 UBERBOSS_SPECS = {
     # R4 FRAME FIX: every boss placement is now the SPEC-PRIMARY coord. The R1-R3 "nudges" were
@@ -1254,6 +1266,32 @@ UBERBOSS_SPECS = {
     # order. (R3 shipped the bogus +11.7u NE nudge (22,45) to a shallower spot; reverted.)
     DREAD_HOST_KEY: [
         (Q_EPHIALTES_LONE_DBR, 15.9, 3.2, 34.7, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
+    ],
+    # M9 Ushkaret, the Sky-Burial: the Lookout Cave shelf. LOCAL (208.0,17.0,52.0) =
+    # WORLD (-2441.0,17.0,4405.0).
+    #   * area banner  : "Lookout Cave" (tagRegionName68) - Rhakotis05 is the ONLY level of
+    #                    all 2282 binding that region guid, so containment is not arguable.
+    #   * on-mesh      : d=0.14u all 3 tilesets, comp#9 / 23,960 cells (the shelf island).
+    #   * clearance    : clr 100/100/100 (N/E/L) at ext 3.5, 6.0 AND 8.0 - the widest clean
+    #                    ring of any fixed uber spot in the mod; room for the scale-2.7 bird
+    #                    + both Champion escorts + the chest with margin. 98% at ext 10.
+    #   * floor Y      : the navmesh reads 17.20 (it quantises one ch step 0.2 high - the
+    #                    documented Tantalus/FrogCamp02 behaviour) and EVERY native instance
+    #                    on this plane is authored at 17.00 (the cave mouth 17.0, POIRhakotis_
+    #                    Cliffside 17.0, the cliff tiles 17.0/18.0), so SHIP 17.0.
+    #   * collision    : nearest native = the base game's own faceless `08_RhakotisLookout`
+    #                    boss proxy at (218.65,17.57,53.18) -> 10.71u; next 13.5u
+    #                    (EgyptRockBoulder15). The cave mouth is 16.6u away, so the player is
+    #                    not spawned on top of the fight. All clear of the >6u guard.
+    #   * walking path : the shelf is an ISLAND reached only through the cave mouth, and the
+    #                    mouth is IN the same component - no through-route exists to block.
+    # ⚠️ survey_uberboss_spots.py prints CHECK, not OK, for this spot for ONE reason: the
+    # component rank is #9, not #1. That is CORRECT and EXPECTED (see LOOKOUT_HOST_KEY above);
+    # any landing/containment gate must anchor on the MOUTH's component, never on rank 1.
+    # Reproduce: py tools/debug/survey_uberboss_spots.py <map> --level
+    #            egypt/rhakotis/rhakotis05.lvl --pt 208 52 3.5 --pt 208 52 8.0
+    LOOKOUT_HOST_KEY: [
+        (Q_USHKARET_LONE_DBR, 208.0, 17.0, 52.0, {'rot': Q_LEINTH_EXEMPLAR_ROT}),
     ],
 }  # WIRED (build36): merged into INJECT_SPECS collision-guarded below (native AE v0f/v11 branch)
 
@@ -1468,6 +1506,11 @@ SVC_DORUS_CHEST_DBR = b'records\\drxmap\\proxy\\svc_dorus_chest.dbr'
 # _svc_verify_world_chests reds if either record stops being built.
 SVC_MNEMOPHAGE_CHEST_DBR = b'records\\drxmap\\proxy\\svc_mnemophage_chest.dbr'
 SVC_DIADOCHI_CHEST_DBR = b'records\\drxmap\\proxy\\svc_diadochi_chest.dbr'
+# R-256: the Lookout Cave uber's ONE hoard. Authored DB-side by the same
+# _svc_build_world_chest_proxy the six above use (tools/patches/lookout_uber.py), and
+# 'ushkaret' is registered in _SVC_FIXED_UBER_CHESTS, so the build's own
+# _svc_verify_world_chests reds if the record ever stops being built.
+SVC_USHKARET_CHEST_DBR = b'records\\drxmap\\proxy\\svc_ushkaret_chest.dbr'
 
 
 # ── R-100 #9/#10: ONE chest per fixed uber, not three ──────────────────────────────
@@ -1531,6 +1574,12 @@ UBER_CHEST_SPECS = {
     # Reproduce: py tools/debug/survey_uberboss_spots.py <map> --level <lvl> --pt X Z EXT
     MNEMOPHAGE_HOST_KEY:  _chest_ring(SVC_MNEMOPHAGE_CHEST_DBR, 43.0, 3.0, 71.0),
     B41_HELEPOLIS_KEY:    _chest_ring(SVC_DIADOCHI_CHEST_DBR, 70.0, 8.8, 80.0),
+    # ── R-256: the Lookout Cave uber. Same ring, same UBER_CHEST_COUNT, same surveyed
+    # "A" (+x) offset as the six above, centred on Ushkaret's own spawn point, so the
+    # chest inherits the boss spot's placement proof and invents no new geometry.
+    #   (210.6, 52.0) rhakotis05  ext 1.0 AND 2.0: N/E/L d=0.14 clr=100/100/100 comp#9
+    #   nearest native 8.13u (the base game's own 08_RhakotisLookout proxy) - clear.
+    LOOKOUT_HOST_KEY:     _chest_ring(SVC_USHKARET_CHEST_DBR, 208.0, 17.0, 52.0),
 }
 
 
@@ -2603,6 +2652,46 @@ for _ani_key, _ani_specs in ANIKETOS_SPECS.items():
 for _uc_key, _uc_specs in UBER_CHEST_SPECS.items():
     assert _uc_key in INJECT_SPECS, f'b42 uber-chest host {_uc_key} has no boss placement to append to'
     INJECT_SPECS[_uc_key] = list(INJECT_SPECS[_uc_key]) + list(_uc_specs)
+
+# ── R-256 THE NEST (Will 2026-08-15, standing creative authority: "evocative ... visually").
+# The Lookout shelf currently holds ~20 objects: the cave mouth, POIRhakotis_Cliffside, the
+# faceless 08_RhakotisLookout boss proxy, three dead briar trees, four boulders, two sparse
+# rock clusters and a run of cliff tiles. It reads as an empty ledge. These 7 static props
+# dress it as what it is - a LARDER: the bones of what the bird carried up, and the refuse
+# the refugees were carrying when it came down among them.
+#
+# EVERY record is ALREADY PLACED IN THIS SAME WORLD, so no new art and no new MAP-REF risk
+# (measured this pass over the shipped map, per record: BonesAnimal02 x1 and BonesAnimal03 x1
+# in Rhakotis05 ITSELF; PileRefuse01 x7 / 02 x5 / 03 x2 in RhakotisOptTombB - literally the
+# cave you walk through to get here; EgyptCity_Urn01 x22 in Rhakotis02).
+#
+# SURVEYED, all 7, at the prop extent 1.0 on the built map: d<=0.14u, clr 100%/100%/100%
+# (N/E/L), comp#9 - the same shelf island the boss stands on. Every one sits 6.6-9.2u from
+# the boss spawn (outside the fight ring, which is proven clean to 8.0u) and >=4u from the
+# native 08_RhakotisLookout proxy. Byte-shape = the standard prop: flags=0, identity rot, no
+# 0x14, no QUESTS registration, no navmesh change. Y = the shelf's authored 17.0.
+# Reproduce: py tools/debug/survey_uberboss_spots.py <map> --level
+#            egypt/rhakotis/rhakotis05.lvl --pt 203 46 1.0 --pt 213 58.5 1.0 ...
+BONES_A_DBR = b'Records/SceneryGreece/Nature/Debris/BonesAnimal02.dbr'
+BONES_B_DBR = b'Records/SceneryGreece/Nature/Debris/BonesAnimal03.dbr'
+REFUSE1_DBR = b'Records/SceneryEgypt/Structure/Camps/Refugee/SetDress/PileRefuse01.dbr'
+REFUSE2_DBR = b'Records/SceneryEgypt/Structure/Camps/Refugee/SetDress/PileRefuse02.dbr'
+REFUSE3_DBR = b'Records/SceneryEgypt/Structure/Camps/Refugee/SetDress/PileRefuse03.dbr'
+URN01_DBR = b'Records/SceneryEgypt/Structure/Building/City/SetDress/EgyptCity_Urn01.dbr'
+LOOKOUT_NEST_SPECS = {
+    LOOKOUT_HOST_KEY: [
+        (BONES_A_DBR, 203.0, 17.0, 46.0),     # 7.81u from the boss - the old kills
+        (BONES_B_DBR, 213.0, 17.0, 58.5),     # 7.81u
+        (BONES_A_DBR, 214.0, 17.0, 46.0),     # 8.49u
+        (REFUSE1_DBR, 202.0, 17.0, 57.5),     # 8.14u - what they were carrying
+        (REFUSE2_DBR, 206.0, 17.0, 61.0),     # 9.22u
+        (REFUSE3_DBR, 212.5, 17.0, 61.0),     # 10.1u
+        (URN01_DBR, 201.5, 17.0, 51.0),       # 6.58u - nearest the mouth they came out of
+    ],
+}
+for _ln_key, _ln_specs in LOOKOUT_NEST_SPECS.items():
+    assert _ln_key in INJECT_SPECS, f'R-256 nest host {_ln_key} has no boss placement to append to'
+    INJECT_SPECS[_ln_key] = list(INJECT_SPECS[_ln_key]) + list(_ln_specs)
 
 # THE FIXED ENDLESS HUNT ENCOUNTER (b65 lowlift wave, B-TOXEUS-STALKER-1): place the fixed
 # `q_toxeus_hunt_lone` proxy into the LEAST-crowded Hades Palace floor, `hadespalace_floor04_04.lvl`
