@@ -271,7 +271,27 @@ def build():
     return derive(donor, exemplar), donor, exemplar
 
 
-# ── verify (A1..A8; every arm re-derived, none asserted) ────────────────────
+_REF_EXT = ('.ssh', '.tex', '.msh', '.anm', '.pfx', '.dbr', '.mif')
+
+
+def _embedded_refs(data):
+    """Every art/shader/record reference a .msh blob names, in any namespace.
+
+    This is the input to A9: `validate_render_chain` (build30/D5) resolves exactly
+    these, and a change here is the difference between a pet that renders and one
+    that spawns invisible.
+    """
+    import re
+    out = []
+    for s in re.findall(rb'[ -~]{4,}', data):
+        t = s.decode('ascii', 'replace')
+        for piece in re.split(r'[";=\s]+', t):
+            if piece.lower().endswith(_REF_EXT):
+                out.append(piece)
+    return out
+
+
+# ── verify (A1..A9; every arm re-derived, none asserted) ────────────────────
 
 def verify_rig(rig, donor, exemplar):
     """[] when the rig is exactly 'the donor plus the exemplar's own block'."""
@@ -349,6 +369,18 @@ def verify_rig(rig, donor, exemplar):
     if DEMON_ATTACH.lower() not in {n.lower() for n in rn}:
         problems.append('A6 attach: %r is not declared on %s, so the block would hang '
                         'the smoke on nothing' % (DEMON_ATTACH, DONOR_MESH))
+
+    # A9 - MESH-INTERNAL RENDER CLOSURE is untouched (the build30/D5 lesson).
+    # `validate_render_chain` opens every soul-summoned pet's mesh and resolves the
+    # shaders and textures it EMBEDS; a rig whose internal refs moved would spawn
+    # an invisible or textureless pet - resolution is not rendering. Because the rig
+    # is `donor || block` byte for byte, its embedded ref set can only differ by
+    # what the block itself names, and this states that rather than assuming it.
+    if sorted(_embedded_refs(rig)) != sorted(_embedded_refs(donor) + _embedded_refs(blk)):
+        problems.append('A9 render closure: the rig embeds %r, the donor %r - the '
+                        'mesh-internal shader/texture closure moved, so the wearer '
+                        'could render invisible or untextured'
+                        % (sorted(_embedded_refs(rig))[:8], sorted(_embedded_refs(donor))[:8]))
     return problems
 
 

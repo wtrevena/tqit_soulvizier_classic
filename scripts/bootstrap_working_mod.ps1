@@ -189,13 +189,26 @@ if (Test-Path $xpackDir) {
 
 Write-Host "Stripped $strippedCount files (~$strippedMB MB)"
 
-# --- Step 2e: Stage the costume-dye PC skins Creatures.arc (PR-2) ---
+# --- Step 2e: Stage the mod's Creatures.arc (PR-2 dye skins + R-257 shroud rig) ---
 # The Garden-of-Merchants costume dyes reskin the PC to amgoz1's AllSkins textures
 # (Creatures\PC\...tex) that live ONLY in SV 0.98i's Creatures.arc. Rebuild a
 # purely-additive Creatures.arc (net-new SV skins only; overrides zero base asset)
 # so every obtainable dye resolves instead of greying the character.
+#
+# 🚨 R-257 DEPLOY COUPLING (BL-R257-DEBT-1, P0). This archive is ALSO the only
+# place the Enslaver's smoking rig ships:
+#     monster/skeleton/svc_enslaver_shroudrig01.msh
+# `um_toxeus_enslaver_99` + the 3 soul-pet tiers + his 2 preview proxies name that
+# mesh in their `mesh` field. Shipping a rebuilt .arz WITHOUT restaging and
+# deploying this Creatures.arc leaves them pointing at an asset that resolves
+# nowhere - an INVISIBLE boss, far worse than the missing smoke R-257 fixes.
+# A ship that touches the database must ALSO run this step (it is cheap and
+# standalone: py tools/build_creatures_dye_skins_arc.py --out <work>\Resources\Creatures.arc)
+# and deploy Resources. enslaver_shroud.verify() arm M2 fails the build loud when a
+# reachable mod Creatures.arc does not carry the rig, so the coupling is gated, not
+# merely documented.
 Write-Host ''
-Write-Host 'Staging costume-dye PC skins (Creatures.arc, PR-2)...' -ForegroundColor Yellow
+Write-Host 'Staging mod Creatures.arc (PR-2 dye skins + R-257 Enslaver shroud rig)...' -ForegroundColor Yellow
 $creaturesOut = Join-Path $workDir 'Resources\Creatures.arc'
 & $pythonExe (Join-Path $toolsDir 'build_creatures_dye_skins_arc.py') --out $creaturesOut
 if ($LASTEXITCODE -ne 0) {

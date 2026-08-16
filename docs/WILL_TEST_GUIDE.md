@@ -138,10 +138,61 @@
 > chests, a fight that feels like a wall, or **birds piling up until the game chugs** - that last
 > one would mean the expiry I added is not firing, and I want to hear about it immediately.
 
-> # 🖤 R-255 THE ENSLAVER'S SUMMONED PETS FINALLY SMOKE (2026-08-15) - READ THIS FIRST (it is LIVE)
+> # 🖤 R-257 THE ENSLAVER'S SHROUD, ROUND FIVE - THIS TIME IT IS THE DEMONS' OWN MESH (2026-08-16)
 >
-> **✅ LIVE ON DEV *AND* STEAM AS `build99`** (arz `1113f2c69fc3f188b0b5bece340614f2`, 2026-08-15).
-> Full quit TQ and restart Steam before testing.
+> **🟡 NOT SHIPPED YET.** Built on the branch, gated, not deployed. When it lands you will need a
+> **full quit of TQ and a Steam restart**, and the ship must carry **two** files, not one - the
+> database *and* `Resources\Creatures.arc`. If only the database arrives, the Enslaver and his
+> summoned tiers will be **INVISIBLE** rather than un-smoking. Say so immediately if that happens;
+> it is a one-file fix, not a redesign.
+>
+> **Your report, verbatim, the fifth time you have filed this, with the Hathor Basin screenshot:**
+> "toxeus the murderer enslaver of souls summoned pets (when i summon them from their souls) still
+> do not have the black smoke around them"
+>
+> **WHY THE LAST FOUR ROUNDS FAILED, honestly.** Every one of them wrote the shroud into a *record
+> field* and then proved the record was correct. That proof was never the right proof. Rounds 2
+> and 3 wrote into skill slots the engine does not read; round 4 (build99) moved to two slots the
+> engine **does** read, verified the bytes, verified the gate - and you photographed a boss with no
+> smoke standing in front of you. So the rule changed: **a fix for something you should be able to
+> SEE has to copy something you can already see.**
+>
+> **WHAT YOU CAN ALREADY SEE, and it is the whole basis of this round:** his demons. You told us so
+> yourself - *"yes the demons that he summons have the proper black shroud and they dont have any
+> green"*. Those marauders have **nothing** in any FX field. Their smoke is baked into their model
+> file. That turns out to be how the base game does every standing aura: every Ancestral Warrior,
+> every Spirit Outsider, every Storm Wisp gets its glow from its model, never from a skill.
+>
+> **WHAT SHIPPED THIS TIME.** The Enslaver gets his own copy of his own skeleton model with the
+> demons' exact smoke block appended to it - the same 115 bytes, copied out of the demons' file, at
+> the same attach point, naming the same effect. Same skeleton, same bones, same animations; the
+> only difference in the file is the smoke. All four of the b99 field channels were **removed**, on
+> purpose: leaving them would have doubled the smoke on anything that already has it, and you asked
+> for the *same* shroud his demons have.
+>
+> **THE TEST (unchanged):** summon the Enslaver from **any tier** of his soul and **just stand
+> there, out of combat**.
+> - **PASS** = black smoke on him from the moment he appears, and on the marauders he raises, and
+>   it looks like theirs.
+> - **FAIL MODE 1** = still no smoke. Then a mod-shipped model does not load on him and the answer
+>   is to put him on the demons' model outright - which works by construction but costs him his
+>   skeleton silhouette, so that is **your call**, not ours.
+> - **FAIL MODE 2** = he is **invisible / missing** entirely. That means the `Creatures.arc` half of
+>   the ship did not arrive. One file.
+> - **FAIL MODE 3** = the smoke looks **too thick** compared to his demons. Tell us; that would mean
+>   something is emitting twice.
+>
+> **WHAT WE ARE NOT CLAIMING.** Nobody has seen this render. What we can say, and could not say any
+> of the previous four times, is that his records now reach the screen through the **same mechanism,
+> the same attach point and a byte-identical block** as four creatures you have personally confirmed
+> smoke in play. Your existing Enslaver souls pick it up with no re-drop and no new character.
+
+> # 🖤 R-255 THE ENSLAVER'S SUMMONED PETS FINALLY SMOKE (2026-08-15) - SUPERSEDED BY R-257 ABOVE: IT SHIPPED AND IT DID NOT RENDER
+>
+> **⚠️ SHIPPED ON DEV *AND* STEAM AS `build99`** (arz `1113f2c69fc3f188b0b5bece340614f2`, 2026-08-15)
+> **and the smoke still did not appear.** Kept below as the record of a round that was wrong -
+> the diagnosis of the b93 slot defect in it is still correct and worth reading; the fix it
+> proposed is what R-257 replaced.
 >
 > **Your report, verbatim, and this is the fourth time you have filed it:** "toxeus the murderer
 > enslaver of souls summoned pets (when i summon them from their souls) still do not have the black

@@ -9298,3 +9298,219 @@ again. Two Will decisions ride along unanswered: `BL-R256-DEBT-4` (the vanilla d
 and its golden chest still share the terrace - a cleared shelf shows TWO chests) and
 `BL-R256-DEBT-6` (the hoard name "The Larder of Ushkaret" is unvetted). Both are disclosed in the
 Steam change note and the test guide rather than left to surprise him.
+
+---
+
+## R-257 [2026-08-16] IMPLEMENTED (branch `fix/enslaver-shroud-render`, new tool `tools/build_shroud_rig.py` + modules `tools/patches/enslaver_shroud.py` / `tools/patches/champion_mesh.py` / `tools/build_creatures_dye_skins_arc.py`) - THE SHROUD LEAVES THE RECORD LAYER FOR THE MESH, BECAUSE THE RECORD LAYER HAS NO RENDERING EXEMPLAR
+
+WILL (2026-08-16), the FIFTH filing of the same sentence, this time with a screenshot -
+the Enslaver summoned at Hathor Basin on DEV, on the post-b99/b100 arz, standing out of
+combat, ZERO smoke:
+
+> "toxeus the murderer enslaver of souls summoned pets (when i summon them from their
+>  souls) still do not have the black smoke around them"
+
+### FIVE FILINGS, FOUR RECORD-LAYER FIXES, FOUR FAILURES
+
+| round | wired | believed because | in game |
+|---|---|---|---|
+| b39/b55/b55r2/b92 | `charFxPakRunningNames`, weapon-bone paks | "renders while running" (R-95) | nothing; and it would have come off his fists |
+| b93 (R-250) | `skillName19` / `skillName18` | "the template reaches 23" | slots `MonsterSkillManager.tpl` never declares |
+| b99 (R-255) | `initialSkillName` + `buffSelfSkillName` | "838 Monsters + 90 Pets use them" | declared, byte-verified, gate-verified - and still nothing |
+
+**THE LESSON, and it is the ruling: a channel being DECLARED in the template does not
+mean the pet controller EXECUTES it, or that a CharFxPak ATTACHES on this rig.** A
+record-level proof is not a rendering proof. Three rounds of record-level verification
+have now failed this one feature, so R-257 raises the bar permanently for it:
+
+> **THE EXEMPLAR STANDARD.** A fix for a rendering defect must use a mechanism with a
+> SHIPPING RENDERING EXEMPLAR - a specific creature in the base game or the mod that
+> VISIBLY displays the effect, delivered by that exact mechanism - and must then
+> replicate that exemplar byte for byte: same field class, same reference style, same
+> rig compatibility. Where no exemplar exists, say so and take the one that does.
+
+### THE CENSUS THAT PICKED THE MECHANISM
+
+Measured on `Toolset\Templates.arc` (566 templates), the vanilla `database.arz` (74,013
+records / 5,561 Monsters / 341 Pets) and 591 distinct vanilla creature meshes:
+
+- **(a) MESH-COMPILED FX - PASSES.** Exemplar: `um_enslaver_marauder_99` +
+  `enslaver_marauder_1/2/3` on `ShadowStalker.msh`, whose binary ends in
+  `CreateEntity{ attach = "SpecialHit01"; entity = "Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr" }`.
+  **WILL CONFIRMED IT BY EYE** (R-102 fourth amendment, verbatim: *"yes the demons that
+  he summons have the proper black shroud and they dont have any green"*), and those four
+  records carry `initialSkillName = buffSelfSkillName = None` in the shipped arz, so
+  nothing but the mesh can be producing it. 28 vanilla records wear that rig; 66 of 591
+  vanilla creature meshes use the mechanism. **Decisive for this request: every vanilla
+  PET with a persistent ambient aura is mesh-driven with EMPTY always-on fields** -
+  Ancestral Warriors (`spectralsoldier_01..20`), the Spirit Outsider, Storm Wisps, Spirit
+  Ward, Battle Standard. Any player who has taken Warfare or Spirit has watched one stand
+  still, out of combat, glowing.
+- **(b) `charFxPakRunningNames`-class fields - DEAD, no exemplar can exist.** Declared in
+  ZERO of 566 shipped templates, carried by ZERO of 74,013 base records. The only 14
+  carriers on earth are this mod's own DRX-inherited records, 8 of them this family.
+  R-95's "renders while running" had no evidence behind it; the running smoke Will saw
+  was the marauders' mesh.
+- **(c) SKILL-GRANTED FX ON AN ALWAYS-ON CHANNEL (the b99 route) - NO PET EXEMPLAR.**
+  Across all 341 vanilla Pets, `initialSkillName` reaches a `Skill_BuffSelfToggled` ZERO
+  times and a `charFxPakSelfNames` ZERO times; `buffSelfSkillName` reaches a
+  `charFxPakSelfNames` exactly 20 times, all of them Neidan Terracotta pets pointing at a
+  WEAPON-HAND pak. The exact b99 shape occurs ZERO times in shipping data. The Monster
+  precedent that does exist is weapon-hand too (`EnvenomWeapon` x71, `StormNimbus` x60,
+  both `attach=['R Hand','L Hand']`), and the one vanilla `Skill_BuffSelfToggled` that is
+  nominally an aura (`gigantesaura`) points at `Valor_ambient.dbr`, a pak with EMPTY
+  `particleEffectNames` - it renders nothing at all.
+- **(d) EFFECTENTITY FIELDS ON THE RECORD - DEAD, the engine declares none.** The full
+  1,923-field `Pet.tpl` closure carries exactly five EffectEntity-shaped fields and every
+  one is event-scoped (`spawnEffect`, `prespawnEffect`, `deathEffect`, `dissolveEffect`,
+  `levelUpFx`). There is no ambient/idle effect field anywhere on Character/Actor/Monster/
+  Pet. **That absence is exactly why the base game compiles ambient auras into meshes.**
+
+And the specific asset settles it: `Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr` is
+referenced 13 times in the entire base game and **every one is a `deathEffect`**. It is
+named by no CharFxPak anywhere. Its only persistent rendering, anywhere, is that compiled
+block.
+
+### THE FIX: HIS OWN RIG, CARRYING THE DEMONS' OWN BLOCK
+
+`tools/build_shroud_rig.py` authors ONE new asset,
+`Creatures\Monster\Skeleton\svc_enslaver_shroudrig01.msh` =
+
+- the base `SkeletonGrayBlack01New.msh` (his current rig - R-102's deliberate anti-green
+  choice; **his silhouette is NOT traded away**, which is why this is a new asset rather
+  than a plain swap onto `ShadowStalker.msh`), plus
+- the **115 bytes read verbatim off the end of `ShadowStalker.msh`**, plus
+- that one chunk-length `u32` increased by 115.
+
+A `.msh` is a self-describing CHUNK CHAIN with no global offset table: `'MSH' + version +
+u32`, then `[u32 id][u32 len][payload]`. Both binaries walk to **EOF-exact in 9 chunks**,
+the last being id 3, the CRLF text section; exactly ONE `u32` in either file equals that
+chunk's length and none equals the file length. So append-and-bump is the format's own
+edit, and `verify_rig()` re-derives all of it every build (**A1..A9**): block byte-identity
+against the exemplar, prefix identity against the donor, the donor's text preserved rather
+than rewritten, the chain still EOF-exact with only chunk 3 longer, **the rig-name table
+IDENTICAL to the donor's 31 names** (so the ANIMATION surface is untouched by construction
+- the risk R-102's fourth amendment names as the real one in any rig change), the attach
+point declared, the donor still FX-free, size, and the mesh-internal render closure
+unchanged but for the block's own entity (the build30/D5 `validate_render_chain` question).
+
+It ships in the mod's own `Resources\Creatures.arc` under a **net-new** name. Measured:
+that archive already carries 288 net-new entries including two `.msh`, and shadows **zero**
+base entries; the engine unions same-named archives PER ENTRY, and the proof is the game
+Will plays - the mod ships that archive today and every base creature still renders, the
+Enslaver himself on a BASE-arc mesh in the 08-15 screenshot. 1,105 of this mod's
+Monster/Pet records already resolve their `mesh` out of a MOD archive (739 `DRX.arc`, 345
+`SVMesh.arc`, 20 `_DRX_Meshes.arc`), the Devourer's blood demons among them. A NEW name
+rather than shadowing the base entry, because mod-over-base MESH shadowing is UNPROVEN on
+this rig and must not become the load-bearing assumption of a fifth attempt.
+
+`champion_mesh` remains the SINGLE writer of `mesh` (R-102's law) and now IMPORTS
+`SHROUD_RIG` from `enslaver_shroud`, so the asset and its wearers cannot drift (the
+`thrown_restore` -> `thrown_anim_rig` precedent).
+
+### WHAT IS RETIRED, AND WHY LEAVING IT WOULD BE WORSE THAN USELESS
+
+The b99 FIELD route is **REMOVED**, not kept as belt-and-braces:
+
+1. It is the exact shape five filings have taught us reads as "wired" and is not. Left in
+   place, the next reader greps the arz, finds the shroud on two declared always-on
+   channels, and concludes the feature works - which is precisely how this lane inherited
+   a CLOSED backlog item and a shipped ruling for a thing that had never rendered.
+2. **It is a DOUBLING HAZARD by the module's own law.** b99's `apply()` already refused to
+   add the pak on top of a MESH-route member because "adding our emitter on top would
+   double a shroud the demons wear once". Once every member is MESH, keeping FIELD is
+   exactly that, on every member. Will asked for *the same* shroud his demons have.
+
+So `enslaver_shroud.apply()` stops AUTHORING `svc_enslaver_shroud` / `_charfxpak` / `_fx`
+and the `svc_alwayson_*` controller clones entirely - the build is COLD from the upstream
+`.arz`, so in the shipped database those records simply never come into existence - and it
+RETIRES them on every household member when re-run over an already-built arz (the
+`--negtest` / static-dry-run case): the always-on field SLOTS are deleted (absence, not
+`''`), dead kit slots dropped, and `controller` put back on the SHARED original it was
+cloned from. RETIREMENT PROTOCOL checked: R-250 and R-255 are the only rulings naming those
+records and R-257 supersedes exactly that part of them. `charFxPakRunningNames` is still
+KEPT untouched on every surface (ADD, never take away - the demons carry it too) and no kit
+skill is dropped.
+
+### THE WIDENED GATE
+
+`enslaver_shroud.verify()` walks the same 8-member household (wild boss -> escorts -> pet
+tiers -> pet-of-pet, plus any record wearing a family name tag) and now requires the ONE
+proven route of every member, DERIVED from that member's `.msh` binary each build: its rig
+must compile in `ShadowStalker_Smoke.dbr` at `SpecialHit01`. On top of that:
+
+- **M1** (always) the authored rig is rebuilt in memory from the two BASE binaries and put
+  through `verify_rig()`;
+- **M2** (whenever a mod `Creatures.arc` is reachable) the staged archive MUST carry the
+  entry, byte-identical to the derived bytes;
+- **no belief channel survives**: no shroud on either always-on field, no shroud in any kit
+  slot, no `svc_alwayson_` controller anywhere in the DB, and ZERO live references to the
+  retired R-250 chain from any record outside it.
+
+`champion_mesh`'s FX allow-list went from ONE shared list to a PER-FAMILY one (a shared
+list would have let the Enslaver silently satisfy his gate with the Hunt's Boss Aura), and
+it now also reds when the allowed effect is **MISSING** - the arm that catches the b102
+regression that started this whole run of filings.
+
+### âš ï¸ NEW DEPLOY COUPLING (P0 if missed)
+
+**This is the first lane in which a `.dbr` depends on a MOD-SHIPPED ART asset.**
+`work\<mod>\Resources\Creatures.arc` must be REBUILT (`py
+tools/build_creatures_dye_skins_arc.py --out work\SoulvizierClassic\Resources\Creatures.arc`)
+and DEPLOYED in the same ship as the `.arz`. Shipping the arz without the arc gives the
+Enslaver family **no mesh at all** - an invisible boss, far worse than no smoke. `verify()`
+arm M2 fails the build loud on exactly that state, and `build_creatures_dye_skins_arc.py`
+is the sole writer of that archive so any restage includes the rig. Coupling list is now:
+Levels+Quests, arz+Text, **and arz+Creatures.arc**.
+
+### GATES
+
+| gate | result |
+|---|---|
+| `py tools/build_shroud_rig.py --selftest` | **PASS** (both binaries EOF-exact in 9 chunks; the 115-byte block; donor FX-free; `SpecialHit01` on his rig) |
+| `py tools/build_shroud_rig.py --negtest` | **10/10** (block absent, length not bumped, length bumped with no block, hand-typed LF block, wrong attach, wrong effect, donor text overwritten, pre-text corruption, block doubled, length off by one) |
+| `py tools/patches/enslaver_shroud.py --selftest` | **PASS**, and it re-measures the exemplar, both rigs, the authored asset and R-255's slot ceiling against the real archives |
+| `py tools/patches/enslaver_shroud.py --negtest` | **27/27** |
+| `py tools/patches/champion_mesh.py --negtest` | **15/15** (new: the family regresses to the plain FX-free rig) |
+| `py tools/gate_dye_skins.py` | **PASS** (the archive's other tenant is untouched) |
+| STATIC dry-run over the shipped build100 arz, both modules in registry order | **GREEN** - 8/8 household members MESH (4 on `ShadowStalker.msh`, 4 on the new rig), exactly **6 records touched**, all attributed |
+
+Required negative tests for this ruling, both present: **strip** (any member back on an
+FX-free rig -> RED, including the "STRIP ONE PET" case R-255 introduced) and **re-plant a
+belief-channel-only member** (a pet on the FX-free rig carrying the b99 field route instead
+- i.e. exactly the shape that shipped as build99 and exactly what Will photographed not
+working -> RED).
+
+### WHAT THIS RULING CLAIMS, AND WHAT IT DOES NOT
+
+**IT DOES NOT CLAIM THE SHROUD RENDERS.** Nobody has seen this build. Four rounds have
+claimed more than they could prove and this one will not.
+
+What it claims, and what no previous round could: the four records that had no shroud now
+reach the screen **by the SAME MECHANISM, through the SAME attach point, with the SAME
+entity reference, carrying a BYTE-IDENTICAL block, as four records Will has personally
+confirmed smoke in play.** The residual risk is no longer "does this channel render?" - it
+does, on the marauders, in his own words - but only "does a mod-shipped copy of a base rig
+load?", against 1,105 mod-served creature meshes that already do.
+
+### DEBTS
+
+- `BL-R250-DEBT-1` (**P2, WILL / in-game, CARRIED FORWARD for the fifth time**): nobody has
+  seen it render. Will's test: summon the Enslaver from any tier of his soul and just stand
+  there, out of combat. The smoke should be on him from the moment he appears, and on the
+  marauders he raises, and it should look like the demons' - not thicker.
+- `BL-R257-DEBT-1` (**P0 SHIP DISCIPLINE**): the arz+`Creatures.arc` coupling above. The
+  ship lane must restage and deploy the archive with the database and hash-verify both.
+- `BL-R257-DEBT-2` (**P2, ASSET RISK, stated not hidden**): a mod-shipped copy of a
+  base-game rig has never been loaded on THIS creature before. The class is proven (1,105
+  mod-served meshes) and the bytes are proven (A1..A9), but this exact file has not been in
+  the engine. If he turns up INVISIBLE rather than un-smoking, that is this risk and the
+  fallback is the one this lane deliberately did not take: put him on `ShadowStalker.msh`
+  outright - zero new assets, identical to the exemplar by construction, but it costs the
+  skeleton-leader silhouette R-102 built, so it is **Will's call, not the lane's**.
+- `BL-R250-DEBT-2` (**P2, WILL**): the Devourer of Blood still has no body shroud. Will did
+  not ask for it and his demons are BLOOD demons with no shadow shroud to copy.
+- `BL-R255-DEBT-1` (**P1, other lanes, CARRIED FORWARD**): six records still park skills
+  above the `skillName17` ceiling, `um_toxeus_enslaver_99`'s `unholy_rally` (slot 18) among
+  them. Reported by this gate every build, unwound by nobody - it needs Will's call because
+  his 1..17 are full.

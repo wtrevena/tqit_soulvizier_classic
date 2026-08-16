@@ -8,6 +8,68 @@
 
 ## 2026-08-16
 
+- **2026-08-16 | THE FIFTH FILING. R-255's headline statistic was MIS-SCOPED, and that one
+  mis-scope is what made a mechanism with no rendering exemplar look precedented enough to
+  ship** - R-255's ruling table justified the b99 always-on channels with *"838 Monsters +
+  **90 Pets**; **153** point it at a `Skill_BuffSelfToggled` exactly like ours"*. Re-measured
+  this round against the vanilla `database.arz`: the two halves come from DIFFERENT POOLS.
+  **All 153 `Skill_BuffSelfToggled` carriers are MONSTERS.** Across all 341 vanilla Pets,
+  `initialSkillName` reaches a `Skill_BuffSelfToggled` **zero** times and a
+  `charFxPakSelfNames` **zero** times; `buffSelfSkillName` reaches a `charFxPakSelfNames`
+  exactly 20 times, every one a Neidan Terracotta pet on a WEAPON-HAND pak. The exact b99
+  shape - Pet + always-on channel + `Skill_BuffSelfToggled` + body-attach CharFxPak - occurs
+  **ZERO times in shipping data**, and the specific effect (`ShadowStalker_Smoke.dbr`) is a
+  `deathEffect` in all 13 of its base-game references and is named by no CharFxPak anywhere.
+  Written honestly, that table would have read "no pet precedent exists for this shape" and
+  the round could not have been approved. **Cost: a full ship (build99, DEV + Steam), a
+  ruling, a CLOSED backlog entry, and Will filing the same sentence a FIFTH time with a
+  screenshot.** **Root cause, and it is the same class as b93's slot ceiling one round
+  earlier: a statistic was computed over the union of two populations and then quoted as if
+  it described the one that mattered.** b93 measured the mod's own overflow and read it as
+  headroom; b99 measured Monsters and read it as Pets. Both were instrument errors dressed as
+  evidence, and both passed a gate because the gate checked the RECORD CHAIN rather than
+  whether anything with that shape had ever been seen to render. **Guard: R-257's EXEMPLAR
+  STANDARD** - a rendering fix must name a specific creature that VISIBLY displays the effect
+  through that exact mechanism, and replicate it byte for byte; where no exemplar exists, say
+  so and take the one that does. `enslaver_shroud.verify()` now derives coverage from each
+  wearer's `.msh` binary, and the census that would have caught this is written into the
+  module docstring per pool, never as a union.
+
+- **2026-08-16 | b99 shipped a confidence its own open debt contradicted** - `BL-R250-DEBT-1`
+  ("nobody has seen this render") was carried forward and stated plainly, and in the same
+  breath R-255's gate line printed *"the WHOLE Enslaver household smokes"* and BACKLOG
+  recorded the item CLOSED. Both cannot be true. **The gate sentence is what a successor
+  reads**, and it asserted the outcome (smokes) rather than the checked property (the shroud
+  is named on two declared channels) - so the honest debt was decoration on a claim the
+  headline had already made. It is the second time in a row this feature shipped that way:
+  b93/R-250 did the same with "the family has the family FX". **Cost: a fifth filing landed
+  on a lane whose own paperwork said the work was done, and the RCA for it had to start by
+  disproving the repo's own record.** **Root cause: gate prose written as a claim about the
+  GAME when the gate only ever measured the DATABASE.** **Guard: R-257 splits the verify()
+  banner in two, explicitly - "WHAT IS CLAIMED: these records reach the screen by the SAME
+  mechanism, through the SAME attach point, with a BYTE-IDENTICAL block, as records Will
+  confirmed by eye" / "WHAT IS NOT CLAIMED: that anyone has SEEN this build render". The
+  ruling, the test note and the module docstring all repeat the split verbatim, and the
+  BACKLOG item stays OPEN until Will says it smokes.**
+
+- **2026-08-16 | R-257 lane, my own: I guarded a function I had just invented with `hasattr`,
+  which would have made a typo fall back silently** - the first draft of
+  `enslaver_shroud._PINNED_SMOKE_RIGS` read `_rig._norm_ref(SHROUD_RIG) if hasattr(_rig,
+  '_norm_ref') else SHROUD_RIG.replace('/','\\').lower()`. `build_shroud_rig` has no
+  `_norm_ref` and never did - I wrote the call and the fallback in the same line. **Cost:
+  none realised, caught by reading back the file before the first run.** But the shape is the
+  dangerous one: with the `hasattr`, a misspelled helper is not an `AttributeError`, it is a
+  silent second code path - in a constant that decides which rigs count as smoking when the
+  archives are unreadable. **Root cause: defensive-coding reflex applied to my OWN new API,
+  where the only thing it can defend against is my own typo.** **Guard: the line is now a
+  plain expression with no fallback; `hasattr` guards belong on foreign/optional interfaces,
+  never on a function this lane authors in the same commit.** Same turn, a smaller one: a
+  multi-paragraph commit message was passed to `git commit -m` through a PowerShell
+  here-string and the parser split it into pathspecs, producing eight confusing `error:
+  pathspec ... did not match` lines against a clean tree. Nothing was committed and nothing
+  was lost, but the error text reads like a missing-file problem rather than a quoting one.
+  Every commit message in this lane after that went through a file and `git commit -F`.
+
 - **2026-08-16 | the same operator pointed `lookout_uber --negtest` at the arz that already
   contained the lane** - the b100 gate battery ran `--negtest work\...\SoulvizierClassic.arz`,
   i.e. the freshly built b100 database. The module opens by asserting it is
