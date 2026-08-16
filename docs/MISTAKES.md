@@ -8,6 +8,22 @@
 
 ## 2026-08-16
 
+- **2026-08-16 | the same operator pointed `lookout_uber --negtest` at the arz that already
+  contained the lane** - the b100 gate battery ran `--negtest work\...\SoulvizierClassic.arz`,
+  i.e. the freshly built b100 database. The module opens by asserting it is
+  `um_ushkaret_99.dbr`'s FIRST author, so it exited 1 with *"ALREADY exists ... Another lane
+  now owns it"* before a single plant ran. **Cost: none realised** - the gate was re-run
+  against the pre-lane build99 arz `1113f2c6`, which is the input the lane itself used and
+  the only input the harness is defined over. Root cause: the battery was written with one
+  `$arz` variable bound to "the artifact under test", and a negtest harness is not a checker
+  of an artifact - it is a checker of a MODULE, and it needs the module's *pre-state*. **The
+  dangerous shape is that this exit 1 is indistinguishable at the summary line from a real
+  red**, and on a worse day it would have been read as "the lane's own gate fails on the
+  shipped bytes" and blocked a good ship, or waved through as noise. **Guard:** the battery
+  prints each gate's full argv beside its exit code (the 2026-08-15 guard), which is exactly
+  how this was caught in one read; and the standing rule is now explicit - a `--negtest` arm
+  takes the BASELINE artifact, never the artifact the wave produced.
+
 - **2026-08-16 | the build100 ship operator launched a heavy multi-GB map build by asking a
   script for `--help`** - `py tools/svaera_plus_portals.py --help` was run to discover the
   canonical-vs-TESTHUB invocation. That script takes **no argparse at all**: `main()` ignores
