@@ -339,7 +339,17 @@ def _level_slots(db, rec):
     return out
 
 
-def _free_skillname_slot(db, rec, lo=1, hi=23):
+def _free_skillname_slot(db, rec, lo=1, hi=_ENGINE_SKILL_SLOT_MAX):
+    """R-255: `hi` is the ENGINE's declared ceiling, and it is not negotiable.
+
+    b93 called this with `hi=23` and got slot 19 - a field `MonsterSkillManager`
+    does not declare - and shipped it. The default is now the measured ceiling so
+    this helper physically cannot hand back a slot nothing reads. Nothing in the
+    module calls it any more (the shroud rides `_ALWAYS_ON_FIELDS`); it is kept
+    because the reasoning above it is the trap's memorial, and a future lane that
+    does need a kit slot should find a helper that is already safe.
+    """
+    hi = min(hi, _ENGINE_SKILL_SLOT_MAX)
     used = set(_skill_slots(db, rec)) | _level_slots(db, rec)
     for i in range(lo, hi + 1):
         if i not in used:
