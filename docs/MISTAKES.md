@@ -24,6 +24,32 @@
   defects, all red - in about a minute. Anyone writing a future module negtest against a
   built `.arz` should copy that shape, never `deepcopy`.
 
+- **2026-08-15 | the build99 ship operator ran `validate_tags` with NO arguments and
+  banked the result as a gate row** - the b99 gate battery script called
+  `py tools/validate_tags.py` bare; the tool printed its usage line and exited **2**, and
+  that `EXIT=2` landed in the battery summary next to twelve real PASSes. Cost: none
+  realised, caught on the same turn by reading the log rather than the summary, and the
+  gate then ran correctly (`RESULT: PASS`, 394 mod tags, 455/455 authoritative, 0 new).
+  But the failure shape is the dangerous one: a gate that never looked at the artifact
+  produced a non-zero exit that could have been recorded as "red, investigate" or, worse,
+  waved through as a known warning. Root cause: the battery was written from a list of
+  gate NAMES instead of from each gate's documented invocation (this one needs four
+  positional paths, per `scripts/bootstrap_working_mod.ps1` step 4b). **Guard:** the ship
+  procedure's gate battery must print each gate's full argv next to its exit code (the
+  b99 script does) and any non-zero exit is read in the log before it is written into a
+  record; a usage line in a gate's output is a red flag that the gate did not run at all.
+
+- **2026-08-15 | the same operator's first `git merge` was mangled by a PowerShell
+  here-string** - `git merge --no-ff <lane> -m @'...'@; git log` was written with the
+  here-string terminator on a line with a trailing `; git log`, so PowerShell did not
+  treat the block as one argument and git received the message's words as refs
+  (*"merge: the - not something we can merge"*). Cost: one wasted round-trip; git refused
+  cleanly and nothing was staged, committed or half-merged. Root cause: composing a
+  multi-line commit message inline in PowerShell, the same escaping-layers class as the
+  2026-08-11 brief corruption above. **Guard:** every multi-line git message in this repo
+  is written to a scratchpad file and passed with `-F <file>` (this ship's merge,
+  checkpoint and gate-record commits all did).
+
 - **2026-08-15 | R-250/b93 shipped the Enslaver's shroud into skill slots the engine
   does not read, and called it done** - the lane put `svc_enslaver_shroud` in
   `skillName19` on the wild boss and `skillName18` on all three soul-summon pet tiers.
