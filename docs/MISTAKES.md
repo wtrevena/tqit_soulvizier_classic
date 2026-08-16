@@ -8,6 +8,138 @@
 
 ## 2026-08-16
 
+- **2026-08-16 | R-257 ROUND 1 SHIPPED A MODULE WHOSE STATIC GATES WERE ALL GREEN WHILE THE
+  COLD BUILD WAS DEAD** - the lane put the Enslaver family on a MOD-AUTHORED mesh that exists
+  in exactly one archive, and staged that archive in bootstrap Step 2e, *after* the Step 1
+  database build. THREE fail-loud gates inside that build read it (`enslaver_shroud` M2,
+  `validate_render_chain` A9, `champion_mesh.verify`), so the build aborted before a single
+  record was touched. **The blast radius was worse than a stop:** bootstrap Step 1 caught the
+  non-zero exit and copied the RAW upstream SV 0.98i database over the mod database, then
+  carried on into Text/Quests/deploy - a "mod" with none of the mod in it, announced by one
+  yellow line. **Cost: the vet round; a ship would have produced either a dead build or an
+  unpatched database.** **Root cause: the lane treated a new BUILD-TIME dependency as
+  DEPLOY-side discipline** and wrote that framing into five documents. It verified its records
+  and its asset and never ran the thing that has to assemble them. **Guards, all three
+  because one was not enough:** (1) `build_svc_database._preflight_mod_creatures_arc()` -
+  the DATABASE owns the precondition and restages the archive itself, because the ship runbook
+  drives that script directly and has never run the bootstrap; (2) bootstrap Step 0e stages it
+  before Step 1 and a fired gate now STOPS the bootstrap
+  (`SVC_ALLOW_UPSTREAM_FALLBACK=1` to override deliberately); (3)
+  `tools/debug/r257_cold_order_control.py`, five runs, re-runnable against any checkout.
+  **Standing lesson: a lane that changes what a build REQUIRES must run the build's own
+  entrypoint. `--negtest` green is not "the build works", and "the ship lane owns the cold
+  build" is not a gate.**
+
+- **2026-08-16 | THE SAME LANE'S `--negtest` COULD NOT SEE ITS OWN P0s, AND MISTAKES.md HAD
+  LOGGED THAT EXACT SHAPE THE DAY BEFORE** - all 29 round-1 plants ran against a dict stub
+  with `_RIG_ASSET_OVERRIDE` injected, so `rig_asset_state()` - the function that walks the
+  staged archives and decides the build's fate - was executed by NO plant. The two plants that
+  "exercised" it injected a synthetic `('FAIL', ...)` tuple, i.e. they tested the reporting,
+  not the deciding. **Root cause: a negative test that stubs the very function under test
+  proves only that the caller forwards a stub.** The R-256 entry directly above this one had
+  logged the same shape ("`--negtest` runs this module STANDALONE against an already-built
+  arz ... and never the shared gates the module opts into") and this lane cited that entry
+  elsewhere while reproducing its blind spot. **Guard: `--negtest` is now 37/37, six of them
+  UNSTUBBED against real archives written to a temp tree** (no rig, stale rig, torn rig,
+  missing anchor dir, and a good anchor beside a stale scratch tree). Both P0s are catchable
+  by the command alone. **Standing lesson: for every gate a module owns, at least one negtest
+  arm must run the REAL function against REAL inputs; a stub may stand in for the environment,
+  never for the decision.**
+
+- **2026-08-16 | A GATE ASKED A SEARCH PATH A SHIP QUESTION** - round 1's M2 arm required the
+  rig in EVERY `mesh_assets.mod_resource_dirs()` hit. That function is a search path
+  (`work/*/Resources` + `local/*/Resources`) whose whole purpose is to never false-fail a
+  lookup; using it to ask "does the archive we SHIP carry X?" meant any stale scratch tree
+  could red-lock a build whose own shipped archive was perfect, with no way for an operator to
+  clear it by rebuilding the right file. **Root cause: two different questions - "can this
+  resolve anywhere?" and "is this in the artifact?" - were answered from one list.** **Guard:
+  `mesh_assets.shipping_resource_dir()` / `set_shipping_resource_dir()`; `build_svc_database`
+  declares the anchor once (`output.parent.parent/Resources`, the one
+  `validate_render_chain` has always used) and asset gates ask for it by name.** **Also
+  logged, because it is a measurement error in the VET round and the record must be honest:
+  the finding described "five stale det-2x scratch archives"; measured, all five
+  `local/b9*_run2/Resources` are JUNCTIONS to `work/SoulvizierClassic/Resources` and the six
+  paths are ONE file (same md5, same size). The defect and the fix stand; the count did not.
+  `mod_resource_dirs()` now de-duplicates by real path so no future reader repeats it.**
+
+- **2026-08-16 | THE FIFTH FILING. R-255's headline statistic was MIS-SCOPED, and that one
+  mis-scope is what made a mechanism with no rendering exemplar look precedented enough to
+  ship** - R-255's ruling table justified the b99 always-on channels with *"838 Monsters +
+  **90 Pets**; **153** point it at a `Skill_BuffSelfToggled` exactly like ours"*. Re-measured
+  this round against the vanilla `database.arz`: the two halves come from DIFFERENT POOLS.
+  **All 153 `Skill_BuffSelfToggled` carriers are MONSTERS.** Across all 341 vanilla Pets,
+  `initialSkillName` reaches a `Skill_BuffSelfToggled` **zero** times and a
+  `charFxPakSelfNames` **zero** times; `buffSelfSkillName` reaches a `charFxPakSelfNames`
+  exactly 20 times, every one a Neidan Terracotta pet on a WEAPON-HAND pak. The exact b99
+  shape - Pet + always-on channel + `Skill_BuffSelfToggled` + body-attach CharFxPak - occurs
+  **ZERO times in shipping data**, and the specific effect (`ShadowStalker_Smoke.dbr`) is a
+  `deathEffect` in all 13 of its base-game references and is named by no CharFxPak anywhere.
+  Written honestly, that table would have read "no pet precedent exists for this shape" and
+  the round could not have been approved. **Cost: a full ship (build99, DEV + Steam), a
+  ruling, a CLOSED backlog entry, and Will filing the same sentence a FIFTH time with a
+  screenshot.** **Root cause, and it is the same class as b93's slot ceiling one round
+  earlier: a statistic was computed over the union of two populations and then quoted as if
+  it described the one that mattered.** b93 measured the mod's own overflow and read it as
+  headroom; b99 measured Monsters and read it as Pets. Both were instrument errors dressed as
+  evidence, and both passed a gate because the gate checked the RECORD CHAIN rather than
+  whether anything with that shape had ever been seen to render. **Guard: R-257's EXEMPLAR
+  STANDARD** - a rendering fix must name a specific creature that VISIBLY displays the effect
+  through that exact mechanism, and replicate it byte for byte; where no exemplar exists, say
+  so and take the one that does. `enslaver_shroud.verify()` now derives coverage from each
+  wearer's `.msh` binary, and the census that would have caught this is written into the
+  module docstring per pool, never as a union.
+
+- **2026-08-16 | b99 shipped a confidence its own open debt contradicted** - `BL-R250-DEBT-1`
+  ("nobody has seen this render") was carried forward and stated plainly, and in the same
+  breath R-255's gate line printed *"the WHOLE Enslaver household smokes"* and BACKLOG
+  recorded the item CLOSED. Both cannot be true. **The gate sentence is what a successor
+  reads**, and it asserted the outcome (smokes) rather than the checked property (the shroud
+  is named on two declared channels) - so the honest debt was decoration on a claim the
+  headline had already made. It is the second time in a row this feature shipped that way:
+  b93/R-250 did the same with "the family has the family FX". **Cost: a fifth filing landed
+  on a lane whose own paperwork said the work was done, and the RCA for it had to start by
+  disproving the repo's own record.** **Root cause: gate prose written as a claim about the
+  GAME when the gate only ever measured the DATABASE.** **Guard: R-257 splits the verify()
+  banner in two, explicitly - "WHAT IS CLAIMED: these records reach the screen by the SAME
+  mechanism, through the SAME attach point, with a BYTE-IDENTICAL block, as records Will
+  confirmed by eye" / "WHAT IS NOT CLAIMED: that anyone has SEEN this build render". The
+  ruling, the test note and the module docstring all repeat the split verbatim, and the
+  BACKLOG item stays OPEN until Will says it smokes.**
+
+- **2026-08-16 | R-257 lane, my own: a one-word count update added a UTF-8 BOM to four files,
+  including `tools/patches/__init__.py`** - bumping "27/27" to "29/29" across the ledger, BACKLOG,
+  handoff and the registry was done with a PowerShell `Get-Content -Raw` / `Set-Content -Encoding
+  utf8` round-trip. **In Windows PowerShell 5.1 `-Encoding utf8` means UTF-8 WITH BOM**, so all
+  four files gained `EF BB BF` at byte 0 - a change to line 1 of the design ledger and of a Python
+  module, in a commit whose stated content was a number. **Cost: none realised** - `git diff -U0`
+  was read before committing, the BOM showed up as a line-1 hunk in three of the four, and all
+  four were stripped with an explicit `read_bytes()`/`write_bytes()` pass. It also silently did
+  NOT apply to the one line it was aimed at in `WILL_RULINGS.md` (a spacing mismatch), so the
+  edit's only committed effect would have been the BOMs. **Root cause: a bulk text substitution
+  used for a change small enough to make with a targeted edit - the round-trip rewrites the whole
+  file, so its blast radius is the file, not the match.** **Guard: count/number updates in this
+  lane go through targeted edits; when a bulk rewrite really is warranted, it is done in Python
+  with explicit `encoding='utf-8'` and no BOM, and `git diff -U0` is read for line-1 hunks before
+  the commit.**
+
+- **2026-08-16 | R-257 lane, my own: I guarded a function I had just invented with `hasattr`,
+  which would have made a typo fall back silently** - the first draft of
+  `enslaver_shroud._PINNED_SMOKE_RIGS` read `_rig._norm_ref(SHROUD_RIG) if hasattr(_rig,
+  '_norm_ref') else SHROUD_RIG.replace('/','\\').lower()`. `build_shroud_rig` has no
+  `_norm_ref` and never did - I wrote the call and the fallback in the same line. **Cost:
+  none realised, caught by reading back the file before the first run.** But the shape is the
+  dangerous one: with the `hasattr`, a misspelled helper is not an `AttributeError`, it is a
+  silent second code path - in a constant that decides which rigs count as smoking when the
+  archives are unreadable. **Root cause: defensive-coding reflex applied to my OWN new API,
+  where the only thing it can defend against is my own typo.** **Guard: the line is now a
+  plain expression with no fallback; `hasattr` guards belong on foreign/optional interfaces,
+  never on a function this lane authors in the same commit.** Same turn, a smaller one: a
+  multi-paragraph commit message was passed to `git commit -m` through a PowerShell
+  here-string and the parser split it into pathspecs, producing eight confusing `error:
+  pathspec ... did not match` lines against a clean tree. Nothing was committed and nothing
+  was lost, but the error text reads like a missing-file problem rather than a quoting one.
+  Every commit message in this lane after that went through a file and `git commit -F`.
+
 - **2026-08-16 | the same operator pointed `lookout_uber --negtest` at the arz that already
   contained the lane** - the b100 gate battery ran `--negtest work\...\SoulvizierClassic.arz`,
   i.e. the freshly built b100 database. The module opens by asserting it is

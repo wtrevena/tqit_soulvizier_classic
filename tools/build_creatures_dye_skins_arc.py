@@ -1,4 +1,24 @@
-r"""Build the mod's Creatures.arc holding the Soulvizier costume-dye PC skins.
+r"""Build the mod's Creatures.arc: the Soulvizier costume-dye PC skins + R-257's
+Enslaver shroud rig.
+
+R-257 (2026-08-16) - THE SECOND TENANT, AND WHY IT LIVES HERE
+-------------------------------------------------------------
+This tool is the ONLY writer of `work\<mod>\Resources\Creatures.arc`, so the one
+mod-authored `.msh` R-257 needs (`monster/skeleton/svc_enslaver_shroudrig01.msh`,
+derived by `tools/build_shroud_rig.py`) is added HERE rather than by a second
+writer racing the same output file. The dye logic below is untouched; the rig is
+appended after it and is likewise NET-NEW - the archive still shadows ZERO base
+entries, which is the property that keeps every base creature resolving.
+
+⚠️ THIS ARCHIVE IS A PRECONDITION OF THE DATABASE BUILD, not a deploy-time chore
+(a P0 if missed, and round 1 of R-257 missed it). The Enslaver family's `mesh`
+names an asset that ships ONLY here, and THREE fail-loud gates inside
+`build_svc_database.py` read it: `enslaver_shroud.verify()` arm M2,
+`validate_render_chain` A9 (a mod-authored pet with an unresolvable mesh FAILS the
+build) and `champion_mesh.verify()`. So the database build calls `stage()` below
+itself (`_preflight_mod_creatures_arc`) and the bootstrap runs it in Step 0e,
+BEFORE Step 1. The deploy half remains: the archive must be copied beside the
+`.arz` or the family resolves no mesh at all - an invisible boss.
 
 WHY THIS EXISTS (PR-2, 2026-08-06)
 ----------------------------------
@@ -30,7 +50,7 @@ def _norm(name: str) -> str:
     return name.replace('\\', '/').lower()
 
 
-def build(sv_creatures: Path, base_creatures: Path, out: Path):
+def build(sv_creatures: Path, base_creatures: Path, out: Path, shroud_rig=True):
     sv = ArcArchive.from_file(sv_creatures)
     base = ArcArchive.from_file(base_creatures)
     base_names = set(_norm(e.name) for e in base.entries
@@ -55,6 +75,26 @@ def build(sv_creatures: Path, base_creatures: Path, out: Path):
             raise SystemExit(f"could not decompress {e.name} from {sv_creatures}")
         out_arc.add_file(e.name, data)
 
+    # R-257: the Enslaver's own smoking rig. Derived + fully gated by
+    # build_shroud_rig (donor + the exemplar's own CreateEntity block, byte for
+    # byte); it raises rather than shipping an unverified mesh. Net-new name, so
+    # the "shadows zero base entries" property below still holds and is asserted.
+    rig_size = 0
+    if shroud_rig:
+        import build_shroud_rig
+        if _norm(build_shroud_rig.SHROUD_RIG_ENTRY) in base_names:
+            raise SystemExit(
+                f"{build_shroud_rig.SHROUD_RIG_ENTRY} already exists in the BASE "
+                f"Creatures.arc - shipping it would SHADOW a base asset, which this "
+                f"archive has never done and which R-257 deliberately avoids")
+        rig_size = build_shroud_rig.add_to_arc(out_arc)
+
+    shipped = {_norm(e.name) for e in out_arc.entries if e.entry_type == 3 and e.name}
+    shadowed = sorted(shipped & base_names)
+    if shadowed:
+        raise SystemExit(f"the mod Creatures.arc would SHADOW {len(shadowed)} base "
+                         f"entrie(s): {shadowed[:10]}")
+
     out.parent.mkdir(parents=True, exist_ok=True)
     out_arc.write(out)
 
@@ -62,19 +102,26 @@ def build(sv_creatures: Path, base_creatures: Path, out: Path):
     print(f"base Creatures.arc      : {base_creatures} ({len(base_names)} entries)")
     print(f"kept (net-new, shipped) : {len(kept)}")
     print(f"dropped (overlap w/base): {len(dropped_overlap)} -> {dropped_overlap}")
+    if shroud_rig:
+        print(f"R-257 shroud rig        : {build_shroud_rig.SHROUD_RIG_ENTRY} "
+              f"({rig_size} bytes)")
+    print(f"shadows base entries    : {len(shadowed)} (must be 0)")
     print(f"wrote                   : {out}  ({out.stat().st_size} bytes)")
     return kept, dropped_overlap
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--sv-creatures', help='SV 0.98i Creatures.arc (source of the skins)')
-    ap.add_argument('--base-creatures', help='base-game Creatures.arc')
-    ap.add_argument('--out', required=True, help='output Creatures.arc path')
-    a = ap.parse_args()
+def stage(out, sv_creatures=None, base_creatures=None):
+    r"""Build the mod Creatures.arc at `out`, resolving inputs via the preflight.
 
-    sv = a.sv_creatures
-    base = a.base_creatures
+    Factored out of `main()` so the DATABASE build can call it directly (R-257
+    round 2). The Enslaver family's `mesh` resolves out of this archive and out of
+    no other, and THREE fail-loud gates inside `build_svc_database` read it, so the
+    archive is a precondition of the database rather than a deploy-time chore. The
+    ship runbook drives `build_svc_database.py` directly - it never runs the
+    bootstrap - so the coupling has to live where the database is built, not only
+    in `scripts/bootstrap_working_mod.ps1`.
+    """
+    sv, base = sv_creatures, base_creatures
     if not sv or not base:
         # resolve via the shared build-input preflight when not given explicitly
         import check_build_inputs as cbi
@@ -87,7 +134,16 @@ def main():
                 sv = cbi.resolve('sv098i_creatures_arc')
         if not base:
             base = cbi.resolve('base_creatures_arc')
-    build(Path(sv), Path(base), Path(a.out))
+    return build(Path(sv), Path(base), Path(out))
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--sv-creatures', help='SV 0.98i Creatures.arc (source of the skins)')
+    ap.add_argument('--base-creatures', help='base-game Creatures.arc')
+    ap.add_argument('--out', required=True, help='output Creatures.arc path')
+    a = ap.parse_args()
+    stage(a.out, a.sv_creatures, a.base_creatures)
 
 
 if __name__ == '__main__':

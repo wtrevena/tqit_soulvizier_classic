@@ -1,154 +1,194 @@
-r"""enslaver_shroud - THE ENSLAVER'S BLACK SHADOW SHROUD (b98 R-95, b102 R-102,
-b104 R-250).
+r"""enslaver_shroud - THE ENSLAVER'S BLACK SHADOW SHROUD, ON THE ONE MECHANISM
+THAT HAS A CONFIRMED RENDERING EXEMPLAR (b98 R-95, b102 R-102, b93 R-250,
+b99 R-255, **b101 R-257**).
 
-WILL (2026-08-11), verbatim, the THIRD filing of the same sentence:
+WILL, verbatim, the FIFTH filing of the same sentence (2026-08-16, with a
+screenshot: the Enslaver summoned at Hathor Basin on DEV, post-b99/b100 arz,
+standing out of combat, ZERO smoke):
 
-> "toxeus the murderer, devourer of souls we need to add the black shadow shroud
->  around him, the same one that his demon summon guys have"
+> "toxeus the murderer enslaver of souls summoned pets (when i summon them from
+>  their souls) still do not have the black smoke around them"
 
 --------------------------------------------------------------------------------
-b104 - WHICH TOXEUS. THE NAME IS FUSED; THE DEMON CLAUSE RESOLVES IT
+R-257 - THE NEW STANDARD, AND WHY IT HAD TO CHANGE
 --------------------------------------------------------------------------------
-No variant is called "Devourer of Souls". The name fuses two of them - "Toxeus
-the Murderer, DEVOURER OF BLOOD" and "Toxeus the Murderer, ENSLAVER OF SOULS" -
-so the only discriminating words in the sentence are **"the same one that his
-demon summon guys have"**. That clause was measured on the shipped `build83` arz
-(`44499f56`, the hash `docs/HANDOFF_LIVE_STATE.md` records as LIVE) at the layer
-that actually renders, which is NOT the `.dbr` field layer:
+Four rounds of this request were fixed in the `.dbr` FIELD layer. Every one of
+them verified itself at the record level. Every one of them failed in game:
 
-| whose demons | record | mesh | mesh-embedded FX (always on) |
+| round | what it wired | why it was believed | what actually happened |
 |---|---|---|---|
-| **ENSLAVER's** Enslaved Shadow Marauders | `um_enslaver_marauder_99`, `pets\enslaver_marauder_1..3` | `ShadowStalker.msh` | **`Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr`** -> `Effects\MonsterFX\ShadowStalker_Smoke01.pfx` |
-| DEVOURER's Blood Demons | `drxcreatures\blooddemon\um_devourer_bloodspawn_99` | `DRX\meshes\blooddemon01.msh` | `FX_blood_CHEST/HANDS/HEAD_fx` - BLOOD effects, no shadow shroud |
+| b39/b55/b55r2/b92 | `charFxPakRunningNames`, weapon-bone paks | "renders while running" | never rendered; smoke would have come off his fists anyway |
+| b93 (R-250) | `skillName19` / `skillName18` | "the template reaches 23" | slots `MonsterSkillManager.tpl` does not declare - read by nobody |
+| b99 (R-255) | `initialSkillName` + `buffSelfSkillName` | 838 Monsters + 90 Pets use them | declared, byte-verified, gate-verified - and STILL nothing on screen |
 
-Only the Enslaver's demons carry a black shadow shroud, and Will has confirmed
-that one by eye (R-102 fourth amendment, verbatim: *"yes the demons that he
-summons have the proper black shroud and they dont have any green"*). The same
-sentence was filed as R-95 on 2026-07-28 ("the same black shroud smoke his
-summoned demons have") and again as R-102's second amendment ("that is still not
-implemented"). **Target: Toxeus the Murderer, ENSLAVER OF SOULS.**
+**The lesson this module now embodies: a channel being declared in the template
+does NOT mean the pet controller executes it, or that a CharFxPak attaches on
+this rig.** A record-level proof is not a rendering proof, and this request has
+now cost five filings' worth of evidence for that one sentence.
 
---------------------------------------------------------------------------------
-b104 - WHY HE STILL HAS NO SHROUD, AFTER TWO WAVES THAT SAID HE DID
---------------------------------------------------------------------------------
-Because both prior waves worked in the `.dbr` FIELD layer and the demons' shroud
-was never in a field. It is compiled into their MESH:
+So R-257 raises the bar: the fix must use a mechanism with a SHIPPING RENDERING
+EXEMPLAR - a specific creature that VISIBLY displays a persistent shroud
+delivered by that exact mechanism - and must then replicate it byte for byte.
 
-    ShadowStalker.msh ... CreateEntity { attach = "SpecialHit01";
-                                         entity = "Records\Effects\MonsterFX\
-                                                   ShadowStalker_Smoke.dbr" }
+THE CENSUS THAT PICKED THE MECHANISM (measured, `Toolset\Templates.arc` +
+the 74,013-record base `database.arz` + 591 distinct vanilla creature meshes):
 
-A mesh renders every frame. That is why the marauders smoke constantly, standing
-still, out of combat - and why nothing the Enslaver had could match it. Note the
-attach name in that block: it is the one we copy (section B below), and it is on
-his rig too.
+  (a) MESH-COMPILED FX (`CreateEntity` in the `.msh`)   -> **PASSES**
+      Exemplar: `um_enslaver_marauder_99` + `enslaver_marauder_1/2/3` on
+      `ShadowStalker.msh`. WILL CONFIRMED IT BY EYE (R-102 fourth amendment,
+      verbatim: *"yes the demons that he summons have the proper black shroud
+      and they dont have any green"*), and those four records carry
+      `initialSkillName = buffSelfSkillName = None`, so nothing but the mesh can
+      be producing it. 28 vanilla records wear that rig; 66 of 591 vanilla
+      creature meshes use the mechanism. Decisively: **every** vanilla PET with a
+      persistent ambient aura is mesh-driven with empty always-on fields
+      (Ancestral Warriors, the Spirit Outsider, Storm Wisps, Spirit Ward, Battle
+      Standard) - any player who has taken Warfare or Spirit has watched one
+      stand still, out of combat, glowing.
 
-  1. `charFxPakRunningNames` -> `drxshadowcloakrunning_fx_pak` renders ONLY while
-     the character RUNS (R-95's finding). He is a caster who stands and casts.
-  2. `svc_enslaver_shroud` (b98/b102) is a `Skill_BuffSelfToggled`, and both his
-     controllers shipped `BuffSelfBehavior = WhenEnemyIsSeen` - so it fires when
-     a fight starts and is OFF when Will stands looking at the summoned pet,
-     which is exactly how he inspects it (the R-102 screenshot).
-  3. Worse, BOTH of those channels pointed at `drxshadowcloakrunning_fx`, whose
-     own `boneList = Bone_R_Weapon; Bone_L_Weapon` pins the smoke to his two
-     WEAPON bones. Even when it did play it came off his fists, not from around
-     him - the round-4 defect R-95 fixed at the PAK layer while the EffectEntity
-     underneath kept doing it.
-  4. And `champion_mesh` (b102, R-102) moved him off `RevenantPoison.msh` to kill
-     the green - onto `SkeletonGrayBlack01New.msh`, which carries NO embedded FX
-     at all. That fix was right and it is not being undone; but it removed his
-     last always-on emitter, which is why this request arrives now.
+  (b) `charFxPakRunningNames`-class fields                -> DEAD, no exemplar can exist.
+      Declared in ZERO of the 566 shipped templates and carried by ZERO of the
+      74,013 base records. The only 14 carriers on earth are this mod's own
+      DRX-inherited records, 8 of them this family. R-95's "renders while
+      running" had no evidence behind it; the running smoke was the marauders' mesh.
 
---------------------------------------------------------------------------------
-b104 - THE FIX: THE DEMONS' OWN PARTICLE, ON A BODY BONE, ALWAYS ON
---------------------------------------------------------------------------------
-Three legs, all on MONSTER-RECORD fields and skill records (CRASH LAW: never a
-`charFxPak*` on a SpawnPet skill - the build28 trap, asserted in verify()):
+  (c) SKILL-GRANTED FX ON AN ALWAYS-ON CHANNEL (the b99 route) -> NO PET EXEMPLAR.
+      Across all 341 vanilla Pets, `initialSkillName` reaches a
+      `Skill_BuffSelfToggled` **zero** times and a `charFxPakSelfNames` **zero**
+      times; `buffSelfSkillName` reaches a `charFxPakSelfNames` 20 times, all of
+      them Neidan Terracotta pets on a WEAPON-HAND pak. The exact b99 shape - Pet
+      + always-on channel + `Skill_BuffSelfToggled` + body-attach CharFxPak -
+      occurs ZERO times in shipping data. R-255's ruling table ("838 Monsters +
+      90 Pets; 153 point it at a Skill_BuffSelfToggled") conflated the two pools:
+      all 153 are MONSTERS. That mis-scoped statistic is round 5's instrument
+      error and is logged in `docs/MISTAKES.md`.
 
-  A. **THE ASSET.** `svc_enslaver_shroud_fx` is a FIELD-FOR-FIELD MIRROR of the
-     demons' own base-game EffectEntity `Records\Effects\MonsterFX\
-     ShadowStalker_Smoke.dbr`, which is exactly four fields:
+  (d) EFFECTENTITY FIELDS ON THE RECORD                   -> DEAD, the engine declares none.
+      The full 1,923-field `Pet.tpl` closure carries exactly five
+      EffectEntity-shaped fields and every one is event-scoped (`spawnEffect`,
+      `prespawnEffect`, `deathEffect`, `dissolveEffect`, `levelUpFx`). There is no
+      ambient/idle effect field anywhere on Character/Actor/Monster/Pet. **That
+      absence is exactly why the base game compiles ambient auras into meshes.**
 
-         templateName = database\Templates\Effect.tpl
-         ActorName    = Effects_Fire_EarthPet_Core02
-         Class        = EffectEntity
-         effectFile   = Effects\MonsterFX\ShadowStalker_Smoke01.pfx
-
-     `drxshadowcloakrunning_fx` is used only as a record SHELL and then PRUNED to
-     that set: its `boneList = Bone_R_Weapon;Bone_L_Weapon` (the reason every
-     previous rendering came off his fists) and its `Anchored`/`emitterType`/
-     `localOrientFix` all go. Donor residue is not a neutral default - those three
-     came off a weapon-bone-attached effect and their behaviour on a body attach
-     point is unproven, so the honest move is to carry none of them. verify()
-     re-reads the demons' record out of the base `.arz` and FAILS if our field set
-     or any value drifts from theirs, so "the same one his demons have" is a
-     DERIVED claim about the whole record and not just about the `.pfx`.
-     It is our own record rather than a live reference to theirs so that the build
-     can read, gate and diff it, and so a future game patch cannot change what he
-     wears without this gate noticing.
-
-  B. **THE SHAPE.** `particleEffectAttachPoints = ['SpecialHit01']` - THE DEMONS'
-     OWN ATTACH POINT, derived from their mesh's `CreateEntity{attach=...}` block
-     rather than chosen. Measured in both binaries (b104 round 2, correcting a
-     false measurement round 1 recorded as law):
-
-       SkeletonGrayBlack01New.msh (his rig) AttachPoints: Head, HeadEffect,
-         L Hand, Prey_Effect, R Hand, SpecialHit01..04, Target, Upper Body
-       ShadowStalker.msh (the demons' rig): the SAME set plus `Smoke02`
-
-     `SpecialHit01` is present on BOTH, and its block is byte-identical on both
-     rigs - `origin = (0,0,0)` with identity axes, i.e. the model origin, a
-     ground-up body column. So the smoke hangs on him exactly where it hangs on
-     them. Round 1 excluded it on the claim that it "does not exist on
-     `SkeletonGrayBlack01New.msh`"; that claim came from a reader that scanned only
-     NUL-terminated strings, and AttachPoint names live in a CRLF text block with
-     no NUL in it. The instrument was structurally blind to the class of name it
-     was asked about. `tools/mesh_assets.rig_names_of()` now reads BOTH tables.
-
-     Namespace matters as much as spelling: `particleEffectAttachPoints` values in
-     this DB are overwhelmingly AttachPoint names ('L Hand' x21, 'R Hand' x20,
-     'SpecialHit03' x4, 'HeadEffect' x4, ...) against exactly 5 rows using a raw
-     `Bone_*`, and one of this mod's own shipped paks (`hemor_charfx`) already
-     attaches at `SpecialHit03` on a skeleton rig. `Bone_Waist` (round 1's choice)
-     is the thinly-precedented namespace, is an animated pelvis joint rather than
-     the model origin, and its stated justification - "where `RevenantPoison_FX`
-     hung its aura on his old mesh" - was also false: that mesh's block reads
-     `attach = "Waist"`, the ATTACHPOINT `Waist`, which his current rig does not
-     declare at all.
-
-     verify() re-reads the wearer's mesh binary and FAILS if any attach point this
-     pak names is missing from that rig, matching CASEFOLDED because the shipped
-     DB addresses these tables off-case (`Bone_spine01`, `Specialhit03`).
-
-  C. **ALWAYS ON.** Every roster surface gets an SVC-OWNED CLONE of whatever
-     controller it currently carries, with the single field `BuffSelfBehavior`
-     set to `WheneverPossible` (34 shipped carriers, including the DRX demon
-     controllers). The shared originals are NEVER edited: `controller_skeleton_
-     toxeus` also drives the Devourer and 4 others, and `controller_skelly_
-     aggressive` drives 148 pets. Flipping this is provably visual-only here
-     because the shroud is the ONLY `Skill_BuffSelf*` in either kit (measured:
-     monster slot 19, pets slot 13, nothing else) - and verify() asserts that,
-     so the day someone adds a real self-buff to him the gate fails instead of
-     quietly changing a boss fight.
-
-`charFxPakRunningNames` is KEPT untouched on every surface (ADD, never take
-away): the demons carry it too, so he still smokes harder when he moves.
-
-WHAT IS NOT CLAIMED: how it READS in game. Nobody has seen it. `BL-R250-DEBT-1`.
+And the specific asset settles it: `ShadowStalker_Smoke.dbr` is referenced 13
+times in the entire base game and every one is a `deathEffect`. It is named by no
+CharFxPak anywhere. Its only persistent rendering, anywhere, is the block
+compiled into `ShadowStalker.msh`.
 
 --------------------------------------------------------------------------------
+R-257 - THE FIX: HIS OWN RIG, CARRYING THE DEMONS' OWN BLOCK
+--------------------------------------------------------------------------------
+`tools/build_shroud_rig.py` authors ONE new asset:
+
+    Creatures\Monster\Skeleton\svc_enslaver_shroudrig01.msh
+      = base `SkeletonGrayBlack01New.msh` (his current rig, R-102's deliberate
+        anti-green choice - his silhouette is NOT traded away)
+      + the 115 bytes read VERBATIM off the end of `ShadowStalker.msh`:
+            CreateEntity { attach = "SpecialHit01";
+                           entity = "Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr" }
+      + that one chunk-length u32 bumped by 115.
+
+A `.msh` is a self-describing chunk chain with no global offset table (both
+binaries walk to EOF-exact in 9 chunks; the last is the CRLF text section), so
+append-and-bump is the format's own edit. `build_shroud_rig.verify_rig()`
+re-derives all of it every build (A1..A8), including that the rig-name table is
+IDENTICAL to the donor's 31 names - which is what makes the ANIMATION surface
+provably untouched, the risk R-102's fourth amendment names as the real one.
+
+It ships in the mod's own `Resources\Creatures.arc` under a NET-NEW name (that
+archive already carries 288 net-new entries including two `.msh`, and shadows
+ZERO base entries - the property that keeps every base creature resolving).
+
+`champion_mesh` remains the SINGLE writer of `mesh`; it imports `SHROUD_RIG`
+from this module so the asset and the wearer can never drift apart (the
+`thrown_restore` -> `thrown_anim_rig` precedent).
+
+Result: all 8 household members now smoke by the SAME mechanism, through the SAME
+attach point, with the SAME entity reference and a byte-identical block, as the
+marauders Will has already confirmed smoke in play.
+
+--------------------------------------------------------------------------------
+R-257 - WHAT IS RETIRED, AND WHY LEAVING IT WOULD BE WORSE THAN USELESS
+--------------------------------------------------------------------------------
+The b99 FIELD route is REMOVED, not left as a harmless belt-and-braces:
+
+  1. It is the exact shape five filings have taught us reads as "wired" and is
+     not. Leaving it means the next reader greps the arz, finds the shroud on two
+     declared always-on channels, and concludes the feature works.
+  2. It is a DOUBLING HAZARD by this module's own law. b99's `apply()` already
+     refused to add the pak on top of a MESH-route member because "adding our
+     emitter on top would double a shroud the demons wear once". Once every
+     member is MESH, keeping FIELD is exactly that, on every member. Will asked
+     for *the same* shroud his demons have, not a denser one.
+
+So `apply()` now RETIRES, on every household member:
+  * `initialSkillName` / `buffSelfSkillName` naming OUR shroud -> the field SLOT
+    is deleted (absence, not `''` - see `_del_field`), restoring the pre-b99 state;
+  * an `svc_alwayson_*` controller CLONE -> the record goes back to the SHARED
+    original it was cloned from, so no family member runs a private AI record for
+    a retired reason.
+And it stops AUTHORING `svc_enslaver_shroud` / `_charfxpak` / `_fx` and the
+controller clones at all: the build is COLD from the upstream `.arz`, so in the
+shipped database those records simply never come into existence. The retirement
+code exists for the re-run-over-a-built-arz case (`--negtest`, static dry-runs),
+where they are already present.
+
+RETIREMENT PROTOCOL, checked: R-250 and R-255 are the only rulings that name
+those records, and R-257 supersedes exactly that part of them. `charFxPakRunningNames`
+is still KEPT untouched on every surface (ADD, never take away - the demons carry
+it too), and no kit skill is dropped.
+
+--------------------------------------------------------------------------------
+R-257 VET ROUND 2 - THE ASSET IS A PRECONDITION OF THE BUILD, NOT A DEPLOY CHORE
+--------------------------------------------------------------------------------
+Round 1 verified its RECORDS and its ASSET and never ran the build that has to
+assemble them. The cold build was DEAD: the mod `Creatures.arc` was staged AFTER
+the `.arz` build, and THREE fail-loud gates inside that build read it - this
+module's M2, `validate_render_chain` A9 (a mod-authored pet with an unresolvable
+`mesh` FAILS the build) and `champion_mesh.verify()`. Worse, the bootstrap caught
+the non-zero exit and quietly substituted the RAW upstream database.
+
+Three things changed, and the third is the one that mattered most:
+
+  * `build_svc_database` declares a SHIPPING ANCHOR (`output.parent.parent /
+    'Resources'`) and M2 asks THAT archive. Round 1 asked every
+    `mesh_assets.mod_resource_dirs()` hit - a SEARCH PATH - so a stale scratch
+    tree could red-lock a build whose own shipped archive was perfect.
+  * `bootstrap_working_mod.ps1` stages the archive in Step 0e, before Step 1, and
+    a fired gate now STOPS the bootstrap.
+  * `build_svc_database._preflight_mod_creatures_arc()` stages it too, because
+    THE SHIP LANE DRIVES THAT SCRIPT DIRECTLY AND HAS NEVER RUN THE BOOTSTRAP.
+    A fix confined to the bootstrap would have passed every static gate and failed
+    the very next ship.
+
+`--negtest` grew from 29 to 37, and six of those run the REAL `rig_asset_state()`
+against REAL archives written to a temp tree. Round 1 stubbed that function in
+ALL 29 of its plants, which is exactly why neither P0 was visible to it - the
+blind spot `docs/MISTAKES.md` had logged for R-256 one day earlier.
+
+Re-runnable proof, five ways: `py tools/debug/r257_cold_order_control.py`.
+
+--------------------------------------------------------------------------------
+WHAT THIS MODULE CLAIMS, AND WHAT IT DOES NOT
+--------------------------------------------------------------------------------
+IT DOES NOT CLAIM THE SHROUD RENDERS. Nobody has seen this build.
+
+What it claims - and what no previous round could - is narrower and checkable:
+the four records that had no shroud now reach the screen by the SAME MECHANISM,
+through the SAME attach point, with the SAME entity reference, carrying a
+BYTE-IDENTICAL block, as four records Will has personally confirmed smoke in
+play. The residual risk is no longer "does this channel render?" (it does, on
+the marauders, in his own words) but only "does a mod-shipped copy of a base rig
+load?" - and 1,105 of this mod's Monster/Pet records already resolve their mesh
+out of a mod archive today, the Devourer's blood demons among them.
+
 WHAT THIS MODULE DOES NOT TOUCH (reported, not silently deferred)
---------------------------------------------------------------------------------
-  * **The Devourer of Blood.** He has no body shroud either (`GoldenSkeleton01.msh`
-    is FX-free, he has no `charFxPakRunningNames`, and his only FX is R-7's
-    `svc_black_poison` = two HAND emitters of the not-colour-confirmed
-    `343_dark_smoke`). That is a real gap - but Will did not ask for it, his
-    demons are BLOOD demons with no shadow shroud to copy, and crimson is his
-    design. It is a QUESTION for Will, registered as `BL-R250-DEBT-2`, not a
-    change this lane makes on its own authority.
-  * **The Endless Hunt** already wears `ShadowStalker.msh` and therefore already
-    has the demons' embedded smoke, by construction. Nothing to do.
-  * **`svc_black_poison`, meshes, textures, skills, stats.** Not this lane's.
+  * **The Devourer of Blood** still has no body shroud. Will did not ask for it,
+    his demons are BLOOD demons with no shadow shroud to copy, and crimson is his
+    design. `BL-R250-DEBT-2`, a QUESTION for Will.
+  * **The Endless Hunt** wears `SkeletonRumorBoss.msh` (R-247.5a) with the base
+    game's own Boss Aura. Different champion, different ruling.
+  * **Stats, skills, loot, textures.** Not this lane's.
 """
 
 import sys as _sys
@@ -156,7 +196,7 @@ from pathlib import Path as _Path
 
 _sys.path.insert(0, str(_Path(__file__).resolve().parents[1]))   # tools/ on path
 
-MODULE_NAME = "Enslaver persistent black shadow shroud (R-95 / R-102 / R-250)"
+MODULE_NAME = "Enslaver black shadow shroud, mesh-compiled (R-95/R-102/R-250/R-255/R-257)"
 
 DATA_TYPE_INT = 0
 DATA_TYPE_FLOAT = 1
@@ -173,104 +213,54 @@ _ENSLAVER_SUMMON = r'records\skills\soulskills\summon_toxeus_enslaver.dbr'
 # `um_toxeus_hunt_l_99`) that the summon chain cannot see.
 _NAME_TAGS = ('tagsvcmonsterenslaver', 'tagsvcmonsterenslaverpet')
 
-# ── the demons' own shroud, measured not assumed ────────────────────────────
+# ── THE EXEMPLAR: the only confirmed-rendering instance of this effect ───────
 # `um_enslaver_marauder_99.mesh` = ShadowStalker.msh, whose binary ends in
 #   CreateEntity { attach = "SpecialHit01"; entity = "<_DEMON_FX_REF>" }
-# and that base-game EffectEntity plays <_DEMON_PFX>. verify() re-derives the
-# first from the mesh every build, so if the marauders' shroud ever moves, the
-# "same one his demons have" claim fails loud instead of silently going stale.
+# and that base-game EffectEntity plays <_DEMON_PFX>. verify() re-derives every
+# one of these from the binaries each build, so "the same one that his demon
+# summon guys have" stays a CHECKED claim rather than a comment.
 _DEMON_FX_REF = r'records\effects\monsterfx\shadowstalker_smoke.dbr'
 _DEMON_PFX = r'Effects\MonsterFX\ShadowStalker_Smoke01.pfx'
-# The demons' MESH attach helper, and the one we COPY: it is declared on the
-# Enslaver's rig too, with a byte-identical block (origin (0,0,0), identity axes).
-# Pinned so the build is deterministic without the game install; verify() DERIVES
-# it from the marauders' mesh binary and fails loud if the two ever disagree.
 _DEMON_MESH_ATTACH = 'SpecialHit01'
-# The demons' own EffectEntity, field for field (read out of the base-game .arz).
-# Our record is pruned to exactly this; verify() re-derives it and fails on drift.
-_DEMON_FX_FIELDS = (
-    ('templateName', r'database\Templates\Effect.tpl'),
-    ('ActorName', 'Effects_Fire_EarthPet_Core02'),
-    ('Class', 'EffectEntity'),
-    ('effectFile', _DEMON_PFX),
-)
-
-# the running channel both he and his demons already carry (kept, never removed)
-_SHADOWCLOAK_FX = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx.dbr'
-_SHADOWCLOAK_PAK = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx_pak.dbr'
-
-# structure donors (both DB-verified)
-_SKILL_DONOR = r'records\skills\monster skills\buff_self\empusamerc_enchantment.dbr'
-_PAK_DONOR = r'records\effects\weaponenchantments\343_weapon_poisoncharfxpak.dbr'
-_FX_DONOR = _SHADOWCLOAK_FX          # an EffectEntity we already ship + gate
-
-_SHROUD = r'records\skills\monster skills\buff_self\svc_enslaver_shroud.dbr'
-_SHROUD_PAK = r'records\skills\monster skills\buff_self\svc_enslaver_shroud_charfxpak.dbr'
-_SHROUD_FX = r'records\skills\monster skills\buff_self\svc_enslaver_shroud_fx.dbr'
-
-# ── SHAPE (b104 round 2) ────────────────────────────────────────────────────
-# THE DEMONS' OWN ATTACH POINT. Measured present on his rig (and byte-identical
-# to theirs). Never 'R Hand'/'L Hand' (the b98 round-4 defect: smoke off two
-# fists), and never `Smoke02` - THAT is the helper the demons have and he does
-# not, so it is the one that would render nothing at all.
-_ATTACH = [_DEMON_MESH_ATTACH]
-_PARTICLE_COUNT = 1     # ONE body emitter, exactly like the demons' one CreateEntity
 # A name on the demons' rig that his rig does NOT declare. Kept as the concrete
 # example of the silent-nothing trap, and exercised as a negtest plant.
 _DEMON_ONLY_ATTACH = 'Smoke02'
 
-# ── ALWAYS ON (b104) ────────────────────────────────────────────────────────
-_BUFF_TRIGGER = 'WheneverPossible'
+# ── R-257: THE ASSET THIS LANE AUTHORS, AND ITS TWO SOURCES ─────────────────
+# Imported by `champion_mesh` (the single writer of `mesh`) so the rig and its
+# wearers can never drift - the thrown_restore -> thrown_anim_rig precedent.
+import build_shroud_rig as _rig                                  # noqa: E402
+
+SHROUD_RIG = _rig.SHROUD_RIG                # what the Enslaver family now wears
+SHROUD_RIG_ENTRY = _rig.SHROUD_RIG_ENTRY    # its entry inside the mod Creatures.arc
+DONOR_RIG = _rig.DONOR_MESH                 # R-102's FX-free skeleton (his silhouette)
+EXEMPLAR_RIG = _rig.EXEMPLAR_MESH           # the demons' rig, Will-confirmed
+
+# ── the running channel he and his demons already share (kept, never removed) ─
+_SHADOWCLOAK_PAK = r'records\skills\stealth\drxpet\drx_pet_fx\drxshadowcloakrunning_fx_pak.dbr'
+
+# ── RETIRED BY R-257 (authored by R-250, wired by R-255, rendered by nothing) ─
+# These records are NO LONGER AUTHORED. They are named here so `apply()` can
+# unwire them when this module is re-run over an arz that already carries them
+# (a --negtest baseline, a static dry-run), and so verify() can assert that the
+# shipped database references them from NOWHERE.
+_SHROUD = r'records\skills\monster skills\buff_self\svc_enslaver_shroud.dbr'
+_SHROUD_PAK = r'records\skills\monster skills\buff_self\svc_enslaver_shroud_charfxpak.dbr'
+_SHROUD_FX = r'records\skills\monster skills\buff_self\svc_enslaver_shroud_fx.dbr'
+_RETIRED_RECORDS = (_SHROUD, _SHROUD_PAK, _SHROUD_FX)
 _CTRL_PREFIX = 'svc_alwayson_'
 
-# ── R-255 (b99): THE SLOT CEILING, AND THE TWO CHANNELS THAT ACTUALLY EXIST ──
-# `skillName<N>` is NOT an open-ended array. It is declared, exactly once, in
-# `Templates\TemplateBase\MonsterSkillManager.tpl` - the template `Monster.tpl`
-# includes and `Pet.tpl` inherits through it - and that declaration stops at
-# **skillName17 / skillLevel17**. Two independent witnesses, both re-checked by
-# `--selftest`:
-#   1. the vanilla template itself declares skillName1..17 and nothing above it;
-#   2. across all 74,013 base-game records, the highest slot ANY Monster or Pet
-#      uses is skillName17 (1,136 records sit exactly on it, 0 records above it).
-# b98/R-250 wired the shroud with `_free_skillname_slot(..., hi=23)` on the
-# written-down belief that "the template reaches 23". It does not; 23 was the
-# highest slot THIS MOD had already written, i.e. the lane measured its own
-# earlier overflow and read it as headroom. So the shroud landed at skillName19
-# on the boss and skillName18 on all three pet tiers - fields no skill manager
-# reads - and the whole b93 ship was a write into a slot that does not exist.
-# That is why Will filed "still do not have the black smoke" a fourth time.
-_ENGINE_SKILL_SLOT_MAX = 17
-# The channels that DO exist, both declared in that same MonsterSkillManager and
-# therefore identical on Monster and Pet, both crash-law-safe (skill fields, the
-# only class Pet.tpl tolerates), both measured in the base game:
-#   `initialSkillName`  - cast once at spawn; 90 vanilla Pets + 838 Monsters use
-#                         it, 153 of them pointing at a Skill_BuffSelfToggled
-#                         exactly like ours. A toggle cast at spawn is ON from
-#                         the first frame and owes the AI nothing, which is the
-#                         closest record-field analogue of the demons' mesh FX.
-#   `buffSelfSkillName` - the AI's self-buff slot, gated by the controller's
-#                         BuffSelfBehavior (ours are WheneverPossible clones);
-#                         87 vanilla Pets + 522 Monsters use it, 60 on a
-#                         Skill_BuffSelfToggled. This is the re-application leg:
-#                         if the toggle is ever dropped it comes straight back.
-# Both are FREE on all 8 family records today (measured on the shipped build98
-# arz `15dacc68`), so this ADDS and displaces nothing.
+# R-255's codified list of the two channels the skill manager reads without
+# combat-AI selection. Other lanes cite it (see lookout_uber's V14). R-257 keeps
+# the constant and INVERTS its use: the family must now be CLEAR of our shroud on
+# both, because the smoke comes from the rig instead.
 _ALWAYS_ON_FIELDS = ('initialSkillName', 'buffSelfSkillName')
 
-# ── R-255: THE FAMILY, AND THE TWO ROUTES A MEMBER MAY WEAR THE SHROUD BY ────
-# b93 scoped itself to the wild boss + the pet tiers his soul summons. It never
-# reached the MARAUDERS - neither the escorts the wild boss raises nor the
-# pet-of-pet marauders the SUMMONED Enslaver raises - so "the family has the
-# family FX" was never actually a checked claim. Those marauders wear
-# ShadowStalker.msh and therefore already carry the shroud the only way it ever
-# really worked: compiled into the mesh. So a member is covered if EITHER
-#   MESH  - its rig embeds the demons' own `ShadowStalker_Smoke.dbr`, or
-#   FIELD - it carries `svc_enslaver_shroud` in BOTH always-on fields above.
-# Deriving MESH from the binary is what keeps this honest: the day a marauder is
-# moved onto an FX-free rig (exactly what `champion_mesh` did to the Enslaver,
-# which is how his last always-on emitter vanished) it stops satisfying MESH and
-# the build fails until it is given FIELD instead.
-_PINNED_SMOKE_RIGS = (r'creatures\monster\shadowstalker\shadowstalker.msh',)
+# R-255's engine ceiling. Nothing in this module writes a kit slot any more, but
+# the gate still REPORTS skills parked above it (BL-R255-DEBT-1) and still fails
+# loud if OUR shroud ever reappears up there (the b93 defect).
+_ENGINE_SKILL_SLOT_MAX = 17
+
 # every field that can name a pet-spawning skill, so the family closure is walked
 # rather than listed (a 4th tier, a new escort or a new pet-of-pet joins by
 # itself - the b98 failure mode was a roster that could go stale in silence)
@@ -279,16 +269,38 @@ _SPAWN_FIELDS = ('specialAttackSkillName', 'specialAttack2SkillName',
                  'specialAttack5SkillName', 'initialSkillName')
 _FAMILY_MAX_DEPTH = 4
 
+# Used ONLY on a loud archive-unreachable downgrade, never as the primary answer.
+# R-257 adds our own rig beside the demons'; both are derived from the binary
+# whenever the archives are readable.
+_PINNED_SMOKE_RIGS = (r'creatures\monster\shadowstalker\shadowstalker.msh',
+                      SHROUD_RIG.replace('/', '\\').lower())
+
 # ── TEST HOOKS ──────────────────────────────────────────────────────────────
-# The two asset-level gates read `.msh` binaries out of the shipped `.arc`s. The
-# negative test cannot ship archives, so it injects the two answers instead. In a
-# real build both stay None and the gates read the real assets (or announce a
-# loud DOWNGRADE - never a silent pass).
+# The asset-level gates read `.msh` binaries out of the shipped `.arc`s. The
+# negative test cannot ship archives, so it injects the answers instead. In a
+# real build every one stays None and the gates read the real assets (or announce
+# a loud DOWNGRADE - never a silent pass).
 _RIG_NAMES_OVERRIDE = None      # {mesh_ref_lower: set(bone + AttachPoint names)}
 _DEMON_FX_OVERRIDE = None       # [entity refs embedded in the demons' mesh]
 _DEMON_ATTACH_OVERRIDE = None   # the attach name in the demons' CreateEntity
-_DEMON_FX_RECORD_OVERRIDE = None  # {field: value} of the demons' EffectEntity
-_MESH_SMOKE_OVERRIDE = None     # {mesh_ref_lower: bool} does this rig embed it
+_MESH_SMOKE_OVERRIDE = None     # {mesh_ref_lower: (attach, entity) or None}
+_RIG_ASSET_OVERRIDE = None      # ('PASS'|'FAIL'|'SKIP', detail) for the arc-staging arm
+
+
+def _require_gates():
+    r"""True when the build demands that an UNAVAILABLE gate be a FAILURE.
+
+    R-257 makes this matter more than it did: the two arms that can go SKIP here
+    (the rig-asset arm and the per-member MESH route) are the ONLY things standing
+    between a shipped arz and four records naming a mesh that resolves nowhere -
+    an INVISIBLE boss. In a real ship the archives are always reachable and
+    `SVC_REQUIRE_GATES=1` is always set (see every build9x gate record), so a SKIP
+    there means the environment is wrong, not that the question is unanswerable.
+    Outside a ship (a bare worktree with no staged Resources) the SKIP stays a loud
+    announced downgrade, exactly as the rest of this module has always behaved.
+    """
+    import os
+    return os.environ.get('SVC_REQUIRE_GATES', '') not in ('', '0', 'false', 'False')
 
 
 def _norm(p):
@@ -324,39 +336,6 @@ def _skill_slots(db, rec):
     return out
 
 
-def _level_slots(db, rec):
-    """{slot} for every skillLevel<i> PRESENT on rec, blank name or not.
-
-    Orphan `skillLevel` arrays with no `skillName` beside them are SV-donor
-    residue and they are real: a name-only freeness test would silently
-    overwrite one, which is a field change no record diff can explain.
-    """
-    out = set()
-    for k, tf in (db.get_fields(rec) or {}).items():
-        b = k.split('###')[0]
-        if b.startswith('skillLevel') and b[10:].isdigit() and tf.values:
-            out.add(int(b[10:]))
-    return out
-
-
-def _free_skillname_slot(db, rec, lo=1, hi=_ENGINE_SKILL_SLOT_MAX):
-    """R-255: `hi` is the ENGINE's declared ceiling, and it is not negotiable.
-
-    b93 called this with `hi=23` and got slot 19 - a field `MonsterSkillManager`
-    does not declare - and shipped it. The default is now the measured ceiling so
-    this helper physically cannot hand back a slot nothing reads. Nothing in the
-    module calls it any more (the shroud rides `_ALWAYS_ON_FIELDS`); it is kept
-    because the reasoning above it is the trap's memorial, and a future lane that
-    does need a kit slot should find a helper that is already safe.
-    """
-    hi = min(hi, _ENGINE_SKILL_SLOT_MAX)
-    used = set(_skill_slots(db, rec)) | _level_slots(db, rec)
-    for i in range(lo, hi + 1):
-        if i not in used:
-            return i
-    return None
-
-
 def _slot_of(db, rec, skill):
     want = _norm(skill)
     for i, p in _skill_slots(db, rec).items():
@@ -389,25 +368,18 @@ def _del_field(db, rec, name):
 # ── ASSET-LEVEL READERS (the layer four waves never looked at) ──────────────
 
 def _mesh_names(mesh_ref):
-    """(status, set(CASEFOLDED rig names)) out of a mesh binary: BOTH namespaces.
+    r"""(status, set(CASEFOLDED rig names)) out of a mesh binary: BOTH namespaces.
 
     status PASS / SKIP. SKIP means the archives are not reachable from this
     working tree; the caller ANNOUNCES that rather than counting it as a pass.
 
-    ⚠️ b104 round 2, and the reason this delegates instead of scanning: round 1
-    scanned `[A-Za-z][A-Za-z0-9_ ]{2,31}\\x00` here - NUL-terminated strings only.
-    Bone-table names are NUL-terminated; ATTACHPOINT names are not, they live in a
-    CRLF text block. So the reader could not see AttachPoint names AT ALL, and the
-    round reported `SpecialHit01` "does not exist on SkeletonGrayBlack01New.msh"
-    when it is declared there at byte 325003. A false measurement from a blind
-    instrument then became a bolded warning in `docs/WILL_RULINGS.md`, i.e. design
-    law for every future wave. `rig_names_of()` reads the bone table UNION the
-    AttachPoint table, which is the set an attach value may legally resolve to.
-
-    Casefolded because the shipped DB addresses these tables off-case
-    (`Bone_spine01` vs the rig's `Bone_Spine01`, `Specialhit03` vs `SpecialHit03`).
-    A case-sensitive gate would false-fail records that ship and work today, and a
-    gate that cries wolf gets waived instead of fixed.
+    b104 round 2, and the reason this delegates instead of scanning: round 1
+    scanned NUL-terminated strings only. Bone-table names are NUL-terminated;
+    ATTACHPOINT names are not, they live in a CRLF text block. The reader was
+    structurally blind to the class of name it was asked about, and its false
+    answer became design law in `docs/WILL_RULINGS.md`. `rig_names_of()` reads
+    the bone table UNION the AttachPoint table, casefolded because the shipped DB
+    addresses these tables off-case (`Bone_spine01`, `Specialhit03`).
     """
     if _RIG_NAMES_OVERRIDE is not None:
         got = _RIG_NAMES_OVERRIDE.get(_norm(mesh_ref))
@@ -425,6 +397,31 @@ def _mesh_names(mesh_ref):
         return ('SKIP', set())
 
 
+def _mesh_fx(mesh_ref):
+    """(status, [(attach, entity)]) - every CreateEntity block a rig compiles in.
+
+    This is THE reader of the whole R-257 design: it answers, from the binary,
+    "does this creature smoke, and where does it hang it?". SKIP means the
+    archives are unreachable; the caller announces the downgrade.
+    """
+    if not mesh_ref:
+        return ('PASS', [])
+    if _MESH_SMOKE_OVERRIDE is not None:
+        got = _MESH_SMOKE_OVERRIDE.get(_norm(mesh_ref))
+        return ('PASS', list(got or [])) if _norm(mesh_ref) in _MESH_SMOKE_OVERRIDE \
+            else ('SKIP', [])
+    try:
+        import mesh_assets
+        if not mesh_assets.arcs_available():
+            return ('SKIP', [])
+        data, _arc = mesh_assets.read_asset(str(mesh_ref))
+        if not data:
+            return ('SKIP', [])
+        return ('PASS', mesh_assets.embedded_fx_attachments_of(data))
+    except Exception:                                        # noqa: BLE001
+        return ('SKIP', [])
+
+
 def _demon_mesh_attach(db):
     """(status, attach_point) the demons' OWN mesh hangs their shroud on.
 
@@ -437,100 +434,42 @@ def _demon_mesh_attach(db):
     mesh = _gv1(db, _MARAUDER, 'mesh')
     if not mesh:
         return ('FAIL', None)
-    try:
-        import mesh_assets
-        if not mesh_assets.arcs_available():
-            return ('SKIP', None)
-        data, _arc = mesh_assets.read_asset(str(mesh))
-        if not data:
-            return ('SKIP', None)
-        want = _DEMON_FX_REF.rsplit('\\', 1)[-1].lower()
-        for attach, entity in mesh_assets.embedded_fx_attachments_of(data):
-            if entity and str(entity).replace('/', '\\').rsplit('\\', 1)[-1].lower() == want:
-                return ('PASS', attach)
-        return ('PASS', None)
-    except Exception:                                        # noqa: BLE001
+    st, blocks = _mesh_fx(mesh)
+    if st != 'PASS':
         return ('SKIP', None)
-
-
-def _demon_fx_record(db):
-    """(status, {field: value}) for the demons' own EffectEntity.
-
-    It lives ONLY in the base-game `.arz` (it is not in the mod DB), so this reads
-    the game install directly. Cheap: the parser is lazy-decode, ~0.4s for 74,013
-    records. Used to prove our mirror really is a mirror, values included.
-    """
-    if _DEMON_FX_RECORD_OVERRIDE is not None:
-        return ('PASS', dict(_DEMON_FX_RECORD_OVERRIDE))
-    if db is not None and db.has_record(_DEMON_FX_REF):
-        src = db                                  # already layered in: prefer it
-    else:
-        try:
-            from pathlib import Path
-            import mesh_assets
-            from arz_patcher import ArzDatabase
-            p = Path(mesh_assets.game_dir()) / 'Database' / 'database.arz'
-            if not p.exists():
-                return ('SKIP', {})
-            src = _base_db_cached(ArzDatabase, p)
-        except Exception:                                    # noqa: BLE001
-            return ('SKIP', {})
-    ff = src.get_fields(_DEMON_FX_REF)
-    if ff is None:
-        return ('SKIP', {})
-    out = {}
-    for k, tf in ff.items():
-        vals = [str(v) for v in (tf.values or [])]
-        out[k.split('###')[0]] = vals[0] if len(vals) == 1 else vals
-    return ('PASS', out)
-
-
-_BASE_DB_CACHE = {}
-
-
-def _base_db_cached(cls, path):
-    key = str(path)
-    if key not in _BASE_DB_CACHE:
-        import contextlib
-        import io
-        # the loader prints a progress banner; a gate's output is not the place
-        with contextlib.redirect_stdout(io.StringIO()):
-            _BASE_DB_CACHE[key] = cls.from_arz(path)
-    return _BASE_DB_CACHE[key]
+    want = _DEMON_FX_REF.rsplit('\\', 1)[-1].lower()
+    for attach, entity in blocks:
+        if entity and str(entity).replace('/', '\\').rsplit('\\', 1)[-1].lower() == want:
+            return ('PASS', attach)
+    return ('PASS', None)
 
 
 def _demon_embedded_fx(db):
     """(status, [effect refs]) compiled into the MARAUDERS' mesh.
 
-    This is the provenance anchor for the whole module: the shroud Will pointed
-    at is not a field, it is this CreateEntity block. Deriving it every build is
-    what makes "the same one that his demon summon guys have" a checked claim.
+    The provenance anchor for the whole module: the shroud Will pointed at is not
+    a field, it is this CreateEntity block. Deriving it every build is what makes
+    "the same one that his demon summon guys have" a checked claim.
     """
     if _DEMON_FX_OVERRIDE is not None:
         return ('PASS', list(_DEMON_FX_OVERRIDE))
     mesh = _gv1(db, _MARAUDER, 'mesh')
     if not mesh:
         return ('FAIL', [])
-    try:
-        import mesh_assets
-        if not mesh_assets.arcs_available():
-            return ('SKIP', [])
-        data, _arc = mesh_assets.read_asset(str(mesh))
-        if not data:
-            return ('SKIP', [])
-        return ('PASS', mesh_assets.embedded_fx_of(data))
-    except Exception:                                        # noqa: BLE001
+    st, blocks = _mesh_fx(mesh)
+    if st != 'PASS':
         return ('SKIP', [])
+    return ('PASS', [e for _a, e in blocks if e])
 
 
 def pfx_resolution(pfx=_DEMON_PFX):
     """A9-STYLE RENDER RESOLUTION: does the particle file actually SHIP?
 
-    Resolution is not rendering (the A9/D5 lesson). The record chain can be
-    perfect and he still smokes nothing if the `.pfx` is in no shipped archive.
-    Walks the mod's staged `Resources` first, then the game install, which is the
-    order the engine uses - this particular file is a BASE-GAME asset, so a
-    mod-only search would report a false failure.
+    Resolution is not rendering (the A9/D5 lesson). The chain can be perfect and
+    he still smokes nothing if the `.pfx` is in no shipped archive. Walks the
+    mod's staged `Resources` first, then the game install, which is the order the
+    engine uses - this particular file is a BASE-GAME asset, so a mod-only search
+    would report a false failure.
     """
     try:
         import mesh_assets
@@ -545,102 +484,118 @@ def pfx_resolution(pfx=_DEMON_PFX):
         return ('SKIP', 'could not read the archives (%s)' % e)
 
 
-# ── BUILD ───────────────────────────────────────────────────────────────────
+def shipping_creatures_arcs():
+    r"""(kind, [paths]) - the `Creatures.arc` THIS BUILD SHIPS. Never a glob sweep.
 
-def _build_fx(db):
-    """A FIELD-FOR-FIELD MIRROR of the demons' own EffectEntity.
+    ROUND 2 OF THIS LANE EXISTS BECAUSE ROUND 1 ASKED THE WRONG ADDRESS. It
+    demanded the rig in EVERY `mesh_assets.mod_resource_dirs()` hit, and that list
+    is a SEARCH PATH: `work/*/Resources` plus `local/*/Resources`, six rows in the
+    ship checkout. Any stale tree under `local/` could therefore red a build whose
+    own shipped archive was perfect - a permanent ship-blocker nobody could clear
+    by rebuilding the right file. (The measured six turned out to be ONE archive
+    seen through five det-2x junctions, but the defect class is real and the
+    address was wrong either way.)
 
-    The donor is a record SHELL, not a design. Round 1 cloned it, deleted the one
-    field it knew was wrong (`boneList`) and shipped the rest - so `Anchored`,
-    `emitterType` and `localOrientFix` rode along from a WEAPON-BONE-attached
-    effect onto a body attach point, where their behaviour is unproven, while
-    `ActorName` (which the demons' record does carry) was absent. "Byte-for-byte
-    the demons' own particle" was then true of the `.pfx` and of nothing else.
+    The right address is the anchor `validate_render_chain` has always used and
+    that `build_svc_database` now declares once: the `Resources` dir beside the
+    `.arz` being written.
 
-    So: prune to exactly the demons' field set, then write exactly their values.
-    verify() re-reads their record from the base `.arz` and fails on any drift.
+      kind 'ANCHORED'   - the build declared its anchor; that ONE archive answers.
+      kind 'STAGED'     - no anchor (a CLI dry-run): fall back to the staged deploy
+                          source `work/*/Resources` ONLY. `local/*` is scratch
+                          output and ships nothing, so it can never gate a build.
+      kind 'NO-ANCHOR-DIR' - an anchor was declared and its dir does not exist:
+                          a scratch layout, honestly unanswerable, never a pass.
     """
-    _require(db, _FX_DONOR)
-    if not db.has_record(_SHROUD_FX):
-        db.clone_record(_FX_DONOR, _SHROUD_FX)
-    want = dict(_DEMON_FX_FIELDS)
-    for k in list(db.get_fields(_SHROUD_FX) or {}):
-        base = k.split('###')[0]
-        if base not in want:
-            _del_field(db, _SHROUD_FX, base)
-    for f, v in _DEMON_FX_FIELDS:
-        db.set_field(_SHROUD_FX, f, v)
-    db._modified.add(_SHROUD_FX)
+    from pathlib import Path as _P
+    import mesh_assets
+    anchor = mesh_assets.shipping_resource_dir()
+    if anchor is not None:
+        if not anchor.is_dir():
+            return ('NO-ANCHOR-DIR', [anchor / 'Creatures.arc'])
+        return ('ANCHORED', [anchor / 'Creatures.arc'])
+    return ('STAGED', sorted(d / 'Creatures.arc' for d in _P('.').glob('work/*/Resources')
+                             if d.is_dir()))
 
 
-def _build_pak(db):
-    _require(db, _PAK_DONOR)
-    if not db.has_record(_SHROUD_PAK):
-        db.clone_record(_PAK_DONOR, _SHROUD_PAK)
-    # value-only overrides on a cloned record (dtype preserved - the dtype lesson).
-    db.set_field(_SHROUD_PAK, 'particleEffectNames', [_SHROUD_FX] * _PARTICLE_COUNT)
-    if _ATTACH:
-        db.set_field(_SHROUD_PAK, 'particleEffectAttachPoints', list(_ATTACH))
-    else:
-        _del_field(db, _SHROUD_PAK, 'particleEffectAttachPoints')
-    db._modified.add(_SHROUD_PAK)
+def rig_asset_state():
+    r"""(status, detail) for the authored rig - M1 derivability + M2 staging.
 
+    M1 ALWAYS runs: the rig is rebuilt in memory from the two BASE binaries and
+    put through `build_shroud_rig.verify_rig()`. It has no dependency on staging
+    order, so every build proves the asset is derivable and correct.
 
-def _build_skill(db):
-    _require(db, _SKILL_DONOR)
-    if not db.has_record(_SHROUD):
-        db.clone_record(_SKILL_DONOR, _SHROUD)
-    db.set_field(_SHROUD, 'charFxPakSelfNames', _SHROUD_PAK)
-    # the donor's purple weapon tint -> the inert (0,0,0) NO-TINT default (b83 model).
-    for f in ('skillWeaponTintRed', 'skillWeaponTintGreen', 'skillWeaponTintBlue'):
-        if db.get_field_value(_SHROUD, f) is not None:
-            db.set_field(_SHROUD, f, 0.0)
-    # `empusamerc_enchantment` residue: particleEffectAttachPoint1 = 'R Hand',
-    # with no particleEffectName1 beside it. Inert, and it is the b98 round-4
-    # "smoke off two fists" string sitting on the very record that fixes it - a
-    # future reader trips over it and re-derives the wrong design. Placement on
-    # this skill is the pak's job (`charFxPakSelfNames`) and nothing else's.
-    for k in list(db.get_fields(_SHROUD) or {}):
-        b = k.split('###')[0]
-        if b.startswith('particleEffect'):
-            _del_field(db, _SHROUD, b)
-    db.set_field(_SHROUD, 'skillMaxLevel', 3)
-    db.set_field(_SHROUD, 'FileDescription',
-                 'SVC Enslaver: persistent black shadow shroud (visual only, no payload)')
-    db._modified.add(_SHROUD)
-
-
-def _always_on_controller(db, src):
-    """An SVC-OWNED clone of `src` whose ONLY difference is BuffSelfBehavior.
-
-    The shared originals are never written: `controller_skeleton_toxeus` also
-    drives the Devourer, `um_toxeus_99`, `um_toxeus_21` and two dev dummies, and
-    `controller_skelly_aggressive` drives 148 pets. Editing either in place to
-    fix ONE champion's FX is the `genericbossorb_04` mistake (R-103's required
-    check) with an AI field instead of a loot field.
+    M2 asks the SHIPPING archive (see `shipping_creatures_arcs`) whether it carries
+    the entry, byte-identical to the derived bytes. This is the arm that enforces
+    the R-257 BUILD-TIME PRECONDITION: the Enslaver family's `mesh` resolves ONLY
+    out of the mod archive, so an `.arz` built beside an archive without the rig
+    would ship four records pointing at a mesh that resolves NOWHERE - an INVISIBLE
+    boss, a far worse regression than the missing smoke this lane fixes. Two more
+    build gates (`validate_render_chain` A9 and `champion_mesh.verify`) fail on the
+    same state, which is why `bootstrap_working_mod.ps1` stages the archive in
+    Step 0e, BEFORE the database build, and not at deploy time.
     """
-    head, _sep, base = str(src).rpartition('\\')
-    dest = '%s\\%s%s' % (head, _CTRL_PREFIX, base)
-    if not db.has_record(dest):
-        if not db.clone_record(src, dest):
-            raise SystemExit("[enslaver_shroud] could not clone controller %s" % src)
-    db.set_field(dest, 'BuffSelfBehavior', _BUFF_TRIGGER)
-    db._modified.add(dest)
-    return dest
+    if _RIG_ASSET_OVERRIDE is not None:
+        return _RIG_ASSET_OVERRIDE
+    try:
+        want = _rig.rig_bytes_checked()
+    except SystemExit as e:                                  # noqa: BLE001
+        return ('FAIL', 'the rig is not derivable from the base binaries: %s' % e)
+    except Exception as e:                                   # noqa: BLE001
+        return ('SKIP', 'the base archives are not reachable (%s)' % e)
+
+    try:
+        from arc_patcher import ArcArchive
+        kind, staged = shipping_creatures_arcs()
+    except Exception as e:                                   # noqa: BLE001
+        return ('SKIP', 'M1 PASS (%d bytes derived + verified); M2 not run (%s)'
+                % (len(want), e))
+
+    if kind == 'NO-ANCHOR-DIR':
+        return ('SKIP', 'M1 PASS (%d bytes derived + verified); M2 NOT RUN - this '
+                        'build declared %s as its shipping Resources dir and that '
+                        'directory does not exist (a scratch layout), so the '
+                        'BUILD-TIME PRECONDITION is unproven here'
+                % (len(want), staged[0].parent))
+    if not staged:
+        return ('SKIP', 'M1 PASS (%d bytes derived + verified); M2 NOT RUN - no mod '
+                        'Creatures.arc reachable from this working tree, so the '
+                        'BUILD-TIME PRECONDITION is unproven here and must be proven '
+                        'in the build that ships' % len(want))
+    for p in staged:
+        if not p.exists():
+            return ('FAIL', 'the shipping mod archive %s DOES NOT EXIST. The Enslaver '
+                            'family names %r, which ships only from that archive, so '
+                            'this arz would give them NO MESH AT ALL. Build it BEFORE '
+                            'the database (bootstrap Step 0e): '
+                            'py tools/build_creatures_dye_skins_arc.py --out %s'
+                    % (p, SHROUD_RIG_ENTRY, p))
+        got = _rig.entry_in(ArcArchive.from_file(p))
+        if got is None:
+            return ('FAIL', 'the shipping mod archive %s does NOT carry %r. The '
+                            'Enslaver family names that mesh, so shipping this arz '
+                            'beside this arc gives them NO MESH AT ALL. Build it '
+                            'BEFORE the database (bootstrap Step 0e): '
+                            'py tools/build_creatures_dye_skins_arc.py --out %s'
+                    % (p, SHROUD_RIG_ENTRY, p))
+        if got != want:
+            return ('FAIL', 'the staged %r in %s is %d bytes, the derived rig is %d - '
+                            'the shipped asset is not the one this build verified'
+                    % (SHROUD_RIG_ENTRY, p, len(got), len(want)))
+    return ('PASS', 'M1+M2 [%s]: %s derived from %s + the exemplar block (%d bytes, '
+                    'A1..A8 verified) and byte-identical in %s'
+            % (kind, SHROUD_RIG_ENTRY, DONOR_RIG.rsplit('\\', 1)[-1], len(want),
+               ', '.join(str(p) for p in staged)))
 
 
-def _is_ours(ctrl):
-    return str(ctrl).rsplit('\\', 1)[-1].lower().startswith(_CTRL_PREFIX)
-
+# ── ROSTER (unchanged from R-255: derived, never listed) ────────────────────
 
 def _pet_tiers(db):
     """Every Enslaver pet tier, READ from the summon skill's spawnObjects.
 
-    b102 / R-102 second amendment. b98 wired the shroud to the monster only, so
-    the three tiers Will actually summons never got it and he correctly said the
-    request was "still not implemented". Deriving the tiers instead of listing
-    them is what makes that failure unrepeatable: append a 4th pet to the summon
-    and it is in scope for both apply() and verify() with no code change.
+    b98 wired the shroud to the monster only, so the three tiers Will actually
+    summons never got it and he correctly said the request was "still not
+    implemented". Deriving the tiers is what makes that failure unrepeatable.
     """
     if not db.has_record(_ENSLAVER_SUMMON):
         return []
@@ -655,11 +610,10 @@ def _pet_tiers(db):
 def _spawned_by(db, rec):
     """Every creature record any SpawnPet skill in `rec`'s kit actually spawns.
 
-    R-255. This is the leg b93 did not have. The wild boss raises his escorts
-    through `svc_enslaver_summonmarauders`, and the SUMMONED Enslaver raises his
-    pet-of-pet marauders through `svc_enslaver_petmarauders` - both are ordinary
-    SpawnPet skills sitting in a kit slot / specialAttack field, so walking them
-    finds the whole household without a list to go stale.
+    R-255. The wild boss raises his escorts through `svc_enslaver_summonmarauders`
+    and the SUMMONED Enslaver raises pet-of-pet marauders through
+    `svc_enslaver_petmarauders`; walking them finds the whole household without a
+    list to go stale.
     """
     out = []
     cand = list(_skill_slots(db, rec).values())
@@ -680,13 +634,7 @@ def _spawned_by(db, rec):
 
 
 def _family_closure(db):
-    """W1: the WHOLE household, walked - boss + escorts + pet tiers + pet-of-pet.
-
-    Seeds are the wild boss and whatever his soul-summon spawns; every seed then
-    contributes what IT spawns, to a bounded depth. b93's roster stopped at the
-    seeds, which is precisely why Will could summon a marauder that nobody had
-    ever asked a question about.
-    """
+    """W1: the WHOLE household, walked - boss + escorts + pet tiers + pet-of-pet."""
     seen, order = set(), []
     frontier = ([_ENSLAVER] if db.has_record(_ENSLAVER) else []) + _pet_tiers(db)
     depth = 0
@@ -704,13 +652,7 @@ def _family_closure(db):
 
 
 def _family_tags(db, members):
-    """The name tags the walked family wears - derived, never listed.
-
-    `_NAME_TAGS` stays as the pinned floor (it is what the b98/b102 rounds keyed
-    on and the negtest still plants against it), but the sweep below is driven by
-    what the family ACTUALLY wears, so a marauder tag joins the difficulty-clone
-    hunt the moment a marauder joins the family.
-    """
+    """The name tags the walked family wears - derived, never listed."""
     tags = set(_NAME_TAGS)
     for r in members:
         d = _gv1(db, r, 'description')
@@ -723,8 +665,6 @@ def _by_name_tag(db, tags=None):
     """W2: every Monster/Pet record described by one of the family's name tags.
 
     Catches a build-time DIFFICULTY CLONE, which the summon chain cannot see.
-    Prefiltered on the .arz record-type index so this costs a slice of the DB
-    rather than a full decode.
     """
     want = set(tags) if tags is not None else set(_NAME_TAGS)
     types = getattr(db, '_record_types', None) or {}
@@ -754,150 +694,140 @@ def shroud_roster(db, w2=None):
     return out
 
 
-# ── WHICH ROUTE DOES THIS MEMBER WEAR THE SHROUD BY? ────────────────────────
+# ── THE ONE ROUTE, DERIVED FROM THE RIG BINARY ──────────────────────────────
 
-def _mesh_embeds_smoke(db, mesh_ref):
-    """(status, bool) - does this rig carry the demons' own CreateEntity smoke?
+def mesh_route(db, rec):
+    """(status, ok, detail) - does this member's rig compile in the demons' smoke?
 
-    status PASS / SKIP. SKIP means the archives are unreachable from this working
-    tree; the caller ANNOUNCES the downgrade and falls back to `_PINNED_SMOKE_RIGS`
-    rather than counting an unread binary as a pass.
+    THE proven channel, and after R-257 the ONLY one. Derived from the `.msh`
+    binary every build: the day a member is moved onto an FX-free rig (exactly
+    what `champion_mesh` once did to the Enslaver, which is how his last always-on
+    emitter vanished) it stops satisfying this and the build fails.
     """
-    if not mesh_ref:
-        return ('PASS', False)
-    if _MESH_SMOKE_OVERRIDE is not None:
-        got = _MESH_SMOKE_OVERRIDE.get(_norm(mesh_ref))
-        return ('PASS', bool(got)) if got is not None else ('SKIP', False)
-    want = _DEMON_FX_REF.rsplit('\\', 1)[-1].lower()
-    try:
-        import mesh_assets
-        if not mesh_assets.arcs_available():
-            return ('SKIP', False)
-        data, _arc = mesh_assets.read_asset(str(mesh_ref))
-        if not data:
-            return ('SKIP', False)
-        for e in mesh_assets.embedded_fx_of(data):
-            if str(e).replace('/', '\\').rsplit('\\', 1)[-1].lower() == want:
-                return ('PASS', True)
-        return ('PASS', False)
-    except Exception:                                        # noqa: BLE001
-        return ('SKIP', False)
-
-
-def _has_mesh_route(db, rec):
-    """(covered, downgraded) - MESH route, derived, pinned only on a loud SKIP."""
     mesh = _gv1(db, rec, 'mesh')
-    st, hit = _mesh_embeds_smoke(db, mesh)
+    if not mesh:
+        return ('PASS', False, 'no mesh field at all')
+    st, blocks = _mesh_fx(mesh)
     if st == 'SKIP':
-        return (_norm(mesh) in {_norm(m) for m in _PINNED_SMOKE_RIGS}, True)
-    return (hit, False)
+        pinned = _norm(mesh) in {_norm(m) for m in _PINNED_SMOKE_RIGS}
+        return ('SKIP', pinned, '%s (pinned smoke-rig list)' % mesh)
+    want = _DEMON_FX_REF.rsplit('\\', 1)[-1].lower()
+    for attach, entity in blocks:
+        stem = str(entity or '').replace('/', '\\').rsplit('\\', 1)[-1].lower()
+        if stem == want and str(attach or '').lower() == _DEMON_MESH_ATTACH.lower():
+            return ('PASS', True, '%s -> CreateEntity{attach=%r; entity=%r}'
+                    % (mesh, attach, entity))
+    return ('PASS', False, '%s embeds %r' % (mesh, blocks or 'NOTHING'))
 
 
-def _has_field_route(db, rec):
-    """FIELD route: the shroud in BOTH declared always-on channels."""
-    return all(_norm(_gv1(db, rec, f)) == _norm(_SHROUD) for f in _ALWAYS_ON_FIELDS)
+def _field_route_residue(db, rec):
+    """Which always-on channels still name OUR retired shroud (should be none)."""
+    return [f for f in _ALWAYS_ON_FIELDS if _norm(_gv1(db, rec, f)) == _norm(_SHROUD)]
+
+
+def _is_ours_ctrl(ctrl):
+    return str(ctrl).rsplit('\\', 1)[-1].lower().startswith(_CTRL_PREFIX)
+
+
+def _shared_original(ctrl):
+    """The record an `svc_alwayson_*` clone was cloned FROM (name-derived)."""
+    head, _sep, base = str(ctrl).rpartition('\\')
+    return '%s\\%s' % (head, base[len(_CTRL_PREFIX):]) if base.lower().startswith(_CTRL_PREFIX) \
+        else str(ctrl)
 
 
 def _dead_slots(db, rec):
     """{slot: skill} for every kit slot ABOVE the engine's declared ceiling.
 
-    Reported for the whole family, but only OUR OWN shroud is ever removed from
-    one (see `_retire_dead_shroud_slot`): another lane's skill parked up there is
-    that lane's ruling to unwind, not this one's (RETIREMENT PROTOCOL).
+    Reported for the whole family; only OUR OWN shroud is ever removed from one.
+    Another lane's skill parked up there is that lane's ruling to unwind
+    (RETIREMENT PROTOCOL, BL-R255-DEBT-1).
     """
     return {i: s for i, s in _skill_slots(db, rec).items()
             if i > _ENGINE_SKILL_SLOT_MAX}
 
 
-def _retire_dead_shroud_slot(db, rec):
-    """Delete OUR shroud out of any kit slot above the engine ceiling.
+def _retire(db, rec):
+    """R-257: unwire every b99/b93 belief-channel from one household member.
 
-    b93 wrote it to skillName19 (boss) / skillName18 (pets) - fields
-    `MonsterSkillManager.tpl` never declares. Left in place they are worse than
-    inert: the next reader greps the arz, sees `svc_enslaver_shroud` sitting in a
-    skill slot, and concludes the shroud is wired. Only a slot whose value is OUR
-    OWN record is touched; a neighbour's skill parked up there is reported by the
-    gate and left exactly where its own lane put it.
+    Returns (retired_fields, reverted_controller_or_None, retired_dead_slots).
+
+    On a COLD build (what ships) this finds nothing to do, because the records it
+    unwires are no longer authored at all. It exists for the re-run-over-a-built-
+    arz case, which is what `--negtest` and every static dry-run actually are.
     """
-    gone = []
+    fields = []
+    for f in _ALWAYS_ON_FIELDS:
+        if _norm(_gv1(db, rec, f)) == _norm(_SHROUD):
+            _del_field(db, rec, f)
+            fields.append(f)
+
+    slots = []
     for i, sk in sorted(_skill_slots(db, rec).items()):
         if i <= _ENGINE_SKILL_SLOT_MAX or _norm(sk) != _norm(_SHROUD):
             continue
         _del_field(db, rec, 'skillName%d' % i)
         _del_field(db, rec, 'skillLevel%d' % i)
-        gone.append(i)
-    if gone:
-        db._modified.add(rec)
-    return gone
-
-
-def _wire_one(db, rec):
-    """The two declared always-on channels + the always-on controller.
-
-    NOT a kit slot any more. The shroud carries no payload (the VISUAL-ONLY
-    invariant enforces that), so it wants a channel that fires without being
-    chosen by combat AI, and `MonsterSkillManager` declares exactly two:
-    `initialSkillName` (cast at spawn - ON from the first frame, the analogue of
-    the demons' mesh FX) and `buffSelfSkillName` (re-applied by the controller,
-    whose BuffSelfBehavior we already clone to WheneverPossible). Neither takes a
-    level field - the template declares none for either - so there is no
-    skillLevel to get wrong, which is one more way b93's shape could not work.
-    """
-    retired = _retire_dead_shroud_slot(db, rec)
-    for f in _ALWAYS_ON_FIELDS:
-        db.set_field(rec, f, _SHROUD)
+        slots.append(i)
 
     ctrl = _gv1(db, rec, 'controller')
-    if not ctrl or not db.has_record(str(ctrl)):
-        raise SystemExit(
-            "[enslaver_shroud] %s has no resolvable controller (%r), so a "
-            "self-buff shroud can never fire on it." % (rec, ctrl))
-    ours = str(ctrl) if _is_ours(ctrl) else _always_on_controller(db, str(ctrl))
-    db.set_field(rec, 'controller', ours)
-    db._modified.add(rec)
-    return retired, ours
+    reverted = None
+    if ctrl and _is_ours_ctrl(ctrl):
+        orig = _shared_original(str(ctrl))
+        if db.has_record(orig):
+            db.set_field(rec, 'controller', orig)
+            reverted = orig
+    if fields or slots or reverted:
+        db._modified.add(rec)
+    return fields, reverted, slots
 
 
 def apply(db, tags):
-    print("\n=== [enslaver_shroud] THE ENSLAVER'S BLACK SHADOW SHROUD "
-          "(R-95 / R-102 / b104 R-250) ===")
-    _require(db, _ENSLAVER)
+    print("\n=== [enslaver_shroud] R-257: THE SHROUD MOVES TO THE ONE MECHANISM "
+          "WITH A CONFIRMED RENDERING EXEMPLAR ===")
+    _require(db, _ENSLAVER, _MARAUDER)
     tiers = _pet_tiers(db)
     if not tiers:
         raise SystemExit(
-            "[enslaver_shroud] %s spawns no resolvable pet, so the tier roster "
-            "is EMPTY. That is the exact b98 failure this module exists to "
-            "prevent (shroud on the monster, nothing on what Will summons) - "
-            "stop rather than ship a monster-only shroud again." % _ENSLAVER_SUMMON)
-    _build_fx(db)
-    _build_pak(db)
-    _build_skill(db)
+            "[enslaver_shroud] %s spawns no resolvable pet, so the tier roster is "
+            "EMPTY. That is the exact b98 failure this module exists to prevent "
+            "(shroud on the monster, nothing on what Will summons) - stop rather "
+            "than ship a monster-only shroud again." % _ENSLAVER_SUMMON)
+
+    # The asset must be derivable BEFORE anything is repointed at it. Repointing
+    # `mesh` at a rig that cannot be built is an INVISIBLE boss, which is a much
+    # worse regression than the missing smoke this lane is fixing.
+    st, detail = rig_asset_state()
+    if st == 'FAIL':
+        raise SystemExit("[enslaver_shroud] THE RIG ASSET IS NOT SHIPPABLE: %s" % detail)
+    print("  RIG    %s\n         %s" % (SHROUD_RIG, detail))
+    if st == 'SKIP':
+        print("         ^ DOWNGRADED, not a pass - see the BUILD-TIME PRECONDITION note")
+
     roster = shroud_roster(db)
-    n_mesh = n_field = 0
+    n_retired = 0
     for rec in roster:
-        mesh_ok, downgraded = _has_mesh_route(db, rec)
-        if mesh_ok:
-            # ALREADY smoking, the original way and the one Will confirmed by eye
-            # ("the demons that he summons have the proper black shroud"). Adding
-            # our emitter on top would double a shroud the demons wear once.
-            n_mesh += 1
-            print("  MESH   %-62s %s%s" % (rec, _gv1(db, rec, 'mesh'),
-                                           '   [pinned: archives unreadable]'
-                                           if downgraded else ''))
-            continue
-        retired, ctrl = _wire_one(db, rec)
-        n_field += 1
-        print("  FIELD  %-62s %s ctrl=%s%s"
-              % (rec, '+'.join(_ALWAYS_ON_FIELDS), ctrl.rsplit('\\', 1)[-1],
-                 '   [retired dead slot(s) %s]' % retired if retired else ''))
-    print("  %d family surface(s): %d already smoke from their rig "
-          "(%s compiled in), %d now carry the demons' own %s at their own attach "
-          "point %s through %s - channels the skill manager actually declares "
-          "(ceiling skillName%d), always on (BuffSelfBehavior=%s on SVC-owned "
-          "controller clones); NO skill dropped; charFxPakRunningNames untouched."
-          % (len(roster), n_mesh, _DEMON_FX_REF.rsplit('\\', 1)[-1], n_field,
-             _DEMON_PFX.rsplit('\\', 1)[-1], _ATTACH[0],
-             '+'.join(_ALWAYS_ON_FIELDS), _ENGINE_SKILL_SLOT_MAX, _BUFF_TRIGGER))
+        fields, reverted, slots = _retire(db, rec)
+        if fields or reverted or slots:
+            n_retired += 1
+            bits = []
+            if fields:
+                bits.append('unwired %s' % '+'.join(fields))
+            if slots:
+                bits.append('retired dead slot(s) %r' % slots)
+            if reverted:
+                bits.append('controller -> %s' % reverted.rsplit('\\', 1)[-1])
+            print("  RETIRE %-62s %s" % (rec, '; '.join(bits)))
+
+    # `mesh` itself is written by champion_mesh (R-102's single-writer law), which
+    # imports SHROUD_RIG from here. This module reports what it EXPECTS to see and
+    # verify() - which runs post-finalization, after champion_mesh - proves it.
+    print("  %d household member(s); %d had a b99/b93 belief-channel retired. The "
+          "shroud is no longer a field on ANY of them: it is compiled into the rig, "
+          "the way the marauders Will confirmed by eye have always carried it. "
+          "`mesh` is written by champion_mesh, which imports SHROUD_RIG from this "
+          "module; verify() proves the whole household afterwards."
+          % (len(roster), n_retired))
     print("=== [enslaver_shroud] done (verify() runs post-finalization) ===\n")
     return tags
 
@@ -908,188 +838,55 @@ def verify(db, tags=None):
     problems = []
     notes = []
 
-    # ── the skill ───────────────────────────────────────────────────────────
-    if not db.has_record(_SHROUD):
-        problems.append("shroud skill missing: %s" % _SHROUD)
-    else:
-        if _gv1(db, _SHROUD, 'Class') != 'Skill_BuffSelfToggled':
-            problems.append("shroud Class=%r != Skill_BuffSelfToggled"
-                            % _gv1(db, _SHROUD, 'Class'))
-        if _norm(_gv1(db, _SHROUD, 'charFxPakSelfNames')) != _norm(_SHROUD_PAK):
-            problems.append("shroud charFxPakSelfNames=%r != %s"
-                            % (_gv1(db, _SHROUD, 'charFxPakSelfNames'), _SHROUD_PAK))
-        # VISUAL-ONLY invariant: a shroud must never quietly become a stat buff.
-        payload = []
-        for k, tf in (db.get_fields(_SHROUD) or {}).items():
-            b = k.split('###')[0]
-            if not (b.startswith('offensive') or b.startswith('defensive')
-                    or b.startswith('character')):
-                continue
-            for v in (tf.values or []):
-                if isinstance(v, (int, float)) and v:
-                    payload.append(b)
-                    break
-        if payload:
-            problems.append(
-                "VISUAL-ONLY: the shroud picked up a combat payload (%s). It is a "
-                "cosmetic buff; a stat change here silently rebalances a boss."
-                % sorted(set(payload))[:6])
-        for f in ('skillWeaponTintRed', 'skillWeaponTintGreen', 'skillWeaponTintBlue'):
-            t = _gv1(db, _SHROUD, f)
-            if t not in (None, 0, 0.0):
-                problems.append("shroud %s=%r (must stay the inert 0 NO-TINT default; "
-                                "the donor's purple tint would recolour his weapon)"
-                                % (f, t))
-        stray = sorted({k.split('###')[0] for k in (db.get_fields(_SHROUD) or {})
-                        if k.split('###')[0].startswith('particleEffect')})
-        if stray:
-            problems.append(
-                "DONOR RESIDUE: the shroud skill still carries %r from "
-                "`empusamerc_enchantment`. Placement on this skill belongs to the "
-                "pak named in charFxPakSelfNames and to nothing else; an orphan "
-                "'R Hand' attach on the record that FIXES the two-fists defect is "
-                "how a future reader re-derives the wrong design." % stray)
-
-    # ── the EffectEntity: the demons' particle, off the weapon bones ────────
-    if not db.has_record(_SHROUD_FX):
-        problems.append("shroud EffectEntity missing: %s" % _SHROUD_FX)
-    else:
-        if str(_gv1(db, _SHROUD_FX, 'Class') or '') != 'EffectEntity':
-            problems.append("%s Class=%r != EffectEntity"
-                            % (_SHROUD_FX, _gv1(db, _SHROUD_FX, 'Class')))
-        eff = str(_gv1(db, _SHROUD_FX, 'effectFile') or '')
-        if _norm(eff) != _norm(_DEMON_PFX):
-            problems.append(
-                "ASSET PROVENANCE: %s plays %r, expected %r - the exact particle "
-                "file the demons' own mesh plays. Will asked for 'the same one "
-                "that his demon summon guys have'; a different .pfx is a different "
-                "shroud, and no colour check in this file would notice."
-                % (_SHROUD_FX, eff, _DEMON_PFX))
-        bl = _lst(db, _SHROUD_FX, 'boneList')
-        if bl:
-            problems.append(
-                "SHAPE: %s carries boneList=%r. The donor pinned this smoke to "
-                "Bone_R_Weapon/Bone_L_Weapon, which is why every previous version "
-                "of this shroud came off his FISTS instead of from around him. A "
-                "body shroud must carry no boneList and be placed by the pak's "
-                "attach point." % (_SHROUD_FX, bl))
-
-        # ── MIRROR: the WHOLE record, not just the .pfx ────────────────────
-        ours = {}
-        for k, tf in (db.get_fields(_SHROUD_FX) or {}).items():
-            vals = [str(x) for x in (tf.values or [])]
-            ours[k.split('###')[0]] = vals[0] if len(vals) == 1 else vals
-        st, theirs = _demon_fx_record(db)
-        if st == 'SKIP':
-            notes.append("DEMON EFFECTENTITY MIRROR DOWNGRADED (not a pass): the "
-                         "base-game .arz is not reachable, so %s could not be "
-                         "re-derived; the pinned field set was used instead"
-                         % _DEMON_FX_REF)
-            theirs = {f: v for f, v in _DEMON_FX_FIELDS}
-        elif not theirs:
-            problems.append("the demons' own EffectEntity %s could not be read, so "
-                            "the mirror claim cannot be checked" % _DEMON_FX_REF)
-        if theirs:
-            pinned = {f: v for f, v in _DEMON_FX_FIELDS}
-            if st == 'PASS' and {k: str(v) for k, v in theirs.items()} != pinned:
-                problems.append(
-                    "PROVENANCE DRIFT: the demons' own %s now reads %r but this "
-                    "module is pinned to %r. Re-derive rather than letting the "
-                    "mirror silently stop mirroring." % (_DEMON_FX_REF, theirs, pinned))
-            extra = sorted(set(ours) - set(theirs))
-            missing = sorted(set(theirs) - set(ours))
-            if extra or missing:
-                problems.append(
-                    "MIRROR: %s is not a field-for-field copy of the demons' own "
-                    "EffectEntity - extra=%r missing=%r. Round 1 shipped donor "
-                    "residue here (Anchored/emitterType/localOrientFix, all off a "
-                    "WEAPON-BONE-attached effect, unproven on a body attach point) "
-                    "and claimed 'byte-for-byte the demons' own particle' on the "
-                    "strength of the .pfx alone." % (_SHROUD_FX, extra, missing))
-            diff = {f: (ours.get(f), theirs[f]) for f in theirs
-                    if f in ours and _norm(ours[f]) != _norm(theirs[f])}
-            if diff:
-                problems.append(
-                    "MIRROR: %s disagrees with the demons' own record on %r "
-                    "(ours, theirs). Will asked for 'the same one that his demon "
-                    "summon guys have'." % (_SHROUD_FX, diff))
-
-    # ── the pak: one body emitter, on a bone that exists on his rig ─────────
-    if not db.has_record(_SHROUD_PAK):
-        problems.append("shroud CharFxPak missing: %s" % _SHROUD_PAK)
-    else:
-        names = _lst(db, _SHROUD_PAK, 'particleEffectNames')
-        if not names or any(_norm(n) != _norm(_SHROUD_FX) for n in names):
-            problems.append("shroud pak particleEffectNames=%r, expected %r"
-                            % (names, [_SHROUD_FX]))
-        if len(names) != _PARTICLE_COUNT:
-            problems.append(
-                "shroud pak has %d particleEffectNames entr(ies), expected %d - the "
-                "demons carry exactly ONE CreateEntity smoke, so one emitter is the "
-                "faithful match and duplicates would just thicken it."
-                % (len(names), _PARTICLE_COUNT))
-        ap = _lst(db, _SHROUD_PAK, 'particleEffectAttachPoints')
-        if ap != _ATTACH:
-            problems.append(
-                "SHAPE: shroud pak particleEffectAttachPoints=%r, expected %r - the "
-                "attach point the demons' OWN mesh hangs this smoke on, which his "
-                "rig declares too, with a byte-identical block. 'R Hand'/'L Hand' "
-                "is the b98 round-4 defect (smoke off two fists); %r is the helper "
-                "the demons have and he does NOT, so it would render nothing at all."
-                % (ap, _ATTACH, _DEMON_ONLY_ATTACH))
-
-    # ── THE ATTACH POINT IS THE DEMONS' OWN, DERIVED FROM THEIR MESH ────────
-    st, demon_attach = _demon_mesh_attach(db)
+    # ── M1/M2: THE AUTHORED ASSET ──────────────────────────────────────────
+    st, detail = rig_asset_state()
     if st == 'FAIL':
-        problems.append("the marauders (%s) have no mesh, so the attach point we "
-                        "copy cannot be derived at all" % _MARAUDER)
+        problems.append("RIG ASSET: %s" % detail)
     elif st == 'SKIP':
-        notes.append("DEMON-ATTACH PARITY DOWNGRADED (not a pass): the .arc archives "
-                     "are not reachable, so the demons' own CreateEntity attach "
-                     "could not be re-derived; pinned %r was used" % _DEMON_MESH_ATTACH)
-    elif not demon_attach:
-        problems.append(
-            "the marauders' mesh embeds %s with no readable attach point, so 'the "
-            "same one that his demon summon guys have' cannot be matched by "
-            "placement." % _DEMON_FX_REF)
+        if _require_gates():
+            problems.append(
+                "RIG ASSET UNAVAILABLE under SVC_REQUIRE_GATES: %s. This is the arm "
+                "that stops a ship from putting four records on a mesh that resolves "
+                "nowhere; it may not be skipped in a build that ships." % detail)
+        else:
+            notes.append("RIG ASSET DOWNGRADED (not a pass): %s" % detail)
     else:
-        if demon_attach.lower() != _DEMON_MESH_ATTACH.lower():
-            problems.append(
-                "PROVENANCE DRIFT: the demons hang their shroud at %r but this "
-                "module is pinned to %r. Re-derive; a pinned belief about this name "
-                "is exactly what round 1 got backwards."
-                % (demon_attach, _DEMON_MESH_ATTACH))
-        if [a.lower() for a in _lst(db, _SHROUD_PAK, 'particleEffectAttachPoints')] \
-                != [demon_attach.lower()]:
-            problems.append(
-                "SHAPE: the demons hang this smoke at %r; our pak attaches it at %r. "
-                "Same particle at a different place is a different shroud."
-                % (demon_attach,
-                   _lst(db, _SHROUD_PAK, 'particleEffectAttachPoints')))
+        notes.append("RIG ASSET PASS: %s" % detail)
 
-    # ── PROVENANCE, DERIVED FROM THE DEMONS' MESH (not from a comment) ──────
+    # ── PROVENANCE: the exemplar still smokes, and still smokes THAT ────────
     st, refs = _demon_embedded_fx(db)
     if st == 'FAIL':
-        problems.append("the marauders (%s) have no mesh, so the shroud's "
-                        "provenance cannot be derived at all" % _MARAUDER)
+        problems.append("the marauders (%s) have no mesh, so the shroud's provenance "
+                        "cannot be derived at all" % _MARAUDER)
     elif st == 'SKIP':
-        notes.append("DEMON-MESH PROVENANCE DOWNGRADED (not a pass): the .arc "
-                     "archives are not reachable from this working tree, so the "
-                     "marauders' embedded shroud could not be re-derived")
+        notes.append("DEMON-MESH PROVENANCE DOWNGRADED (not a pass): the .arc archives "
+                     "are not reachable from this working tree")
     else:
         stems = [str(r).replace('/', '\\').rsplit('\\', 1)[-1].lower() for r in refs]
         want = _DEMON_FX_REF.rsplit('\\', 1)[-1].lower()
         if want not in stems:
             problems.append(
-                "PROVENANCE: the marauders' mesh no longer embeds %s (it embeds "
-                "%r). The whole premise of this module is that THAT is the shroud "
-                "Will pointed at; re-derive it rather than letting the two drift "
-                "apart." % (want, refs))
-        pfx_stem = _DEMON_PFX.rsplit('\\', 1)[-1].lower()
-        if not pfx_stem.startswith(want[:-4].rstrip('0123456789_')):
-            problems.append(
-                "PROVENANCE: the shroud plays %r, which is not a file of the "
-                "demons' %r family." % (_DEMON_PFX, want))
+                "PROVENANCE: the marauders' mesh no longer embeds %s (it embeds %r). "
+                "The whole premise of this module is that THAT is the shroud Will "
+                "confirmed by eye; re-derive rather than letting the two drift apart."
+                % (want, refs))
+
+    st, demon_attach = _demon_mesh_attach(db)
+    if st == 'FAIL':
+        problems.append("the marauders (%s) have no mesh, so the attach point we copy "
+                        "cannot be derived at all" % _MARAUDER)
+    elif st == 'SKIP':
+        notes.append("DEMON-ATTACH PARITY DOWNGRADED (not a pass): pinned %r was used"
+                     % _DEMON_MESH_ATTACH)
+    elif not demon_attach:
+        problems.append("the marauders' mesh embeds %s with no readable attach point, "
+                        "so 'the same one that his demon summon guys have' cannot be "
+                        "matched by placement." % _DEMON_FX_REF)
+    elif demon_attach.lower() != _DEMON_MESH_ATTACH.lower():
+        problems.append(
+            "PROVENANCE DRIFT: the demons hang their shroud at %r but this module is "
+            "pinned to %r. Re-derive; a pinned belief about this name is exactly what "
+            "round 1 got backwards." % (demon_attach, _DEMON_MESH_ATTACH))
 
     # ── A9 RENDER RESOLUTION: resolution is not rendering ──────────────────
     st, detail = pfx_resolution()
@@ -1104,83 +901,91 @@ def verify(db, tags=None):
     if not db.has_record(_ENSLAVER):
         problems.append("Enslaver missing: %s" % _ENSLAVER)
     if not db.has_record(_ENSLAVER_SUMMON):
-        problems.append(
-            "the Enslaver summon skill is missing (%s), so the pet-tier roster "
-            "cannot be derived and a tier could be silently skipped"
-            % _ENSLAVER_SUMMON)
+        problems.append("the Enslaver summon skill is missing (%s), so the pet-tier "
+                        "roster cannot be derived and a tier could be silently skipped"
+                        % _ENSLAVER_SUMMON)
     tiers = _pet_tiers(db)
     if db.has_record(_ENSLAVER_SUMMON) and not tiers:
         problems.append(
             "%s spawns NO resolvable pet: the derived tier roster is EMPTY. b98 "
-            "shipped a monster-only shroud exactly this way and Will reported it "
-            "as never implemented." % _ENSLAVER_SUMMON)
-    # ── R-255: THE FAMILY, WALKED - boss + escorts + pet tiers + pet-of-pet ──
+            "shipped a monster-only shroud exactly this way and Will reported it as "
+            "never implemented." % _ENSLAVER_SUMMON)
     w1_list = _family_closure(db)
     w1 = set(w1_list)
     escorts = _spawned_by(db, _ENSLAVER) if db.has_record(_ENSLAVER) else []
     if db.has_record(_ENSLAVER) and not escorts:
         problems.append(
-            "FAMILY: the wild Enslaver spawns NO resolvable creature, so his "
-            "ESCORTS are invisible to this gate. b93 never looked at them at all "
-            "and shipped 'the family has the family FX' as an unchecked claim.")
+            "FAMILY: the wild Enslaver spawns NO resolvable creature, so his ESCORTS "
+            "are invisible to this gate. b93 never looked at them at all and shipped "
+            "'the family has the family FX' as an unchecked claim.")
     pet_of_pet = []
     for t in tiers:
         pet_of_pet.extend(r for r in _spawned_by(db, t) if r not in pet_of_pet)
     if tiers and not pet_of_pet:
         problems.append(
             "FAMILY: no pet tier spawns a pet-of-pet. The summoned Enslaver raises "
-            "marauders through %s; an empty sub-roster means a family member Will "
-            "can see in front of him is outside every check."
-            % r'svc_enslaver_petmarauders')
+            "marauders through svc_enslaver_petmarauders; an empty sub-roster means a "
+            "family member Will can see in front of him is outside every check.")
     w2_list = _by_name_tag(db, _family_tags(db, w1_list))
     if w1 and set(w2_list) - w1:
         problems.append(
-            "ROSTER WITNESS DISAGREEMENT: %r carr(y) a family name tag but are "
-            "not reachable from the anchor + summon + spawn walk. A difficulty "
-            "clone or a new tier has appeared (the Hunt has exactly such a clone, "
+            "ROSTER WITNESS DISAGREEMENT: %r carr(y) a family name tag but are not "
+            "reachable from the anchor + summon + spawn walk. A difficulty clone or a "
+            "new tier has appeared (the Hunt has exactly such a clone, "
             "um_toxeus_hunt_l_99) and would ship with no shroud."
             % sorted(set(w2_list) - w1))
 
     roster = shroud_roster(db, w2=w2_list)
-    ours_carriers = set()
-    field_route = set()
+    rigs = {}
     for rec in roster:
-        is_pet = rec != _ENSLAVER
-        tag = ' (PET TIER)' if is_pet else ' (MONSTER)'
+        tag = ' (MONSTER)' if rec == _ENSLAVER else ' (PET/ESCORT)'
 
-        # ── FAMILY FX PARITY: every member, by MESH or by FIELD ────────────
-        mesh_ok, downgraded = _has_mesh_route(db, rec)
-        field_ok = _has_field_route(db, rec)
-        if downgraded:
-            notes.append("MESH ROUTE DOWNGRADED (not a pass) for %s: the .arc "
-                         "archives are unreachable, so %r was resolved against the "
-                         "pinned smoke-rig list"
-                         % (rec.rsplit('\\', 1)[-1], _gv1(db, rec, 'mesh')))
-        if not (mesh_ok or field_ok):
-            missing = [f for f in _ALWAYS_ON_FIELDS
-                       if _norm(_gv1(db, rec, f)) != _norm(_SHROUD)]
+        # ── THE PROVEN CHANNEL, AND NOW THE ONLY ONE ───────────────────────
+        st, ok, detail = mesh_route(db, rec)
+        if st == 'SKIP':
+            if _require_gates():
+                problems.append(
+                    "MESH ROUTE UNAVAILABLE under SVC_REQUIRE_GATES for %s: %s. The "
+                    "shroud is now DERIVED from the rig binary and from nothing else, "
+                    "so an unreadable archive means this member is unchecked."
+                    % (rec, detail))
+            else:
+                notes.append("MESH ROUTE DOWNGRADED (not a pass) for %s: %s"
+                             % (rec.rsplit('\\', 1)[-1], detail))
+        if not ok:
             problems.append(
-                "FAMILY FX PARITY: %s%s wears NEITHER route. Its rig %r does not "
-                "embed the demons' %s, and it is missing the shroud on %r. Every "
-                "member of this household smokes - the wild boss, his escorts, the "
-                "pet tiers a soul summons and the marauders those pets raise - so a "
-                "member without the family FX is the bug Will has now filed four "
-                "times." % (rec, tag, _gv1(db, rec, 'mesh'),
-                            _DEMON_FX_REF.rsplit('\\', 1)[-1], missing))
-        if field_ok:
-            field_route.add(rec)
+                "FAMILY FX PARITY: %s%s does NOT smoke. %s. Every member of this "
+                "household must carry the demons' own CreateEntity block compiled "
+                "into its rig - that is the ONLY mechanism with a confirmed "
+                "rendering exemplar (Will, by eye, on the marauders), and four "
+                "rounds of record-layer channels all failed in game. Give it "
+                "%s (or another rig that embeds %s), never a field."
+                % (rec, tag, detail, SHROUD_RIG,
+                   _DEMON_FX_REF.rsplit('\\', 1)[-1]))
+        rigs[rec] = _gv1(db, rec, 'mesh')
 
-        # ── THE SLOT CEILING: never park the shroud where nothing reads it ──
+        # ── NO BELIEF CHANNELS LEFT BEHIND ─────────────────────────────────
+        residue = _field_route_residue(db, rec)
+        if residue:
+            problems.append(
+                "RETIRED CHANNEL: %s still names the retired %s on %r. R-257 removed "
+                "the FIELD route for two reasons and both still hold: it is the shape "
+                "that reads as 'wired' and is not (five filings), and on a member that "
+                "already smokes from its rig it would DOUBLE the shroud Will asked to "
+                "have 'the same' as his demons'." % (rec, _SHROUD, residue))
         slot = _slot_of(db, rec, _SHROUD)
-        if slot is not None and slot > _ENGINE_SKILL_SLOT_MAX:
+        if slot is not None:
             problems.append(
-                "DEAD SLOT: %s carries the shroud at skillName%d. "
-                "MonsterSkillManager.tpl declares skillName1..%d and NOTHING above "
-                "it, and across 74,013 base-game records no Monster or Pet ever "
-                "uses a higher slot - so that field is read by nobody. This is "
-                "exactly what b93 shipped (skillName19 on the boss, skillName18 on "
-                "every pet tier) and exactly why the smoke never appeared."
-                % (rec, slot, _ENGINE_SKILL_SLOT_MAX))
+                "RETIRED CHANNEL: %s carries the retired shroud at skillName%d. b93 "
+                "shipped exactly this (skillName19 boss / skillName18 pets), in fields "
+                "MonsterSkillManager.tpl declares nowhere." % (rec, slot))
+        ctrl = _gv1(db, rec, 'controller')
+        if ctrl and _is_ours_ctrl(ctrl):
+            problems.append(
+                "RETIRED CHANNEL: %s still runs the R-250 always-on controller clone "
+                "%s. Its only purpose was to fire the retired self-buff shroud; a "
+                "family member on a private AI record for a retired reason is the kind "
+                "of leftover this lane exists to stop." % (rec, ctrl))
         dead = _dead_slots(db, rec)
         if dead:
             notes.append(
@@ -1191,80 +996,11 @@ def verify(db, tags=None):
                    {i: s.rsplit('\\', 1)[-1] for i, s in sorted(dead.items())},
                    _ENGINE_SKILL_SLOT_MAX))
 
-        # A MESH-route member owes nothing below: its smoke is compiled into the
-        # rig, so it needs no AI, no controller clone and no field of ours. The
-        # legs after this block (running FX, CRASH LAW) still cover everybody.
-        if field_ok:
-            # ── ALWAYS ON, and provably visual-only ────────────────────────
-            ctrl = _gv1(db, rec, 'controller')
-            if not ctrl or not db.has_record(str(ctrl)):
-                problems.append("%s has no resolvable controller (%r), so its "
-                                "self-buff shroud can never fire" % (rec, ctrl))
-            else:
-                ours_carriers.add(str(ctrl))
-                if not _is_ours(ctrl):
-                    problems.append(
-                        "%s%s still runs the SHARED controller %s. Either the shroud "
-                        "is combat-gated on it (the WhenEnemyIsSeen default - OFF "
-                        "while Will stands looking at the summoned pet, which is how "
-                        "he inspects it), or a shared AI record was edited in place "
-                        "and 148 other pets moved with it." % (rec, tag, ctrl))
-                trig = str(_gv1(db, str(ctrl), 'BuffSelfBehavior'))
-                if trig != _BUFF_TRIGGER:
-                    problems.append(
-                        "%s: controller %s has BuffSelfBehavior=%r, expected %r. A "
-                        "toggled shroud the AI only fires in combat is not a shroud "
-                        "he wears; that is why this request has now been filed three "
-                        "times." % (rec, ctrl, trig, _BUFF_TRIGGER))
-            # the AI flip is only safe while the shroud is the ONLY self-buff here.
-            # Both declared always-on channels count as "the shroud", not as rivals.
-            others = []
-            probes = list(_skill_slots(db, rec).items())
-            probes += [(f, _gv1(db, rec, f)) for f in _ALWAYS_ON_FIELDS]
-            for i, sk in probes:
-                if not sk or _norm(sk) == _norm(_SHROUD) or not db.has_record(str(sk)):
-                    continue
-                if 'BuffSelf' in str(_gv1(db, str(sk), 'Class') or ''):
-                    others.append((i, sk))
-            if others:
-                problems.append(
-                    "AI SIDE EFFECT: %s carries other Skill_BuffSelf* skill(s) %r. "
-                    "BuffSelfBehavior=%s makes the AI fire ALL of them out of "
-                    "combat, so this lane's visual-only claim no longer holds - "
-                    "split the trigger or get Will's call before shipping."
-                    % (rec, others, _BUFF_TRIGGER))
-
-            # ── RIG: an attach point missing from the rig renders NOTHING ──
-            mesh = _gv1(db, rec, 'mesh')
-            if not mesh:
-                problems.append("%s has no mesh field, so the shroud's attach point "
-                                "cannot be checked against its rig" % rec)
-            else:
-                st, names = _mesh_names(str(mesh))
-                if st == 'SKIP':
-                    notes.append("RIG ATTACH DOWNGRADED (not a pass) for %s: %s could "
-                                 "not be read" % (rec.rsplit('\\', 1)[-1], mesh))
-                else:
-                    # names is CASEFOLDED and spans BOTH namespaces (bone table +
-                    # AttachPoint table). Round 1 resolved this against the bone
-                    # table alone, which cannot see the names this field mostly uses.
-                    missing = [a for a in _lst(db, _SHROUD_PAK,
-                                               'particleEffectAttachPoints')
-                               if a.lower() not in names]
-                    if missing:
-                        problems.append(
-                            "RIG ATTACH: %s wears %s, which declares no %r in either "
-                            "its bone table or its AttachPoint table. An FX aimed at "
-                            "an attach point the mesh does not carry renders NOTHING, "
-                            "silently - the trap R-95 wrote down. (%r is exactly such "
-                            "a name here: the demons declare it, this rig does not.)"
-                            % (rec, mesh, missing, _DEMON_ONLY_ATTACH))
-
         # ── ADD, never take away: the running channel he shares with them ──
         run = _gv1(db, rec, 'charFxPakRunningNames')
         if _norm(run) != _norm(_SHADOWCLOAK_PAK):
             problems.append(
-                "%s: charFxPakRunningNames is %r, expected %s. This module ADDS a "
+                "%s: charFxPakRunningNames is %r, expected %s. This module CHANGES a "
                 "persistent channel; it must never take away the running one that "
                 "matches his marauders." % (rec, run, _SHADOWCLOAK_PAK))
 
@@ -1278,27 +1014,81 @@ def verify(db, tags=None):
                           if k.split('###')[0].lower().startswith('charfxpak')})
             if bad:
                 problems.append(
-                    "CRASH LAW: %s skillName%d -> %s is a SpawnPet skill carrying "
-                    "%r. FX belong on MONSTER-RECORD fields or a "
-                    "Skill_BuffSelfToggled, NEVER a charFxPak on a SpawnPet skill - "
-                    "that is the build28 crash trap." % (rec, i, sk, bad))
+                    "CRASH LAW: %s skillName%d -> %s is a SpawnPet skill carrying %r. "
+                    "FX belong on the MESH or on monster-record fields, NEVER a "
+                    "charFxPak on a SpawnPet skill - the build28 crash trap."
+                    % (rec, i, sk, bad))
 
-    # ── SHARED-RECORD LAW: our clones may not leak onto anything else ───────
+    # ── ONE SWEEP OF THE WHOLE DATABASE, THREE QUESTIONS ───────────────────
+    #   1. does anything still REFERENCE the retired R-250 shroud chain?
+    #   2. does anything still RUN an svc_alwayson_* controller clone?
+    #   3. which (mesh, charAnimationTableName) pairs does a MONSTER vouch for?
+    retired = {_norm(r) for r in _RETIRED_RECORDS}
+    leaks = []
+    monster_pairings = {}
     for n in db.record_names():
+        for k, tf in (db.get_fields(n) or {}).items():
+            for v in (tf.values or []):
+                if _norm(v) in retired:
+                    leaks.append('%s :: %s -> %s' % (n, k.split('###')[0], v))
         c = _gv1(db, n, 'controller')
-        if c and _is_ours(c) and n not in set(roster):
+        if c and _is_ours_ctrl(c):
             problems.append(
-                "SHARED-RECORD LAW: %s (outside the Enslaver roster) now runs the "
-                "always-on controller %s. This lane's AI change must reach the "
-                "Enslaver family and nothing else." % (n, c))
+                "RETIRED CHANNEL: %s runs the retired always-on controller clone %s."
+                % (n, c))
+        if str(_gv1(db, n, 'Class') or '').startswith('Monster'):
+            m = _gv1(db, n, 'mesh')
+            if m:
+                monster_pairings.setdefault(
+                    (_norm(m), _norm(_gv1(db, n, 'charAnimationTableName') or '')),
+                    []).append(n)
+    # the retired chain naturally references ITSELF when the records survive a
+    # re-run over an already-built arz; only references from OUTSIDE it are a leak.
+    leaks = [s for s in leaks if _norm(s.split(' :: ')[0]) not in retired]
+    if leaks:
+        problems.append(
+            "RETIRED CHANNEL: %d live reference(s) to the R-250 shroud chain remain: "
+            "%r. R-257 retired those records; anything still naming them either "
+            "double-emits the shroud or teaches the next reader the wrong design."
+            % (len(leaks), leaks[:6]))
 
-    # the running channel's provenance must still hold on the demons themselves
+    # ── B-SUMMON-1 SAFETY PROPERTY THE MESH SWAP QUIETLY NARROWED ──────────
+    # `validate_summon_pets` step (b) requires every summoned pet's
+    # (mesh, charAnimationTableName) to appear in `proven_pairings`, collected from
+    # real Monster/Pet records. While the tiers rode the BASE rig, dozens of base
+    # records vouched for them. On the mod-authored R-257 rig the ONLY witness in
+    # existence is `um_toxeus_enslaver_99`, a mod Monster that happens to share the
+    # tiers' anim table - so the day a future lane moves the boss off this rig (which
+    # is exactly what champion_mesh's b102 swap once did to him) the three pets'
+    # pairing goes unproven and B-SUMMON-1 reds the build with a message about
+    # rendering rather than about this lane's choice. This arm makes the dependency
+    # explicit and names the cause.
+    ours = _norm(SHROUD_RIG)
+    for rec in roster:
+        if _norm(rigs.get(rec)) != ours:
+            continue
+        if str(_gv1(db, rec, 'Class') or '').startswith('Monster'):
+            continue                              # a Monster vouches for itself
+        anim = _norm(_gv1(db, rec, 'charAnimationTableName') or '')
+        if not monster_pairings.get((ours, anim)):
+            problems.append(
+                "RIG PAIRING UNVOUCHED: %s rides the mod-authored %s with "
+                "charAnimationTableName=%r and NO Monster record wears that same "
+                "(mesh, anim) pair. `validate_summon_pets` B-SUMMON-1 step (b) would "
+                "red this build. The rig is mod-authored, so no base record can ever "
+                "vouch for it: the witness has to be a mod Monster on the same rig "
+                "(today `um_toxeus_enslaver_99`). If a lane deliberately moves the "
+                "boss off this rig, it must move the pets or supply another witness "
+                "in the SAME change."
+                % (rec, SHROUD_RIG, _gv1(db, rec, 'charAnimationTableName')))
+
+    # the running channel's provenance must still hold on the exemplar itself
     if db.has_record(_MARAUDER):
         if _norm(_gv1(db, _MARAUDER, 'charFxPakRunningNames')) != _norm(_SHADOWCLOAK_PAK):
             problems.append("the marauders lost their shadowcloak running FX (%r)"
                             % _gv1(db, _MARAUDER, 'charFxPakRunningNames'))
     else:
-        problems.append("the shroud's provenance record is missing: %s" % _MARAUDER)
+        problems.append("the shroud's exemplar record is missing: %s" % _MARAUDER)
 
     for n in notes:
         print("  [enslaver_shroud] %s" % n)
@@ -1306,22 +1096,26 @@ def verify(db, tags=None):
         for p in problems:
             print("  ENSLAVER-SHROUD OFFENDER: %s" % p)
         raise SystemExit("enslaver_shroud.verify FAILED: %d problem(s)" % len(problems))
-    print("  [enslaver_shroud].verify OK: the WHOLE Enslaver household smokes - all %d "
-          "member(s) walked (the wild boss, his %d escort(s), the %d pet tier(s) his "
-          "soul summons and the %d pet-of-pet marauder(s) those raise), each covered by "
-          "one of the two proven routes: %d wear it compiled into their rig (%s, the "
-          "original) and %d carry a field-for-field mirror of the demons' own "
-          "EffectEntity (%s) at their OWN attach point %r through %s - channels "
-          "MonsterSkillManager actually declares (ceiling skillName%d; b93's "
-          "skillName18/19 were read by nobody) - fired by SVC-owned controller clones "
-          "at BuffSelfBehavior=%s so it is ON out of combat, visual-only (no payload, "
-          "no tint, no donor residue, the only self-buff in any kit). Running FX "
-          "untouched everywhere; no charFxPak on any SpawnPet skill. "
-          "WHAT IS STILL NOT CLAIMED: how it READS in game (BL-R250-DEBT-1)."
+
+    by_rig = {}
+    for rec, m in rigs.items():
+        by_rig.setdefault(str(m), []).append(rec)
+    print("  [enslaver_shroud].verify OK: all %d household member(s) walked (the wild "
+          "boss, his %d escort(s), the %d pet tier(s) his soul summons and the %d "
+          "pet-of-pet marauder(s) those raise) smoke by the ONE mechanism with a "
+          "confirmed rendering exemplar - %s compiled into the rig at attach %r, "
+          "derived from each wearer's .msh binary this build: %s. NO field channel "
+          "survives anywhere (no initialSkillName/buffSelfSkillName shroud, no kit "
+          "slot, no always-on controller clone, zero live references to the retired "
+          "R-250 chain). Running FX untouched; no charFxPak on any SpawnPet skill.\n"
+          "  WHAT IS CLAIMED: these records now reach the screen by the SAME "
+          "mechanism, through the SAME attach point, with the SAME entity reference "
+          "and a byte-identical block, as the marauders Will confirmed by eye. WHAT IS "
+          "NOT CLAIMED: that anyone has SEEN this build render (BL-R250-DEBT-1)."
           % (len(roster), len(escorts), len(tiers), len(pet_of_pet),
-             len(roster) - len(field_route), _DEMON_FX_REF.rsplit('\\', 1)[-1],
-             len(field_route), _DEMON_PFX.rsplit('\\', 1)[-1], _ATTACH[0],
-             '+'.join(_ALWAYS_ON_FIELDS), _ENGINE_SKILL_SLOT_MAX, _BUFF_TRIGGER))
+             _DEMON_FX_REF.rsplit('\\', 1)[-1], _DEMON_MESH_ATTACH,
+             '; '.join('%d on %s' % (len(v), k.rsplit('\\', 1)[-1])
+                       for k, v in sorted(by_rig.items()))))
     return tags
 
 
@@ -1330,19 +1124,19 @@ def verify(db, tags=None):
 def _negtest():
     r"""py tools/patches/enslaver_shroud.py --negtest
 
-    ⚠️ THE STUB'S RIG TABLE IS THE TEST'S OWN PREMISE, AND ROUND 1 PLANTED A FALSE
-    ONE. It injected `{SkeletonGrayBlack01New: {Bone_Waist, Bone_Spine02, ...}}`,
-    i.e. it asserted that his rig has no `SpecialHit01`, then "caught" a plant that
-    aimed the shroud there - certifying the module's own error instead of detecting
-    it. The 24/24 was real for the other 23 plants and circular for that one.
-
-    The table below is now the MEASURED content of both binaries, and `--selftest`
-    re-measures the two facts it rests on against the real archives, so the stub can
-    never again quietly disagree with the assets it stands in for.
+    THE STUB'S RIG TABLE IS THE TEST'S OWN PREMISE, AND ROUND 1 PLANTED A FALSE
+    ONE (it asserted his rig has no `SpecialHit01`, then "caught" a plant that
+    aimed there - certifying the module's own error). Every row below is the
+    MEASURED content of the real binaries, and `--selftest` re-measures them
+    against the archives, so the stub can never again quietly disagree with the
+    assets it stands in for.
     """
     global _RIG_NAMES_OVERRIDE, _DEMON_FX_OVERRIDE, _DEMON_ATTACH_OVERRIDE
-    global _DEMON_FX_RECORD_OVERRIDE, _MESH_SMOKE_OVERRIDE
+    global _MESH_SMOKE_OVERRIDE, _RIG_ASSET_OVERRIDE
+    import os as _os
     from collections import OrderedDict
+
+    _REQ_GATES_WAS = _os.environ.get('SVC_REQUIRE_GATES')
 
     class _TF(object):
         def __init__(self, v):
@@ -1372,288 +1166,388 @@ def _negtest():
         def set_field(self, n, f, v, dt=None):
             self.d.setdefault(n, {})[f] = v if isinstance(v, list) else [v]
 
-    _MESH_M = r'Creatures\Monster\Skeleton\SkeletonGrayBlack01New.msh'
-    _MESH_D = r'Creatures\Monster\ShadowStalker\ShadowStalker.msh'
-    # MEASURED, both binaries, both namespaces (`--selftest` re-checks these two
-    # rows against the real archives). The rigs carry the IDENTICAL SpecialHit0X
-    # set; the demons' ONLY extra helper is `Smoke02`.
+    _MESH_PLAIN = DONOR_RIG                      # FX-free: R-102's anti-green rig
+    _MESH_D = EXEMPLAR_RIG                       # the demons', Will-confirmed
+    _MESH_OURS = SHROUD_RIG                      # R-257's authored rig
     _AP_COMMON = {'Head', 'HeadEffect', 'L Hand', 'Prey_Effect', 'R Hand',
                   'SpecialHit01', 'SpecialHit02', 'SpecialHit03', 'SpecialHit04',
                   'Target', 'Upper Body'}
     _BONES = {'Bone_Root', 'Bone_Waist', 'Bone_Spine01', 'Bone_Spine02', 'Bone_Head',
               'Bone_R_Weapon', 'Bone_L_Weapon'}
-    _RIG = {_norm(_MESH_M): _AP_COMMON | _BONES,
-            _norm(_MESH_D): _AP_COMMON | _BONES | {_DEMON_ONLY_ATTACH}}
+    _RIG_NAMES = {_norm(_MESH_PLAIN): _AP_COMMON | _BONES,
+                  _norm(_MESH_OURS): _AP_COMMON | _BONES,
+                  _norm(_MESH_D): _AP_COMMON | _BONES | {_DEMON_ONLY_ATTACH}}
+    _SMOKE_BLOCK = [(_DEMON_MESH_ATTACH, r'Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr')]
+    _FX_TABLE = {_norm(_MESH_PLAIN): [],
+                 _norm(_MESH_OURS): list(_SMOKE_BLOCK),
+                 _norm(_MESH_D): list(_SMOKE_BLOCK)}
+
     _PETS = [r'records\skills\soulskills\pets\toxeus_enslaver_%d.dbr' % i
              for i in (1, 2, 3)]
-    # R-255: the half of the household b93 never looked at - the pet-of-pet
-    # marauders the SUMMONED Enslaver raises, which is what Will has in front of
-    # him when he says "summoned pets ... still do not have the black smoke".
     _MPETS = [r'records\skills\soulskills\pets\enslaver_marauder_%d.dbr' % i
               for i in (1, 2, 3)]
-    _CTRL_M = r'records\controllers\monster\svc_alwayson_controller_skeleton_toxeus.dbr'
-    _CTRL_P = (r'records\skills\spirit\drxpet\drxpet_controllers'
-               r'\svc_alwayson_controller_skelly_aggressive.dbr')
+    _CTRL_M = r'records\controllers\monster\controller_skeleton_toxeus.dbr'
+    _CTRL_M_CLONE = (r'records\controllers\monster'
+                     r'\svc_alwayson_controller_skeleton_toxeus.dbr')
     _SHARED_P = (r'records\skills\spirit\drxpet\drxpet_controllers'
                  r'\controller_skelly_aggressive.dbr')
+    _CTRL_P_CLONE = (r'records\skills\spirit\drxpet\drxpet_controllers'
+                     r'\svc_alwayson_controller_skelly_aggressive.dbr')
     _SPAWN = r'records\skills\boss skills\svc_enslaver_summonmarauders.dbr'
     _SUBSPAWN = r'records\skills\soulskills\svc_enslaver_petmarauders.dbr'
 
     def _base():
+        """The POST-R-257 shipped shape: everyone smokes from a rig, no fields."""
         db = _Stub()
-        db.d[_SHADOWCLOAK_PAK] = {'particleEffectNames': [_SHADOWCLOAK_FX]}
-        db.d[_SHADOWCLOAK_FX] = {'Class': ['EffectEntity'],
-                                 'effectFile': [r'DRXeffects\shadowcloakrunning.pfx'],
-                                 'boneList': ['Bone_R_Weapon', 'Bone_L_Weapon']}
-        db.d[_SHROUD_FX] = {f: [v] for f, v in _DEMON_FX_FIELDS}
-        db.d[_SHROUD_PAK] = {'particleEffectNames': [_SHROUD_FX] * _PARTICLE_COUNT,
-                             'particleEffectAttachPoints': list(_ATTACH)}
-        db.d[_SHROUD] = {'Class': ['Skill_BuffSelfToggled'],
-                         'charFxPakSelfNames': [_SHROUD_PAK],
-                         'skillWeaponTintRed': [0.0], 'skillWeaponTintGreen': [0.0],
-                         'skillWeaponTintBlue': [0.0]}
+        db.d[_SHADOWCLOAK_PAK] = {'particleEffectNames': ['x']}
         db.d[_MARAUDER] = {'Class': ['Monster'],
                            'description': ['tagSVCMonsterEnslaverMarauder'],
                            'mesh': [_MESH_D],
+                           'controller': [_SHARED_P],
                            'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}
         db.d[_SPAWN] = {'Class': ['Skill_SpawnPetMonster'], 'spawnObjects': [_MARAUDER]}
         db.d[_SUBSPAWN] = {'Class': ['Skill_SpawnPet'], 'spawnObjects': list(_MPETS)}
-        db.d[_CTRL_M] = {'BuffSelfBehavior': [_BUFF_TRIGGER]}
-        db.d[_CTRL_P] = {'BuffSelfBehavior': [_BUFF_TRIGGER]}
+        db.d[_CTRL_M] = {'BuffSelfBehavior': ['WhenEnemyIsSeen']}
+        db.d[_CTRL_M_CLONE] = {'BuffSelfBehavior': ['WheneverPossible']}
         db.d[_SHARED_P] = {'BuffSelfBehavior': ['WhenEnemyIsSeen']}
+        db.d[_CTRL_P_CLONE] = {'BuffSelfBehavior': ['WheneverPossible']}
         db.d[_ENSLAVER] = {'Class': ['Monster'], 'description': ['tagSVCMonsterEnslaver'],
-                           'mesh': [_MESH_M], 'controller': [_CTRL_M],
+                           'mesh': [_MESH_OURS], 'controller': [_CTRL_M],
                            'charFxPakRunningNames': [_SHADOWCLOAK_PAK],
-                           'skillName8': [_SPAWN],
-                           'initialSkillName': [_SHROUD],
-                           'buffSelfSkillName': [_SHROUD]}
+                           'skillName8': [_SPAWN]}
         db.d[_ENSLAVER_SUMMON] = {'Class': ['Skill_SpawnPet'], 'spawnObjects': list(_PETS)}
         for p in _PETS:
             db.d[p] = {'Class': ['Pet'], 'description': ['tagSVCMonsterEnslaverPet'],
-                       'mesh': [_MESH_M], 'controller': [_CTRL_P],
+                       'mesh': [_MESH_OURS], 'controller': [_SHARED_P],
                        'charFxPakRunningNames': [_SHADOWCLOAK_PAK],
-                       'skillName9': [_SUBSPAWN],
-                       'initialSkillName': [_SHROUD],
-                       'buffSelfSkillName': [_SHROUD]}
-        # the pet-of-pet marauders: covered by the MESH route (ShadowStalker.msh
-        # carries the shroud compiled in), so they carry no field of ours at all
+                       'skillName9': [_SUBSPAWN]}
         for p in _MPETS:
             db.d[p] = {'Class': ['Pet'],
                        'description': ['tagSVCMonsterEnslaverMarauderPet'],
                        'mesh': [_MESH_D], 'controller': [_SHARED_P],
                        'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}
-        # a bystander that must NOT move with the Enslaver's AI change
+        # a bystander that must never pick up anything of ours
         db.d[r'records\skills\soulskills\pets\boneash_1.dbr'] = {
             'Class': ['Pet'], 'controller': [_SHARED_P]}
         return db
 
-    def _clear_always_on(db, rec):
-        for f in _ALWAYS_ON_FIELDS:
-            db.d[rec].pop(f, None)
+    def _plant_retired_chain(db):
+        """Re-create the b93/R-250 records so a plant can reference them."""
+        db.d[_SHROUD_FX] = {'Class': ['EffectEntity'], 'effectFile': [_DEMON_PFX]}
+        db.d[_SHROUD_PAK] = {'particleEffectNames': [_SHROUD_FX],
+                             'particleEffectAttachPoints': [_DEMON_MESH_ATTACH]}
+        db.d[_SHROUD] = {'Class': ['Skill_BuffSelfToggled'],
+                         'charFxPakSelfNames': [_SHROUD_PAK]}
 
     plants = [
-        # ── R-255: the reason this was filed a FOURTH time ──────────────────
-        ('THE R-255 DEFECT: the shroud goes back into a slot no skill manager '
-         'reads (skillName19 boss / skillName18 pets, exactly what b93 shipped)',
-         lambda db: [(_clear_always_on(db, r),
-                      db.d[r].__setitem__('skillName19' if r == _ENSLAVER
-                                          else 'skillName18', [_SHROUD]))
-                     for r in [_ENSLAVER] + _PETS]),
-        ('the shroud is parked in a dead slot ON TOP of the working channels, so '
-         'a future reader re-derives the b93 shape as the one that worked',
-         lambda db: db.d[_PETS[0]].__setitem__('skillName18', [_SHROUD])),
-        ('a pet tier loses initialSkillName (the spawn-cast leg)',
-         lambda db: db.d[_PETS[1]].pop('initialSkillName')),
-        ('a pet tier loses buffSelfSkillName (the re-application leg)',
-         lambda db: db.d[_PETS[2]].pop('buffSelfSkillName')),
-        ('STRIP ONE PET: a pet-of-pet marauder is moved onto the FX-free rig and '
-         'given no field route, so one family member wears no family FX',
-         lambda db: db.d[_MPETS[1]].__setitem__('mesh', [_MESH_M])),
-        ('the pet-of-pet sub-summon loses its spawnObjects, so the marauders Will '
-         'actually sees fall out of the roster in silence',
-         lambda db: db.d[_SUBSPAWN].__setitem__('spawnObjects', [])),
-        ('the wild boss stops spawning escorts, so his half of the family is gone',
-         lambda db: db.d[_SPAWN].__setitem__('spawnObjects', [])),
-        ('a NEW pet-of-pet tier is raised and never gets either route',
-         lambda db: (db.d.__setitem__(
-             r'records\skills\soulskills\pets\enslaver_marauder_4.dbr',
-             {'Class': ['Pet'],
-              'description': ['tagSVCMonsterEnslaverMarauderPet'],
-              'mesh': [_MESH_M], 'controller': [_SHARED_P],
-              'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}),
-             db.d[_SUBSPAWN].__setitem__(
-                 'spawnObjects',
-                 _MPETS + [r'records\skills\soulskills\pets\enslaver_marauder_4.dbr']))),
-        ('a difficulty CLONE of a MARAUDER appears wearing the family name tag',
-         lambda db: db.d.__setitem__(
-             r'records\creature\monster\shadowstalker\um_enslaver_marauder_l_99.dbr',
-             {'Class': ['Monster'], 'description': ['tagSVCMonsterEnslaverMarauder'],
-              'mesh': [_MESH_D], 'charFxPakRunningNames': [_SHADOWCLOAK_PAK]})),
-        ('the marauders rig stops carrying the compiled-in smoke, so the MESH '
-         'route silently stops covering every marauder in the household',
-         lambda db: _set_mesh_smoke({_norm(_MESH_M): False, _norm(_MESH_D): False})),
-        # ── b104: the reason this was filed a third time ────────────────────
-        ('THE b104 DEFECT: the shroud is combat-gated again (WhenEnemyIsSeen)',
-         lambda db: db.d[_CTRL_P].__setitem__('BuffSelfBehavior', ['WhenEnemyIsSeen'])),
-        ('a pet is left on the SHARED controller, so its shroud is combat-gated',
-         lambda db: db.d[_PETS[0]].__setitem__('controller', [_SHARED_P])),
-        ('the shared pet controller is edited IN PLACE (148 other pets move with it)',
-         lambda db: [db.d[p].__setitem__('controller', [_SHARED_P]) for p in _PETS]
-         + [db.d[_SHARED_P].__setitem__('BuffSelfBehavior', [_BUFF_TRIGGER])]),
-        ('our always-on controller leaks onto a record outside the roster',
-         lambda db: db.d[r'records\skills\soulskills\pets\boneash_1.dbr']
-         .__setitem__('controller', [_CTRL_P])),
-        ('a real self-buff joins the kit, so the AI flip stops being visual-only',
-         lambda db: (db.d.__setitem__(r'records\skills\x\rage.dbr',
-                                      {'Class': ['Skill_BuffSelfDuration']}),
-                     db.d[_ENSLAVER].__setitem__('skillName20',
-                                                 [r'records\skills\x\rage.dbr']))),
-        # ── b104 round 2: the attach-point class, planted on TRUE rigs ──────
-        ('the shroud is aimed at Smoke02 - a helper the DEMONS have and he does not',
-         lambda db: db.d[_SHROUD_PAK].__setitem__('particleEffectAttachPoints',
-                                                  [_DEMON_ONLY_ATTACH])),
-        ('the shroud drifts off the demons OWN attach point (round 1s Bone_Waist)',
-         lambda db: db.d[_SHROUD_PAK].__setitem__('particleEffectAttachPoints',
-                                                  ['Bone_Waist'])),
-        ('the demons move their shroud, so our pinned attach point goes stale',
-         lambda db: _set_demon_attach('Smoke02')),
-        ('the attach point is dropped, so placement is undefined',
-         lambda db: db.d[_SHROUD_PAK].pop('particleEffectAttachPoints')),
-        # ── b104 round 2: the EffectEntity-mirror class ─────────────────────
-        ('donor residue survives on the EffectEntity (localOrientFix off a weapon FX)',
-         lambda db: db.d[_SHROUD_FX].__setitem__('localOrientFix', [1])),
-        ('the EffectEntity loses ActorName, which the demons record carries',
-         lambda db: db.d[_SHROUD_FX].pop('ActorName')),
-        ('the demons EffectEntity changes, so our pinned mirror goes stale',
-         lambda db: _set_demon_fx_record(
-             {'templateName': r'database\Templates\Effect.tpl',
-              'ActorName': 'Something_Else', 'Class': 'EffectEntity',
-              'effectFile': _DEMON_PFX})),
-        ('the b98 R Hand attach residue is left on the shroud skill',
-         lambda db: db.d[_SHROUD].__setitem__('particleEffectAttachPoint1',
-                                              ['R Hand'])),
-        ('the b98 round-4 defect returns: smoke off two fists',
-         lambda db: db.d[_SHROUD_PAK].__setitem__('particleEffectAttachPoints',
-                                                  ['R Hand', 'L Hand'])),
-        ('the weapon boneList comes back on the EffectEntity (fists again)',
-         lambda db: db.d[_SHROUD_FX].__setitem__('boneList',
-                                                 ['Bone_R_Weapon', 'Bone_L_Weapon'])),
-        ('the shroud stops playing the demons own .pfx',
-         lambda db: db.d[_SHROUD_FX].__setitem__(
-             'effectFile', [r'DRXeffects\shadowcloakrunning.pfx'])),
-        ('the marauders mesh no longer embeds the shroud (provenance is gone)',
-         lambda db: _set_demon_fx([r'Records\Effects\MonsterFX\Something_Else.dbr'])),
-        ('the wearer loses his mesh, so the rig check cannot run',
+        # ── R-257: the five-filings defect itself ───────────────────────────
+        ('THE R-257 DEFECT: a summoned pet tier is left on the FX-free rig, so it '
+         'renders no smoke at all (Will\'s 08-15 screenshot)',
+         lambda db: db.d[_PETS[0]].__setitem__('mesh', [_MESH_PLAIN])),
+        ('the WILD boss is left on the FX-free rig',
+         lambda db: db.d[_ENSLAVER].__setitem__('mesh', [_MESH_PLAIN])),
+        ('ALL THREE pet tiers left on the FX-free rig',
+         lambda db: [db.d[p].__setitem__('mesh', [_MESH_PLAIN]) for p in _PETS]),
+        ('STRIP ONE PET: a pet-of-pet marauder is moved onto the FX-free rig '
+         '(the R-255 negtest, still required)',
+         lambda db: db.d[_MPETS[2]].__setitem__('mesh', [_MESH_PLAIN])),
+        ('the wild marauder - the EXEMPLAR - is moved onto the FX-free rig',
+         lambda db: db.d[_MARAUDER].__setitem__('mesh', [_MESH_PLAIN])),
+        ('a family member has no mesh field at all',
          lambda db: db.d[_PETS[1]].pop('mesh')),
-        # ── inherited legs that must not regress ───────────────────────────
-        ('THE b98 DEFECT: shroud on the monster, on NO pet tier',
-         lambda db: [_clear_always_on(db, p) for p in _PETS]),
-        ('one pet tier is skipped while the other two are wired',
-         lambda db: _clear_always_on(db, _PETS[1])),
-        ('a NEW 4th pet tier is summoned and never gets the shroud',
-         lambda db: (db.d.__setitem__(
-             r'records\skills\soulskills\pets\toxeus_enslaver_4.dbr',
-             {'Class': ['Pet'], 'description': ['tagSVCMonsterEnslaverPet'],
-              'mesh': [_MESH_M], 'controller': [_CTRL_P],
-              'charFxPakRunningNames': [_SHADOWCLOAK_PAK]}),
-             db.d[_ENSLAVER_SUMMON].__setitem__(
-                 'spawnObjects',
-                 _PETS + [r'records\skills\soulskills\pets\toxeus_enslaver_4.dbr']))),
-        ('a LEGENDARY difficulty clone appears wearing his name tag',
+
+        # ── the BELIEF-CHANNEL replant: the whole point of R-257's retirement ─
+        ('BELIEF CHANNEL REPLANTED: a member wears the R-257 rig but ALSO carries '
+         'the retired shroud on both always-on channels (the b99 shape, which now '
+         'DOUBLES the smoke and re-teaches the wrong design)',
+         lambda db: (_plant_retired_chain(db),
+                     [db.d[_PETS[0]].__setitem__(f, [_SHROUD])
+                      for f in _ALWAYS_ON_FIELDS])),
+        ('BELIEF-CHANNEL-ONLY MEMBER: a pet tier is put back on the FX-free rig and '
+         'given the b99 field route instead - exactly what shipped as build99 and '
+         'exactly what Will photographed not working',
+         lambda db: (_plant_retired_chain(db),
+                     db.d[_PETS[2]].__setitem__('mesh', [_MESH_PLAIN]),
+                     [db.d[_PETS[2]].__setitem__(f, [_SHROUD])
+                      for f in _ALWAYS_ON_FIELDS])),
+        ('the retired shroud comes back in ONE always-on channel only',
+         lambda db: (_plant_retired_chain(db),
+                     db.d[_ENSLAVER].__setitem__('initialSkillName', [_SHROUD]))),
+        ('THE b93 DEFECT REPLAYED: the retired shroud back in skillName19/18',
+         lambda db: (_plant_retired_chain(db),
+                     db.d[_ENSLAVER].__setitem__('skillName19', [_SHROUD]),
+                     [db.d[p].__setitem__('skillName18', [_SHROUD]) for p in _PETS])),
+        ('a member is left on the R-250 always-on controller clone',
+         lambda db: db.d[_PETS[1]].__setitem__('controller', [_CTRL_M_CLONE])),
+        ('a BYSTANDER outside the family is left on an always-on controller clone',
+         lambda db: db.d[r'records\skills\soulskills\pets\boneash_1.dbr']
+         .__setitem__('controller', [_CTRL_P_CLONE])),
+        ('an unrelated record still REFERENCES the retired shroud skill',
+         lambda db: (_plant_retired_chain(db),
+                     db.d.__setitem__(r'records\skills\zz_someone_else.dbr',
+                                      {'buffSelfSkillName': [_SHROUD]}))),
+
+        # ── the rig itself, and the asset behind it ────────────────────────
+        ('THE DEPLOY COUPLING: the authored rig is not in the staged mod '
+         'Creatures.arc, so the whole family would resolve NO MESH',
+         lambda db: globals().__setitem__(
+             '_RIG_ASSET_OVERRIDE',
+             ('FAIL', 'the staged mod archive does NOT carry %r' % SHROUD_RIG_ENTRY))),
+        ('the authored rig is not derivable from the base binaries at all',
+         lambda db: globals().__setitem__(
+             '_RIG_ASSET_OVERRIDE',
+             ('FAIL', 'the rig is not derivable from the base binaries'))),
+        # NOTE: these plants edit the PER-RUN copy `_MESH_SMOKE_OVERRIDE`, never the
+        # master `_FX_TABLE` - a leaked mutation would make the NEXT plant's "catch"
+        # a lie about a different defect.
+        ('the rig embeds the effect but hangs it on the WRONG attach point '
+         '(Smoke02 - the helper the demons have and his rig does not)',
+         lambda db: _MESH_SMOKE_OVERRIDE.__setitem__(
+             _norm(_MESH_OURS), [(_DEMON_ONLY_ATTACH,
+                                  r'Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr')])),
+        ('the rig embeds the WRONG effect (the R-102 green)',
+         lambda db: _MESH_SMOKE_OVERRIDE.__setitem__(
+             _norm(_MESH_OURS),
+             [(_DEMON_MESH_ATTACH,
+               r'Records\Effects\MonsterFX\Buffs\RevenantPoison_FX.dbr')])),
+        ('the EXEMPLAR mesh loses its compiled-in smoke, so the provenance claim '
+         'is no longer true of anything',
+         lambda db: (_MESH_SMOKE_OVERRIDE.__setitem__(_norm(_MESH_D), []),
+                     _MESH_SMOKE_OVERRIDE.__setitem__(_norm(_MESH_OURS), []))),
+        ('the demons move their shroud to a different attach point',
+         lambda db: (_MESH_SMOKE_OVERRIDE.__setitem__(
+             _norm(_MESH_D), [('Smoke02',
+                               r'Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr')]),
+             globals().__setitem__('_DEMON_ATTACH_OVERRIDE', 'Smoke02'))),
+
+        # ── the B-SUMMON-1 pairing property the mesh swap narrowed ──────────
+        # These two cannot be seen by ANY other arm: the family still smokes, the
+        # rig is still correct, every retirement still holds. Only the pairing
+        # witness is gone, and the build would red much later in
+        # validate_summon_pets with a message about rendering.
+        ('PAIRING WITNESS LOST: the boss is moved onto the demons\' rig - he still '
+         'smokes, so every FX arm is happy - and the three pet tiers left on the '
+         'mod-authored rig now have NO Monster vouching their (mesh, anim) pair',
+         lambda db: db.d[_ENSLAVER].__setitem__('mesh', [_MESH_D])),
+        ('PAIRING WITNESS LOST the other way: a pet tier is given an anim table no '
+         'Monster on its rig uses',
+         lambda db: db.d[_PETS[1]].__setitem__(
+             'charAnimationTableName',
+             [r'records\creature\pc\anm_something_else.dbr'])),
+
+        # ── roster integrity (the R-255 half, unchanged) ────────────────────
+        ('the summon spawns nothing, so the pet-tier roster goes silently empty',
+         lambda db: db.d[_ENSLAVER_SUMMON].__setitem__('spawnObjects', [])),
+        ('the wild boss stops spawning escorts, so his marauders leave the gate',
+         lambda db: db.d[_SPAWN].__setitem__('spawnObjects', [])),
+        ('the pet tiers stop raising pet-of-pet marauders',
+         lambda db: db.d[_SUBSPAWN].__setitem__('spawnObjects', [])),
+        ('a DIFFICULTY CLONE wearing a family name tag appears outside the walk',
          lambda db: db.d.__setitem__(
              r'records\creature\monster\shadowstalker\um_toxeus_enslaver_l_99.dbr',
              {'Class': ['Monster'], 'description': ['tagSVCMonsterEnslaver'],
-              'mesh': [_MESH_M], 'controller': [_CTRL_M]})),
-        ('the summon loses its spawnObjects, so the tier roster goes silently empty',
-         lambda db: db.d[_ENSLAVER_SUMMON].__setitem__('spawnObjects', [])),
-        ('the shroud is left ONLY on the AI leg, so a pet that never gets a '
-         'BuffSelf tick out of combat shows nothing while Will inspects it',
-         lambda db: db.d[_PETS[0]].pop('initialSkillName')),
-        ('the shroud grows a combat payload',
-         lambda db: db.d[_SHROUD].__setitem__('offensivePhysicalMin', [500.0])),
-        ('the donor purple tint comes back',
-         lambda db: db.d[_SHROUD].__setitem__('skillWeaponTintBlue', [1.0])),
-        ('the shroud stops being a self-buff toggle',
-         lambda db: db.d[_SHROUD].__setitem__('Class', ['Skill_AttackRadius'])),
-        ('a pet loses the pre-existing DRX running smoke',
-         lambda db: db.d[_PETS[2]].__setitem__('charFxPakRunningNames', [''])),
-        ('CRASH LAW: a charFxPak lands on his SpawnPet skill (the build28 trap)',
-         lambda db: db.d[_SPAWN].__setitem__('charFxPakSelfNames', [_SHROUD_PAK])),
-        ('the demons themselves lose the running shroud (provenance unevidenced)',
-         lambda db: db.d[_MARAUDER].__setitem__('charFxPakRunningNames', [''])),
+              'mesh': [_MESH_PLAIN], 'controller': [_CTRL_M],
+              'charFxPakRunningNames': [_SHADOWCLOAK_PAK]})),
+
+        # ── standing laws ──────────────────────────────────────────────────
+        ('a member loses the running channel he shares with his demons',
+         lambda db: db.d[_PETS[1]].pop('charFxPakRunningNames')),
+        ('the marauders lose their running channel',
+         lambda db: db.d[_MARAUDER].__setitem__('charFxPakRunningNames', ['other'])),
+        ('CRASH LAW: a charFxPak is put on a SpawnPet skill (the build28 trap)',
+         lambda db: db.d[_SPAWN].__setitem__('charFxPakSelfNames', [_SHADOWCLOAK_PAK])),
+        ('the exemplar record itself disappears',
+         lambda db: db.d.pop(_MARAUDER)),
+
+        # ── an UNANSWERABLE gate is not a passing gate (SVC_REQUIRE_GATES) ──
+        ('SHIP BUILD with the rig-asset arm UNAVAILABLE: the archives cannot be '
+         'read, so nothing proves the mesh those four records name actually ships',
+         lambda db: (_os.environ.__setitem__('SVC_REQUIRE_GATES', '1'),
+                     globals().__setitem__(
+                         '_RIG_ASSET_OVERRIDE',
+                         ('SKIP', 'no mod Creatures.arc reachable')))),
+        ('SHIP BUILD with a member\'s RIG UNREADABLE: the shroud is derived from the '
+         'binary and from nothing else, so that member is simply unchecked',
+         lambda db: (_os.environ.__setitem__('SVC_REQUIRE_GATES', '1'),
+                     _MESH_SMOKE_OVERRIDE.pop(_norm(_MESH_OURS)))),
     ]
 
-    def _set_demon_fx(v):
-        global _DEMON_FX_OVERRIDE
-        _DEMON_FX_OVERRIDE = v
+    def _arm():
+        """Re-arm every injected answer to its MEASURED clean value.
 
-    def _set_demon_attach(v):
-        global _DEMON_ATTACH_OVERRIDE
-        _DEMON_ATTACH_OVERRIDE = v
+        Rebuilt from scratch per plant: several plants mutate the FX table in
+        place, and a leaked mutation would make the NEXT plant's 'catch' a lie
+        about a different defect - the negtest twin of the round-1 stub error.
+        """
+        global _RIG_NAMES_OVERRIDE, _DEMON_FX_OVERRIDE, _DEMON_ATTACH_OVERRIDE
+        global _MESH_SMOKE_OVERRIDE, _RIG_ASSET_OVERRIDE
+        _RIG_NAMES_OVERRIDE = {k: set(v) for k, v in _RIG_NAMES.items()}
+        _DEMON_FX_OVERRIDE = None
+        _DEMON_ATTACH_OVERRIDE = None
+        _RIG_ASSET_OVERRIDE = ('PASS', 'stub: derived + staged')
+        _MESH_SMOKE_OVERRIDE = {k: list(v) for k, v in _FX_TABLE.items()}
+        # the two SVC_REQUIRE_GATES plants set this; a leak would make every LATER
+        # plant run under a different contract than the baseline it was compared to
+        _os.environ.pop('SVC_REQUIRE_GATES', None)
+        return _MESH_SMOKE_OVERRIDE
 
-    def _set_demon_fx_record(v):
-        global _DEMON_FX_RECORD_OVERRIDE
-        _DEMON_FX_RECORD_OVERRIDE = v
-
-    def _set_mesh_smoke(v):
-        global _MESH_SMOKE_OVERRIDE
-        _MESH_SMOKE_OVERRIDE = v
-
-    clean_fx = [r'Records\Effects\MonsterFX\ShadowStalker_Smoke.dbr']
-    clean_attach = _DEMON_MESH_ATTACH
-    clean_rec = {f: v for f, v in _DEMON_FX_FIELDS}
-    # MEASURED: the demons' rig carries the shroud compiled in, his does not.
-    # That asymmetry IS the module's premise, so the stub states it explicitly
-    # and `--selftest` re-derives both halves from the real binaries.
-    clean_smoke = {_norm(_MESH_D): True, _norm(_MESH_M): False}
-
-    def _reset():
-        global _RIG_NAMES_OVERRIDE, _DEMON_FX_OVERRIDE
-        global _DEMON_ATTACH_OVERRIDE, _DEMON_FX_RECORD_OVERRIDE
-        global _MESH_SMOKE_OVERRIDE
-        _RIG_NAMES_OVERRIDE = _RIG
-        _DEMON_FX_OVERRIDE = list(clean_fx)
-        _DEMON_ATTACH_OVERRIDE = clean_attach
-        _DEMON_FX_RECORD_OVERRIDE = dict(clean_rec)
-        _MESH_SMOKE_OVERRIDE = dict(clean_smoke)
-
-    _reset()
-    try:
-        verify(_base())
-    except SystemExit as e:
-        print("NEGTEST SETUP FAIL: the clean stub should PASS but raised: %s" % e)
-        return 1
     bad = 0
-    for label, plant in plants:
-        _reset()
+    for label, mutate in plants:
+        # sanity: the CLEAN baseline must PASS, or every "catch" below is noise
+        _arm()
+        try:
+            verify(_base())
+        except SystemExit as e:
+            print("SETUP FAIL (clean baseline does not verify): %s" % e)
+            _clear_overrides()
+            return 1
+        _arm()
         db = _base()
-        plant(db)
+        mutate(db)
         try:
             verify(db)
         except SystemExit:
-            print("  negtest OK  (caught): %s" % label)
-            continue
-        print("  negtest FAIL (missed): %s" % label)
-        bad += 1
-    # CLEAR, never _reset(): leaving the clean overrides in place would make a
-    # combined `--negtest --selftest` run check the pinned values against
-    # themselves and report a real-asset PASS it never performed. Test hooks must
-    # not survive the test - that is the same class of error as round 1's stub
-    # asserting the module's own premise.
+            print("  CAUGHT  %s" % label)
+        else:
+            print("  MISSED  %s   <<< the gate did not see this" % label)
+            bad += 1
+
+    # A gate left holding its stubs would pass on injected answers for the rest of
+    # the process and report a real-asset PASS it never performed. Same for the env
+    # var two plants set: restore whatever the caller had.
     _clear_overrides()
-    print("negtest: %d/%d plants caught" % (len(plants) - bad, len(plants)))
-    return 1 if bad else 0
+    if _REQ_GATES_WAS is None:
+        _os.environ.pop('SVC_REQUIRE_GATES', None)
+    else:
+        _os.environ['SVC_REQUIRE_GATES'] = _REQ_GATES_WAS
+    stub_caught = len(plants) - bad
+    print("  stub plants: %d/%d caught" % (stub_caught, len(plants)))
+
+    # The half that runs the REAL function against REAL archives. Kept in the same
+    # command deliberately: a `--negtest` that green-lights a module while the
+    # build-deciding function was never executed is the defect this lane shipped.
+    ra_ok, ra_n = _negtest_rig_asset()
+    print("negtest: %d/%d caught (%d/%d stubbed plants + %d/%d unstubbed rig-asset "
+          "arms)" % (stub_caught + ra_ok, len(plants) + ra_n,
+                     stub_caught, len(plants), ra_ok, ra_n))
+    return 1 if (bad or ra_ok != ra_n) else 0
 
 
 def _clear_overrides():
     global _RIG_NAMES_OVERRIDE, _DEMON_FX_OVERRIDE
-    global _DEMON_ATTACH_OVERRIDE, _DEMON_FX_RECORD_OVERRIDE
-    global _MESH_SMOKE_OVERRIDE
+    global _DEMON_ATTACH_OVERRIDE, _MESH_SMOKE_OVERRIDE, _RIG_ASSET_OVERRIDE
     _RIG_NAMES_OVERRIDE = None
     _DEMON_FX_OVERRIDE = None
     _DEMON_ATTACH_OVERRIDE = None
-    _DEMON_FX_RECORD_OVERRIDE = None
     _MESH_SMOKE_OVERRIDE = None
+    _RIG_ASSET_OVERRIDE = None
+
+
+# ── NEGATIVE TEST, PART 2: THE REAL rig_asset_state() ────────────────────────
+
+def _negtest_rig_asset():
+    r"""py tools/patches/enslaver_shroud.py --negtest   (this half runs unstubbed)
+
+    ROUND 1'S NEGTEST COULD NOT SEE EITHER OF ITS OWN P0s, AND THAT WAS STRUCTURAL.
+    Every plant above runs against a dict stub with `_RIG_ASSET_OVERRIDE` injected,
+    so the function that walks the staged archives and decides the build's fate -
+    `rig_asset_state()` - was executed by NO plant. `docs/MISTAKES.md` had logged
+    exactly that shape for R-256 one day earlier ("--negtest runs this module
+    STANDALONE ... and never the shared gates the module opts into") and this lane
+    reproduced the blind spot while citing the entry.
+
+    So this half plants REAL archives on disk, points the REAL shipping anchor at
+    them and runs the REAL function. It needs the base binaries (the rig is derived,
+    never checked in); when they are unreachable it says so and passes nothing.
+    """
+    import os as _os
+    import shutil as _shutil
+    import tempfile as _tempfile
+    from pathlib import Path as _P
+
+    print('--- rig-asset arm, UNSTUBBED (real archives on disk) ---')
+    _clear_overrides()
+    import mesh_assets
+    from arc_patcher import ArcArchive
+    try:
+        rig = _rig.rig_bytes_checked()
+    except Exception as e:                                   # noqa: BLE001
+        print('  SKIP: the base archives are not reachable, so no real rig can be '
+              'derived and none of these arms can run (%s)' % e)
+        return 0, 0
+
+    was_ship = _os.environ.get('SVC_SHIP_RESOURCES')
+    was_mod = _os.environ.get('SVC_MOD_RESOURCES')
+    was_cwd = _os.getcwd()
+    root = _P(_tempfile.mkdtemp(prefix='svc_rigasset_'))
+
+    def _arc(path, entries):
+        a = ArcArchive()
+        for name, data in entries.items():
+            a.add_file(name, data)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        a.write(path)
+        return path
+
+    DYE = 'pc/male/svc_dummy_skin.tex'          # stands in for the PR-2 dye payload
+    good = {DYE: b'x' * 64, SHROUD_RIG_ENTRY: rig}
+    stale = {DYE: b'x' * 64}                    # the SHIPPED build100 shape: no rig
+    torn = {DYE: b'x' * 64, SHROUD_RIG_ENTRY: rig[:-40]}
+
+    _arc(root / 'ship_ok' / 'Resources' / 'Creatures.arc', good)
+    _arc(root / 'ship_stale' / 'Resources' / 'Creatures.arc', stale)
+    _arc(root / 'ship_torn' / 'Resources' / 'Creatures.arc', torn)
+    (root / 'ship_noarc' / 'Resources').mkdir(parents=True, exist_ok=True)
+    # a STALE scratch tree in the CWD glob path - round 1 let this red the build
+    _arc(root / 'cwd' / 'local' / 'b100_run2' / 'Resources' / 'Creatures.arc', stale)
+    _arc(root / 'cwd' / 'work' / 'SoulvizierClassic' / 'Resources' / 'Creatures.arc', good)
+
+    arms = [
+        ('the shipping archive CARRIES the byte-identical rig',
+         root / 'ship_ok' / 'Resources', root / 'cwd', 'PASS'),
+        ('THE ROUND-1 P0: the shipping archive is the build100-era dye arc with NO '
+         'rig, so the family would resolve no mesh at all',
+         root / 'ship_stale' / 'Resources', root / 'cwd', 'FAIL'),
+        ('the shipping Resources dir exists but holds NO Creatures.arc',
+         root / 'ship_noarc' / 'Resources', root / 'cwd', 'FAIL'),
+        ('the shipping archive carries a TORN rig (right name, wrong bytes)',
+         root / 'ship_torn' / 'Resources', root / 'cwd', 'FAIL'),
+        ('the anchor names a Resources dir that does not exist (scratch layout) - '
+         'honestly unanswerable, never a pass',
+         root / 'ship_missing' / 'Resources', root / 'cwd', 'SKIP'),
+        ('THE ROUND-1 P0, OTHER HALF: the shipping archive is GOOD while a STALE '
+         'scratch archive sits in local/*/Resources - round 1 asked every glob hit '
+         'and would have red-locked this build forever',
+         root / 'cwd' / 'work' / 'SoulvizierClassic' / 'Resources', root / 'cwd',
+         'PASS'),
+    ]
+
+    bad = 0
+    try:
+        for label, anchor, cwd, want in arms:
+            _os.chdir(str(cwd))
+            _os.environ.pop('SVC_MOD_RESOURCES', None)
+            mesh_assets.set_shipping_resource_dir(anchor)
+            st, detail = rig_asset_state()
+            ok = (st == want)
+            print('  %-7s %s%s\n          -> %s: %s'
+                  % ('OK' if ok else 'WRONG', label,
+                     '' if ok else '   <<< expected %s, got %s' % (want, st),
+                     st, detail[:150]))
+            if not ok:
+                bad += 1
+    finally:
+        _os.chdir(was_cwd)
+        _os.environ.pop('SVC_SHIP_RESOURCES', None)
+        _os.environ.pop('SVC_MOD_RESOURCES', None)
+        if was_ship is not None:
+            _os.environ['SVC_SHIP_RESOURCES'] = was_ship
+        if was_mod is not None:
+            _os.environ['SVC_MOD_RESOURCES'] = was_mod
+        mesh_assets._ARC_CACHE.clear()
+        _shutil.rmtree(root, ignore_errors=True)
+    print('  rig-asset arms: %d/%d correct' % (len(arms) - bad, len(arms)))
+    return len(arms) - bad, len(arms)
 
 
 # ── INSTRUMENT SELF-TEST (the round-1 failure mode, closed) ─────────────────
@@ -1662,10 +1556,9 @@ def _selftest():
     r"""py tools/patches/enslaver_shroud.py --selftest
 
     A negative test can only ever be as true as the premise its stub asserts, and
-    round 1's stub asserted a false one. This checks the MEASUREMENT ITSELF against
-    the real archives: it re-reads both mesh binaries and requires the facts this
-    module's design rests on to still hold. Loud SKIP when the archives are not
-    reachable - never a silent pass.
+    round 1's stub asserted a false one. This checks the MEASUREMENT ITSELF
+    against the real archives. Loud SKIP when they are not reachable - never a
+    silent pass.
     """
     _clear_overrides()          # this leg reads the REAL assets or nothing at all
     try:
@@ -1676,11 +1569,9 @@ def _selftest():
     if not mesh_assets.arcs_available():
         print("SELFTEST SKIP: no reachable .arc archives from this working tree")
         return 0
-    m_his = r'Creatures\Monster\Skeleton\SkeletonGrayBlack01New.msh'
-    m_dem = r'Creatures\Monster\ShadowStalker\ShadowStalker.msh'
     bad = []
     rigs = {}
-    for ref in (m_his, m_dem):
+    for ref in (DONOR_RIG, EXEMPLAR_RIG):
         data, arc = mesh_assets.read_asset(ref)
         if not data:
             print("SELFTEST SKIP: %s did not resolve" % ref)
@@ -1688,69 +1579,76 @@ def _selftest():
         rigs[ref] = {'names': {n.lower() for n in mesh_assets.rig_names_of(data)},
                      'attach': mesh_assets.attach_points_of(data),
                      'bones': mesh_assets.bones_of(data),
-                     'fx_at': mesh_assets.embedded_fx_attachments_of(data),
-                     'arc': arc}
-        print("  %-34s %d bone(s) + %d attach point(s)  %s"
+                     'fx_at': mesh_assets.embedded_fx_attachments_of(data)}
+        print("  %-34s %d bone(s) + %d attach point(s), FX %r"
               % (ref.rsplit('\\', 1)[-1], len(rigs[ref]['bones']),
-                 len(rigs[ref]['attach']), rigs[ref]['attach']))
+                 len(rigs[ref]['attach']), rigs[ref]['fx_at']))
 
-    # 1. the instrument is not blind: the AttachPoint table must be non-empty and
-    #    must NOT be findable by a NUL-anchored scan (that is the whole bug).
-    if not rigs[m_his]['attach']:
+    # 1. the instrument is not blind: AttachPoint names are NOT NUL-terminated and
+    #    must be found anyway (the round-1 bug that became design law).
+    if not rigs[DONOR_RIG]['attach']:
         bad.append("attach_points_of() found NO AttachPoint on %s - the reader is "
-                   "blind again and every RIG ATTACH result is meaningless" % m_his)
-    nul_only = {n.lower() for n in rigs[m_his]['bones']}
-    if _DEMON_MESH_ATTACH.lower() in nul_only:
+                   "blind again and every rig result is meaningless" % DONOR_RIG)
+    if _DEMON_MESH_ATTACH.lower() in {n.lower() for n in rigs[DONOR_RIG]['bones']}:
         bad.append("%r turned up in the BONE table, so this selftest no longer "
                    "distinguishes the two namespaces" % _DEMON_MESH_ATTACH)
 
     # 2. the load-bearing fact: the attach point we copy is on HIS rig.
-    if _DEMON_MESH_ATTACH.lower() not in rigs[m_his]['names']:
-        bad.append("%r is NOT on %s. That is round 1's claim, and if it is ever "
-                   "true again this module aims at nothing." % (_DEMON_MESH_ATTACH, m_his))
+    if _DEMON_MESH_ATTACH.lower() not in rigs[DONOR_RIG]['names']:
+        bad.append("%r is NOT on %s. That is round 1's claim, and if it is ever true "
+                   "again this module aims at nothing." % (_DEMON_MESH_ATTACH, DONOR_RIG))
 
     # 3. the counter-example must stay a counter-example.
-    if _DEMON_ONLY_ATTACH.lower() in rigs[m_his]['names']:
+    if _DEMON_ONLY_ATTACH.lower() in rigs[DONOR_RIG]['names']:
         bad.append("%r is now on HIS rig too, so it is no longer the missing-attach "
                    "example the gate and the negtest use" % _DEMON_ONLY_ATTACH)
-    if _DEMON_ONLY_ATTACH.lower() not in rigs[m_dem]['names']:
+    if _DEMON_ONLY_ATTACH.lower() not in rigs[EXEMPLAR_RIG]['names']:
         bad.append("%r is not on the DEMONS' rig either" % _DEMON_ONLY_ATTACH)
 
-    # 4. the demons really hang their shroud where we say they do.
+    # 4. the exemplar really hangs its shroud where we say it does.
     want = _DEMON_FX_REF.rsplit('\\', 1)[-1].lower()
-    hung = [a for a, e in rigs[m_dem]['fx_at']
+    hung = [a for a, e in rigs[EXEMPLAR_RIG]['fx_at']
             if e and str(e).replace('/', '\\').rsplit('\\', 1)[-1].lower() == want]
     if [h.lower() for h in hung] != [_DEMON_MESH_ATTACH.lower()]:
         bad.append("the demons hang %s at %r, not at the pinned %r"
                    % (want, hung, _DEMON_MESH_ATTACH))
 
-    # 4b. R-255: THE SLOT CEILING, re-measured against the vanilla template.
-    #     This is the fact b93 got wrong from a comment instead of a binary, and
-    #     the whole shape of this module now rests on it, so it is re-derived.
+    # 5. the donor must still be FX-FREE, or R-257 is stacking on something.
+    if rigs[DONOR_RIG]['fx_at']:
+        bad.append("%s now carries embedded FX %r - it is no longer the FX-free rig "
+                   "R-102 chose, and the authored rig would double-emit"
+                   % (DONOR_RIG, rigs[DONOR_RIG]['fx_at']))
+
+    # 6. R-257's own asset: derivable, verified, and (if staged) byte-identical.
+    st, detail = rig_asset_state()
+    print("  RIG ASSET %s: %s" % (st, detail))
+    if st == 'FAIL':
+        bad.append("RIG ASSET: %s" % detail)
+
+    # 7. R-255's ceiling, still re-measured: nothing writes a kit slot any more,
+    #    but the gate still reports debt against it and still reds if the shroud
+    #    reappears there, so the number must stay derived rather than believed.
     try:
         from pathlib import Path
         from arc_patcher import ArcArchive
+        import re as _re
         tpl_arc = Path(mesh_assets.game_dir()) / 'Toolset' / 'Templates.arc'
         if not tpl_arc.exists():
             print("  Templates.arc not reachable: the slot ceiling was NOT re-measured")
         else:
-            import re as _re
             blob = ArcArchive.from_file(tpl_arc).get_file(
                 'templates/templatebase/monsterskillmanager.tpl')
             if not blob:
                 bad.append("MonsterSkillManager.tpl is not in Templates.arc, so the "
                            "declared slot ceiling could not be re-measured at all")
             else:
-                text = blob.decode('latin-1')
-                slots = sorted({int(m) for m in _re.findall(r'skillName(\d+)', text)})
+                slots = sorted({int(m) for m in
+                                _re.findall(r'skillName(\d+)', blob.decode('latin-1'))})
                 if not slots:
-                    bad.append("MonsterSkillManager.tpl declares NO skillName slot - "
-                               "the reader is blind and the ceiling is meaningless")
+                    bad.append("MonsterSkillManager.tpl declares NO skillName slot")
                 elif max(slots) != _ENGINE_SKILL_SLOT_MAX:
                     bad.append("MonsterSkillManager.tpl declares skillName1..%d but "
-                               "this module is pinned to %d. Re-derive: b93 shipped "
-                               "on a WRITTEN-DOWN belief about this number ('the "
-                               "template reaches 23') that no binary ever supported."
+                               "this module is pinned to %d"
                                % (max(slots), _ENGINE_SKILL_SLOT_MAX))
                 else:
                     print("  MonsterSkillManager.tpl declares skillName1..%d (and "
@@ -1758,28 +1656,15 @@ def _selftest():
     except Exception as e:                                   # noqa: BLE001
         print("  slot ceiling NOT re-measured (%s)" % e)
 
-    # 5. the pinned EffectEntity mirror still matches the base-game record.
-    st, theirs = _demon_fx_record(None)
-    if st != 'PASS' or not theirs:
-        print("  base-game .arz not reachable: EffectEntity mirror NOT re-checked")
-    else:
-        pinned = {f: v for f, v in _DEMON_FX_FIELDS}
-        if {k: str(v) for k, v in theirs.items()} != pinned:
-            bad.append("the demons' own %s now reads %r, pinned %r"
-                       % (_DEMON_FX_REF, theirs, pinned))
-        else:
-            print("  %s mirrors the base-game record exactly (%d fields)"
-                  % (_SHROUD_FX.rsplit('\\', 1)[-1], len(pinned)))
-
     for b in bad:
         print("  SELFTEST OFFENDER: %s" % b)
     if bad:
         print("selftest: FAILED (%d)" % len(bad))
         return 1
-    print("selftest OK: %r is declared on BOTH rigs (the round-1 measurement was "
-          "false); %r is on the demons' rig ONLY and stays the silent-nothing "
-          "example; the demons hang %s at %r."
-          % (_DEMON_MESH_ATTACH, _DEMON_ONLY_ATTACH, want, _DEMON_MESH_ATTACH))
+    print("selftest OK: the exemplar hangs %s at %r; %r is declared on BOTH rigs; %r "
+          "is on the demons' rig ONLY and stays the silent-nothing example; the donor "
+          "is FX-free; the authored rig derives and verifies."
+          % (want, _DEMON_MESH_ATTACH, _DEMON_MESH_ATTACH, _DEMON_ONLY_ATTACH))
     return 0
 
 

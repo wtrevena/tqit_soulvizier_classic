@@ -98,6 +98,44 @@ def game_dir():
     return Path(os.environ.get('SVC_TQAE_DIR', _DEFAULT_GAME))
 
 
+# ── THE SHIPPING ANCHOR (R-257 round 2) ──────────────────────────────────────
+# `mod_resource_dirs()` is a SEARCH PATH: every staged tree this working copy can
+# see, so an asset lookup never false-fails. That is the right answer for "can
+# this reference resolve?" and the WRONG one for "does the archive this build
+# SHIPS carry X?" - a question that has exactly one correct address, the
+# `Resources` dir beside the `.arz` being written (the anchor
+# `validate_render_chain` has always used: `output.parent.parent / 'Resources'`).
+#
+# Conflating the two cost this lane a P0: `enslaver_shroud`'s rig-asset arm
+# demanded the rig in EVERY glob hit, so a stale scratch tree anywhere under
+# `local/` could red a build whose own shipped archive was perfect. The build
+# declares its anchor here, once, and asset gates ask for it by name.
+_SHIP_ENV = 'SVC_SHIP_RESOURCES'
+
+
+def shipping_resource_dir():
+    r"""The ONE staged `Resources` dir this build's output ships beside, or None.
+
+    None means nobody declared one (a bare CLI run, a static dry-run, a negtest).
+    A gate that needs the anchor must SAY it is unanchored rather than guessing -
+    guessing is what turned a scratch tree into a ship-blocking FAIL.
+    """
+    v = os.environ.get(_SHIP_ENV)
+    return Path(v) if v else None
+
+
+def set_shipping_resource_dir(path):
+    """Declare the anchor (the build entrypoint does this once, before any gate).
+
+    Clears the archive cache: archives already opened were resolved against the
+    OLD search order, and a gate that reads a cached chain built before the anchor
+    existed is answering about a different tree than the one it names.
+    """
+    os.environ[_SHIP_ENV] = str(path)
+    _ARC_CACHE.clear()
+    return Path(path)
+
+
 def mod_resource_dirs():
     r"""The MOD's own staged `Resources` dirs, in the order the engine sees them.
 
@@ -107,15 +145,34 @@ def mod_resource_dirs():
     only reads the game install therefore reports every mod-shipped clip as
     MISSING - which is a false failure, and a loud one, because an anim gate
     that cries wolf gets waived instead of fixed.
+
+    DE-DUPLICATED BY REAL PATH. The determinism (`det-2x`) run stages
+    `local/b<N>_run2/Resources` as a JUNCTION to `work/<mod>/Resources`, so a raw
+    glob reports the same archive up to six times. Six rows naming one file made
+    a round-2 vet finding read as "five stale scratch archives" when it was one
+    inode; a de-duplicated list cannot tell that story.
     """
     out = []
-    env = os.environ.get('SVC_MOD_RESOURCES')
-    if env:
-        out.append(Path(env))
+    for env_name in (_SHIP_ENV, 'SVC_MOD_RESOURCES'):
+        env = os.environ.get(env_name)
+        if env:
+            out.append(Path(env))
     # the standard staged layouts, relative to the build's CWD
     for pat in ('work/*/Resources', 'local/*/Resources'):
         out.extend(sorted(Path('.').glob(pat)))
-    return [p for p in out if p.is_dir()]
+    uniq, seen = [], set()
+    for p in out:
+        if not p.is_dir():
+            continue
+        try:
+            rp = p.resolve()
+        except OSError:
+            rp = p
+        if rp in seen:
+            continue
+        seen.add(rp)
+        uniq.append(p)
+    return uniq
 
 
 def _arc_dirs(mod_resources=None):

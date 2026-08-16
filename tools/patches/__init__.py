@@ -444,13 +444,72 @@ REGISTRY = [
                             # ShadowStalker_Smoke.dbr; that is how the marauders have always
                             # smoked) or FIELD (the shroud in both always-on channels). A
                             # family member with neither FAILS the build.
+                            # ⚠️⚠️ R-257 (b101, Will 2026-08-16, the FIFTH filing, WITH A
+                            # SCREENSHOT: the Enslaver summoned at Hathor Basin on the
+                            # post-b99/b100 DEV arz, standing out of combat, ZERO smoke).
+                            # R-255's channels were declared, byte-verified and gate-verified
+                            # and the engine still rendered nothing. THE RULING: a channel
+                            # being DECLARED in the template does not mean the pet controller
+                            # EXECUTES it, or that a CharFxPak ATTACHES on this rig - a
+                            # record-level proof is not a rendering proof. Measured: across
+                            # all 341 vanilla Pets the exact b99 shape (Pet + always-on
+                            # channel + Skill_BuffSelfToggled + body-attach CharFxPak) occurs
+                            # ZERO times (R-255's "90 Pets ... 153 on a Skill_BuffSelfToggled"
+                            # conflated two pools - all 153 are MONSTERS); the running-FX
+                            # field class is declared in ZERO of 566 templates; Pet.tpl has no
+                            # ambient-effect field at all; and ShadowStalker_Smoke.dbr is a
+                            # deathEffect in all 13 of its base-game references. Its ONLY
+                            # persistent rendering anywhere is the CreateEntity block compiled
+                            # into a .msh - which is also how EVERY vanilla pet with a
+                            # persistent aura gets one (Ancestral Warriors, the Outsider,
+                            # Storm Wisps, Spirit Ward, Battle Standard), and how the
+                            # marauders Will confirmed by eye have always carried it.
+                            # SO THE SHROUD LEAVES THE RECORD LAYER. tools/build_shroud_rig.py
+                            # authors Creatures\Monster\Skeleton\svc_enslaver_shroudrig01.msh
+                            # = base SkeletonGrayBlack01New.msh + the 115 bytes read VERBATIM
+                            # off the end of ShadowStalker.msh + that one chunk-length u32
+                            # bumped (a .msh is a self-describing chunk chain with no global
+                            # offset table; A1..A9 re-derive every byte, incl. that the
+                            # rig-name table is IDENTICAL so animations are untouched). It
+                            # ships in the mod's own Resources\Creatures.arc under a NET-NEW
+                            # name. THIS MODULE now only RETIRES: it stops authoring
+                            # svc_enslaver_shroud/_charfxpak/_fx and the svc_alwayson_
+                            # controller clones (cold build -> they never exist), unwires them
+                            # when re-run over a built arz, and gates that the whole household
+                            # smokes by the MESH route DERIVED from each wearer's .msh binary,
+                            # with NO belief channel left anywhere. Removal is not tidiness:
+                            # on a member that already smokes from its rig the FIELD route
+                            # would DOUBLE the shroud, which b99's own apply() already refused
+                            # for the marauders.
+                            # 🚨 BUILD-TIME PRECONDITION *AND* DEPLOY COUPLING
+                            # (BL-R257-DEBT-1, P0): the family's `mesh` now names a
+                            # MOD-SHIPPED asset that lives only in
+                            # work\<mod>\Resources\Creatures.arc. THREE fail-loud gates
+                            # inside build_svc_database read it (this module's M2,
+                            # validate_render_chain A9, champion_mesh.verify), so the
+                            # archive must exist BEFORE the database is built - round 1
+                            # staged it after and the cold build died. build_svc_database
+                            # now stages it itself; bootstrap Step 0e does too. The DEPLOY
+                            # half stands: deployed without the arc they resolve NO MESH
+                            # (an invisible boss). Coupling list: Levels+Quests, arz+Text,
+                            # AND arz+Creatures.arc.
+                            # ORDERING NOTE: this module no longer writes `mesh`; champion_mesh
+                            # (registered later, R-102's single-writer law) does, and IMPORTS
+                            # SHROUD_RIG from here so asset and wearer cannot drift.
                             # Negative test: py tools/patches/enslaver_shroud.py --negtest
-                            # (40 plants, incl. "strip one pet" -> RED and the R-255 dead-slot
-                            # defect replayed); --selftest re-measures the module's
-                            # load-bearing rig facts AND the skillName ceiling against the
-                            # real archives (round 1's stub asserted a FALSE premise and its
-                            # rig plant certified the error instead of catching it; b93's slot
-                            # ceiling was a comment nobody ever re-derived)
+                            # (37 = 31 stubbed plants + 6 UNSTUBBED arms running the real
+                            # rig_asset_state() against real archives on disk). Includes the
+                            # required "strip" case -> RED, the "belief-channel-only re-plant"
+                            # case (a pet back on the FX-free rig carrying the b99 field route,
+                            # i.e. exactly what shipped as build99) -> RED, and the two rig/anim
+                            # PAIRING plants no other arm can see. Round 1 stubbed the rig-asset
+                            # function in ALL of its plants, which is why its own two P0s were
+                            # invisible to it (MISTAKES.md 2026-08-16). --selftest re-measures
+                            # the exemplar, both rigs, the authored asset and the R-255 slot
+                            # ceiling against the real archives (round 1's stub asserted a FALSE
+                            # premise and its rig plant certified the error instead of catching
+                            # it; b93's slot ceiling was a comment nobody ever re-derived).
+                            # Cold-order control: py tools/debug/r257_cold_order_control.py
     'toxeus_souls_100',     # b90 (Will 2026-07-27, R-48) + b98 (R-91): "increase the drop rate for
                             # the souls
                             # of toxeus the murderer, enslaver of souls and toxeus the murderer,
@@ -753,7 +812,24 @@ REGISTRY = [
                             # 10 pharaoh honour-guard summons, 1 dev dummy) are untouched, and
                             # verify() fails if the mesh is ever emptied out of the DB entirely
                             # (RETIREMENT PROTOCOL).
-                            # Negative test: py tools/patches/champion_mesh.py --negtest (12 plants)
+                            # ⚠️ R-257 (b101): the Enslaver's destination is no longer the bare
+                            # FX-free base rig. ENSLAVER_MESH is IMPORTED from
+                            # enslaver_shroud.SHROUD_RIG - a mod-authored byte-copy of that
+                            # same rig carrying the demons' OWN CreateEntity block. This
+                            # module's b102 swap onto an FX-free mesh is what removed the
+                            # Enslaver's last always-on emitter and started five filings of
+                            # "he has no black smoke", so the fix belongs here, in the single
+                            # writer of `mesh`. Two gate changes: the embedded-FX allow-list is
+                            # now PER FAMILY (a shared list would have let the Enslaver satisfy
+                            # his gate with the Hunt's Boss Aura), and a family whose allowed
+                            # effect is MISSING now REDS - the arm that catches the b102
+                            # regression. R-93 distinctness stands three ways; the green ban on
+                            # RevenantPoison.msh is untouched; the rig-name table is identical
+                            # to the donor's so the animation gate is unaffected by
+                            # construction.
+                            # Negative test: py tools/patches/champion_mesh.py --negtest
+                            # (15 plants; new: the Enslaver family regresses to the plain
+                            # FX-free rig, which every pre-R-257 arm was happy with)
     # b104 NOTE (Will 2026-08-11): the 'devourer_shroud' module that briefly sat
     # HERE was deleted, target misidentified. Its own measurement disconfirmed it:
     # the Devourer's Blood Demons carry blood FX, no shadow shroud, so "the same

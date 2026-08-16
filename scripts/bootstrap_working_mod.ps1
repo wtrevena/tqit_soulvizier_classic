@@ -44,11 +44,39 @@ foreach ($sub in @('Database', 'Resources')) {
     }
 }
 
-# --- Step 1: Build delta .arz ---
 $dstArz = Join-Path $workDir "Database\$modName.arz"
 $toolsDir = Join-Path $RepoRoot 'tools'
+$creaturesOut = Join-Path $workDir 'Resources\Creatures.arc'
 $pythonExe = $Config['PYTHON_EXE']
 if (-not $pythonExe) { $pythonExe = 'python' }
+
+# --- Step 0e: Stage the mod's Creatures.arc BEFORE the database build ---
+# 🚨 R-257 (BL-R257-DEBT-1): THIS IS A BUILD-TIME PRECONDITION, NOT A DEPLOY STEP.
+# This is the first lane in which a `.dbr` depends on a MOD-SHIPPED ART asset:
+#     monster/skeleton/svc_enslaver_shroudrig01.msh
+# `um_toxeus_enslaver_99`, the 3 soul-pet tiers and his 2 preview proxies name that
+# mesh in `mesh`, and it resolves out of NO archive but this one. THREE fail-loud
+# gates that run INSIDE the .arz build read it:
+#   1. `enslaver_shroud.verify()` arm M2  - the archive must carry the byte-identical rig
+#   2. `validate_render_chain` (A9)       - a MOD-AUTHORED pet with an unresolvable
+#                                           mesh FAILS the build outright
+#   3. `champion_mesh.verify()`           - opens the destination mesh to audit its
+#                                           embedded FX + bone completeness
+# Round 1 of this lane staged the archive AFTER the build and the cold build DIED
+# here, then `$LASTEXITCODE` fell through to the "fall back to full upstream .arz"
+# branch below and silently shipped the RAW upstream database. So the archive is
+# built FIRST, and Step 2 below deliberately does not copy over it.
+Write-Host ''
+Write-Host 'Staging mod Creatures.arc (PR-2 dye skins + R-257 Enslaver shroud rig)...' -ForegroundColor Yellow
+& $pythonExe (Join-Path $toolsDir 'build_creatures_dye_skins_arc.py') --out $creaturesOut
+if ($LASTEXITCODE -ne 0) {
+    Write-Host 'ERROR: failed to build the mod Creatures.arc (dye skins + R-257 shroud rig).' -ForegroundColor Red
+    Write-Host '       The database build CANNOT proceed: the Enslaver family names a mesh' -ForegroundColor Red
+    Write-Host '       that ships only from that archive, and three build gates read it.' -ForegroundColor Red
+    exit 1
+}
+
+# --- Step 1: Build delta .arz ---
 
 $srcArz = @(Get-ChildItem $upstreamDir -Recurse -Filter '*.arz' -ErrorAction SilentlyContinue)
 $baseArz = Join-Path $Config['TQAE_ROOT'] 'database\database.arz'
@@ -85,8 +113,25 @@ if (-not $SkipArzBuild -and $srcArz.Count -gt 0) {
     }
 
     if ($LASTEXITCODE -ne 0) {
-        Write-Host 'WARNING: Patched build failed, falling back to full upstream .arz' -ForegroundColor Yellow
-        Copy-Item $srcArz[0].FullName $dstArz -Force
+        # R-257 round 2: THIS FALLBACK USED TO RUN SILENTLY, AND IT IS WHY A DEAD
+        # BUILD WAS WORSE THAN A DEAD BUILD. Every fail-loud gate in
+        # build_svc_database exits non-zero; the old branch caught that, copied the
+        # RAW upstream SV 0.98i database over the mod database and carried on into
+        # Text/Quests/deploy. The operator's only signal was one yellow line, and
+        # the result is a "mod" with none of the mod in it. A gate that fires must
+        # STOP the bootstrap. The escape hatch stays for anyone who genuinely wants
+        # an unpatched tree, but it must be asked for.
+        if ($env:SVC_ALLOW_UPSTREAM_FALLBACK -eq '1') {
+            Write-Host 'WARNING: patched build FAILED; SVC_ALLOW_UPSTREAM_FALLBACK=1 - falling back to the RAW upstream .arz (this tree is NOT the mod database and must never ship)' -ForegroundColor Yellow
+            Copy-Item $srcArz[0].FullName $dstArz -Force
+        } else {
+            Write-Host 'ERROR: the patched .arz build FAILED (a build gate fired).' -ForegroundColor Red
+            Write-Host '       Bootstrap STOPS here. It will NOT substitute the raw upstream' -ForegroundColor Red
+            Write-Host '       database: that silently produces a tree with none of the mod in it.' -ForegroundColor Red
+            Write-Host '       Read the gate output above and fix the cause. To deliberately take' -ForegroundColor Red
+            Write-Host '       an unpatched tree anyway, re-run with SVC_ALLOW_UPSTREAM_FALLBACK=1.' -ForegroundColor Red
+            exit 1
+        }
     }
 } elseif ($srcArz.Count -gt 0) {
     Write-Host 'Copying full upstream .arz (no patching)' -ForegroundColor Yellow
@@ -106,6 +151,12 @@ Write-Host 'Copying upstream .arc resources...' -ForegroundColor Yellow
 $arcFiles = @(Get-ChildItem $upstreamDir -Recurse -Filter '*.arc' -ErrorAction SilentlyContinue)
 if ($arcFiles.Count -gt 0) {
     foreach ($arc in $arcFiles) {
+        # Creatures.arc is OWNED BY STEP 0e (the additive dye+rig rebuild) and was
+        # staged before the database build, because three build gates read it.
+        # Copying the raw upstream archive over it here would silently un-stage the
+        # Enslaver's rig after every gate that proves it has already passed.
+        if ($arc.Name -ieq 'Creatures.arc') { continue }
+
         $relPath = $arc.FullName.Substring($upstreamDir.Length + 1)
         $parentFolder = Split-Path $relPath -Parent
 
@@ -189,17 +240,25 @@ if (Test-Path $xpackDir) {
 
 Write-Host "Stripped $strippedCount files (~$strippedMB MB)"
 
-# --- Step 2e: Stage the costume-dye PC skins Creatures.arc (PR-2) ---
-# The Garden-of-Merchants costume dyes reskin the PC to amgoz1's AllSkins textures
-# (Creatures\PC\...tex) that live ONLY in SV 0.98i's Creatures.arc. Rebuild a
-# purely-additive Creatures.arc (net-new SV skins only; overrides zero base asset)
-# so every obtainable dye resolves instead of greying the character.
+# --- Step 2e: Prove the staged Creatures.arc SURVIVED steps 2/2b, then gate it ---
+# The archive itself was built in Step 0e, BEFORE the database, because the .arz
+# build's own gates read it (see the Step 0e banner). This step is the audit that
+# the copy/strip passes above did not disturb it, plus the dye gate, which needs
+# the BUILT .arz and therefore cannot run any earlier.
 Write-Host ''
-Write-Host 'Staging costume-dye PC skins (Creatures.arc, PR-2)...' -ForegroundColor Yellow
-$creaturesOut = Join-Path $workDir 'Resources\Creatures.arc'
-& $pythonExe (Join-Path $toolsDir 'build_creatures_dye_skins_arc.py') --out $creaturesOut
+Write-Host 'Auditing the staged mod Creatures.arc (survived steps 2/2b) + dye gate...' -ForegroundColor Yellow
+if (-not (Test-Path $creaturesOut)) {
+    Write-Host "ERROR: $creaturesOut disappeared after Step 0e staged it. Something in" -ForegroundColor Red
+    Write-Host '       steps 2/2b removed the archive the Enslaver family resolves its mesh from.' -ForegroundColor Red
+    exit 1
+}
+# Re-assert the R-257 rig is present in the archive that will be deployed. Cheap,
+# and it is the one artifact whose absence turns the boss INVISIBLE rather than
+# merely un-smoking.
+& $pythonExe (Join-Path $toolsDir 'build_shroud_rig.py') --check-arc $creaturesOut
 if ($LASTEXITCODE -ne 0) {
-    Write-Host 'ERROR: failed to build the costume-dye Creatures.arc' -ForegroundColor Red
+    Write-Host "ERROR: the staged $creaturesOut no longer carries the R-257 Enslaver shroud rig." -ForegroundColor Red
+    Write-Host '       Rebuild it: py tools/build_creatures_dye_skins_arc.py --out <work>\Resources\Creatures.arc' -ForegroundColor Red
     exit 1
 }
 # Prove every obtainable dye resolves against the staged arc (fails the build otherwise).
