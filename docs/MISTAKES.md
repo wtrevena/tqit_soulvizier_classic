@@ -8,6 +8,71 @@
 
 ## 2026-08-15
 
+- **2026-08-15 | R-256 lookout-uber lane: I stamped a ruling number into 9 files and never
+  wrote the ruling - which silently DISARMED the gate that exists to catch exactly that** -
+  `docs/WILL_RULINGS.md` had **zero** occurrences of `R-256` while the lane carried 14 `R-256`
+  stamps in `tools/` alone (plus BACKLOG, MISTAKES and WILL_TEST_GUIDE) and had opened five
+  `BL-R256-DEBT-*` rows keyed to a ruling that did not exist. The obvious half is a
+  rulings-ledger process-law-1 break: Will gave a verbatim design order and it was nowhere in
+  the design law of record, so anyone following an `R-256:` code comment to the ledger found
+  nothing. **The expensive half is mechanical and I did not see it until the vet did:**
+  `tools/gate_ruling_ids.py` derives the numbers a branch ADDS from `## R-<n> [` **headings
+  only** (`added = heading_ids(mine) - heading_ids(base)`) and its driver reads `if not added:`
+  before A3 - so with no heading, `added` was empty and **both A2 (no base clash) and A3 (no
+  parallel-lane clash) were skipped**. The lane ran that gate, saw PASS, and banked it as a
+  green row; it had in fact checked nothing. That is the precise protection built after four
+  lanes simultaneously claimed R-250 on 2026-08-14. **Cost: no live collision (a git-grep over
+  all 166 local branches found R-256 only on `feat/lookout-uber`) and nothing shipped - but the
+  guard was inert for a full round and the next lane reading the ledger tail would have
+  allocated 256 for itself.** **Root cause: treating the ledger entry as the lane's closing
+  paperwork rather than as the thing that ALLOCATES the number**, so the stamps went in first
+  and the heading was to follow "at the end". **Guard, now standing and written into R-256
+  itself: the ledger heading is written in the SAME commit as the first `R-<n>` stamp in
+  `tools/`.** A number you have stamped but not defined is a number the collision gate cannot
+  see. Verified re-armed: `--vs main --branches` now prints `this branch (feat/lookout-uber)
+  adds [256]` over 166 branches and passes, where before it had nothing to add.
+
+- **2026-08-15 | the same lane shipped a boss summon with NO expiry - the exact defect class
+  Will filed as a P0 game-freeze - and no gate could see it** - `svc_ushkaret_skyburial` was
+  cloned from `records\skills\sv\gustleech\summon_swarm.dbr`, which measures petLimit 5,
+  cooldown [7,6,5] and **no `spawnObjectsTimeToLive` field at all**. The lane repointed the
+  spawn, RAISED petLimit to 6, set a cooldown - and never added the TTL. So Ushkaret's flock
+  was **permanent**: minions never expired, the boss refilled the cap the instant one died, and
+  the fight could never reach a steady state. That is verbatim what `tools/patches/summon_caps.py`
+  exists to repair, quoting Will's own P0: *"so much lag with the monsters ... the game is
+  frozen ... the infinite summon"*. **The trap that made it invisible: every b76 offender
+  summon_caps fixed ALSO had a petLimit** (aktaios 9, alastor 8, undeadmelee01 5) - the
+  concurrent cap was never what made them safe, the missing TTL was the defect - and
+  `check_no_new_unbounded` only fires on records with **NEITHER** bound, so `petLimit 6`
+  actively HID this record from the shared sweep. **Cost: caught by the round-2 vet, nothing
+  built or shipped; mitigating that 6 commons is a small flock and 7 of 10 shipped uber
+  SpawnPet skills sit in the same TTL-less state (registered as ambient debt, not fixed here).**
+  **Root cause: assuming a clone inherits a safety field the donor never had, and reading the
+  shared gate's NAME ("no new unbounded summons") instead of its PREDICATE.** **Guard:** the TTL
+  is authored in the module at a value quoted from the artifact (20.0s = what all five
+  `svc_`-authored summons in the shipped arz already carry, and one of the two values
+  summon_caps restores), gate arm **V13** asserts BOTH bounds plus Commons-only spawning on the
+  FINAL db, and **4 negtest plants** now bite - the first of which is the exact permanent state
+  round 2 shipped in. Standing lesson: when a module clones a donor, diff the donor's SAFETY
+  fields, not just its behaviour fields.
+
+- **2026-08-15 | round 3, my own: I wrote a "QUESTS section untouched" verification that could
+  only ever print True** - checking that the new map host is in no quest structure, I ran
+  `'rhakotis05' in src.lower().split('LOOKOUT')[0][-0:]`. `[-0:]` is the WHOLE string, not an
+  empty slice, so the expression tested something I had not intended and its output was
+  meaningless either way; I printed it under the label `host named in any QUESTS/0x1b
+  structure: True` and very nearly banked that as a gate row saying the opposite of what it
+  read. **Cost: none - self-caught while reading the output, and replaced in the same turn with
+  a real check** (grep `build_quest_files.py` / `svaera_plus_portals.py` / `qst_format.py` for
+  the host and the record: zero hits, and quest structures hold `.qst` paths so a level fname
+  cannot appear in one). **Root cause: writing a throwaway one-liner assertion inline and
+  trusting its label instead of its logic.** **Guard: a verification that prints a boolean must
+  be able to print BOTH values - if I cannot state the input that would make it False, it is
+  not a check, it is a decoration.** Logged per R-254 because the rule is every error, not
+  every expensive one. (Two harmless tool fumbles the same turn: a bash heredoc and a
+  PowerShell here-string whose terminator was not at column 0, both failed loudly and cost one
+  retry each.)
+
 - **2026-08-15 | R-256 lookout-uber lane: I called a LIVE base-game encounter "a faceless
   boss proxy" in three shipped documents, without ever opening the record** - the lane
   wrote, in `tools/patches/lookout_uber.py`, in `tools/build_section_surgery.py` (twice)

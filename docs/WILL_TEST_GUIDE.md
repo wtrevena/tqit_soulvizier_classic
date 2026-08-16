@@ -46,7 +46,13 @@
 >   has ever left melee range vertically** - this move exists on exactly three records in the whole
 >   game, all of them the vanilla Charon, and Charon is not even in this mod any more (Akremon
 >   replaced him). On the ground he bleeds you and drains you.
-> - **Then he calls the flock,** and when he dies the last quills scatter.
+> - **Then he calls the flock,** and when he dies the last quills scatter. **The flock is capped
+>   and it expires** - never more than 6 of them at once, and each one fades after 20 seconds.
+>   That is deliberate and it is because of *your* P0: the skeleton-dog / tomb-guardian freeze you
+>   filed ("the infinite summon ... the game is frozen"). The body I built this summon from ships
+>   with a cap but **no expiry at all**, which is exactly the bug you hit, so I added the expiry
+>   and put a build gate on it. They are all plain commons - he never calls champions, so the
+>   screen does not fill up.
 >
 > **Counterplay, so it is legible:** he leeches life from everything near him and he bleeds you
 > hard, so **bleed resistance is the stat that matters**, and killing the two Cliffside Mourner
@@ -111,7 +117,8 @@
 > drops an orb, (usually) the soul, and **exactly one chest of mine - "The Larder of Ushkaret"**.
 > (The plain golden chest next to it is vanilla's and was always there. Two chests total is the
 > EXPECTED result, not a failure.) **FAIL =** empty terrace, two of HIM side by side, two of MY
-> chests, or a fight that feels like a wall.
+> chests, a fight that feels like a wall, or **birds piling up until the game chugs** - that last
+> one would mean the expiry I added is not firing, and I want to hear about it immediately.
 
 > # 🖤 R-255 THE ENSLAVER'S SUMMONED PETS FINALLY SMOKE (2026-08-15) - READ THIS FIRST (it is LIVE)
 >
