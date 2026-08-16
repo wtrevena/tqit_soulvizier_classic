@@ -8903,3 +8903,122 @@ orchestrator or any agent is logged there IN THE SAME TURN it is discovered (wha
 cost, root cause, the guard that now prevents it). Every lane brief carries this obligation;
 every vet checks compliance when a lane made a correctable error. MISTAKES.md joins the
 mandatory successor read order. Seeded retroactively with the known 07-12..08-15 mistakes.
+
+## R-255 [2026-08-15] IMPLEMENTED (branch `fix/enslaver-pet-shroud`, module `tools/patches/enslaver_shroud.py`) - THE SHROUD WAS WRITTEN INTO SKILL SLOTS THE ENGINE DOES NOT READ; and the parity claim only ever covered half the household
+
+WILL (2026-08-15), verbatim, the FOURTH filing of the same request:
+
+> "toxeus the murderer enslaver of souls summoned pets (when i summon them from their souls)
+>  still do not have the black smoke around them"
+
+R-250 shipped as build93 on 2026-08-14 (arz `db314143`, DEV + Steam) and BACKLOG recorded it
+CLOSED, "on the monster + all 3 pet tiers". The records really did say that. They still said
+nothing the engine reads.
+
+### THE MEASUREMENT R-250 GOT WRONG
+
+`skillName<N>` is not an open-ended array. It is declared exactly once, in
+`Templates\TemplateBase\MonsterSkillManager.tpl` - the template `Monster.tpl` includes and
+`Pet.tpl` inherits through it - and that declaration **stops at `skillName17` / `skillLevel17`**.
+Two independent witnesses, both re-derived by `--selftest` on every run:
+
+| witness | result |
+|---|---|
+| `Toolset\Templates.arc` -> `templatebase/monsterskillmanager.tpl` | declares `skillName1..17`, `skillLevel1..17`, and nothing above either |
+| all **74,013** base-game `database.arz` records | highest slot ANY Monster or Pet uses is `skillName17` (1,136 records sit exactly on it; **0** records above it) |
+
+R-250 wired the shroud with `_free_skillname_slot(..., hi=23)` and wrote down as ground truth:
+*"he uses skillName1..18 and the template reaches 23, so slot 19 was free all along"*. The
+template does not reach 23. **23 is simply the highest slot THIS MOD had already overflowed
+into** (`um_mnemophage_99`), so the lane measured its own earlier mistake and read it back as
+headroom. The shroud therefore landed at `skillName19` on the wild boss and `skillName18` on all
+three soul-summon pet tiers: four fields that no skill manager reads, on the surface Will
+inspects. Everything downstream of that - the EffectEntity mirror, the attach point, the
+always-on controller clones - was correct and unreachable.
+
+This is the SAME instrument failure the module's own round-1 note already documents (a blind
+reader's answer became design law), repeated one round later against a different binary. Both
+are logged in `docs/MISTAKES.md`.
+
+### THE FIX: THE TWO CHANNELS THAT ACTUALLY EXIST
+
+`MonsterSkillManager` declares two always-on self-buff channels, identical on Monster and Pet,
+both crash-law-safe (skill fields - the only class `Pet.tpl` tolerates), both **free on all 8
+family records** measured on the shipped build98 arz `15dacc68`:
+
+| channel | what it does | vanilla precedent (base-game arz) |
+|---|---|---|
+| `initialSkillName` | cast ONCE at spawn - a toggled buff is therefore ON from the first frame and owes the AI nothing, the closest record-field analogue of the demons' compiled-in mesh FX | 838 Monsters + **90 Pets**; **153** point it at a `Skill_BuffSelfToggled` exactly like ours |
+| `buffSelfSkillName` | the AI's self-buff slot, gated by the controller's `BuffSelfBehavior` (ours are the `svc_alwayson_` clones at `WheneverPossible`) - the re-application leg if the toggle is ever dropped | 522 Monsters + **87 Pets**; 60 on a `Skill_BuffSelfToggled` |
+
+Neither takes a level field (the template declares none for either), so there is no `skillLevel`
+left to get wrong - one more way b93's shape could not have worked. This lane's own dead slots
+are RETIRED; a neighbour's skill parked above the ceiling is reported and left exactly where its
+own lane put it (RETIREMENT PROTOCOL).
+
+### THE SECOND DEFECT: THE PARITY CLAIM COVERED HALF THE FAMILY
+
+R-250's roster was the boss plus whatever `summon_toxeus_enslaver` spawns. It never looked at the
+MARAUDERS - neither the escorts the wild boss raises through `svc_enslaver_summonmarauders` nor
+the pet-of-pet marauders the SUMMONED Enslaver raises through `svc_enslaver_petmarauders`. "The
+family has the family FX" was never a checked claim. No damage was realised, because those
+marauders wear `ShadowStalker.msh` and are covered by accident: that rig carries
+`CreateEntity{attach="SpecialHit01"; entity="...ShadowStalker_Smoke.dbr"}` compiled in. That is
+luck, not a gate - and `champion_mesh` had already proved a mesh swap can silently remove exactly
+that coverage (it is what took the Enslaver's last always-on emitter away).
+
+**THE WIDENED GATE.** The roster is now a bounded WALK of the whole household - wild boss ->
+escorts -> pet tiers -> pet-of-pet - plus any record wearing a name tag the walked family wears
+(the difficulty-clone hunt, now family-wide rather than Enslaver-only). Every member must satisfy
+one of two DERIVED routes:
+
+- **MESH** - its rig embeds the demons' own `ShadowStalker_Smoke.dbr`, read out of the `.msh`
+  binary each build (pinned list used ONLY on a loud archive-unreachable downgrade);
+- **FIELD** - `svc_enslaver_shroud` in BOTH always-on channels above.
+
+A member with neither fails the build. On the shipped arz that resolves to 8 members: 4 MESH (the
+wild marauder + 3 pet-of-pet marauder tiers) and 4 FIELD (the boss + 3 soul-pet tiers).
+
+### DOES THIS REACH THE SOULS ALREADY IN WILL'S STASH? YES
+
+The summon FX rides entirely on the PET RECORDS, which the engine resolves LIVE from the database
+when the granted summon skill fires - it is not baked into the soul ITEM at pickup the way item
+properties are. So Will's existing Enslaver souls pick this up with no re-drop and no new
+character; a Steam restart to reload the arz is enough. (Same standing truth `enslaver_pet_fx`
+records for the b55 fix.)
+
+### GATES
+
+| gate | result |
+|---|---|
+| `py tools/patches/enslaver_shroud.py --negtest` | **40/40 plants caught** (was 30) |
+| `py tools/patches/enslaver_shroud.py --selftest` | **PASS**, and it now re-derives the slot ceiling from `Templates.arc` every run |
+| `py tools/gate_ruling_ids.py --branches` | **PASS** |
+| STATIC dry-run: `apply()` + `verify()` in memory over the shipped build98 arz `15dacc68` | **PASS** - 8-member walk, 4 FIELD / 4 MESH, exactly 7 records touched, no write |
+
+New plants include the required negative test for the widened gate - **"strip one pet"**: one
+pet-of-pet marauder moved onto the FX-free rig with no field route makes the build RED - plus the
+R-255 defect replayed verbatim (the shroud pushed back into skillName18/19), the demons' rig
+losing its compiled-in smoke, and both spawn rosters going silently empty.
+
+### DEBTS
+
+- `BL-R255-DEBT-1` (**P1, other lanes**): **six other records park skills above the engine's
+  skillName17 ceiling and those skills are read by nobody** - `um_charonform2_ferryman_99` (18-21),
+  `um_mnemophage_99` (18-23), `um_ephialtes_99` (18,19), `um_bloodtoxeus_99` (18),
+  `um_mnemophage_core_99` (18), and `um_toxeus_enslaver_99` (18 = `unholy_rally`). Those are real
+  combat skills silently not firing. Unwinding them is a balance change on other lanes' rulings and
+  needs Will's call, so this lane REPORTS them (the gate prints them per family member) and changes
+  nothing. Note the Enslaver has no free real slot at all - 1..17 are full - so his `unholy_rally`
+  cannot simply move down; something has to give and that is Will's decision.
+- `BL-R255-DEBT-2` (**P2, ledger hygiene**): `docs/WILL_RULINGS.md` carries **two** `## R-254`
+  headings (the death-penalty ruling and Will's MISTAKES.md order). `gate_ruling_ids.py` passes
+  because its A1 arm only counts headings in the dated `## R-<n> [date] STATUS` form, so the second
+  heading is invisible to the gate written to stop exactly this. Renumbering a ruling Will dictated
+  is his call; the gate's blind spot is fixable independently.
+- `BL-R250-DEBT-1` (**P2, WILL / in-game, CARRIED FORWARD and now the whole point**): nobody has
+  seen this render. Every prior round of this request has been a record-level claim, and three of
+  them were wrong in-game. What is proved here is that the shroud is now on channels the engine
+  declares and reads; what is NOT proved is how it looks. Will's test: summon the Enslaver from any
+  tier of his soul and just stand there out of combat - the black smoke should be on him from the
+  moment he appears, and on the marauders he raises.
