@@ -106,15 +106,18 @@ def build(sv_creatures: Path, base_creatures: Path, out: Path, shroud_rig=True):
     return kept, dropped_overlap
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument('--sv-creatures', help='SV 0.98i Creatures.arc (source of the skins)')
-    ap.add_argument('--base-creatures', help='base-game Creatures.arc')
-    ap.add_argument('--out', required=True, help='output Creatures.arc path')
-    a = ap.parse_args()
+def stage(out, sv_creatures=None, base_creatures=None):
+    r"""Build the mod Creatures.arc at `out`, resolving inputs via the preflight.
 
-    sv = a.sv_creatures
-    base = a.base_creatures
+    Factored out of `main()` so the DATABASE build can call it directly (R-257
+    round 2). The Enslaver family's `mesh` resolves out of this archive and out of
+    no other, and THREE fail-loud gates inside `build_svc_database` read it, so the
+    archive is a precondition of the database rather than a deploy-time chore. The
+    ship runbook drives `build_svc_database.py` directly - it never runs the
+    bootstrap - so the coupling has to live where the database is built, not only
+    in `scripts/bootstrap_working_mod.ps1`.
+    """
+    sv, base = sv_creatures, base_creatures
     if not sv or not base:
         # resolve via the shared build-input preflight when not given explicitly
         import check_build_inputs as cbi
@@ -127,7 +130,16 @@ def main():
                 sv = cbi.resolve('sv098i_creatures_arc')
         if not base:
             base = cbi.resolve('base_creatures_arc')
-    build(Path(sv), Path(base), Path(a.out))
+    return build(Path(sv), Path(base), Path(out))
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument('--sv-creatures', help='SV 0.98i Creatures.arc (source of the skins)')
+    ap.add_argument('--base-creatures', help='base-game Creatures.arc')
+    ap.add_argument('--out', required=True, help='output Creatures.arc path')
+    a = ap.parse_args()
+    stage(a.out, a.sv_creatures, a.base_creatures)
 
 
 if __name__ == '__main__':

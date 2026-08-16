@@ -4477,6 +4477,82 @@ def _load_sv098_name_tags(sv098_path):
     return tags
 
 
+def _preflight_mod_creatures_arc(ship_resources):
+    r"""R-257 round 2: the mod `Creatures.arc` is a PRECONDITION OF THIS BUILD.
+
+    THE HISTORY, because this is the second round of one defect. `enslaver_shroud`
+    put the Enslaver family on `Creatures\Monster\Skeleton\svc_enslaver_shroudrig01.msh`,
+    a MOD-AUTHORED mesh that ships in exactly one archive - the mod's own
+    `Resources\Creatures.arc`. THREE fail-loud gates inside THIS script read it:
+
+        1. `enslaver_shroud.verify()` arm M2  - the archive must carry the rig,
+                                                byte-identical to the derived bytes
+        2. `validate_render_chain` (A9)       - a MOD-AUTHORED pet whose mesh does
+                                                not resolve FAILS the build
+        3. `champion_mesh.verify()`           - opens the destination mesh to audit
+                                                its embedded FX and bone completeness
+
+    Round 1 treated the archive as a DEPLOY-side chore and staged it after the
+    build. The cold build died at the first of those gates - and the bootstrap's
+    fallback then quietly substituted the raw upstream database. Round 1 also
+    assumed the bootstrap was the build: the ship runbook (docs/PLAYBOOK.md, the
+    HANDOFF quick pointers) drives THIS SCRIPT directly, so a fix that lived only
+    in `bootstrap_working_mod.ps1` would have failed the very next ship.
+
+    So the database build now owns the precondition. It does not write the archive
+    itself - `build_creatures_dye_skins_arc` stays the single writer - it calls it,
+    which is what the bootstrap does too. Idempotent: a correct archive is left
+    untouched. Opt out with SVC_AUTOSTAGE_CREATURES=0 (a build with a stale archive
+    then fails at the gates instead, loudly and with the same instruction).
+    """
+    import os
+    if not ship_resources.is_dir():
+        print("  mod Creatures.arc: NOT STAGED - no Resources dir beside the output "
+              "(a scratch layout). The asset gates will report themselves UNPROVEN; "
+              "under SVC_REQUIRE_GATES=1 that is a build failure, which is correct "
+              "for anything that ships.")
+        return
+    arc = ship_resources / 'Creatures.arc'
+    try:
+        import build_shroud_rig
+        probs, detail = build_shroud_rig.check_arc(arc)
+    except Exception as e:                                   # noqa: BLE001
+        print(f"  mod Creatures.arc: could NOT be checked ({e}); the asset gates "
+              f"below decide.")
+        return
+    if not probs:
+        print(f"  mod Creatures.arc: OK - {detail}")
+        return
+    print(f"  mod Creatures.arc: {probs[0]}")
+    if os.environ.get('SVC_AUTOSTAGE_CREATURES', '1') in ('0', 'false', 'False'):
+        print("  SVC_AUTOSTAGE_CREATURES=0 - NOT restaging. This build will fail at "
+              "the asset gates unless you run: "
+              f"py tools/build_creatures_dye_skins_arc.py --out {arc}")
+        return
+    print(f"  RESTAGING it now (single writer: build_creatures_dye_skins_arc) -> {arc}")
+    try:
+        import build_creatures_dye_skins_arc
+        build_creatures_dye_skins_arc.stage(arc)
+    except SystemExit as e:
+        raise SystemExit(
+            f"BUILD ABORTED: the mod Creatures.arc could not be staged ({e}).\n"
+            f"  The Enslaver family names a mesh that ships ONLY from {arc}; without "
+            f"it they resolve NO MESH AT ALL (an invisible boss).\n"
+            f"  Fix the inputs and re-run, or stage it by hand:\n"
+            f"    py tools/build_creatures_dye_skins_arc.py --out {arc}")
+    except Exception as e:                                   # noqa: BLE001
+        raise SystemExit(
+            f"BUILD ABORTED: the mod Creatures.arc could not be staged ({e!r}).\n"
+            f"    py tools/build_creatures_dye_skins_arc.py --out {arc}")
+    probs, detail = build_shroud_rig.check_arc(arc)
+    if probs:
+        raise SystemExit("BUILD ABORTED: the mod Creatures.arc was restaged and STILL "
+                         "does not satisfy the R-257 precondition: %s" % probs[0])
+    _mesh_assets_mod = __import__('mesh_assets')
+    _mesh_assets_mod._ARC_CACHE.clear()      # the old bytes must not be read back
+    print(f"  mod Creatures.arc: RESTAGED and OK - {detail}")
+
+
 def main():
     if len(sys.argv) < 5:
         print("Usage: build_svc_database.py <sv098i.arz> <sv09.arz> <sv041.arz> <output.arz> [base_game.arz]")
@@ -4497,6 +4573,7 @@ def main():
         output_path.resolve().parent.parent / 'Resources')
     print(f"  shipping Resources anchor: {_ship_resources} "
           f"({'present' if _ship_resources.is_dir() else 'ABSENT - scratch layout'})")
+    _preflight_mod_creatures_arc(_ship_resources)
 
     # --- BUILD-INPUT PREFLIGHT (tools/check_build_inputs.py, BL-b90-DEBT-2) -------
     # argv wins whenever the file is actually there, so every existing invocation is
