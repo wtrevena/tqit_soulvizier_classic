@@ -1,6 +1,140 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> # 🖤 R-255 THE ENSLAVER'S SUMMONED PETS FINALLY SMOKE (2026-08-15) - READ THIS FIRST
+> # 🦅 R-256 THERE IS SOMETHING AT THE END OF LOOKOUT CAVE NOW (2026-08-15)
+>
+> **⏳ CODE COMPLETE, NOT YET BUILT OR DEPLOYED** (branch `feat/lookout-uber`). Nothing to test
+> until the next build ships; this is what to expect when it does. **The newest thing you can
+> actually test on your machine today is R-255 below, which is live on Steam as `build99`.**
+>
+> **Your order, verbatim:** "we should add a uber boss (a new unique one) at the end of lookout
+> cave in the area outside the back of the cave that you get through after you walk through the
+> whole cave, it is a dead end."
+>
+> ## How to walk there
+>
+> 1. **Act 2, Rhakotis.** Find the cave mouth in **Rhakotis03**, in the cliff face.
+>    **Do NOT look for a "Lookout Cave" banner at the entrance - there isn't one, and an earlier
+>    draft of this guide wrongly told you there would be.** I measured every one of the 2,282
+>    levels: Rhakotis03 reads *City of Rhakotis / Rhakotis Slums / Rhakotis Library*, and the two
+>    cave rooms carry no region at all. **"Lookout Cave" appears only when you come OUT the far
+>    side** - Rhakotis05 is the single level in the entire world bound to that region. So the
+>    banner is not how you find the cave; it is your confirmation that you found the right one.
+> 2. **Walk the whole cave.** Two rooms, in and through.
+> 3. **Come out the far side.** The banner flips to **Lookout Cave** and you step onto a cliff
+>    terrace roughly 20 units above the desert. It is a genuine dead end - there is no path down
+>    and no path on. You can only come out of the cave onto it, and walk back.
+> 4. **He is about 17 units out from the mouth**, and he stands about 11 units to the near side of
+>    the vanilla dune-raider camp (see the note below). You will see the nest before you see him:
+>    animal bones, refuse piles and an urn dragged up out of the cave. That is deliberate. The
+>    shelf is a larder, and the dressing is what he carried up.
+>
+> ## What you are fighting
+>
+> **{^r}Ushkaret, the Sky-Burial** - and the thing worth knowing is what he *is*: **the first
+> Boss-rank BIRD in the game.** We checked every one of the 5,075 monster records; the vulture
+> family has 9 commons, 5 champions and 5 heroes and has never had a boss. The only red uber on
+> any flying body at all was a level-17 bat. The sky over Rhakotis is already full of his children
+> (the vultures you have been killing all act); nothing was ever at the top of it.
+>
+> He wears a skin exactly one other creature in the database wears - the Corpsewake hero - so the
+> corpsewakes read as his brood, and he is about **2.7x** the size of a normal vulture.
+>
+> **The fight has three beats:**
+> - **He does not land.** He opens by raking a fan of quills across the shelf, and closing on him
+>   costs you blood (he retaliates passively). No other uber in the mod opens this way.
+> - **Then he stoops.** He folds and comes down on you as an area slam. **No red uber in this mod
+>   has ever left melee range vertically** - this move exists on exactly three records in the whole
+>   game, all of them the vanilla Charon, and Charon is not even in this mod any more (Akremon
+>   replaced him). On the ground he bleeds you and drains you.
+>   *(Tuning note, because it changed late: the stoop is set to the same power row vanilla's
+>   weakest Charon uses, not a higher one - an earlier draft had it inheriting a level meant for a
+>   different skill and hitting roughly 6x harder than intended on Normal. And his mana pool was
+>   raised so he can actually keep using it; at the old value he could stoop twice and then stood
+>   there. If the stoop feels rare or feels brutal, that pair of numbers is where to look.)*
+> - **Then he calls the flock,** and when he dies the last quills scatter. **The flock is capped
+>   and it expires** - never more than 6 of them at once, and each one fades after 20 seconds.
+>   That is deliberate and it is because of *your* P0: the skeleton-dog / tomb-guardian freeze you
+>   filed ("the infinite summon ... the game is frozen"). The body I built this summon from ships
+>   with a cap but **no expiry at all**, which is exactly the bug you hit, so I added the expiry
+>   and put a build gate on it. They are all plain commons - he never calls champions, so the
+>   screen does not fill up.
+>
+> **Counterplay, so it is legible:** he leeches life from everything near him and he bleeds you
+> hard, so **bleed resistance is the stat that matters**, and killing the two Cliffside Mourner
+> champions out at the rim is better than fighting all three in the middle. He cannot be bled
+> himself - he is the larder.
+>
+> ⚠️ **One thing to actually watch for, because it was broken until the last review and you are
+> the one who would see it.** The leech aura is a custom one - a much wider, stronger version of
+> the stock vampiric aura, and it is the whole idea behind his name. Until this round it was wired
+> into a slot the engine does not read for that, so he would very likely have used the plain stock
+> aura instead and none of the custom tuning would have reached you. It is now wired into the two
+> channels that actually fire. **If it feels like he barely drains at all, or like he only drains
+> when you are right on top of him rather than most of the terrace, tell me** - that is this exact
+> bug coming back, and it is the difference between "the Larder" and "a big vulture".
+>
+> **Difficulty:** deliberately inside the band you already know. His health is 14,000 / 19,000 /
+> 26,000 across the three difficulties, which sits between the Coin-Drowned King and Ephialtes.
+> **Hard, but killable, and no wall.** If he feels like a wall, say so - that is a bug, not a
+> design.
+>
+> ## What he drops
+>
+> - **The mystical orb**, like every other red uber (the Egypt-band one, same as Neferkha).
+> - **ONE chest.** One. It stands on the shelf beside him and unlocks when he dies -
+>   **The Larder of Ushkaret**. (That name is mine, not yours - tell me if you want it changed.)
+>   It opens its own dedicated loot table, not a base-game one.
+> - **{^F}Soul of the Sky-Burial** (66% drop, Normal / Epic / Legendary versions with those words
+>   in front of the name, as they should be). The soul is a **manual summon button** - "Give It to
+>   the Sky" - that raises **The Patient Wing**, a permanent bird of your own on his exact body. It
+>   is not a Ground Smash filler and it is not an on-hit proc. The soul's own stats are bleed,
+>   life-leech and pierce, and it carries a real cost: it opens your own hide, so you take more
+>   pierce and bleeding damage while you wear it.
+>
+> ## ⚠️ One thing I have to be straight about
+>
+> The design I wrote said his aura should **eat the bleed** - that anything hemorrhaging on the
+> shelf, including his own flock, would feed him. **The engine will not express that.** I measured
+> the aura shape it would have to use, and there is no conditional-on-target-state channel in it at
+> all. What actually ships is a **wide, strong life-leech aura** (its reach went from 8 to 14 units,
+> so the whole shelf really is his plate) plus his bleed and his leech strike. The fight still reads
+> "he feeds while you bleed" and bleed resist is still the counter - but it is a leech aura, not a
+> bleed-conditional feed, and I would rather tell you that than let you find out.
+>
+> Two smaller ones: he does **not** sit still pretending to be a carcass until you walk in (I wanted
+> that; a spawn proxy always produces a live monster, so there is no dormant state to use), and
+> there is **no test-hub shortcut to him this wave** - you walk the cave.
+>
+> ## ⚠️ And one more: THE SHELF WAS ALREADY OCCUPIED, and I only found out on the second pass
+>
+> **The base game has always had a small encounter and a chest up there, and I did not know that
+> when I wrote the first version of this page.** I went and read the actual base-game database. The
+> record is `08_RhakotisLookout` and it is live, not scenery:
+>
+> - **1 to 3 sandvipers**, and a **55% chance of one champion** - usually a mounted marauder, with a
+>   small chance of one of five named Egypt heroes (Ammet, Satef, Udje, Morloc, Hazur).
+> - **A golden chest**, in Normal / Epic / Legendary versions. Vanilla's, not mine.
+>
+> **So when you clear that terrace you will find TWO chests: my Larder, and the base game's golden
+> one that has been sitting there since 2006.** That is not a bug and it is not the three-chest
+> problem you filed twice - that rule is about *me* stacking chests on one uber, and I still ship
+> exactly one. **I chose to leave vanilla's content alone**, because you asked me to add a boss, not
+> to delete anything, and ripping out base-game content is your call and not mine.
+>
+> They do not spawn on top of each other: his ring and theirs are about 11 units apart and do not
+> touch. But they are close enough that the raiders will join in, which makes the fight a bit
+> busier than the numbers above suggest. **If you want that camp gone so the dead end is his alone,
+> say the word and I will clear it** - it is one line in the map lane. That is `BL-R256-DEBT-4`.
+>
+> **THE TEST:** walk the cave, come out the back. **PASS =** the banner reads Lookout Cave, a
+> red-named giant vulture with two champion escorts is standing on the terrace, and when he dies he
+> drops an orb, (usually) the soul, and **exactly one chest of mine - "The Larder of Ushkaret"**.
+> (The plain golden chest next to it is vanilla's and was always there. Two chests total is the
+> EXPECTED result, not a failure.) **FAIL =** empty terrace, two of HIM side by side, two of MY
+> chests, a fight that feels like a wall, or **birds piling up until the game chugs** - that last
+> one would mean the expiry I added is not firing, and I want to hear about it immediately.
+
+> # 🖤 R-255 THE ENSLAVER'S SUMMONED PETS FINALLY SMOKE (2026-08-15) - READ THIS FIRST (it is LIVE)
 >
 > **✅ LIVE ON DEV *AND* STEAM AS `build99`** (arz `1113f2c69fc3f188b0b5bece340614f2`, 2026-08-15).
 > Full quit TQ and restart Steam before testing.
