@@ -6,6 +6,54 @@
 > Newest first. Never delete entries. Honest severity: a mistake caught before damage is still
 > a mistake. This file is part of the mandatory successor read order.
 
+## 2026-08-15
+
+- **2026-08-15 | R-250/b93 shipped the Enslaver's shroud into skill slots the engine
+  does not read, and called it done** - the lane put `svc_enslaver_shroud` in
+  `skillName19` on the wild boss and `skillName18` on all three soul-summon pet tiers.
+  `Templates\TemplateBase\MonsterSkillManager.tpl` - the template `Monster.tpl` includes
+  and `Pet.tpl` inherits - declares `skillName1..17` and nothing above it, and across all
+  74,013 base-game records no Monster or Pet ever uses a higher slot. So the whole b93
+  ship (arz `db314143`, DEV + Steam 2026-08-14) wrote four fields that nobody reads.
+  **Cost: Will caught it in play** and filed the same request for a FOURTH time
+  ("toxeus the murderer enslaver of souls summoned pets (when i summon them from their
+  souls) still do not have the black smoke around them"), after three prior rounds had
+  each reported the request as implemented. **Root cause: a measurement taken from the
+  mod's own output instead of from the engine's declaration.** The lane wrote "ground
+  truth: he uses skillName1..18 and the template reaches 23"; 23 is simply the highest
+  slot THIS MOD had already overflowed into (`um_mnemophage_99`), so the lane measured
+  its own earlier mistake and read it as headroom. This is the SAME instrument failure
+  the module's own round-1 note documents (a blind reader's answer becoming design law) -
+  repeated one round later, against a different binary. **Guard:** `_ENGINE_SKILL_SLOT_MAX
+  = 17` with a DEAD SLOT gate that fails the build if the shroud is ever parked above it,
+  and `--selftest` now re-derives the ceiling from `Templates.arc` every run, so the
+  number can never again be a belief. The shroud moved to `initialSkillName` +
+  `buffSelfSkillName`, the two always-on channels that template actually declares.
+
+- **2026-08-15 | R-250/b93 scoped its parity claim to half the family** - the lane
+  covered the wild boss and the three pet tiers his soul summons, and never looked at the
+  marauders: neither the escorts the wild boss raises nor the pet-of-pet marauders the
+  SUMMONED Enslaver raises. "The family has the family FX" was therefore never a checked
+  claim, and the gate could not have caught a marauder without it. Cost: none realised
+  (the marauders wear `ShadowStalker.msh` and were covered by accident, because that rig
+  carries the shroud compiled in) - but it was luck, not a gate, and `champion_mesh`
+  had already proved a mesh swap can silently remove exactly that coverage. Root cause:
+  the roster was seeded from the summon skill and stopped there instead of walking what
+  each member itself spawns. **Guard:** the roster is now a bounded WALK of the whole
+  household (boss -> escorts -> pet tiers -> pet-of-pet), each member must satisfy one of
+  two derived routes (MESH-embedded FX or the record-field shroud), and the negative test
+  plants "strip one pet" - moving one pet-of-pet marauder onto an FX-free rig - and
+  requires RED.
+
+- **2026-08-15 | a duplicate `## R-254` heading is live on main** - `docs/WILL_RULINGS.md`
+  carries R-254 twice: the death-penalty ruling (line ~8761) and Will's MISTAKES.md order
+  (line ~8900). `gate_ruling_ids.py` passes because its A1 arm only counts headings in the
+  dated `## R-<n> [date] STATUS` form, so the second, differently-shaped heading is
+  invisible to the very gate written to make a ruling number denote one ruling. Cost: none
+  yet; the number is ambiguous in every future reference. Found by this lane while
+  allocating R-255; NOT fixed here (renumbering a ruling Will dictated is his call, and
+  this lane's diff must stay reviewable). Registered as `BL-R255-DEBT-2`.
+
 ## Seed entries (known mistakes from the 2026-07-12 .. 2026-08-15 sessions, logged retroactively)
 
 - **2026-08-14 | R-249 TESTHUB Quests built but never deployed to DEV** - the Warden-popup fix
