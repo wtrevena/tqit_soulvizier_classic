@@ -120,7 +120,36 @@ MODULE_NAME = "Toxeus champion meshes: kill the mesh-embedded green (R-102) + R-
 GREEN_MESH = r'Creatures\Monster\Skeleton\RevenantPoison.msh'
 
 # ── destinations, measured FX-free (see the table in the docstring) ──────────
-ENSLAVER_MESH = r'Creatures\Monster\Skeleton\SkeletonGrayBlack01New.msh'
+# R-257 (Will 2026-08-16, the FIFTH filing of "still do not have the black smoke"):
+# the Enslaver's destination is no longer the bare FX-free base rig. It is
+# `enslaver_shroud.SHROUD_RIG` - a mod-authored byte-copy of that same rig
+# carrying the demons' OWN `CreateEntity{attach="SpecialHit01"; entity=
+# "...ShadowStalker_Smoke.dbr"}` block, appended verbatim from ShadowStalker.msh.
+#
+# Four rounds tried to give him that shroud through `.dbr` FIELDS and all four
+# failed in game; the census in `enslaver_shroud`'s docstring shows the exact b99
+# shape occurs ZERO times in 341 vanilla Pets, and that EVERY vanilla pet with a
+# persistent aura gets it from its MESH. So this module - already the single
+# writer of `mesh`, and the module whose b102 swap onto an FX-free rig removed
+# his last always-on emitter in the first place - is the right and only place for
+# the fix to land.
+#
+# The constant is IMPORTED, never re-typed: the asset builder, the shroud gate and
+# this writer must name one string or they will drift (the thrown_restore ->
+# thrown_anim_rig precedent). His silhouette is unchanged - the rig is the same
+# skeleton, byte for byte, with 115 bytes of text appended and one length u32
+# bumped, and `build_shroud_rig.verify_rig()` arm A5 proves the rig-name table is
+# IDENTICAL, so R-102's anti-green choice and the animation surface both survive.
+try:
+    from . import enslaver_shroud as _shroud     # registry/package context
+except ImportError:                              # stand-alone script context
+    import os as _os
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    import enslaver_shroud as _shroud            # noqa: E402
+
+ENSLAVER_MESH = _shroud.SHROUD_RIG
+# The one effect that rig is ALLOWED to embed: the demons' own, and nothing else.
+ENSLAVER_GRANDFATHERED_FX = ['Records\\Effects\\MonsterFX\\ShadowStalker_Smoke.dbr']
 DEVOURER_MESH = r'Creatures\Monster\Skeleton\GoldenSkeleton01.msh'
 # R-247.5a (Will 2026-08-13, RETIREMENT PROTOCOL on this module's own pin):
 # "toxeus the murderer the endless hunt is still a demon not a skeleton". The
@@ -172,7 +201,13 @@ FAMILIES = [
         'summons': [_EN_SUMMON],
         'proxies': [r'records\drxmap\proxy\q_enslaver_warband.dbr',
                     r'records\drxmap\proxy\q_yard_enslaver.dbr'],
-        'must_be_fx_free': True,
+        # R-257: his rig is DELIBERATELY not FX-free any more - it carries the one
+        # effect Will confirmed by eye on the marauders, and nothing else. Same
+        # treatment R-247.5a gave the Hunt's Boss Aura: name the allowed effect so
+        # the gate can tell CONFIRMED from MERELY-PRESENT instead of ignoring FX.
+        # The green ban is untouched (RevenantPoison.msh is still banned outright).
+        'must_be_fx_free': False,
+        'grandfathered_fx': ENSLAVER_GRANDFATHERED_FX,
     },
     {
         # The End of All Things pets are CLONES of the Devourer's own pets and
@@ -187,6 +222,7 @@ FAMILIES = [
         'proxies': [r'records\drxmap\proxy\q_bloodtoxeus_lone.dbr',
                     r'records\drxmap\proxy\q_bloodtoxeus_ambush.dbr'],
         'must_be_fx_free': True,
+        'grandfathered_fx': [],
     },
     {
         'label': 'Toxeus the Murderer, The Endless Hunt',
@@ -198,6 +234,7 @@ FAMILIES = [
         # embedded (in-game-confirmed on q4_giantskeleton); allowed via
         # HUNT_GRANDFATHERED_FX, any OTHER embedded effect still reds.
         'must_be_fx_free': False,
+        'grandfathered_fx': HUNT_GRANDFATHERED_FX,
     },
 ]
 
@@ -469,13 +506,27 @@ def verify(db, tags=None):
                     "every .dbr scan and is exactly how four waves missed the green."
                     % (fam['label'], fam['mesh'], rep['fx']))
             if not fam['must_be_fx_free']:
-                unexpected = [f for f in rep['fx'] if f not in HUNT_GRANDFATHERED_FX]
+                # R-257 generalised this from ONE shared list to a PER-FAMILY one:
+                # the Hunt's allowed effect is the base game's Boss Aura, the
+                # Enslaver's is the demons' ShadowStalker_Smoke, and neither may
+                # stand in for the other. A single shared list would have let the
+                # Enslaver silently satisfy his gate with a Boss Aura.
+                allowed = fam.get('grandfathered_fx', HUNT_GRANDFATHERED_FX)
+                unexpected = [f for f in rep['fx']
+                              if _norm(f) not in {_norm(a) for a in allowed}]
                 if unexpected:
                     problems.append(
                         "%s: mesh %s grew an embedded effect that is NOT the "
-                        "Will-confirmed black shroud: %s (grandfathered: %s)"
-                        % (fam['label'], fam['mesh'], unexpected,
-                           HUNT_GRANDFATHERED_FX))
+                        "Will-confirmed one for this champion: %s (allowed: %s)"
+                        % (fam['label'], fam['mesh'], unexpected, allowed))
+                missing = [a for a in allowed
+                           if _norm(a) not in {_norm(f) for f in rep['fx']}]
+                if missing:
+                    problems.append(
+                        "%s: mesh %s does NOT embed %s. That effect is the whole "
+                        "reason this family is on this rig; without it the champion "
+                        "silently renders nothing, which is the defect Will has now "
+                        "filed five times." % (fam['label'], fam['mesh'], missing))
             missing_bones = core - set(rep['bones'])
             if missing_bones:
                 problems.append(
@@ -649,6 +700,19 @@ def _negtest():
         ('a Hunt pet tier misses the skeleton mesh (R-247.6c family law)',
          lambda db: db.d[HUNT_PETS[1]].__setitem__(
              'mesh', [r'Creatures\Monster\ShadowStalker\ShadowStalker.msh'])),
+        # R-257: THE REGRESSION THIS MODULE ONCE CAUSED, NOW GATED. b102 moved the
+        # Enslaver onto the bare FX-free SkeletonGrayBlack01New and thereby removed
+        # his last always-on emitter, which is what started five filings of "he has
+        # no black smoke". The whole family goes back onto that plain rig here: it
+        # EXISTS, it is DISTINCT from both brothers and it is rig-complete, so every
+        # pre-R-257 arm of this gate is happy with it - only the new
+        # `grandfathered_fx` MISSING arm can see the defect.
+        ('R-257: the Enslaver family regresses to the plain FX-FREE rig, so the '
+         'shroud silently disappears again (the b102 -> five-filings defect)',
+         lambda db: [db.d[r].__setitem__('mesh', [_shroud.DONOR_RIG])
+                     for r in [_EN_MONSTER] + EN_PETS + [
+                         r'records\drxmap\proxy\q_enslaver_warband.dbr',
+                         r'records\drxmap\proxy\q_yard_enslaver.dbr']]),
     ]
 
     try:
