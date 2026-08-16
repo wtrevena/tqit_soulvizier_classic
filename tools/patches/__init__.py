@@ -413,10 +413,34 @@ REGISTRY = [
                             # name tables (bone + AttachPoint, casefolded - see mesh_assets), A9
                             # render resolution on the .pfx (base-game Effects.arc), donor-residue
                             # check, shared-record leak check, CRASH LAW.
+                            # R-255 (b99, Will 2026-08-15, the FOURTH filing: "summoned pets
+                            # ... still do not have the black smoke"): b93 put all of the
+                            # above in skillName19 (boss) / skillName18 (pet tiers) - slots
+                            # MonsterSkillManager.tpl DOES NOT DECLARE. It declares
+                            # skillName1..17 and nothing more, and no Monster or Pet in the
+                            # 74,013 base-game records ever uses a higher one; "the template
+                            # reaches 23" was this mod's own overflow read back as headroom.
+                            # So the shroud now rides the two always-on channels that
+                            # template really declares - initialSkillName (cast at spawn, ON
+                            # from frame one, owes the AI nothing) + buffSelfSkillName (the
+                            # controller clones re-apply it) - and this lane's dead slots are
+                            # retired (a NEIGHBOUR's skill parked up there is reported only,
+                            # RETIREMENT PROTOCOL: see BL-R255-DEBT-1, six such records).
+                            # R-255 also WIDENS the parity gate from the boss+pet-tiers to the
+                            # whole household: the roster is a bounded WALK (boss -> escorts
+                            # -> pet tiers -> pet-of-pet marauders) plus any record wearing a
+                            # family name tag, and every member must satisfy one of two
+                            # DERIVED routes - MESH (its rig embeds the demons' own
+                            # ShadowStalker_Smoke.dbr; that is how the marauders have always
+                            # smoked) or FIELD (the shroud in both always-on channels). A
+                            # family member with neither FAILS the build.
                             # Negative test: py tools/patches/enslaver_shroud.py --negtest
-                            # (30 plants); --selftest re-measures the module's load-bearing rig
-                            # facts against the real archives (round 1's stub asserted a FALSE
-                            # premise and its rig plant certified the error instead of catching it)
+                            # (40 plants, incl. "strip one pet" -> RED and the R-255 dead-slot
+                            # defect replayed); --selftest re-measures the module's
+                            # load-bearing rig facts AND the skillName ceiling against the
+                            # real archives (round 1's stub asserted a FALSE premise and its
+                            # rig plant certified the error instead of catching it; b93's slot
+                            # ceiling was a comment nobody ever re-derived)
     'toxeus_souls_100',     # b90 (Will 2026-07-27, R-48) + b98 (R-91): "increase the drop rate for
                             # the souls
                             # of toxeus the murderer, enslaver of souls and toxeus the murderer,
