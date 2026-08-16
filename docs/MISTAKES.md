@@ -8,6 +8,60 @@
 
 ## 2026-08-16
 
+- **2026-08-16 | R-257 ROUND 1 SHIPPED A MODULE WHOSE STATIC GATES WERE ALL GREEN WHILE THE
+  COLD BUILD WAS DEAD** - the lane put the Enslaver family on a MOD-AUTHORED mesh that exists
+  in exactly one archive, and staged that archive in bootstrap Step 2e, *after* the Step 1
+  database build. THREE fail-loud gates inside that build read it (`enslaver_shroud` M2,
+  `validate_render_chain` A9, `champion_mesh.verify`), so the build aborted before a single
+  record was touched. **The blast radius was worse than a stop:** bootstrap Step 1 caught the
+  non-zero exit and copied the RAW upstream SV 0.98i database over the mod database, then
+  carried on into Text/Quests/deploy - a "mod" with none of the mod in it, announced by one
+  yellow line. **Cost: the vet round; a ship would have produced either a dead build or an
+  unpatched database.** **Root cause: the lane treated a new BUILD-TIME dependency as
+  DEPLOY-side discipline** and wrote that framing into five documents. It verified its records
+  and its asset and never ran the thing that has to assemble them. **Guards, all three
+  because one was not enough:** (1) `build_svc_database._preflight_mod_creatures_arc()` -
+  the DATABASE owns the precondition and restages the archive itself, because the ship runbook
+  drives that script directly and has never run the bootstrap; (2) bootstrap Step 0e stages it
+  before Step 1 and a fired gate now STOPS the bootstrap
+  (`SVC_ALLOW_UPSTREAM_FALLBACK=1` to override deliberately); (3)
+  `tools/debug/r257_cold_order_control.py`, five runs, re-runnable against any checkout.
+  **Standing lesson: a lane that changes what a build REQUIRES must run the build's own
+  entrypoint. `--negtest` green is not "the build works", and "the ship lane owns the cold
+  build" is not a gate.**
+
+- **2026-08-16 | THE SAME LANE'S `--negtest` COULD NOT SEE ITS OWN P0s, AND MISTAKES.md HAD
+  LOGGED THAT EXACT SHAPE THE DAY BEFORE** - all 29 round-1 plants ran against a dict stub
+  with `_RIG_ASSET_OVERRIDE` injected, so `rig_asset_state()` - the function that walks the
+  staged archives and decides the build's fate - was executed by NO plant. The two plants that
+  "exercised" it injected a synthetic `('FAIL', ...)` tuple, i.e. they tested the reporting,
+  not the deciding. **Root cause: a negative test that stubs the very function under test
+  proves only that the caller forwards a stub.** The R-256 entry directly above this one had
+  logged the same shape ("`--negtest` runs this module STANDALONE against an already-built
+  arz ... and never the shared gates the module opts into") and this lane cited that entry
+  elsewhere while reproducing its blind spot. **Guard: `--negtest` is now 37/37, six of them
+  UNSTUBBED against real archives written to a temp tree** (no rig, stale rig, torn rig,
+  missing anchor dir, and a good anchor beside a stale scratch tree). Both P0s are catchable
+  by the command alone. **Standing lesson: for every gate a module owns, at least one negtest
+  arm must run the REAL function against REAL inputs; a stub may stand in for the environment,
+  never for the decision.**
+
+- **2026-08-16 | A GATE ASKED A SEARCH PATH A SHIP QUESTION** - round 1's M2 arm required the
+  rig in EVERY `mesh_assets.mod_resource_dirs()` hit. That function is a search path
+  (`work/*/Resources` + `local/*/Resources`) whose whole purpose is to never false-fail a
+  lookup; using it to ask "does the archive we SHIP carry X?" meant any stale scratch tree
+  could red-lock a build whose own shipped archive was perfect, with no way for an operator to
+  clear it by rebuilding the right file. **Root cause: two different questions - "can this
+  resolve anywhere?" and "is this in the artifact?" - were answered from one list.** **Guard:
+  `mesh_assets.shipping_resource_dir()` / `set_shipping_resource_dir()`; `build_svc_database`
+  declares the anchor once (`output.parent.parent/Resources`, the one
+  `validate_render_chain` has always used) and asset gates ask for it by name.** **Also
+  logged, because it is a measurement error in the VET round and the record must be honest:
+  the finding described "five stale det-2x scratch archives"; measured, all five
+  `local/b9*_run2/Resources` are JUNCTIONS to `work/SoulvizierClassic/Resources` and the six
+  paths are ONE file (same md5, same size). The defect and the fix stand; the count did not.
+  `mod_resource_dirs()` now de-duplicates by real path so no future reader repeats it.**
+
 - **2026-08-16 | THE FIFTH FILING. R-255's headline statistic was MIS-SCOPED, and that one
   mis-scope is what made a mechanism with no rendering exemplar look precedented enough to
   ship** - R-255's ruling table justified the b99 always-on channels with *"838 Monsters +

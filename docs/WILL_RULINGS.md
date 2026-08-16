@@ -9452,16 +9452,58 @@ list would have let the Enslaver silently satisfy his gate with the Hunt's Boss 
 it now also reds when the allowed effect is **MISSING** - the arm that catches the b102
 regression that started this whole run of filings.
 
-### âš ï¸ NEW DEPLOY COUPLING (P0 if missed)
+### ⚠️ NEW COUPLING: A BUILD-TIME PRECONDITION **AND** A DEPLOY COUPLING (P0 if missed)
 
-**This is the first lane in which a `.dbr` depends on a MOD-SHIPPED ART asset.**
-`work\<mod>\Resources\Creatures.arc` must be REBUILT (`py
-tools/build_creatures_dye_skins_arc.py --out work\SoulvizierClassic\Resources\Creatures.arc`)
-and DEPLOYED in the same ship as the `.arz`. Shipping the arz without the arc gives the
-Enslaver family **no mesh at all** - an invisible boss, far worse than no smoke. `verify()`
-arm M2 fails the build loud on exactly that state, and `build_creatures_dye_skins_arc.py`
-is the sole writer of that archive so any restage includes the rig. Coupling list is now:
-Levels+Quests, arz+Text, **and arz+Creatures.arc**.
+**This is the first lane in which a `.dbr` depends on a MOD-SHIPPED ART asset.** The
+Enslaver family's `mesh` names `svc_enslaver_shroudrig01.msh`, and that file exists in
+exactly one archive: the mod's own `work\<mod>\Resources\Creatures.arc`.
+
+> **ROUND 1 OF THIS LANE WROTE THIS SECTION AS DEPLOY-SIDE DISCIPLINE, AND THAT FRAMING WAS
+> WRONG. It is FIRST a precondition of the DATABASE BUILD.** Three fail-loud gates that run
+> *inside* `build_svc_database.py` read the archive:
+>
+> | gate | what it needs from the archive |
+> |---|---|
+> | `enslaver_shroud.verify()` arm **M2** | it must carry the rig, byte-identical to the derived bytes |
+> | `validate_render_chain` (**A9**) | a MOD-AUTHORED pet whose `mesh` does not resolve **FAILS the build** |
+> | `champion_mesh.verify()` | it opens the destination mesh to audit embedded FX + bone completeness |
+>
+> Round 1 staged it *after* the build, so the cold build died at the first of those - and
+> `bootstrap_working_mod.ps1` then caught the non-zero exit and quietly copied the RAW
+> upstream SV 0.98i database over the mod database, carrying on into Text/Quests/deploy.
+> A "mod" with none of the mod in it, announced by one yellow line.
+
+**WHERE THE COUPLING NOW LIVES (round 2).**
+
+1. **`build_svc_database.py` owns it.** `_preflight_mod_creatures_arc()` runs seconds into
+   the build, not ten minutes in: a correct archive is left untouched; a stale or absent one
+   is **RESTAGED** through `build_creatures_dye_skins_arc` (still the single writer of that
+   file); an unstageable one **ABORTS** naming the one command that fixes it; a build with no
+   `Resources` dir beside its output says the asset gates are UNPROVEN and lets
+   `SVC_REQUIRE_GATES` decide. `SVC_AUTOSTAGE_CREATURES=0` opts out, and the gates then red
+   exactly as before - a convenience must never become a way to pass a gate that should fire.
+   **This is the path that matters: the ship runbook drives `build_svc_database.py`
+   DIRECTLY** (`docs/PLAYBOOK.md` §2, the HANDOFF quick pointers) **and has never run the
+   bootstrap**, so round 1's fix would have had to be in this file to help any ship at all.
+2. **`bootstrap_working_mod.ps1` Step 0e** stages the archive BEFORE Step 1; Step 2 no longer
+   copies the raw upstream archive over it; Step 2e audits that it survived
+   (`py tools/build_shroud_rig.py --check-arc <arc>`) and then runs the dye gate, which needs
+   the built `.arz` and so cannot move earlier. **A fired gate now STOPS the bootstrap**
+   (`SVC_ALLOW_UPSTREAM_FALLBACK=1` to deliberately take an unpatched tree anyway).
+3. **The DEPLOY half still stands, and it was the part round 1 got right.** The DEV deploy is
+   a *targeted* coupled copy, so `Resources\Creatures.arc` must be copied in the SAME ship as
+   the `.arz` or the deployed game has an arz naming a mesh the deployed Resources lack.
+   Coupling list is now: Levels+Quests, arz+Text, **and arz+Creatures.arc**.
+
+**AND THE GATE MUST ASK THE RIGHT ADDRESS.** Round 1's M2 demanded the rig in every
+`mesh_assets.mod_resource_dirs()` hit. That list is a SEARCH PATH (`work/*/Resources` plus
+`local/*/Resources`), so a stale scratch tree could red-lock a build whose own shipped
+archive was perfect - a ship-blocker no operator could clear by rebuilding the right file.
+`build_svc_database` now declares the **shipping anchor** once (`output.parent.parent /
+'Resources'`, the anchor `validate_render_chain` has always used) and M2 asks that one
+archive. Measured while fixing it: the "six archives" in the ship checkout are **ONE file
+seen through five det-2x junctions**, so `mod_resource_dirs()` now de-duplicates by real
+path and no future reader repeats that arithmetic.
 
 ### GATES
 
@@ -9469,11 +9511,39 @@ Levels+Quests, arz+Text, **and arz+Creatures.arc**.
 |---|---|
 | `py tools/build_shroud_rig.py --selftest` | **PASS** (both binaries EOF-exact in 9 chunks; the 115-byte block; donor FX-free; `SpecialHit01` on his rig) |
 | `py tools/build_shroud_rig.py --negtest` | **10/10** (block absent, length not bumped, length bumped with no block, hand-typed LF block, wrong attach, wrong effect, donor text overwritten, pre-text corruption, block doubled, length off by one) |
+| `py tools/build_shroud_rig.py --check-arc <arc>` | **PASS** on the staged archive; **exit 1** on the base game's own `Creatures.arc`. Both directions run |
 | `py tools/patches/enslaver_shroud.py --selftest` | **PASS**, and it re-measures the exemplar, both rigs, the authored asset and R-255's slot ceiling against the real archives |
-| `py tools/patches/enslaver_shroud.py --negtest` | **29/29** (incl. two SVC_REQUIRE_GATES arms: a ship build in which the rig-asset arm or a member's rig cannot be read is a FAILURE, not a downgrade) |
+| `py tools/patches/enslaver_shroud.py --negtest` | **37/37** = 31 stubbed plants + **6 arms that run the REAL `rig_asset_state()` against REAL archives on disk** (no rig / stale / torn / missing anchor dir / good anchor beside a stale scratch tree). Round 1 stubbed that function in all 29 of its plants, which is exactly why its own P0s were invisible to it |
 | `py tools/patches/champion_mesh.py --negtest` | **15/15** (new: the family regresses to the plain FX-free rig) |
 | `py tools/gate_dye_skins.py` | **PASS** (the archive's other tenant is untouched) |
+| `py tools/debug/r257_cold_order_control.py --root <ship checkout>` | **ALL FIVE RUNS BEHAVED AS SPECIFIED** (table below) |
+| `py tools/patches/_check_registry.py` | **OK, 69 modules**, order `d83e9744` - unchanged, no registry edit |
 | STATIC dry-run over the shipped build100 arz, both modules in registry order | **GREEN** - 8/8 household members MESH (4 on `ShadowStalker.msh`, 4 on the new rig), exactly **6 records touched**, all attributed |
+
+**THE COLD-ORDER CONTROL** (`tools/debug/r257_cold_order_control.py`), run against the real
+build100 ship checkout (arz `6b89bb5d`, `Creatures.arc` 42,617,179 B, no rig in it):
+
+| run | what it is | result |
+|---|---|---|
+| **A** | the SHIPPED state - the vet's own repro, reproduced | rig `FAIL`, `apply()` **ABORT**. The gate must still bite; a "fix" that made this pass would have hidden the defect |
+| **B** | the archive staged BEFORE the build | **PASS** |
+| **C** | B's good anchor with the checkout's stale archives still on the glob path | **PASS** - round 1 red-locked here |
+| **D** | `build_svc_database`'s own preflight, autostage default: **the ship lane's path** | 42,617,179 -> 42,764,976 B, then **PASS** |
+| **E** | the same with `SVC_AUTOSTAGE_CREATURES=0` | **LEFT ALONE**, still **FAIL** |
+
+### THE PETS' RIG PAIRING NOW RESTS ON ONE RECORD (a safety property the swap narrowed)
+
+`validate_summon_pets` **B-SUMMON-1 step (b)** requires every summoned pet's
+`(mesh, charAnimationTableName)` pair to appear in `proven_pairings`. While the tiers rode
+the BASE rig, many base records vouched for them. On the mod-authored R-257 rig the **only**
+witness that can exist is a MOD Monster on the same rig - today `um_toxeus_enslaver_99`. The
+day a lane moves the boss off this rig (exactly what `champion_mesh`'s b102 swap once did to
+him) the three pets' pairing goes unproven and B-SUMMON-1 reds the build with a message
+about rendering rather than about this cause. **`enslaver_shroud.verify()` now names the
+dependency itself** (arm "RIG PAIRING UNVOUCHED"), with two negtest plants that no other arm
+can see: the boss moved onto the demons' rig (he still smokes, so every FX arm stays happy)
+and a pet tier given an anim table no Monster on its rig uses. **A lane that moves the boss
+must move the pets or supply another witness in the SAME change.**
 
 Required negative tests for this ruling, both present: **strip** (any member back on an
 FX-free rig -> RED, including the "STRIP ONE PET" case R-255 introduced) and **re-plant a
@@ -9493,14 +9563,58 @@ confirmed smoke in play.** The residual risk is no longer "does this channel ren
 does, on the marauders, in his own words - but only "does a mod-shipped copy of a base rig
 load?", against 1,105 mod-served creature meshes that already do.
 
+### VET ROUND 2 (2026-08-16) - THE ROUND THAT FOUND THE COLD BUILD DEAD AGAIN
+
+Five findings, all fixed, all proven. **Two P0s, and both were the same mistake seen from
+two sides: the lane verified its RECORDS and its ASSET but never the BUILD that has to
+assemble them.** That is the R-256 lesson repeated one round later, in a lane whose own gate
+table had written `NOT RUN (ship lane owns these): cold det-2x build`.
+
+- **P0 - THE COLD BUILD DIED, AND THE DEATH WAS SILENT.** Reproduced end to end, not
+  inferred. Two causes, both fixed: the mod `Creatures.arc` was staged AFTER the database
+  build that gates on it, and the bootstrap's `$LASTEXITCODE` fallback then substituted the
+  raw upstream database instead of stopping. See the coupling section above for the full fix.
+- **P0 - THE SAME COUPLING BROKE TWO MORE GATES**, `validate_render_chain` A9 and
+  `champion_mesh.verify()`, both of which run INSIDE the arz build and both of which open
+  that archive. Round 1's docs (this ruling, `BL-R257-DEBT-1`, the HANDOFF, the bootstrap
+  comment, the test guide) all framed the coupling as deploy-side discipline, which would
+  have instructed a ship operator to restage the archive AFTER every one of those gates had
+  already failed. Corrected in all five places.
+- **P0 (found while fixing the above, not in the vet's list) - THE SHIP LANE DOES NOT RUN
+  THE BOOTSTRAP.** `docs/PLAYBOOK.md` and the HANDOFF quick pointers both drive
+  `py tools/build_svc_database.py ...` directly. A fix confined to
+  `bootstrap_working_mod.ps1` would have passed every static gate and failed the very next
+  ship. The database build now owns the precondition itself.
+- **P2 - `--negtest` STRUCTURALLY COULD NOT SEE EITHER P0.** All 29 round-1 plants ran
+  against a dict stub with `_RIG_ASSET_OVERRIDE` injected, so `rig_asset_state()` - the
+  function that walks the staged archives and decides the build's fate - was executed by no
+  plant at all. `docs/MISTAKES.md` had logged that exact shape for R-256 the previous day and
+  this lane cited the entry elsewhere while reproducing its blind spot. `--negtest` is now
+  **37/37**, six of them unstubbed against real archives on disk, and it catches both P0s.
+- **P2 - MOJIBAKE IN THE DESIGN LAW OF RECORD.** The coupling heading in this file carried a
+  double-encoded warning sign (`C3 A2 C5 A1 C2 A0 ...` where `E2 9A A0 EF B8 8F` belonged) -
+  the last survivor of the encoding slip already logged in MISTAKES. Fixed, and every one of
+  the branch's 14 touched files now passes a sweep for double-encoded runs, BOMs and non-UTF-8
+  bytes: **CLEAN**.
+- **P2 - THE PETS' RIG PAIRING RESTS ON ONE RECORD.** Measured, does not fail today, gated
+  anyway - see the section above.
+
 ### DEBTS
 
 - `BL-R250-DEBT-1` (**P2, WILL / in-game, CARRIED FORWARD for the fifth time**): nobody has
   seen it render. Will's test: summon the Enslaver from any tier of his soul and just stand
   there, out of combat. The smoke should be on him from the moment he appears, and on the
   marauders he raises, and it should look like the demons' - not thicker.
-- `BL-R257-DEBT-1` (**P0 SHIP DISCIPLINE**): the arz+`Creatures.arc` coupling above. The
-  ship lane must restage and deploy the archive with the database and hash-verify both.
+- `BL-R257-DEBT-1` (**P0 SHIP DISCIPLINE, REWRITTEN IN ROUND 2**): the `Creatures.arc`
+  coupling is a **BUILD-TIME PRECONDITION FIRST** and a deploy coupling second. The build
+  now stages the archive itself, so the ship lane's remaining duty is the DEPLOY half: copy
+  `Resources\Creatures.arc` with the `.arz` and hash-verify both. If the ship lane's deploy
+  is a targeted file list, `Creatures.arc` must be ON that list.
+- `BL-R257-DEBT-3` (**P2, PROCESS, NEW IN ROUND 2**): a lane that changes what a build
+  REQUIRES must run the build's own entrypoint, not only its module's `--negtest`. This lane
+  shipped a module whose static gates were all green while the cold build was dead, twice
+  over. The cheap form of that check now exists and is re-runnable:
+  `py tools/debug/r257_cold_order_control.py --root <checkout>`.
 - `BL-R257-DEBT-2` (**P2, ASSET RISK, stated not hidden**): a mod-shipped copy of a
   base-game rig has never been loaded on THIS creature before. The class is proven (1,105
   mod-served meshes) and the bytes are proven (A1..A9), but this exact file has not been in

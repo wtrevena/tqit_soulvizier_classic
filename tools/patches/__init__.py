@@ -481,24 +481,35 @@ REGISTRY = [
                             # on a member that already smokes from its rig the FIELD route
                             # would DOUBLE the shroud, which b99's own apply() already refused
                             # for the marauders.
-                            # 🚨 NEW DEPLOY COUPLING (BL-R257-DEBT-1, P0): the family's `mesh`
-                            # now names a MOD-SHIPPED asset. work\<mod>\Resources\Creatures.arc
-                            # must be rebuilt + deployed in the SAME ship as the arz or they
-                            # resolve NO MESH (an invisible boss). verify() arm M2 reds on
-                            # exactly that. Coupling list: Levels+Quests, arz+Text, AND
-                            # arz+Creatures.arc.
+                            # 🚨 BUILD-TIME PRECONDITION *AND* DEPLOY COUPLING
+                            # (BL-R257-DEBT-1, P0): the family's `mesh` now names a
+                            # MOD-SHIPPED asset that lives only in
+                            # work\<mod>\Resources\Creatures.arc. THREE fail-loud gates
+                            # inside build_svc_database read it (this module's M2,
+                            # validate_render_chain A9, champion_mesh.verify), so the
+                            # archive must exist BEFORE the database is built - round 1
+                            # staged it after and the cold build died. build_svc_database
+                            # now stages it itself; bootstrap Step 0e does too. The DEPLOY
+                            # half stands: deployed without the arc they resolve NO MESH
+                            # (an invisible boss). Coupling list: Levels+Quests, arz+Text,
+                            # AND arz+Creatures.arc.
                             # ORDERING NOTE: this module no longer writes `mesh`; champion_mesh
                             # (registered later, R-102's single-writer law) does, and IMPORTS
                             # SHROUD_RIG from here so asset and wearer cannot drift.
                             # Negative test: py tools/patches/enslaver_shroud.py --negtest
-                            # (29 plants, incl. the required "strip" case -> RED and the
-                            # "belief-channel-only re-plant" case: a pet back on the FX-free
-                            # rig carrying the b99 field route, i.e. exactly what shipped as
-                            # build99 -> RED); --selftest re-measures the exemplar, both rigs,
-                            # the authored asset and the R-255 slot ceiling against the real
-                            # archives (round 1's stub asserted a FALSE premise and its rig
-                            # plant certified the error instead of catching it; b93's slot
-                            # ceiling was a comment nobody ever re-derived)
+                            # (37 = 31 stubbed plants + 6 UNSTUBBED arms running the real
+                            # rig_asset_state() against real archives on disk). Includes the
+                            # required "strip" case -> RED, the "belief-channel-only re-plant"
+                            # case (a pet back on the FX-free rig carrying the b99 field route,
+                            # i.e. exactly what shipped as build99) -> RED, and the two rig/anim
+                            # PAIRING plants no other arm can see. Round 1 stubbed the rig-asset
+                            # function in ALL of its plants, which is why its own two P0s were
+                            # invisible to it (MISTAKES.md 2026-08-16). --selftest re-measures
+                            # the exemplar, both rigs, the authored asset and the R-255 slot
+                            # ceiling against the real archives (round 1's stub asserted a FALSE
+                            # premise and its rig plant certified the error instead of catching
+                            # it; b93's slot ceiling was a comment nobody ever re-derived).
+                            # Cold-order control: py tools/debug/r257_cold_order_control.py
     'toxeus_souls_100',     # b90 (Will 2026-07-27, R-48) + b98 (R-91): "increase the drop rate for
                             # the souls
                             # of toxeus the murderer, enslaver of souls and toxeus the murderer,

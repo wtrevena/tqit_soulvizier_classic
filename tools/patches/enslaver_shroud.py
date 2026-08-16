@@ -139,6 +139,36 @@ is still KEPT untouched on every surface (ADD, never take away - the demons carr
 it too), and no kit skill is dropped.
 
 --------------------------------------------------------------------------------
+R-257 VET ROUND 2 - THE ASSET IS A PRECONDITION OF THE BUILD, NOT A DEPLOY CHORE
+--------------------------------------------------------------------------------
+Round 1 verified its RECORDS and its ASSET and never ran the build that has to
+assemble them. The cold build was DEAD: the mod `Creatures.arc` was staged AFTER
+the `.arz` build, and THREE fail-loud gates inside that build read it - this
+module's M2, `validate_render_chain` A9 (a mod-authored pet with an unresolvable
+`mesh` FAILS the build) and `champion_mesh.verify()`. Worse, the bootstrap caught
+the non-zero exit and quietly substituted the RAW upstream database.
+
+Three things changed, and the third is the one that mattered most:
+
+  * `build_svc_database` declares a SHIPPING ANCHOR (`output.parent.parent /
+    'Resources'`) and M2 asks THAT archive. Round 1 asked every
+    `mesh_assets.mod_resource_dirs()` hit - a SEARCH PATH - so a stale scratch
+    tree could red-lock a build whose own shipped archive was perfect.
+  * `bootstrap_working_mod.ps1` stages the archive in Step 0e, before Step 1, and
+    a fired gate now STOPS the bootstrap.
+  * `build_svc_database._preflight_mod_creatures_arc()` stages it too, because
+    THE SHIP LANE DRIVES THAT SCRIPT DIRECTLY AND HAS NEVER RUN THE BOOTSTRAP.
+    A fix confined to the bootstrap would have passed every static gate and failed
+    the very next ship.
+
+`--negtest` grew from 29 to 37, and six of those run the REAL `rig_asset_state()`
+against REAL archives written to a temp tree. Round 1 stubbed that function in
+ALL 29 of its plants, which is exactly why neither P0 was visible to it - the
+blind spot `docs/MISTAKES.md` had logged for R-256 one day earlier.
+
+Re-runnable proof, five ways: `py tools/debug/r257_cold_order_control.py`.
+
+--------------------------------------------------------------------------------
 WHAT THIS MODULE CLAIMS, AND WHAT IT DOES NOT
 --------------------------------------------------------------------------------
 IT DOES NOT CLAIM THE SHROUD RENDERS. Nobody has seen this build.
@@ -772,7 +802,7 @@ def apply(db, tags):
         raise SystemExit("[enslaver_shroud] THE RIG ASSET IS NOT SHIPPABLE: %s" % detail)
     print("  RIG    %s\n         %s" % (SHROUD_RIG, detail))
     if st == 'SKIP':
-        print("         ^ DOWNGRADED, not a pass - see the deploy coupling note")
+        print("         ^ DOWNGRADED, not a pass - see the BUILD-TIME PRECONDITION note")
 
     roster = shroud_roster(db)
     n_retired = 0

@@ -10,11 +10,15 @@ writer racing the same output file. The dye logic below is untouched; the rig is
 appended after it and is likewise NET-NEW - the archive still shadows ZERO base
 entries, which is the property that keeps every base creature resolving.
 
-⚠️ DEPLOY COUPLING (new, and a P0 if missed): the Enslaver family's `mesh` field
-now names an asset that ships ONLY in this archive. Rebuilding the `.arz` without
-restaging + deploying this `Creatures.arc` leaves four records pointing at a mesh
-that resolves nowhere. `enslaver_shroud.verify()` arm M2 fails the build loud
-whenever a mod Creatures.arc is reachable and does not carry the rig.
+⚠️ THIS ARCHIVE IS A PRECONDITION OF THE DATABASE BUILD, not a deploy-time chore
+(a P0 if missed, and round 1 of R-257 missed it). The Enslaver family's `mesh`
+names an asset that ships ONLY here, and THREE fail-loud gates inside
+`build_svc_database.py` read it: `enslaver_shroud.verify()` arm M2,
+`validate_render_chain` A9 (a mod-authored pet with an unresolvable mesh FAILS the
+build) and `champion_mesh.verify()`. So the database build calls `stage()` below
+itself (`_preflight_mod_creatures_arc`) and the bootstrap runs it in Step 0e,
+BEFORE Step 1. The deploy half remains: the archive must be copied beside the
+`.arz` or the family resolves no mesh at all - an invisible boss.
 
 WHY THIS EXISTS (PR-2, 2026-08-06)
 ----------------------------------

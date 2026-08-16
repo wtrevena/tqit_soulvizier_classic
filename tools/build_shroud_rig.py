@@ -102,16 +102,21 @@ A NEW name rather than shadowing `monster/skeleton/skeletongrayblack01new.msh`:
 mod-over-base shadowing of a mesh is UNPROVEN on this rig, and it must not become
 the load-bearing assumption of a fifth attempt.
 
-⚠️ DEPLOY COUPLING (new with R-257, and it is a P0 if missed): this lane is the
-first to make a `.dbr` depend on a MOD-SHIPPED ART asset. `work\<mod>\Resources\
-Creatures.arc` must be REBUILT and DEPLOYED in the same ship as the arz, or the
-Enslaver family resolves no mesh at all. `enslaver_shroud.verify()` arm M2 fails
-the build loud whenever a mod Creatures.arc is reachable and does not carry the
-rig, which is exactly the "operator forgot to restage" case.
+⚠️ THE COUPLING THIS CREATES, AND ROUND 1 GOT ITS SHAPE WRONG. This lane is the
+first to make a `.dbr` depend on a MOD-SHIPPED ART asset, and that is a
+BUILD-TIME PRECONDITION before it is a deploy coupling. Three fail-loud gates
+INSIDE `build_svc_database.py` open `work\<mod>\Resources\Creatures.arc`:
+`enslaver_shroud.verify()` arm M2, `validate_render_chain` A9 (a mod-authored pet
+with an unresolvable mesh FAILS the build) and `champion_mesh.verify()`. Round 1
+staged the archive after the build and the cold build died at the first of them.
+The database build now stages it itself (`_preflight_mod_creatures_arc`), the
+bootstrap stages it in Step 0e before Step 1, and the DEPLOY half remains: the
+archive must be copied beside the arz or the family resolves no mesh at all.
 
 CLI:
     py tools/build_shroud_rig.py --check                  # derive + verify, write nothing
     py tools/build_shroud_rig.py --out <path.msh>         # write the rig alone
+    py tools/build_shroud_rig.py --check-arc <arc>        # assert a Creatures.arc carries it
     py tools/build_shroud_rig.py --selftest               # re-measure the load-bearing facts
     py tools/build_shroud_rig.py --negtest                # planted corruptions must all RED
 """
