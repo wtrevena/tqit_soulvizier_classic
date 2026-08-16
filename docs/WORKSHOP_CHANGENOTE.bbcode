@@ -1,18 +1,23 @@
-[h2]Dying now costs exactly half what it did[/h2]
+[h2]The Enslaver of Souls and the pets you summon from his soul now carry the black shroud[/h2]
 [list]
-[*]A player asked to cut the death penalty by another 50 percent from where it already was. This mod had already reduced the on-death experience loss to 10 percent of the original game's. That reduction is now [b]halved again[/b], so every death costs exactly half of what it cost in the previous version, on every difficulty, at every level. Measured against the original game, the penalty is now 5 percent of vanilla.
-[*][b]The high-level ceiling moved with it, and it had to.[/b] The penalty grows with the cube of your character level, and this mod raises the level cap to 1000, so above roughly level 87 on Legendary you were sitting on a flat ceiling rather than on the formula. Halving the formula alone would have left that ceiling in place and you would have felt no change at all at exactly the levels the complaint was about. Both moved together: the formula divisor and the cap.
-[*]What that looks like in practice: level 55 Legendary was 12,940 XP and is now [b]6,470[/b]. Level 85 Normal was 6,824 and is now [b]3,412[/b]. Level 85 Legendary was 47,765 and is now [b]23,883[/b]. Level 100 Legendary was the 50,000 ceiling and is now [b]25,000[/b].
+[*]The Enslaver's own summoned demons have always smoked. He did not, and neither did the versions of him you summon from his soul. The previous update said it had fixed that. It had not, and this note is the correction: the effect was written into monster skill slots [b]the engine does not read[/b].
+[*]The game's monster skill manager declares slots 1 through 17 and nothing above them. Across all 74,013 base-game records, no monster and no pet ever uses a higher slot. The last update parked the shroud at slot 19 on the boss and slot 18 on all three summoned tiers, so four fields were written and none of them were ever loaded. Everything built on top of them was correct and unreachable.
+[*]The shroud now rides the two always-on channels that template actually declares: the skill cast once at spawn, so it is on from the first frame and never waits on combat AI, and the self-buff channel the creature's own controller re-applies whenever possible. Both are ordinary skill fields, which is the only class this game's pet records tolerate.
 [/list]
 
-[h2]The tombstone still returns 100 percent of what you lost[/h2]
+[h2]The whole household is now checked, not just half of it[/h2]
 [list]
-[*]An earlier ruling made the death marker's experience recovery equal to the experience the death took, rather than a fixed fraction of it. That was built as an [b]equality[/b] on purpose, so it survives retunes like this one. The game hands your grave the amount it actually took from you, so when the penalty halved, the recovery halved with it [b]automatically, with no change to the recovery side at all[/b].
-[*]Concretely, at level 85 Legendary you lose 23,883 XP and the marker gives back 23,883 XP. Not half of it, and not more than it. Had the recovery been hardcoded as a percentage back then, this update would have quietly turned dying and walking back into a way to gain experience. It cannot.
+[*]The earlier check only ever covered the boss and the three pet tiers his soul summons. It never looked at the marauders he raises, nor at the marauders that a summoned Enslaver raises in turn. Those were smoking by luck, because their rig carries the effect compiled into the mesh, and a mesh swap could have removed that silently at any time.
+[*]The build now walks the entire family (boss, escorts, summoned tiers, and the pets those pets raise) and refuses to build unless every member carries the shroud by one of two proven routes: compiled into its rig, or present in both always-on channels. On this build that resolves to eight family members, four covered by their mesh and four by the fields.
 [/list]
 
-[i]Scope, measured rather than asserted: this update changes [b]two fields on one database record[/b], the game engine record the game actually loads. Nothing else in 51,331 records moved, no new records were added or removed, and no item, monster, drop rate, chest, quest, area or map data changed. The world map, quest archive, text archive and creature archive are byte for byte identical to the previous update. Experience gain, the level table and the level cap are all asserted untouched by their own gates.[/i]
+[h2]Your existing souls already in the stash are fine[/h2]
+[list]
+[*]This effect lives on the pet records, which the game resolves from the database at the moment the summon fires. It is not baked into the soul item when you pick it up, the way item stats are. So the Enslaver souls already in your stash pick this up with no re-drop and no new character. A full restart to reload the database is enough.
+[/list]
 
-[i]Not yet confirmed in play: the arithmetic is proved over 3,012 checked points and the marker equality is derived from the game's own code, but nobody has died in-game on this build to watch the two numbers match on screen.[/i]
+[i]Scope, measured rather than asserted: this update changes [b]four records[/b] and sixteen fields, all of them on the Enslaver and his three summoned tiers. No records were added or removed, nothing else in 51,331 records moved, and no item, drop rate, chest, quest, area or map data changed. The world map, quest archive, text archive and creature archive are byte for byte identical to the previous update.[/i]
+
+[i]Not yet confirmed in play: this is the fourth attempt at this one request and the first three were record-level claims that were wrong in game. What is proved here is that the shroud now sits on channels the engine declares and reads, and that the gate reproduces the old bug as an artifact fact. What is not proved is how it looks on screen.[/i]
 
 [i]Credits: [b]amgoz1[/b] for Soulvizier and the emblem, used with permission - [b]soa[/b] for Soulvizier AERA - [b]Dragonlord[/b] for DRX.[/i]
