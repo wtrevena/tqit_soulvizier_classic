@@ -252,6 +252,16 @@ from pathlib import Path
 # import-safe standalone (probes / --negtest) too.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import apply_svc_patches as A                                            # noqa: E402
+# WHERE AN EXPLICIT DTYPE IS STILL LEGITIMATE HERE, and it is a short list. The standing
+# CLAUDE.md law is about CLONED records' EXISTING fields, where passing a dtype overwrites
+# the donor's declared type. It does not forbid declaring a type for a field that is
+# genuinely ABSENT, which is the only remaining use:
+#   S  `treasureProxyName` (the donor carries none) and `itemQualityTag` on the souls;
+#   F  every `_soul_stats` field - souls are built with bare `_ensure_record()`, never
+#      clone_record (the standing soul law), so those fields have no inherited type;
+#   I  the V17 negative test, which plants the dtype flip on purpose.
+# The round-3 `sf(SKYBURIAL,'spawnObjectsTimeToLive', ..., F)` is gone: the new flock donor
+# already declares that field, so declaring it again would be the clobber the law forbids.
 from arz_patcher import DATA_TYPE_STRING as S, DATA_TYPE_FLOAT as F, DATA_TYPE_INT as I  # noqa: E402
 
 MODULE_NAME = "Lookout Cave uber (Ushkaret, the Sky-Burial)"

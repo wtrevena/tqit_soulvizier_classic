@@ -46,6 +46,11 @@
 >   has ever left melee range vertically** - this move exists on exactly three records in the whole
 >   game, all of them the vanilla Charon, and Charon is not even in this mod any more (Akremon
 >   replaced him). On the ground he bleeds you and drains you.
+>   *(Tuning note, because it changed late: the stoop is set to the same power row vanilla's
+>   weakest Charon uses, not a higher one - an earlier draft had it inheriting a level meant for a
+>   different skill and hitting roughly 6x harder than intended on Normal. And his mana pool was
+>   raised so he can actually keep using it; at the old value he could stoop twice and then stood
+>   there. If the stoop feels rare or feels brutal, that pair of numbers is where to look.)*
 > - **Then he calls the flock,** and when he dies the last quills scatter. **The flock is capped
 >   and it expires** - never more than 6 of them at once, and each one fades after 20 seconds.
 >   That is deliberate and it is because of *your* P0: the skeleton-dog / tomb-guardian freeze you
@@ -58,6 +63,15 @@
 > hard, so **bleed resistance is the stat that matters**, and killing the two Cliffside Mourner
 > champions out at the rim is better than fighting all three in the middle. He cannot be bled
 > himself - he is the larder.
+>
+> ⚠️ **One thing to actually watch for, because it was broken until the last review and you are
+> the one who would see it.** The leech aura is a custom one - a much wider, stronger version of
+> the stock vampiric aura, and it is the whole idea behind his name. Until this round it was wired
+> into a slot the engine does not read for that, so he would very likely have used the plain stock
+> aura instead and none of the custom tuning would have reached you. It is now wired into the two
+> channels that actually fire. **If it feels like he barely drains at all, or like he only drains
+> when you are right on top of him rather than most of the terrace, tell me** - that is this exact
+> bug coming back, and it is the difference between "the Larder" and "a big vulture".
 >
 > **Difficulty:** deliberately inside the band you already know. His health is 14,000 / 19,000 /
 > 26,000 across the three difficulties, which sits between the Coin-Drowned King and Ephialtes.

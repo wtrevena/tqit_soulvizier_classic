@@ -6,6 +6,81 @@
 > Newest first. Never delete entries. Honest severity: a mistake caught before damage is still
 > a mistake. This file is part of the mandatory successor read order.
 
+## 2026-08-16
+
+- **2026-08-16 | R-256 lookout-uber lane: I registered three clones into a shared fail-loud gate,
+  violated it 22 ways, and wrote in the module's own docstring that the invariant held** - the
+  lane appends `(character_vampiricbuff -> svc_ushkaret_larderbuff)`,
+  `(character_vampiriaura -> svc_ushkaret_larder)` and `(summon_swarm -> svc_ushkaret_skyburial)`
+  to `apply_svc_patches._BOSS_KIT_CLONES`, and `_verify_boss_kit_clone_shape` runs
+  **UNCONDITIONALLY** in `run_registry_gates()`, which `build_svc_database.py` calls immediately
+  after `run_registry()`. Measured by the vet - load the shipped arz, `L.apply(db,{})`, call the
+  real gate: **`SystemExit: Boss-kit clone-shape invariant FAILED: 22 problem(s)`**. `summon_swarm`
+  carries no `spawnObjectsTimeToLive` and no `FileDescription` and holds TWENTY `spawnObjects`
+  refs, so the clone ADDED two zero-precedent fields and left 19 donor `.dbr` slots reading empty;
+  `character_vampiricbuff` (619 fields) carries no `FileDescription` either. Step 1 of the module
+  said, verbatim, *"Both are single-purpose clones with only EXISTING fields overridden, so the
+  boss-kit clone-shape invariant holds"*, and **R-256 carried that sentence forward into the design
+  law**. **Cost: the cold build was DEAD - not degraded, dead - and three green vet rounds did not
+  see it.** **Root cause, and it is the sharper half: `--negtest` runs this module STANDALONE
+  against an already-built arz, so it exercises `apply()` + `verify()` and never the shared gates
+  the module opts into. That is exactly what `BL-R256-DEBT-5` said ("the module has still never run
+  inside a real COLD BUILD") - the lane registered the debt and then treated it as paperwork.**
+  A second root cause: round 3 fixed the b76 TTL defect by ADDING a field, without checking whether
+  adding a field was legal for a record it had put under a shape gate; the fix for one finding
+  created the P0. **Guard:** the flock now clones `melalos_zombie_summon3`, the one base-data
+  monster spawn skill carrying BOTH b76 bounds natively, so the clone's shape is a strict SUBSET of
+  its donor's and the invariant holds by construction; and new gate arm **V16 re-runs the REAL
+  `_verify_boss_kit_clone_shape` function over this lane's own three pairs inside `verify()`**, with
+  two negtest plants. **Standing lesson, written into R-256: a module that registers itself into a
+  shared fail-loud gate must RUN that gate in its own `verify()`. Registering into a gate you never
+  execute is indistinguishable from not being covered, and it converts your defect into someone
+  else's build failure.**
+
+- **2026-08-16 | the same lane wired its signature mechanic into a slot the engine does not read
+  for it, one day after R-255 was filed for that exact error** - `um_corpsewake_28` drives its
+  vampiric aura through **two** fields, `skillName5` AND `buffSelfSkillName`. The lane repointed
+  only `skillName5` to the authored `svc_ushkaret_larder`, so the shipped boss named OUR aura in a
+  kit slot and the **stock, shared, 6-carrier `character_vampiriaura`** in the channel the AI
+  actually self-buffs from. Either the player got the plain 8.0-radius aura and every authored
+  value (radius 14.0, the raised leech ladders) was dead config, or the AI refused a skill absent
+  from its kit and nothing fired at all. THE LARDER is the boss's name, its soul, its lore and its
+  only counterplay, and R-256, the module docstring and `WILL_TEST_GUIDE.md` all described a
+  mechanic that could not reach the player. **The lane cited R-255 twice as a lesson it respected
+  while making the same class of error**, and `enslaver_shroud._ALWAYS_ON_FIELDS` - the codified
+  list of the two channels the skill manager reads without combat-AI selection - had been in the
+  repo for one day. **Cost: caught by the round-4 vet, nothing built or shipped.** **Root cause:
+  repointing the reference I went looking for instead of diffing EVERY field on the donor that
+  named the record I was replacing.** **Guard:** both always-on channels now name the authored
+  aura, and gate arm **V14** reds if either is ever left on the donor's stock record (2 plants, the
+  first of which is the exact round-3 state). Standing lesson: when you replace a donor's skill,
+  grep the donor for EVERY field holding that skill's path, not just the slot you meant to change.
+
+- **2026-08-16 | round 4, my own: I wrote two new gate arms that reddened a clean build, and only
+  the negtest baseline caught it** - the first version of **V15** whitelisted slot 5 as
+  "inheritable" but then compared the slot's CLONE (`svc_ushkaret_larder`) against the whitelisted
+  ANCESTOR (`character_vampiriaura`), so it reported a legitimate inherited level as a defect; and
+  the first version of **V17** asserted `dropItems` dtype on the BOSS, which is flipped BOOL -> INT
+  **after** this module runs by the shared soul-wiring helper - measured roster-wide, 25 of the 53
+  shipped `um_`/`svc_` Boss records already declare INT, Vashkarr/Neferkha/Mnemophage/Ephialtes
+  among them. Shipped as written, V17 would have reddened the build for a defect in code this lane
+  does not own. **Cost: none - `--negtest` aborts if the clean baseline does not pass `verify()`,
+  so both were caught in the first run, before the commit.** **Root cause: writing an invariant
+  from the vet's finding text without first measuring whether the rest of the roster satisfies it.**
+  **Guard:** V15 now compares the DONOR's slot against the whitelisted ancestor (so a donor change
+  still reds), V17 carries an explicit per-record field list with the exclusion and its measurement
+  stated in the code, and the shared-helper dtype flip is registered as `BL-R256-DEBT-7` for its own
+  lane rather than smuggled into this one. Standing lesson: a new gate arm gets the same both-ways
+  treatment as a fix - prove it reds on the defect AND that it is green on everything already
+  shipped. **Same round, same class, third instance:** after removing the module's three
+  `set_field(..., I)` slips I also deleted `DATA_TYPE_FLOAT as F` from the import as "now unused",
+  having grepped only for the `, F)` call shape - `F` is in fact used ~20 times inside
+  `_soul_stats`, which returns `(dtype, value)` PAIRS for soul fields that are legitimately absent
+  (souls are built with bare `_ensure_record()`, never `clone_record`). `NameError: name 'F' is not
+  defined`, caught by the very next run. **Cost: one wasted 10-minute negtest, nothing committed.**
+  The import now carries a comment stating exactly where an explicit dtype remains legitimate, so
+  the next reader does not repeat the deletion. Lesson: grep for the NAME, not for one call shape.
+
 ## 2026-08-15
 
 - **2026-08-15 | R-256 lookout-uber lane: I stamped a ruling number into 9 files and never
