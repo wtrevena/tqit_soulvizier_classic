@@ -8896,3 +8896,10 @@ explicitly that a pre-R-254 arz shows `/ 90` here, so the red cannot be misread 
   SAME number. The arithmetic is proved over 3,012 points; what is unproven is only that the
   engine's live behaviour matches the disassembly-derived model, which is the same standing
   uncertainty R-80 and R-109 carry.
+
+## R-254 (Will 2026-08-15, verbatim): "make a new file MISTAKES.md and everytime you make a mistake or error log it there going forward and never forget to do this"
+Standing law: docs/MISTAKES.md is the permanent error log. Every mistake or error by the
+orchestrator or any agent is logged there IN THE SAME TURN it is discovered (what happened,
+cost, root cause, the guard that now prevents it). Every lane brief carries this obligation;
+every vet checks compliance when a lane made a correctable error. MISTAKES.md joins the
+mandatory successor read order. Seeded retroactively with the known 07-12..08-15 mistakes.
