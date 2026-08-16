@@ -1279,10 +1279,25 @@ UBERBOSS_SPECS = {
     #                    documented Tantalus/FrogCamp02 behaviour) and EVERY native instance
     #                    on this plane is authored at 17.00 (the cave mouth 17.0, POIRhakotis_
     #                    Cliffside 17.0, the cliff tiles 17.0/18.0), so SHIP 17.0.
-    #   * collision    : nearest native = the base game's own faceless `08_RhakotisLookout`
-    #                    boss proxy at (218.65,17.57,53.18) -> 10.71u; next 13.5u
-    #                    (EgyptRockBoulder15). The cave mouth is 16.6u away, so the player is
-    #                    not spawned on top of the fight. All clear of the >6u guard.
+    #   * collision    : nearest native = the base game's own `08_RhakotisLookout` boss
+    #                    proxy at (218.65,17.57,53.18) -> 10.71u; next 13.50u
+    #                    (EgyptRockBoulder15), 13.95u (TreeBriarDeadMedium01). The cave mouth
+    #                    CliffEntranceA01_Ext is 16.55u away, so the player is not spawned on
+    #                    top of the fight. All clear of the >6u guard.
+    #   ⚠️ THAT NATIVE PROXY IS A LIVE ENCOUNTER, NOT AN INERT MARKER - an earlier draft of
+    #                    this comment called it "faceless" and that was wrong. Measured in the
+    #                    base-game arz (the mod does not override it): pool1 = duneraider_01_
+    #                    general02 (1-3 am_sandviper_17|19|23, championChance 55 / max 1 from
+    #                    two mounted marauders + five named heroes) and accessory1/Epic1/
+    #                    Legendary1 = {normal,epic,legendary}_goldenchest_02. Its missing
+    #                    `chanceToRun` is the NORM (3,650 of 5,393 base Proxies omit it), not
+    #                    a disable. So this shelf ships OUR uber + OUR one chest ALONGSIDE a
+    #                    base-game dune-raider group + its golden chest. DELIBERATE: base-game
+    #                    content is WILL-VETO under the retirement protocol, the spawn rings
+    #                    are DISJOINT (10.71u > 3.5+4.0), and R-108 governs the chests THIS
+    #                    project stacks on an uber, not the existence of a vanilla chest in
+    #                    the same room. Disclosed to Will in WILL_TEST_GUIDE; the "clear the
+    #                    shelf instead" lever is BL-R256-DEBT-4.
     #   * walking path : the shelf is an ISLAND reached only through the cave mouth, and the
     #                    mouth is IN the same component - no through-route exists to block.
     # ⚠️ survey_uberboss_spots.py prints CHECK, not OK, for this spot for ONE reason: the
@@ -2654,9 +2669,12 @@ for _uc_key, _uc_specs in UBER_CHEST_SPECS.items():
     INJECT_SPECS[_uc_key] = list(INJECT_SPECS[_uc_key]) + list(_uc_specs)
 
 # ── R-256 THE NEST (Will 2026-08-15, standing creative authority: "evocative ... visually").
-# The Lookout shelf currently holds ~20 objects: the cave mouth, POIRhakotis_Cliffside, the
-# faceless 08_RhakotisLookout boss proxy, three dead briar trees, four boulders, two sparse
-# rock clusters and a run of cliff tiles. It reads as an empty ledge. These 7 static props
+# The Lookout shelf plane (|y-17| <= 1.5) holds exactly 27 native objects: the cave mouth,
+# POIRhakotis_Cliffside, the LIVE 08_RhakotisLookout dune-raider proxy (see the collision note
+# on LOOKOUT_HOST_KEY above - it is an encounter with its own golden chest, and this lane does
+# NOT touch it), three dead briar trees, four boulders, two sparse rock clusters, two cliff
+# decorations, a run of cliff tiles and one dead shrub 86u away. Around our spot it reads as an
+# empty ledge: the nearest native is 10.71u out and the next is 13.50u. These 7 static props
 # dress it as what it is - a LARDER: the bones of what the bird carried up, and the refuse
 # the refugees were carrying when it came down among them.
 #
@@ -2680,12 +2698,16 @@ REFUSE3_DBR = b'Records/SceneryEgypt/Structure/Camps/Refugee/SetDress/PileRefuse
 URN01_DBR = b'Records/SceneryEgypt/Structure/Building/City/SetDress/EgyptCity_Urn01.dbr'
 LOOKOUT_NEST_SPECS = {
     LOOKOUT_HOST_KEY: [
+        # every distance below RE-MEASURED from the boss spot (208.0, 52.0) this pass:
+        # the second row used to be annotated 7.81u, which was the FIRST row's value
+        # copied down a line. These comments are what a relocation lane reads, so they
+        # are now the computed values, all seven.
         (BONES_A_DBR, 203.0, 17.0, 46.0),     # 7.81u from the boss - the old kills
-        (BONES_B_DBR, 213.0, 17.0, 58.5),     # 7.81u
+        (BONES_B_DBR, 213.0, 17.0, 58.5),     # 8.20u
         (BONES_A_DBR, 214.0, 17.0, 46.0),     # 8.49u
         (REFUSE1_DBR, 202.0, 17.0, 57.5),     # 8.14u - what they were carrying
         (REFUSE2_DBR, 206.0, 17.0, 61.0),     # 9.22u
-        (REFUSE3_DBR, 212.5, 17.0, 61.0),     # 10.1u
+        (REFUSE3_DBR, 212.5, 17.0, 61.0),     # 10.06u
         (URN01_DBR, 201.5, 17.0, 51.0),       # 6.58u - nearest the mouth they came out of
     ],
 }

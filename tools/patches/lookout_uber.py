@@ -19,9 +19,34 @@ end in the strictest sense the engine supports, and Rhakotis05 is the ONLY level
 all 2282 that binds the `Lookout Cave` region guid, so the area banner over the
 fight reads Will's own words back to him.
 
-The base game already stands a boss proxy on that shelf - `Records/Proxies Boss/
-LE_New/08_RhakotisLookout.dbr` at (218.65, 17.57, 53.18) - and it has never had a
-face. This lane gives it one, 10.7u away, on its own surveyed spot.
+⚠️ THE SHELF IS NOT EMPTY, AND AN EARLIER DRAFT OF THIS FILE SAID IT WAS.
+`Records/Proxies Boss/LE_New/08_RhakotisLookout.dbr` stands at (218.65, 17.57, 53.18),
+10.71u from our boss spot, and it is a LIVE base-game encounter, not an inert marker.
+Measured this pass in the base-game `database.arz` (74,013 records; the mod does NOT
+override it - zero hits for `08_rhakotislookout` in `SoulvizierClassic.arz`):
+    Class Proxy, placementExtents 3.5, FileDescription 'treasure only'
+    pool1 = records\proxies egypt\pools\beastman\duneraider_01_general02.dbr
+            spawnMin 1 / spawnMax 3 of am_sandviper_17|19|23,
+            championChance 55.0 / championMax 1 drawn from am_mountedmarauder_19 (w75),
+            am_mountedmarauder_22 (w50) and five named heroes at w2 each
+            (um_ammet_28, um_satef_29, um_udje_30, um_morloc_31, um_hazur_29)
+    accessory1 / accessoryEpic1 / accessoryLegendary1 = {normal,epic,legendary}_goldenchest_02
+`chanceToRun` is ABSENT on it, which an earlier read of this lane treated as "disabled".
+It is not: 3,650 of the base game's 5,393 `Class=Proxy` records (67.7%) omit the field,
+including every LE_New sibling that is a famous shipped encounter (09_HathorRuinA/B =
+Souchos, 10_NileCave, 12_MemphisTomb, 13/14_DesertTomb).
+
+SO: after this lane the shelf holds Ushkaret + 2 Mourners + the flock AND a base-game
+dune-raider group AND a base-game golden chest. THE DECISION (this lane, stated not
+buried): **leave the native content exactly where it is.** It is base-game content that
+has stood there since the game shipped, Will asked to ADD an uber and not to remove
+anything, and the RETIREMENT PROTOCOL defaults any base-game deletion to WILL-VETO.
+Geometrically it is clean - the rings are DISJOINT (10.71u apart; native ext 3.5 + our
+proxy ext 4.0 = 7.5) and the native chest is 8.13u from ours - so this is a CLAIM
+correction and a Will-facing disclosure, not a placement change. R-108 ("one chest") is
+about the THREE chests THIS project used to stack on one uber; it was never a rule that
+a base-game chest may not exist in the same room. The lever, if Will wants the shelf
+cleared instead, is registered as `BL-R256-DEBT-4`.
 
 MEASURED, THIS LANE, on the shipped map (`work/.../Levels.arc` md5 1bf86461):
     boss   local (208.0, 17.0, 52.0)  d=0.14  clr 100/100/100 (N/E/L) at ext 3.5, 6.0 AND 8.0
@@ -588,7 +613,7 @@ def apply(db, tags):
 
 # ── verify: THE GATE (runs post-finalization over the FINAL db) ──────────────
 def verify(db, tags=None):
-    """Fail-loud invariants for everything this lane claims. Ten checks; each one
+    """Fail-loud invariants for everything this lane claims. Twelve checks; each one
     corresponds to a claim in the docstring, so a claim cannot rot into a lie."""
     problems = []
     tagset = set(tags or ())
@@ -839,6 +864,66 @@ def verify(db, tags=None):
         if missing:
             problems.append("tags referenced but never authored: %s" % missing)
 
+    # V12 DOWNSTREAM COVERAGE - the arm the round-1 vet correctly said was missing.
+    #
+    # This module runs at registry position 12 of 69; `verify()` runs post-finalization,
+    # AFTER souls_quality, soul_identity, aura_radius, summon_caps, toxeus_souls_100,
+    # uber_quest_markers, red_uber_orbs, chest_loot_breadth, armor_loot_breadth,
+    # orb_loot_breadth, orb_armor_rows, loot_volume_trim, orb_legendary_chance and
+    # uber_hoard_generosity have each had a chance to mutate what step 7 authored. Every
+    # one of those derives its scope from a NAME SHAPE rather than a typed roster, which
+    # is exactly why a new family joins for free - and exactly why nobody notices when it
+    # does not. So the coupling is asserted here, on the FINAL db, instead of assumed:
+    #   (a) the family is inside svc_uber_hoards' derived scope (the module that gates
+    #       every hoard chest/table and whose `is_hoard_table` IS svc_loot_volume's R-251
+    #       trim carve-out, so one assertion covers both);
+    #   (b) the authored R-251 volume SURVIVED the pipeline - if the trim's carve-out ever
+    #       stops covering us, the equations come back different and this reds.
+    try:
+        import svc_uber_hoards as SUH
+        chest_paths = [r'records\drxitem\container\svc_%shoard_%s.dbr' % (HOARD_PREFIX, t)
+                       for t in ('01', '02', '03')]
+        derived_chests = SUH.chests(db)
+        derived_tables = SUH.tables(db)
+        fams = {fam for _real, fam, _tier in derived_chests.values()}
+        if HOARD_PREFIX not in fams:
+            problems.append(
+                "DOWNSTREAM SCOPE LOST THE FAMILY: %r is not in svc_uber_hoards' derived "
+                "chest families %s. Every loot-breadth / distribution / volume module "
+                "derives from that same name shape, so the hoard would ship un-widened, "
+                "un-distributed and outside gate_uber_hoard_generosity."
+                % (HOARD_PREFIX, sorted(fams)))
+        for chest in chest_paths:
+            if not SUH.is_hoard_chest(chest):
+                problems.append("%s is not recognised as a hoard chest by "
+                                "svc_uber_hoards._CHEST_RE" % chest)
+                continue
+            want_table = SUH.table_for(chest)
+            if _n(want_table or '') not in derived_tables:
+                problems.append("%s -> %s is not in svc_uber_hoards' derived table set"
+                                % (chest, want_table))
+                continue
+            if not SUH.is_hoard_table(want_table):
+                problems.append(
+                    "%s is not recognised as an R-251 hoard table. That predicate is ALSO "
+                    "svc_loot_volume's trim carve-out, so this family would be trimmed."
+                    % want_table)
+                continue
+            mn = str(gv(want_table, 'numSpawnMinEquation') or '')
+            mx = str(gv(want_table, 'numSpawnMaxEquation') or '')
+            if (mn, mx) != (SUH.HOARD_MIN_EQ, SUH.HOARD_MAX_EQ):
+                problems.append(
+                    "R-251 VOLUME DID NOT SURVIVE THE PIPELINE: %s reads min=%r max=%r, "
+                    "the authored contract is min=%r max=%r. Something downstream of "
+                    "registry slot 12 rewrote this family's volume."
+                    % (want_table.rsplit('\\', 1)[-1], mn, mx,
+                       SUH.HOARD_MIN_EQ, SUH.HOARD_MAX_EQ))
+    except SystemExit:
+        raise
+    except Exception as e:
+        print("    [lookout_uber] DOWNSTREAM-COVERAGE CHECK DOWNGRADED (not a pass): "
+              "could not read svc_uber_hoards (%s)." % e)
+
     if problems:
         raise SystemExit("[lookout_uber] R-256 LOOKOUT-UBER GATE FAILED (%d):\n  - %s"
                          % (len(problems), "\n  - ".join(problems)))
@@ -848,8 +933,10 @@ def verify(db, tags=None):
           "tier; ONE world chest on its own R-251 table with the boss proxy's "
           "accessories empty; the placement spec is the surveyed (208,17,52) spot; "
           "the soul is a 3-tier manual pet button with no hostile spawner on any pet; "
-          "escorts drop nothing and stay smaller than the boss."
-          % (BAND, HP))
+          "escorts drop nothing and stay smaller than the boss; and the '%s' hoard family "
+          "is inside svc_uber_hoards' DERIVED scope with its R-251 volume intact after the "
+          "whole registry ran."
+          % (BAND, HP, HOARD_PREFIX))
 
 
 # ── negative tests: prove each gate arm can actually go RED ──────────────────
@@ -926,6 +1013,7 @@ def _negtest():
 
     HOARD_01 = r'records\drxitem\container\svc_%shoard_01.dbr' % HOARD_PREFIX
     HOARD_POOL_01 = r'records\drxitem\container\svc_%shoard_pool_01.dbr' % HOARD_PREFIX
+    HOARD_LOOT_01 = r'records\drxitem\container\svc_%shoard_loot_01.dbr' % HOARD_PREFIX
 
     plant('boss declassed to Hero',
           lambda: _break(db, BOSS, 'monsterClassification', 'Hero'))
@@ -981,6 +1069,19 @@ def _negtest():
           lambda: _break(db, POOL, 'championMax', 1))
     plant('a referenced tag never authored',
           lambda: _break_tag(tags, TAG_SOUL))
+    # V12, the downstream-coverage arm. The R-251 volume is the half of it that a single
+    # field CAN break, and it is the half that matters most: it is what would actually
+    # happen if svc_loot_volume's trim carve-out ever stopped covering this family.
+    plant('the R-251 hoard volume trimmed out from under the family (loot_volume_trim '
+          'carve-out lost)',
+          lambda: _break(db, HOARD_LOOT_01, 'numSpawnMinEquation', '(1+(1*numberOfPlayers))*1'))
+    plant('the R-251 hoard MAX volume rewritten downstream',
+          lambda: _break(db, HOARD_LOOT_01, 'numSpawnMaxEquation', '(1+(1*numberOfPlayers))*1'))
+    # HONEST NOTE, not a gap being hidden: V12's OTHER half - "is `ushkaret` inside
+    # svc_uber_hoards' derived family set" - is decided by the RECORD NAME SHAPE
+    # (`svc_<fam>hoard_<tier>`), so no field assignment can plant it and it has no row
+    # here. It is still a live assertion: rename the family, or narrow `_CHEST_RE`, and
+    # the gate reds. It is proven by construction rather than by plant.
 
     ok = all(results)
     print("\n  NEGTEST %s (%d/%d planted defects reddened the gate)"
