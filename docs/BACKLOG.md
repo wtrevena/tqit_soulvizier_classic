@@ -4,7 +4,7 @@
 
 **WIN Will confirmed:** "all the portals from helos are consistenly working now, i think your fix has addressed the major issues." + "now the portals from helos consistently send you to the same location" (deterministic, not random) => R-248 one-shot-arming ADDRESSED the major scramble. He greenlit shipping this approach to Steam (build91 = canonical, 26 rows).
 
-**BL-W0815-1 ENSLAVER SUMMONED-PET BLACK SMOKE: 🔧 FIXED, code complete, NOT BUILT (R-255, branch `fix/enslaver-pet-shroud`, commit `a29b100`).** Will (2026-08-15, verbatim, the FOURTH filing): *"toxeus the murderer enslaver of souls summoned pets (when i summon them from their souls) still do not have the black smoke around them"*. **BL-W0814-1 above is hereby REOPENED-AND-SUPERSEDED: it was closed on a record-level claim that was not reachable by the engine.**
+**BL-W0815-1 ENSLAVER SUMMONED-PET BLACK SMOKE: ✅ SHIPPED build99 (R-255, arz `1113f2c6`, DEV + Steam 2026-08-15; gate record at the tail of this file). IN-GAME CONFIRMATION STILL OWED: `BL-R250-DEBT-1`.** Will (2026-08-15, verbatim, the FOURTH filing): *"toxeus the murderer enslaver of souls summoned pets (when i summon them from their souls) still do not have the black smoke around them"*. **BL-W0814-1 above is hereby REOPENED-AND-SUPERSEDED: it was closed on a record-level claim that was not reachable by the engine.**
 
 > **ROOT CAUSE (measured, two witnesses).** `Templates\TemplateBase\MonsterSkillManager.tpl` - the template `Monster.tpl` includes and `Pet.tpl` inherits - declares **`skillName1..17` and nothing above it**, and across all **74,013** base-game records the highest slot ANY Monster or Pet uses is `skillName17` (1,136 records sit on it, **0** above). R-250/b93 wired the shroud to **`skillName19`** on the wild boss and **`skillName18`** on all three soul-summon pet tiers, on the written-down belief that *"the template reaches 23"*. It does not - 23 is just the highest slot THIS MOD had already overflowed into, so the lane measured its own earlier mistake and read it as headroom. build93 shipped four fields that nobody reads. Everything downstream (the EffectEntity mirror, the demons' attach point, the always-on controller clones) was correct and unreachable.
 >
@@ -14,7 +14,7 @@
 >
 > **STASH SOULS: YES, THIS REACHES THEM.** The summon FX rides on the PET RECORDS, resolved LIVE from the database when the granted summon skill fires - it is not baked into the soul ITEM at pickup the way item properties are. Will's existing Enslaver souls pick it up with **no re-drop and no new character**; a Steam restart to reload the arz is enough.
 >
-> **GATES (static only - this lane runs NO build).** `--negtest` **40/40** plants caught (was 30); `--selftest` **PASS** and now re-derives the slot ceiling from `Templates.arc` every run; `gate_ruling_ids --vs main --branches` **PASS** (adds [255], no clash across 165 branches); STATIC in-memory `apply()`+`verify()` over the shipped build98 arz `15dacc68` **PASS** - 8-member walk, exactly 7 records touched, nothing written.
+> **GATES (the lane's static set, all re-run on the BUILT artifact at integration).** `--negtest` **40/40** plants caught (was 30); `--selftest` **PASS** and now re-derives the slot ceiling from `Templates.arc` every run; `gate_ruling_ids --branches` **PASS** (51 rulings, highest R-255, no clash across 165 branches); the in-build `verify()` walked 8 members on the shipped bytes (**4 MESH / 4 FIELD**) and the **ANTI-INERT** arm exits 1 with **8 problems** on the shipped build98 arz `15dacc68`.
 >
 > 🆕 **`BL-R255-DEBT-1` (P1, OTHER LANES - real skills silently not firing):** six more records park skills above the `skillName17` ceiling: `um_charonform2_ferryman_99` (18-21), `um_mnemophage_99` (18-23), `um_ephialtes_99` (18,19), `um_bloodtoxeus_99` (18), `um_mnemophage_core_99` (18), and `um_toxeus_enslaver_99` (18 = `unholy_rally`). Those are combat skills the engine never reads. Unwinding them is a balance change on other lanes' rulings, so this lane reports and changes nothing. Note the Enslaver's slots 1..17 are FULL, so his `unholy_rally` cannot simply move down - something has to give, and that is Will's call.
 > 🆕 **`BL-R255-DEBT-2` (P2, ledger hygiene):** `docs/WILL_RULINGS.md` carries **two** `## R-254` headings (the death-penalty ruling + Will's MISTAKES.md order). `gate_ruling_ids.py` passes because its A1 arm only counts headings in the dated `## R-<n> [date] STATUS` form, so the second is invisible to the gate written to stop exactly this.
@@ -15926,6 +15926,160 @@ travel-npc invariants, quest negatives, the canonical control, **and
   or delete it.
 - ⚠️ Untouched by this lane: `BL-R249-DEBT-1` (Garden -> Secret Place rift admits ENTRY?),
   `BL-R250-DEBT-1..6`, and Will's live-play queue `BL-W0814-2/3/4/5/7/8/9/10/11/12/13`.
+
+---
+
+## BUILD99 GATE RECORD (2026-08-15) - R-255 THE ENSLAVER'S SUMMONED PETS FINALLY CARRY THE BLACK SHROUD (b93 WROTE IT INTO SKILL SLOTS THE ENGINE DOES NOT READ); **arz-ONLY**; DEPLOYED TO DEV **AND** STEAM
+
+**`Database/SoulvizierClassic.arz` = DEV `SoulvizierClassicDEV.arz` = Steam =
+`1113f2c69fc3f188b0b5bece340614f2`** (55,608,016 B, **51,331 records**; **-20 bytes / +0 records**
+over the shipped build98 `15dacc68c118f50900a5a7100225e2a8` / 55,608,036 B / 51,331 - four dead
+`skillLevel` ints retired, two live string fields added, on four records). **arz-ONLY:
+`Text.arc 82d5b810` / canonical `Levels.arc 1bf86461` / `Quests.arc 6271ceb2` / `Creatures.arc
+8c0d8d53` md5-proven BYTE-UNCHANGED** (re-hashed after the build, not assumed), **0 new tags**.
+Workshop item 3759792705, `Committing update...Success.`, workshop log `Upload finished for workshop
+item 3759792705 : OK`, **ManifestID `7650143609962912100`**, `-Update -Visibility 0` with the VDF
+read back `"visibility" "0"` (stays PUBLIC). `main` `9e512f0` (build98-ship +
+the MISTAKES.md commit) -> `64a1b3e` (`git merge --no-ff fix/enslaver-pet-shroud`) -> `f7904c1`
+(the Steam change note, written and committed BEFORE packaging) -> this gate record. Tag
+**`build99-ship`**. Next sequential ship after build98 = **BUILD99**.
+
+- **STEP 0 RAN FIRST AND PASSED, on a genuinely fresh lane (the second in a row).**
+  `py tools/gate_already_shipped.py --lane fix/enslaver-pet-shroud --tag build99-ship`: **S1** the
+  lane tip `30b8d7e` is NOT contained in main, 3 commits to integrate; **S2** `build99-ship` free
+  locally and on the remote, next free build number **99**; **S4** clean tree, `main` not behind
+  origin. Receipt written at HEAD `9e512f0`, then **CONSUMED by `package_workshop.ps1`'s
+  `--verify-receipt`** at 04:13:01Z (single-use arm, second real ship). No further packaging can
+  run on it.
+
+- **What it is:** `BL-W0815-1`, Will verbatim, **the FOURTH filing of the same request**: *"toxeus
+  the murderer enslaver of souls summoned pets (when i summon them from their souls) still do not
+  have the black smoke around them"*. Design: `docs/WILL_RULINGS.md` -> **R-255**.
+
+- **ROOT CAUSE, and it is our own:** `Templates\TemplateBase\MonsterSkillManager.tpl` (the template
+  `Monster.tpl` includes and `Pet.tpl` inherits) declares **`skillName1..17` and nothing above it**,
+  and across all **74,013** base-game records the highest slot any Monster or Pet uses is
+  `skillName17` (1,136 records sit on it, **0** above). R-250/b93 wired the shroud to `skillName19`
+  on the wild boss and `skillName18` on all three soul-summon pet tiers on the written-down belief
+  that *"the template reaches 23"* - 23 being merely the highest slot **this mod** had already
+  overflowed into. **build93 shipped four fields that nobody reads.** The shroud now rides
+  `initialSkillName` (cast once at spawn, so a toggled buff is ON from the first frame and owes the
+  AI nothing) + `buffSelfSkillName` (re-applied by the `svc_alwayson_` controller clones at
+  `WheneverPossible`); both are declared by that template, both are crash-law-safe skill fields,
+  and neither takes a level field. Logged in `docs/MISTAKES.md` per R-254, in the same commit as
+  the fix.
+
+- **RECORD-DIFF vs the SHIPPED build98 `15dacc68`: ADDED 0 / REMOVED 0 / MODIFIED 4, ZERO
+  unexplained.** Sixteen fields, four per record, and every one of them is this fix:
+  | record | retired (dead slot) | added (always-on channels) |
+  | --- | --- | --- |
+  | `...\shadowstalker\um_toxeus_enslaver_99.dbr` | `skillName19` + `skillLevel19` | `initialSkillName` + `buffSelfSkillName` |
+  | `...\soulskills\pets\toxeus_enslaver_1.dbr` | `skillName18` + `skillLevel18` | `initialSkillName` + `buffSelfSkillName` |
+  | `...\soulskills\pets\toxeus_enslaver_2.dbr` | `skillName18` + `skillLevel18` | `initialSkillName` + `buffSelfSkillName` |
+  | `...\soulskills\pets\toxeus_enslaver_3.dbr` | `skillName18` + `skillLevel18` | `initialSkillName` + `buffSelfSkillName` |
+  Nothing else in 51,331 records moved. The shroud skill, its pak, the EffectEntity mirror and both
+  always-on controller clones were shipped correct by b93 and come out **byte-identical**; the four
+  MESH-route marauders are untouched by construction.
+
+- **THE PARITY GATE IS NOW THE WHOLE HOUSEHOLD, and that is the second defect this ship closes.**
+  R-250 only ever covered the boss + the 3 pet tiers, so the marauders (the escorts the wild boss
+  raises AND the pet-of-pet marauders a SUMMONED Enslaver raises) were outside every check; they
+  were smoking by luck, because `ShadowStalker.msh` carries the FX compiled in, and `champion_mesh`
+  had already proved a mesh swap can remove exactly that silently. The roster is now a bounded WALK
+  (boss -> escorts -> pet tiers -> pet-of-pet, plus family name-tag clones) and every member must
+  satisfy **MESH** (its rig embeds the demons' own `ShadowStalker_Smoke.dbr`, read out of the `.msh`
+  binary each build) or **FIELD** (the shroud in BOTH always-on channels). On the shipped bytes:
+  **8 members walked, 4 MESH / 4 FIELD**, and the in-build `verify()` says so in one line.
+
+- **det byte identity (det-2x):** `1113f2c69fc3f188b0b5bece340614f2` across **two independent COLD
+  builds** (`SVC_NO_CACHE=1`, `PYTHONHASHSEED=0`, `SVC_RELEASE_DROPS=1`, `SVC_REQUIRE_GATES=1`),
+  **exit 0 both**, MD5-equal AND `fc /b` byte-compared in full (55,608,016 B, *"no differences
+  encountered"*). run2 built into `local/b99_run2/` with a junction to work's `Resources/`.
+
+- **GATES GREEN - the coexisting battery, all re-measured on the POST-wave artifact:**
+  | gate | result on `1113f2c6` |
+  | --- | --- |
+  | `enslaver_shroud` in-build `verify()` (R-255) | **PASS** - 8-member walk, 4 MESH / 4 FIELD, running FX untouched, no `charFxPak` on any SpawnPet skill |
+  | `enslaver_shroud --negtest` | **PASS 40/40** plants caught (incl. the "strip one pet" plant the widened gate required, and the R-255 defect replayed verbatim) |
+  | `enslaver_shroud --selftest` | **PASS** - re-derives the ceiling from `Templates.arc` every run: *"MonsterSkillManager.tpl declares skillName1..17 (and nothing above it)"* |
+  | `gate_ruling_ids --branches` | **PASS** - 51 rulings, highest **R-255**, 165 branches, no collision |
+  | `contracts_balance` (R-80/R-254 + R-109) | **PASS** - 0 violations |
+  | `tests_balance_negative` | **PASS** |
+  | `gate_arena_spawn_guarantee` (R-253) | **PASS** |
+  | `gate_toxeus_boss_equipment` (R-252) | **PASS** |
+  | `verify_soul_drop_rates --gate` (R-243/R-48) | **PASS** - 20 / 10 / 0 / **100** cohorts intact |
+  | `gate_uber_hoard_generosity` (R-251) | **PASS** - **33** hoard families still pinned at `*2.4/*2.8` |
+  | `gate_loot_volume` (R-240) | **PASS** - 39 canonical surfaces |
+  | `gate_loot_distribution` (R-181) / `gate_chest_loot_breadth` (R-180) / `gate_orb_loot_breadth` (R-220) | **PASS** |
+  | `gate_relic_difficulty_tiers` (R-238) / `gate_chest_artifacts` (R-240) / `gate_orb_legendary` (R-242) / `gate_supra_recipe_laws` (R-244) | **PASS** |
+  | `validate_tags` | **PASS** - 394 referenced mod tags all present, **455/455** authoritative, **0 new** (Text.arc byte-unchanged), the 2 documented pre-existing WARN |
+  | patches-registry selfcheck | **68 modules**, order `e90bcca8601c` (unchanged from build96/97/98) |
+  Plus the in-build battery: soul-leak / soul-augment / soul item-skill activation invariants OK,
+  `PET-*` OK, DLC-act cap OK, Atlantis voyage cap **PASS** (0 resolvable routes), **`STRICT
+  failures : 0`**.
+
+- **Contracts, SET-DIFFED against the shipped build98 `15dacc68` on `(contract, severity,
+  subject)`:** new = **0 P0 / 0 P1 / 4513 P2**; baseline = **0 P0 / 0 P1 / 4513 P2**;
+  **ONLY-IN-NEW = 0, ONLY-IN-BASE = 0.** This ship moves no contract at all, which is the correct
+  reading: no contract in the suite covers the always-on skill channels, which is precisely why the
+  lane's own gate had to exist.
+
+- **ANTI-INERT, measured on the artifact that ACTUALLY SHIPPED:** `enslaver_shroud.verify()` run
+  against the **shipped build98 arz** **EXITS 1 with 8 problems** - four `FAMILY FX PARITY:
+  ... wears NEITHER route` (the boss and all three pet tiers) and four `DEAD SLOT: ... carries the
+  shroud at skillName19/18 ... read by nobody. This is exactly what b93 shipped ... and exactly why
+  the smoke never appeared`. That is Will's report reproduced as an artifact fact. It **PASSES on
+  `1113f2c6`**, and again on the **LIVE DEV bytes** after deployment.
+
+- **DEV:** targeted **arz-only** copy, md5 source==dest `1113f2c6`, **TQ.exe NOT running** (nothing
+  killed, Steam not restarted). DEV md5-inventoried before and after: **1 of 62 files changed**, 0
+  added / 0 removed, the other 61 byte-identical. **DEV `Levels.arc` stays TESTHUB `666789ab`**
+  (Will's play surface) and DEV `Quests.arc` stays the TESTHUB `d9f8c316`. Post-deploy re-verified
+  on the live DEV bytes: the household gate exits 0 there too.
+
+- **PUSH-GATE PASS:** `dist == work` on all 5 artifacts (arz `1113f2c6`, Text `82d5b810`, Levels
+  `1bf86461`, Quests `6271ceb2`, Creatures `8c0d8d53`); **TESTHUB guard PASS** - the packaged
+  `Levels.arc` is the canonical `1bf86461` and differs from the live DEV TESTHUB `666789ab`;
+  contracts on the **DIST payload** re-run end to end = **0 P0 / 0 P1 / 4513 P2**, identical to the
+  work-tree run; single wrapper, **56 files / 1188.4 MB**.
+
+- ✅ **`BL-b97-DEBT-1` HONOURED (the operator half):** `docs/WORKSHOP_CHANGENOTE.bbcode` was
+  rewritten for THIS build and **committed BEFORE `package_workshop.ps1` ran** (commit `f7904c1`),
+  so no stale note could ride along. The note discloses the previous update's false claim rather
+  than hiding it. The tooling half - making `upload_workshop.ps1` refuse a note byte-identical to
+  the last one uploaded - is **still open**, as is `BL-b98-DEBT-5` (the item still has no preview
+  image).
+
+- **Rollback (one step, uncoupled):** `local/DEV_arz_deployed_prev.arz` = build98
+  `15dacc68c118f50900a5a7100225e2a8` -> copy back over
+  `SoulvizierClassicDEV\Database\SoulvizierClassicDEV.arz`. Nothing else moves (arz-only, no Text
+  or map coupling). This build's arz at `local/build99_run1.arz`; the baseline verbatim at
+  `local/build98_shipped_15dacc68.arz`; the determinism twin at
+  `local/b99_run2/Database/SoulvizierClassic.arz`; logs under `local/b99_logs/`.
+
+- ⚠️ **NOT PROVEN IN-GAME (`BL-R250-DEBT-1`, and it is now the whole point).** Everything above is
+  database, mesh-binary and gate evidence; **nobody has seen this render.** Three prior rounds were
+  record-level claims and each was wrong in game. What is proved: the shroud sits on channels the
+  engine declares and reads, and the gate reds on the bytes that were live when Will filed. What is
+  not proved: how it looks. **Will's test, full quit TQ + restart Steam first: summon the Enslaver
+  from ANY tier of his soul and just stand there, out of combat. PASS = black smoke on him from the
+  moment he appears, and on the marauders he raises. FAIL = he appears clean, or only smokes while
+  running.** **The souls already in your stash are enough** - this FX rides the pet RECORDS, which
+  the engine resolves live from the database when the summon fires; it is not baked into the soul
+  item at pickup the way item properties are, so no re-drop and no new character is needed.
+  Test note: `docs/WILL_TEST_GUIDE.md` top entry.
+
+- **DEBTS carried forward:** 🆕 **`BL-R255-DEBT-1`** (P1, OTHER LANES): six records park real combat
+  skills above the `skillName17` ceiling where nobody reads them - `um_charonform2_ferryman_99`
+  (18-21), `um_mnemophage_99` (18-23), `um_ephialtes_99` (18,19), `um_bloodtoxeus_99` (18),
+  `um_mnemophage_core_99` (18) and `um_toxeus_enslaver_99` (18 = `unholy_rally`, which the build now
+  prints on every run). Unwinding them is a balance change on other lanes' rulings, and the
+  Enslaver's slots 1..17 are FULL so his `unholy_rally` cannot simply move down: something has to
+  give and that is Will's call. 🆕 **`BL-R255-DEBT-2`** (P2): `docs/WILL_RULINGS.md` carries two
+  `## R-254` headings and `gate_ruling_ids`'s A1 arm cannot see the second.
+- ⚠️ Untouched by this lane: `BL-R254-DEBT-2`, `BL-R253-DEBT-1..8`, `BL-R252-DEBT-1..7`,
+  `BL-R251-DEBT-1..6`, `BL-R250-DEBT-2..6`, `BL-R249-DEBT-1/2`, `BL-b94dev-DEBT-1..5`,
+  `BL-b98-DEBT-5`, and Will's remaining live-play queue `BL-W0814-2/3/5/6/7/8/9/10/11/12/13`.
 
 ---
 

@@ -1,6 +1,47 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> # 💀 R-254 DYING COSTS HALF WHAT IT DID (2026-08-15) - READ THIS FIRST
+> # 🖤 R-255 THE ENSLAVER'S SUMMONED PETS FINALLY SMOKE (2026-08-15) - READ THIS FIRST
+>
+> **✅ LIVE ON DEV *AND* STEAM AS `build99`** (arz `1113f2c69fc3f188b0b5bece340614f2`, 2026-08-15).
+> Full quit TQ and restart Steam before testing.
+>
+> **Your report, verbatim, and this is the fourth time you have filed it:** "toxeus the murderer
+> enslaver of souls summoned pets (when i summon them from their souls) still do not have the black
+> smoke around them"
+>
+> **You were right all four times, and the last three fixes were real code that the game never
+> read.** Monster skills live in numbered slots, and the template every monster and pet inherits
+> declares slots **1 through 17 and nothing above them**. Across all 74,013 records in the base
+> game, no monster and no pet has ever used a higher slot. The previous pass put the shroud in slot
+> **19** on the wild Enslaver and slot **18** on all three summoned tiers, on a written-down belief
+> that the template went to 23. It does not. 23 was just the highest slot this mod had already
+> overflowed into, so that pass measured its own earlier mistake and read it as room to spare. Four
+> fields were written and none of them were ever loaded. Everything built on top of them (the
+> particle, the attach point, the always-on controllers) was correct and unreachable.
+>
+> **What it rides now:** the two always-on channels that template actually declares. One casts the
+> buff **once at spawn**, so it is on from the first frame and never waits for combat AI. The other
+> is the self-buff channel his own controller re-applies whenever possible. Both are ordinary skill
+> fields, which is the only class this game's pet records tolerate without crashing.
+>
+> **The whole family is now checked, not just half of it.** The earlier check covered the boss and
+> the three summoned tiers and never looked at the marauders he raises, nor at the marauders a
+> SUMMONED Enslaver raises. Those were smoking by luck (their rig has the effect baked into the
+> mesh) and a mesh swap could have taken it away silently at any time. The build now walks all eight
+> family members and refuses to build unless each one carries the shroud either in its mesh or in
+> both fields. On this build: four by mesh, four by fields.
+>
+> **THE TEST:** summon the Enslaver from **any tier** of his soul and **just stand there, out of
+> combat**. **PASS = the black smoke is on him from the moment he appears, and on the marauders he
+> raises.** FAIL = he appears clean, or he only smokes while running (that is the old running-only
+> effect, which was always there and is untouched).
+>
+> **Your existing souls are enough.** This effect lives on the pet records, which the game resolves
+> from the database at the moment the summon fires. It is not baked into the soul item when you pick
+> it up, the way item stats are. So the Enslaver souls already sitting in your stash pick this up
+> with no re-drop and no new character. A full restart to reload the database is all it needs.
+
+> # 💀 R-254 DYING COSTS HALF WHAT IT DID (2026-08-15)
 >
 > **✅ LIVE ON DEV *AND* STEAM AS `build98`** (arz `15dacc68c118f50900a5a7100225e2a8`, 2026-08-15).
 > Full quit TQ and restart Steam before testing. The numbers below are what the build actually
