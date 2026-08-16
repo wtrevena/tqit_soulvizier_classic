@@ -9022,3 +9022,157 @@ losing its compiled-in smoke, and both spawn rosters going silently empty.
   declares and reads; what is NOT proved is how it looks. Will's test: summon the Enslaver from any
   tier of his soul and just stand there out of combat - the black smoke should be on him from the
   moment he appears, and on the marauders he raises.
+
+---
+
+## R-256 [2026-08-15] IMPLEMENTED (branch `feat/lookout-uber`, module `tools/patches/lookout_uber.py` + `LOOKOUT_HOST_KEY` in `tools/build_section_surgery.py`) - PUT A NEW UNIQUE UBER BOSS ON THE DEAD END BEYOND THE BACK OF LOOKOUT CAVE
+
+### THE ORDER (Will, 2026-08-15, VERBATIM)
+
+> "we should add a uber boss (a new unique one) at the end of lookout cave in the area outside the
+> back of the cave that you get through after you walk through the whole cave, it is a dead end"
+
+Standing creative authority applies (evocative / crazy / extreme, visually and in gameplay; the
+amgoz1 voice; a preference for the creative, the different and the innovative), and so does the
+Ormenos uniqueness bar: census the existing uber roster and claim ONLY measured firsts.
+
+### WHY THIS RULING EXISTS AS A LEDGER ENTRY AT ALL (read this before allocating R-257)
+
+This entry was **missing for a full vet round**, and its absence was not cosmetic. The lane
+stamped `R-256` into nine files - `build_section_surgery.py`, `lookout_uber.py`,
+`gate_uber_placement.py`, `survey_uberboss_spots.py`, `apply_svc_patches.py`,
+`patches/__init__.py`, `BACKLOG.md`, `MISTAKES.md`, `WILL_TEST_GUIDE.md` - and opened five
+`BL-R256-DEBT-*` rows, all keyed to a ruling number that this file did not define. Two
+consequences, the second of which is why this was filed as a HIGH defect and not as bookkeeping:
+
+1. Process law 1 was broken. A verbatim Will decision existed in the code and not in the design
+   law of record, so every reader who followed an `R-256:` comment to the ledger found nothing.
+2. **`tools/gate_ruling_ids.py` was silently disarmed on this lane.** That gate derives the set of
+   numbers a branch ADDS from `## R-<n> [` HEADINGS only (`added = heading_ids(mine) -
+   heading_ids(base)`) and its driver reads `if not added:` before A3. With no heading, `added` was
+   empty, so **both** A2 (no base clash) and A3 (no parallel-lane clash) were skipped - the exact
+   protection built after four lanes simultaneously claimed R-250 on 2026-08-14. No live collision
+   existed (a git-grep over every local branch found `R-256` only on `feat/lookout-uber`), but the
+   guard was inert and the next lane reading the ledger tail would have allocated 256 for itself.
+
+**Standing consequence for every future lane: the ledger heading is written in the SAME commit as
+the first `R-<n>` stamp in `tools/`, not at the end of the lane.** A number you have stamped but
+not defined is a number the collision gate cannot see.
+
+### WHAT SHIPPED - {^r}Ushkaret, the Sky-Burial (the 17th placed uber)
+
+**THE PLACE, MEASURED, NOT REMEMBERED.** Will's dead end is a cliff terrace in **Rhakotis05**.
+You enter `CliffEntranceA01_Ext` in Rhakotis03 at local (12,0,118), walk the whole of
+RhakotisOptTombB into RhakotisOptTombB01, and come back out of `CliffEntranceA01_Ext` onto the
+shelf at local (201,17,37). That shelf is navmesh **component #9 of 115 - 23,960 cells at cs 0.2 =
+958 sq units** - and it is an ISLAND: it touches no other component, the cave mouth is its only
+door, and the mouth is on the same component. It is a dead end in the strictest sense the engine
+supports. Rhakotis05 is the **ONLY level of all 2,282** binding the `Lookout Cave` region guid
+(`f1585bbd055db989f7454b431036b811`, tagRegionName68), so the area banner over the fight reads
+Will's own words back to him and ORACLE 1 (R-130 banner containment) is decisive. R-100 #16b
+(never the main walking path) is satisfied **by construction**: there is no through-route on that
+component to sit on.
+
+**THE MONSTER.** A Boss-rank vulture on the `um_corpsewake_28` rig, wearing that donor's own
+`corpsewake.tex` - a skin with exactly ONE wearer in the whole database, so Ushkaret gets an
+exclusive look with zero new art and the Corpsewake heroes read as its brood. `charLevel
+[30,52,68]`, `characterLife [14000,19000,26000]` (inside the shipped red band: Kroisos/Dorus
+13.5-24k, Mnemophage 14-25k, Ephialtes 15-27k - hard but killable, no wall), scale 2.7 against a
+measured roster ceiling of **3.80** (`um_polisgaoler_unbound_99`). Two Cliffside Mourner Champions
+keep the donor's 1.10 scale so the silhouette gap makes 2.7 read as dominance. ONE world chest
+(`UBER_CHEST_COUNT` / R-108) on a dedicated R-251 hoard chain, `genericbossorb_02` (re-derived as
+the minimum-distance tier, never hardcoded), and `{^F}Soul of the Sky-Burial` with a manual
+"Give It to the Sky" pet button raising The Patient Wing.
+
+**THE FIGHT.** P1 THE VIGIL - it does not land; `razorquill_megaburst` raked across the shelf with
+`razorbird_retaliation` punishing anyone who closes. P2 THE STOOP - it folds and drops on you
+(`charon_swoopstomp`), then fights on the ground with `hemorrage` + `leechstrike`. P3 SKY-BURIAL -
+it calls a bounded Common carrion-mote flock; on death `ondeath_bladeorb` scatters the last quills.
+
+**THE MEASURED FIRSTS** (re-counted over all 5,075 `Monster.tpl` records in the shipped arz,
+every namespace - the R-254 guard from the b93 path-prefix lesson): the vulture family is
+Common 9 / Champion 5 / Hero 5 / **Boss 0**, so a Boss-rank bird did not exist; the only red uber
+on any flying rig is `um_elephantsnatcher_17` (a bat, level 17). `razorquill_megaburst` **1
+carrier**; `charon_swoopstomp` **3 carriers, all vanilla `boss_charonform2_*`, zero custom** (and
+proven-to-cast, which is why it was chosen over a zero-carrier skill); `character_vampiriaura` 6
+carriers, **zero Boss**; `summon_swarm` and `leechstrike` **1 carrier each**. "ushkaret",
+"sky-burial", "mourner" and "larder" return **0 hits** across all 51,331 record paths (the C3
+cross-family rule).
+
+**THE MAP SIDE.** `LOOKOUT_HOST_KEY = 'levels/world/egypt/rhakotis/rhakotis05.lvl'` (LEVELS index
+147, corner (-2649,-1,4353), blob v0x11 -> the proven `inject_into_0x05_v11` branch). Boss proxy
+at local (208.0, 17.0, 52.0), chest at the surveyed `_chest_ring` "A" offset (210.6, 17.0, 52.0),
+plus 7 nest props. Static 0x05 appends only: flags=0, identity rot, **no 0x14, no QUESTS(0x1b)
+registration, no 256-window slot shift, no navmesh change, no walk-through teleport**. Floor Y
+ships **17.0** (the navmesh reads 17.20 - it quantises one ch step high, the documented
+Tantalus/FrogCamp02 behaviour - while every native instance on the plane is authored 17.00).
+
+### THE THREE THINGS THIS LANE DOES *NOT* CLAIM (stated here so they cannot be quietly re-claimed)
+
+1. **The Larder is not a bleed-conditional feed.** The concept called for an aura that eats what
+   bleeds. `character_vampiriaura` is a `Skill_BuffRadiusToggled` whose whole payload is one
+   `SkillBuff_Passive`; there is **no conditional-on-target-state channel in that shape**. What
+   ships is an authored aura pair with the radius widened 8.0 -> 14.0 and the leech ladders raised:
+   a wide, strong life-leech aura. The fight still reads "it feeds while you bleed" and bleed
+   resist is still the counter, but the mechanic was cut to what the bytes do.
+2. **There is no "carcass until you walk in" approach.** A `Proxy` always produces a live monster;
+   there is no dormant-actor channel on that path. Delivered instead as nest dressing.
+3. **The shelf is not ours alone.** See the next section - this one is a Will decision.
+
+### WILL DECISION OWED: THE VANILLA DUNE-RAIDER CAMP SHARES THE SHELF
+
+`Records/Proxies Boss/LE_New/08_RhakotisLookout.dbr` stands at local (218.65, 17.57, 53.18),
+10.71u from our boss spot, and it is a **LIVE base-game encounter, not an inert marker** - an
+earlier draft of this lane called it faceless without ever opening the record, which is logged in
+`MISTAKES.md`. Measured in the base-game `database.arz` (the mod does not override it): `pool1 =
+duneraider_01_general02` (spawnMin 1 / spawnMax 3 of `am_sandviper_17|19|23`; championChance 55.0 /
+championMax 1 from two mounted marauders and five named heroes), `accessory1/Epic1/Legendary1 =
+{normal,epic,legendary}_goldenchest_02`, `placementExtents 3.5`. Its absent `chanceToRun` is the
+NORM, not a disable: 3,650 of the base game's 5,393 `Class=Proxy` records (67.7%) omit it.
+
+**DECISION TAKEN BY THIS LANE: leave the native content exactly where it is.** Base-game deletion
+defaults to WILL-VETO under the retirement protocol; Will asked to ADD an uber, not to remove
+anything; and the geometry is clean (rings DISJOINT at 10.71u vs native 3.5 + ours 4.0 = 7.5; the
+native chest 8.13u from ours). R-108 governs the chests **this project** stacks on one uber, not
+the existence of a vanilla chest in the same room, and we still ship exactly one.
+**Consequence Will will see: a cleared shelf shows TWO chests - ours and vanilla's golden one -
+and the raider camp joins the fight.** That is disclosed in `WILL_TEST_GUIDE.md` rather than left
+to surprise him. `BL-R256-DEBT-4` is the lever if he wants the dead end to be Ushkaret's alone.
+
+### DEBTS
+
+- `BL-R256-DEBT-1` (**P2, engine limit, DISCLOSED**): the Larder ships as a wide life-leech aura,
+  not the bleed-conditional feed the concept called for. No conditional channel exists in
+  `Skill_BuffRadiusToggled` + `SkillBuff_Passive`. Re-open only if a conditional channel is found
+  on some other skill Class; do not re-claim the mechanic on the stock record.
+- `BL-R256-DEBT-2` (**P3, design**): no "reads as a carcass until you walk in" approach beat. A
+  `Proxy` always spawns a live monster. Delivered as nest dressing instead.
+- `BL-R256-DEBT-3` (**P3, tooling**): no TESTHUB yard proxy this wave - deliberate, an unplaced
+  proxy is dead config. Will walks the cave.
+- `BL-R256-DEBT-4` (**P1, WILL DECISION**): the vanilla dune-raider camp + golden chest share the
+  dead end (measured above). Clearing them is a one-line map-lane change plus a
+  `gate_uber_placement` re-run, **and must not happen without Will's word**; if he says yes, the
+  retirement protocol applies (ledger + wave-report check before touching base-game content).
+- `BL-R256-DEBT-5` (**P1, ship lane**): the module has still never run inside a real COLD BUILD.
+  `--negtest` applies it to an already-built arz standalone, and V12 turns the downstream
+  interaction into a live assertion, but the first full cold build plus the hoard
+  generosity/breadth/distribution/volume gates remain the real proof. The ship lane must treat
+  them as the proof, not as a formality.
+- `BL-R256-DEBT-6` (**P2, WILL NAMING**): the hoard's player-visible name, **"The Larder of
+  Ushkaret"**, is this lane's invention in the shipped `<Boss>'s <flavour>-Hoard` convention and is
+  **UNVETTED BY WILL**. Renaming it is a one-tag change (`tagSVCUshkaretHoard`).
+
+### GATES
+
+| gate | result |
+|---|---|
+| `py tools/gate_ruling_ids.py --vs main --branches` | **PASS** - and it now actually RUNS A2/A3 for this lane, which it could not do while R-256 had no heading |
+| `py tools/patches/lookout_uber.py --negtest <built arz>` | **baseline green; every planted defect reds the gate** |
+| `py tools/patches/_check_registry.py` | **OK, 69 modules** |
+| `py tools/debug/gate_uber_placement.py <shipped map>` | R-256 block **VERDICT PASS**; banner reads `Lookout Cave`; comp #9 island correctly followed per R-253 |
+| `py tools/debug/survey_uberboss_spots.py --level egypt/rhakotis/rhakotis05.lvl` | d=0.14, clr 100/100/100 at ext 3.5 **and** 8.0, comp#9/23,960 |
+
+⚠️ `survey_uberboss_spots` prints **CHECK, not OK**, on every row of this spot for ONE reason: the
+component rank is #9, not #1. That is CORRECT and EXPECTED for an island reached through a door.
+Any future landing or containment gate must anchor on the MOUTH's component, never on rank 1, or
+it will red a perfect spot.

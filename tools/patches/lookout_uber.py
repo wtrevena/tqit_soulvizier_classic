@@ -135,6 +135,20 @@ P2 THE STOOP   - it folds and drops on you: `charon_swoopstomp` (Skill_AttackRad
 P3 SKY-BURIAL  - `svc_ushkaret_skyburial` calls the flock (Common carrion-motes only,
                  never Champions - the neferkha no-crowd-out shape); on death
                  `ondeath_bladeorb` scatters the last quills.
+                 THE FLOCK IS BOUNDED TWO WAYS, and vet round 2 shipped only one of
+                 them: `petLimit` 6 (concurrent) AND `spawnObjectsTimeToLive` 20.0s
+                 (expiry). The donor `summon_swarm` carries NO TTL at all, so a plain
+                 clone summons PERMANENT minions and the boss refills the cap forever -
+                 the b76 P0 Will filed as "the infinite summon ... the game is frozen".
+                 A petLimit does not substitute: every b76 offender `summon_caps`
+                 repaired already had one. And no shared gate can catch ours, because
+                 `summon_caps.check_no_new_unbounded` only fires on records with NEITHER
+                 bound - a healthy petLimit HIDES a permanent flock from it. So this
+                 module owns the TTL and gate arm V13 asserts it on the final db.
+                 20.0s is quoted, not chosen: it is what every `svc_`-authored summon in
+                 the shipped arz already carries (the four_generals musters x4 and
+                 `svc_leinth_guard_bloodbeast`) and one of the two values `summon_caps`
+                 itself restores.
 Furniture, unchanged from every shipped red: `boss_conversionimmunity`,
 `armor_passive`, `boss_scaling`, `globalproperties_{normal,epic,legendary}01`.
 DELIBERATELY NOT USED because a red already owns them: `razorquill_nova` (Akremon
@@ -158,7 +172,8 @@ larder.
   svc_ushkaret_mourner_30        the Champion escort, x2 (em_razorbird_24 derive)
   svc_ushkaret_carrionmote_26    the Common flock body (am_plaguevulture_20 derive)
   svc_ushkaret_larder(+buff)     the widened life-leech aura pair
-  svc_ushkaret_skyburial         the flock summon (summon_swarm derive, Commons only)
+  svc_ushkaret_skyburial         the flock summon (summon_swarm derive, Commons only,
+                                 bounded: petLimit 6 + a 20.0s spawn TTL - see P3)
   limit_ushkaret                 the [1..110] no-downscale window
   q_ushkaret_lone (+pool)        the lone-boss placer the map lane injects
   svc_ushkaret_chest             the ONE world chest (R-108 / UBER_CHEST_COUNT = 1)
@@ -254,6 +269,12 @@ SCALE       = 2.7
 MOURNER_BAND = [28, 50, 66]
 MOURNER_HP   = [1400.0, 2400.0, 3600.0]        # strictly ascending (the R-100 #18 escort invariant)
 MOTE_BAND    = [26, 46, 60]
+# THE FLOCK'S SECOND BOUND (b76 law). The donor carries petLimit 5 and NO TTL; a permanent
+# flock under a cap is the exact shape Will filed as a P0 freeze. 20.0s is the value every
+# `svc_`-authored summon in the shipped arz already uses (four_generals x4 + leinth), and one
+# of the two `summon_caps` restores. See the long note in apply() step 2 and gate arm V13.
+FLOCK_TTL    = 20.0
+FLOCK_CAP    = 6
 
 # ── TAGS ────────────────────────────────────────────────────────────────────
 TAG_BOSS    = 'tagSVCMonsterUshkaret'
@@ -389,12 +410,41 @@ def apply(db, tags):
     #    Class=Monster, measured), so repointing it at our Common carrion-mote is
     #    the SAME shape, not a class change. It carries NO
     #    skillSpecialAnimationName, so it needs nothing from the vulture rig.
-    #    Commons ONLY - the neferkha no-champion-crowd-out law. ──
+    #    Commons ONLY - the neferkha no-champion-crowd-out law.
+    #
+    #    ⚠️ THE FLOCK IS BOUNDED TWO WAYS, AND ROUND 2 SHIPPED ONLY ONE OF THEM.
+    #    Measured on the shipped arz, the donor `summon_swarm` carries petLimit 5,
+    #    skillCooldownTime [7,6,5] and NO `spawnObjectsTimeToLive` AT ALL - so a
+    #    straight clone summons PERMANENT minions: nothing expires, the boss
+    #    re-summons on cooldown the instant one dies to refill the cap, and the
+    #    fight never reaches a steady state. That is verbatim the b76 defect class
+    #    Will filed as a P0 ("so much lag with the monsters ... the game is frozen
+    #    ... the infinite summon"), and the b76 offenders `summon_caps` repaired ALL
+    #    HAD petLimits too (aktaios 9, alastor 8, undeadmelee01 5) - the concurrent
+    #    cap was never what made them safe, the missing TTL was the defect.
+    #    Worse, no shared gate can see ours: `summon_caps.check_no_new_unbounded`
+    #    only flags records with NEITHER a positive petLimit NOR a positive TTL, so
+    #    petLimit 6 makes this record invisible to it. So the TTL is authored HERE
+    #    and asserted by V13 below.
+    #    THE VALUE IS QUOTED, NOT CHOSEN: 20.0 is what every `svc_`-authored summon
+    #    in the shipped arz already carries - the four_generals musters
+    #    (`svc_general_summonarchers_a|b|c` petLimit 3, `svc_marshal_summonarchers`
+    #    petLimit 5) and `svc_leinth_guard_bloodbeast` (petLimit 2), all ttl=20.0 -
+    #    and it is one of the two values `summon_caps` itself restores. Against the
+    #    [12,10,8] cooldown it means the flock overlaps and pressures without ever
+    #    accumulating, under a hard concurrent cap of 6 Commons. The field is ABSENT
+    #    on the donor, so it needs its dtype declared (the same call shape
+    #    `summon_caps` uses); this is not the "never pass dtype to a cloned record's
+    #    EXISTING field" trap, which is about overwriting a typed field in place. ──
     db.clone_record(DONOR_SWARM, SKYBURIAL)
+    _swarm_ttl_before = _v1(db, DONOR_SWARM, 'spawnObjectsTimeToLive')
     sf(SKYBURIAL, 'spawnObjects', [CARRIONMOTE])
-    sf(SKYBURIAL, 'petLimit', 6)
+    sf(SKYBURIAL, 'petLimit', FLOCK_CAP)
     sf(SKYBURIAL, 'skillCooldownTime', [12.0, 10.0, 8.0])
-    sf(SKYBURIAL, 'FileDescription', 'Ushkaret sky-burial: calls the carrion-mote flock')
+    sf(SKYBURIAL, 'spawnObjectsTimeToLive', FLOCK_TTL, F)
+    sf(SKYBURIAL, 'FileDescription',
+       'Ushkaret sky-burial: calls the carrion-mote flock (bounded: petLimit 6 + %.1fs TTL)'
+       % FLOCK_TTL)
     db._modified.add(SKYBURIAL)
 
     # ── 3. THE FLOCK BODY (Common). The donor already reads
@@ -603,12 +653,15 @@ def apply(db, tags):
           "(exclusive corpsewake.tex) - quill fan + the ONLY custom swoop-stomp "
           "(anim answered by repointing unarmedSpecialAnimRef1 %r -> 'SwoopStomp') + "
           "hemorrage + leechstrike + the Larder aura (radius %s -> 14.0) + the "
-          "carrion-mote flock; 2 Cliffside Mourner champions; limit [1..110]; lone "
-          "pool + proxy (accessories EMPTY - the chest stands in the world); ONE "
-          "world chest on the dedicated '%s' hoard chain; genericbossorb_02; "
-          "'{^F}Soul of the Sky-Burial' (manual 'Give It to the Sky' -> The Patient "
-          "Wing, 66%% Finger2); %d tags set. Map lane places it on the Lookout shelf."
-          % (BAND, HP, SCALE, _anim_before, _radius_before, HOARD_PREFIX, len(_ALL_TAGS)))
+          "carrion-mote flock (BOUNDED: petLimit %d + spawn TTL %r -> %.1fs, the b76 "
+          "law - the donor ships no TTL at all); 2 Cliffside Mourner champions; limit "
+          "[1..110]; lone pool + proxy (accessories EMPTY - the chest stands in the "
+          "world); ONE world chest on the dedicated '%s' hoard chain; "
+          "genericbossorb_02; '{^F}Soul of the Sky-Burial' (manual 'Give It to the "
+          "Sky' -> The Patient Wing, 66%% Finger2); %d tags set. Map lane places it on "
+          "the Lookout shelf."
+          % (BAND, HP, SCALE, _anim_before, _radius_before, FLOCK_CAP,
+             _swarm_ttl_before, FLOCK_TTL, HOARD_PREFIX, len(_ALL_TAGS)))
 
 
 # ── verify: THE GATE (runs post-finalization over the FINAL db) ──────────────
@@ -858,6 +911,47 @@ def verify(db, tags=None):
         problems.append("%s spawnMax(%d) - championMax(%d) = %d guaranteed main(s), "
                         "expected exactly 1." % (POOL, smax, cmax, smax - cmax))
 
+    # V13 THE FLOCK IS BOUNDED (b76 law). The hostile summon this module authors must
+    #     carry BOTH bounds: a positive concurrent cap AND a finite spawn TTL. The
+    #     shared gate cannot do this for us - `summon_caps.check_no_new_unbounded` only
+    #     fires on records with NEITHER, so a petLimit alone hides a permanent flock
+    #     from it, which is exactly how round 2 shipped one. Asserted on the FINAL db,
+    #     so a later module stripping the field also reds.
+    _cap = gv(SKYBURIAL, 'petLimit')
+    try:
+        _cap = int(float(_cap))
+    except (TypeError, ValueError):
+        _cap = 0
+    if _cap <= 0:
+        problems.append("%s petLimit=%r - the flock has no concurrent cap."
+                        % (SKYBURIAL, gv(SKYBURIAL, 'petLimit')))
+    _ttl = gv(SKYBURIAL, 'spawnObjectsTimeToLive')
+    try:
+        _ttl = float(_ttl)
+    except (TypeError, ValueError):
+        _ttl = 0.0
+    if _ttl <= 0:
+        problems.append(
+            "%s carries spawnObjectsTimeToLive=%r. The donor `summon_swarm` ships NO "
+            "TTL, so a permanent flock is what you get by default: minions never "
+            "expire, the boss refills the cap on cooldown and the fight never reaches "
+            "a steady state. That is the b76 P0 Will filed ('the infinite summon ... "
+            "the game is frozen'), and a petLimit does NOT substitute - every b76 "
+            "offender summon_caps repaired had one. Restore %.1fs (the value every "
+            "svc_ summon in this arz uses)."
+            % (SKYBURIAL, gv(SKYBURIAL, 'spawnObjectsTimeToLive'), FLOCK_TTL))
+    # and it must still be a spawn skill spawning ONLY the Common mote (never a Champion
+    # - the neferkha no-crowd-out law this module claims in its docstring)
+    _spawns = db.get_field_value(SKYBURIAL, 'spawnObjects')
+    _spawns = _spawns if isinstance(_spawns, list) else ([_spawns] if _spawns else [])
+    if [_n(s) for s in _spawns if isinstance(s, str)] != [_n(CARRIONMOTE)]:
+        problems.append("%s spawnObjects=%r, expected exactly [%s] - the flock is Commons "
+                        "only." % (SKYBURIAL, _spawns, CARRIONMOTE))
+    if _n(gv(CARRIONMOTE, 'monsterClassification') or '') != 'common':
+        problems.append("%s monsterClassification=%r - the flock body must stay Common "
+                        "(the neferkha no-crowd-out shape)."
+                        % (CARRIONMOTE, gv(CARRIONMOTE, 'monsterClassification')))
+
     # V11 tags: every tag this module references is authored (Text.arc coupling)
     if tagset:
         missing = [t for t in _ALL_TAGS if t not in tagset]
@@ -933,10 +1027,12 @@ def verify(db, tags=None):
           "tier; ONE world chest on its own R-251 table with the boss proxy's "
           "accessories empty; the placement spec is the surveyed (208,17,52) spot; "
           "the soul is a 3-tier manual pet button with no hostile spawner on any pet; "
-          "escorts drop nothing and stay smaller than the boss; and the '%s' hoard family "
-          "is inside svc_uber_hoards' DERIVED scope with its R-251 volume intact after the "
-          "whole registry ran."
-          % (BAND, HP, HOARD_PREFIX))
+          "escorts drop nothing and stay smaller than the boss; the flock is bounded "
+          "BOTH ways (petLimit %d + %.1fs TTL - the b76 law a petLimit alone hides from "
+          "summon_caps) and stays Commons-only; and the '%s' hoard family is inside "
+          "svc_uber_hoards' DERIVED scope with its R-251 volume intact after the whole "
+          "registry ran."
+          % (BAND, HP, FLOCK_CAP, FLOCK_TTL, HOARD_PREFIX))
 
 
 # ── negative tests: prove each gate arm can actually go RED ──────────────────
@@ -1062,6 +1158,18 @@ def _negtest():
           lambda: _break(db, PETS[0], 'specialAttack2SkillName', SKYBURIAL))
     plant('the pet given a TTL (a permanent pet that expires)',
           lambda: _break(db, PETS[0], 'spawnObjectsTimeToLive', [30.0]))
+    # V13, the b76 arm. The first plant is the EXACT state round 2 shipped in: a flock
+    # with a healthy petLimit and no TTL at all - invisible to summon_caps' own sweep,
+    # which is why this module has to own it.
+    plant('the flock summon stripped of its TTL (the b76 permanent-summon state, and the '
+          'one a petLimit hides from summon_caps)',
+          lambda: _break(db, SKYBURIAL, 'spawnObjectsTimeToLive', 0.0))
+    plant('the flock summon stripped of its concurrent cap',
+          lambda: _break(db, SKYBURIAL, 'petLimit', 0))
+    plant('the flock escalated from Commons to the Champion escort (crowd-out)',
+          lambda: _break(db, SKYBURIAL, 'spawnObjects', [MOURNER]))
+    plant('the flock body promoted to Champion',
+          lambda: _break(db, CARRIONMOTE, 'monsterClassification', 'Champion'))
     plant('the pool handed its proxyPoolEquation back (two bosses side by side)',
           lambda: _break(db, POOL, 'proxyPoolEquation',
                          r'records\proxies orient\proxypoolequation_02.dbr'))

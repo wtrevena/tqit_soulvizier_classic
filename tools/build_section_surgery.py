@@ -2678,18 +2678,47 @@ for _uc_key, _uc_specs in UBER_CHEST_SPECS.items():
 # dress it as what it is - a LARDER: the bones of what the bird carried up, and the refuse
 # the refugees were carrying when it came down among them.
 #
-# EVERY record is ALREADY PLACED IN THIS SAME WORLD, so no new art and no new MAP-REF risk
-# (measured this pass over the shipped map, per record: BonesAnimal02 x1 and BonesAnimal03 x1
-# in Rhakotis05 ITSELF; PileRefuse01 x7 / 02 x5 / 03 x2 in RhakotisOptTombB - literally the
-# cave you walk through to get here; EgyptCity_Urn01 x22 in Rhakotis02).
+# EVERY record is ALREADY PLACED IN THIS SAME WORLD, so no new art and no new MAP-REF risk.
+# ⚠️ THREE OF THESE COUNTS WERE WRONG IN ROUND 2 and are RE-MEASURED here by a whole-world
+# 0x05 walk of the shipped `work/.../Levels.arc` (md5 1bf86461), per level, using the
+# canonical stride rule `contracts_map.blob_0x05_base` - not by memory, which is what
+# produced x7 / x5 / x22 below where the artifact says x6 / x4 / x13:
+#     BonesAnimal02      rhakotis05        x1     (the shelf's own level)
+#     BonesAnimal03      rhakotis05        x1
+#     PileRefuse01       rhakotisopttombb  x6     <- was claimed x7
+#     PileRefuse02       rhakotisopttombb  x4     <- was claimed x5
+#     PileRefuse03       rhakotisopttombb  x2
+#     EgyptCity_Urn01    rhakotis02        x13    <- was claimed x22
+# (Parse cross-check on the same walk: rhakotis05 = 434 instances, rhakotisopttombb = 126 -
+# both matching the figures the survey and the census reached independently.) Only per-level
+# counts are stated; a world total is deliberately NOT claimed here, because it depends on
+# which namespaces you count and that ambiguity is how the last three numbers rotted.
+# TombB is literally the cave you walk through to get here, which is the load-bearing half
+# of the claim: the nest is built out of what the refugees were carrying.
+# Reproduce the counts: a 0x05 walk over every level, counting these 6 DBR strings.
 #
 # SURVEYED, all 7, at the prop extent 1.0 on the built map: d<=0.14u, clr 100%/100%/100%
-# (N/E/L), comp#9 - the same shelf island the boss stands on. Every one sits 6.6-9.2u from
-# the boss spawn (outside the fight ring, which is proven clean to 8.0u) and >=4u from the
-# native 08_RhakotisLookout proxy. Byte-shape = the standard prop: flags=0, identity rot, no
-# 0x14, no QUESTS registration, no navmesh change. Y = the shelf's authored 17.0.
-# Reproduce: py tools/debug/survey_uberboss_spots.py <map> --level
-#            egypt/rhakotis/rhakotis05.lvl --pt 203 46 1.0 --pt 213 58.5 1.0 ...
+# (N/E/L), comp#9 - the same shelf island the boss stands on. Byte-shape = the standard
+# prop: flags=0, identity rot, no 0x14, no QUESTS registration, no navmesh change. Y = the
+# shelf's authored 17.0 on all seven.
+#
+# ⚠️ SEPARATION, STATED HONESTLY - round 2's summary sentence here claimed "6.6-9.2u ...
+# outside the fight ring, which is proven clean to 8.0u" and BOTH halves were wrong, even
+# though every per-row annotation below was right. Recomputed from the spec itself:
+#     true range 6.58 .. 10.06u (REFUSE3 at 10.06u is outside the old stated band), and
+#     TWO of the seven are INSIDE the 8.0u ring, not outside it: URN01 6.58u, BONES_A 7.81u.
+# That is a CLAIM correction, not a placement change, and here is why the placement stands:
+# these are flat static 0x05 decorations (animal bones, refuse piles, an urn) - a 0x05 append
+# does not touch the 0x0b navmesh, so it cannot carve the boss ring's clearance, which was
+# measured 100%/100%/100% out to ext 8.0 and 98% at 10.0 on the PRE-lane map and is unchanged
+# by definition. The one real spacing invariant, the >6u guard, IS satisfied: the closest prop
+# to the spawn is 6.58u. Nearest prop to the native 08_RhakotisLookout encounter is 7.76u
+# (BONES_B), and to our own chest 6.90u. The urn sits deliberately close and deliberately
+# toward the mouth - it is the first thing you see when you come out of the cave.
+# Reproduce every number in this block: recompute pairwise distances from
+# UBERBOSS_SPECS/UBER_CHEST_SPECS/LOOKOUT_NEST_SPECS[LOOKOUT_HOST_KEY], and
+#   py tools/debug/survey_uberboss_spots.py <map> --level
+#      egypt/rhakotis/rhakotis05.lvl --pt 203 46 1.0 --pt 213 58.5 1.0 ...
 BONES_A_DBR = b'Records/SceneryGreece/Nature/Debris/BonesAnimal02.dbr'
 BONES_B_DBR = b'Records/SceneryGreece/Nature/Debris/BonesAnimal03.dbr'
 REFUSE1_DBR = b'Records/SceneryEgypt/Structure/Camps/Refugee/SetDress/PileRefuse01.dbr'
@@ -2698,17 +2727,20 @@ REFUSE3_DBR = b'Records/SceneryEgypt/Structure/Camps/Refugee/SetDress/PileRefuse
 URN01_DBR = b'Records/SceneryEgypt/Structure/Building/City/SetDress/EgyptCity_Urn01.dbr'
 LOOKOUT_NEST_SPECS = {
     LOOKOUT_HOST_KEY: [
-        # every distance below RE-MEASURED from the boss spot (208.0, 52.0) this pass:
-        # the second row used to be annotated 7.81u, which was the FIRST row's value
-        # copied down a line. These comments are what a relocation lane reads, so they
-        # are now the computed values, all seven.
-        (BONES_A_DBR, 203.0, 17.0, 46.0),     # 7.81u from the boss - the old kills
-        (BONES_B_DBR, 213.0, 17.0, 58.5),     # 8.20u
+        # Every distance below is RE-COMPUTED from this table this pass (round 2 fixed a
+        # value that had been copied down a line; round 3 re-derived all seven again and
+        # they reproduce to 0.01u). These comments are what a relocation lane reads, so
+        # they stay the computed values, and the two that sit INSIDE the 8.0u ring say so
+        # rather than being covered by a summary that rounds them away.
+        (BONES_A_DBR, 203.0, 17.0, 46.0),     # 6.58-10.06u range: 7.81u  INSIDE the ring - the old kills
+        (BONES_B_DBR, 213.0, 17.0, 58.5),     # 8.20u  (7.76u from the native proxy - the closest any prop comes to it)
         (BONES_A_DBR, 214.0, 17.0, 46.0),     # 8.49u
         (REFUSE1_DBR, 202.0, 17.0, 57.5),     # 8.14u - what they were carrying
         (REFUSE2_DBR, 206.0, 17.0, 61.0),     # 9.22u
-        (REFUSE3_DBR, 212.5, 17.0, 61.0),     # 10.06u
-        (URN01_DBR, 201.5, 17.0, 51.0),       # 6.58u - nearest the mouth they came out of
+        (REFUSE3_DBR, 212.5, 17.0, 61.0),     # 10.06u - the FARTHEST, and outside round 2's stated band
+        (URN01_DBR, 201.5, 17.0, 51.0),       # 6.58u  INSIDE the ring, and the NEAREST prop to the
+                                              #        spawn - still clear of the >6u guard. Deliberate:
+                                              #        it faces the mouth they came out of.
     ],
 }
 for _ln_key, _ln_specs in LOOKOUT_NEST_SPECS.items():
