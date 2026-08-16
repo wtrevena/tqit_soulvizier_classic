@@ -52,6 +52,22 @@
   ruling, the test note and the module docstring all repeat the split verbatim, and the
   BACKLOG item stays OPEN until Will says it smokes.**
 
+- **2026-08-16 | R-257 lane, my own: a one-word count update added a UTF-8 BOM to four files,
+  including `tools/patches/__init__.py`** - bumping "27/27" to "29/29" across the ledger, BACKLOG,
+  handoff and the registry was done with a PowerShell `Get-Content -Raw` / `Set-Content -Encoding
+  utf8` round-trip. **In Windows PowerShell 5.1 `-Encoding utf8` means UTF-8 WITH BOM**, so all
+  four files gained `EF BB BF` at byte 0 - a change to line 1 of the design ledger and of a Python
+  module, in a commit whose stated content was a number. **Cost: none realised** - `git diff -U0`
+  was read before committing, the BOM showed up as a line-1 hunk in three of the four, and all
+  four were stripped with an explicit `read_bytes()`/`write_bytes()` pass. It also silently did
+  NOT apply to the one line it was aimed at in `WILL_RULINGS.md` (a spacing mismatch), so the
+  edit's only committed effect would have been the BOMs. **Root cause: a bulk text substitution
+  used for a change small enough to make with a targeted edit - the round-trip rewrites the whole
+  file, so its blast radius is the file, not the match.** **Guard: count/number updates in this
+  lane go through targeted edits; when a bulk rewrite really is warranted, it is done in Python
+  with explicit `encoding='utf-8'` and no BOM, and `git diff -U0` is read for line-1 hunks before
+  the commit.**
+
 - **2026-08-16 | R-257 lane, my own: I guarded a function I had just invented with `hasattr`,
   which would have made a typo fall back silently** - the first draft of
   `enslaver_shroud._PINNED_SMOKE_RIGS` read `_rig._norm_ref(SHROUD_RIG) if hasattr(_rig,

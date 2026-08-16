@@ -257,6 +257,22 @@ _MESH_SMOKE_OVERRIDE = None     # {mesh_ref_lower: (attach, entity) or None}
 _RIG_ASSET_OVERRIDE = None      # ('PASS'|'FAIL'|'SKIP', detail) for the arc-staging arm
 
 
+def _require_gates():
+    r"""True when the build demands that an UNAVAILABLE gate be a FAILURE.
+
+    R-257 makes this matter more than it did: the two arms that can go SKIP here
+    (the rig-asset arm and the per-member MESH route) are the ONLY things standing
+    between a shipped arz and four records naming a mesh that resolves nowhere -
+    an INVISIBLE boss. In a real ship the archives are always reachable and
+    `SVC_REQUIRE_GATES=1` is always set (see every build9x gate record), so a SKIP
+    there means the environment is wrong, not that the question is unanswerable.
+    Outside a ship (a bare worktree with no staged Resources) the SKIP stays a loud
+    announced downgrade, exactly as the rest of this module has always behaved.
+    """
+    import os
+    return os.environ.get('SVC_REQUIRE_GATES', '') not in ('', '0', 'false', 'False')
+
+
 def _norm(p):
     return str(p).replace('/', '\\').lower()
 
@@ -747,7 +763,13 @@ def verify(db, tags=None):
     if st == 'FAIL':
         problems.append("RIG ASSET: %s" % detail)
     elif st == 'SKIP':
-        notes.append("RIG ASSET DOWNGRADED (not a pass): %s" % detail)
+        if _require_gates():
+            problems.append(
+                "RIG ASSET UNAVAILABLE under SVC_REQUIRE_GATES: %s. This is the arm "
+                "that stops a ship from putting four records on a mesh that resolves "
+                "nowhere; it may not be skipped in a build that ships." % detail)
+        else:
+            notes.append("RIG ASSET DOWNGRADED (not a pass): %s" % detail)
     else:
         notes.append("RIG ASSET PASS: %s" % detail)
 
@@ -841,8 +863,15 @@ def verify(db, tags=None):
         # ── THE PROVEN CHANNEL, AND NOW THE ONLY ONE ───────────────────────
         st, ok, detail = mesh_route(db, rec)
         if st == 'SKIP':
-            notes.append("MESH ROUTE DOWNGRADED (not a pass) for %s: %s"
-                         % (rec.rsplit('\\', 1)[-1], detail))
+            if _require_gates():
+                problems.append(
+                    "MESH ROUTE UNAVAILABLE under SVC_REQUIRE_GATES for %s: %s. The "
+                    "shroud is now DERIVED from the rig binary and from nothing else, "
+                    "so an unreadable archive means this member is unchecked."
+                    % (rec, detail))
+            else:
+                notes.append("MESH ROUTE DOWNGRADED (not a pass) for %s: %s"
+                             % (rec.rsplit('\\', 1)[-1], detail))
         if not ok:
             problems.append(
                 "FAMILY FX PARITY: %s%s does NOT smoke. %s. Every member of this "
@@ -987,7 +1016,10 @@ def _negtest():
     """
     global _RIG_NAMES_OVERRIDE, _DEMON_FX_OVERRIDE, _DEMON_ATTACH_OVERRIDE
     global _MESH_SMOKE_OVERRIDE, _RIG_ASSET_OVERRIDE
+    import os as _os
     from collections import OrderedDict
+
+    _REQ_GATES_WAS = _os.environ.get('SVC_REQUIRE_GATES')
 
     class _TF(object):
         def __init__(self, v):
@@ -1194,6 +1226,18 @@ def _negtest():
          lambda db: db.d[_SPAWN].__setitem__('charFxPakSelfNames', [_SHADOWCLOAK_PAK])),
         ('the exemplar record itself disappears',
          lambda db: db.d.pop(_MARAUDER)),
+
+        # ── an UNANSWERABLE gate is not a passing gate (SVC_REQUIRE_GATES) ──
+        ('SHIP BUILD with the rig-asset arm UNAVAILABLE: the archives cannot be '
+         'read, so nothing proves the mesh those four records name actually ships',
+         lambda db: (_os.environ.__setitem__('SVC_REQUIRE_GATES', '1'),
+                     globals().__setitem__(
+                         '_RIG_ASSET_OVERRIDE',
+                         ('SKIP', 'no mod Creatures.arc reachable')))),
+        ('SHIP BUILD with a member\'s RIG UNREADABLE: the shroud is derived from the '
+         'binary and from nothing else, so that member is simply unchecked',
+         lambda db: (_os.environ.__setitem__('SVC_REQUIRE_GATES', '1'),
+                     _MESH_SMOKE_OVERRIDE.pop(_norm(_MESH_OURS)))),
     ]
 
     def _arm():
@@ -1210,6 +1254,9 @@ def _negtest():
         _DEMON_ATTACH_OVERRIDE = None
         _RIG_ASSET_OVERRIDE = ('PASS', 'stub: derived + staged')
         _MESH_SMOKE_OVERRIDE = {k: list(v) for k, v in _FX_TABLE.items()}
+        # the two SVC_REQUIRE_GATES plants set this; a leak would make every LATER
+        # plant run under a different contract than the baseline it was compared to
+        _os.environ.pop('SVC_REQUIRE_GATES', None)
         return _MESH_SMOKE_OVERRIDE
 
     bad = 0
@@ -1234,8 +1281,13 @@ def _negtest():
             bad += 1
 
     # A gate left holding its stubs would pass on injected answers for the rest of
-    # the process and report a real-asset PASS it never performed.
+    # the process and report a real-asset PASS it never performed. Same for the env
+    # var two plants set: restore whatever the caller had.
     _clear_overrides()
+    if _REQ_GATES_WAS is None:
+        _os.environ.pop('SVC_REQUIRE_GATES', None)
+    else:
+        _os.environ['SVC_REQUIRE_GATES'] = _REQ_GATES_WAS
     print("negtest: %d/%d plants caught" % (len(plants) - bad, len(plants)))
     return 1 if bad else 0
 

@@ -9470,7 +9470,7 @@ Levels+Quests, arz+Text, **and arz+Creatures.arc**.
 | `py tools/build_shroud_rig.py --selftest` | **PASS** (both binaries EOF-exact in 9 chunks; the 115-byte block; donor FX-free; `SpecialHit01` on his rig) |
 | `py tools/build_shroud_rig.py --negtest` | **10/10** (block absent, length not bumped, length bumped with no block, hand-typed LF block, wrong attach, wrong effect, donor text overwritten, pre-text corruption, block doubled, length off by one) |
 | `py tools/patches/enslaver_shroud.py --selftest` | **PASS**, and it re-measures the exemplar, both rigs, the authored asset and R-255's slot ceiling against the real archives |
-| `py tools/patches/enslaver_shroud.py --negtest` | **27/27** |
+| `py tools/patches/enslaver_shroud.py --negtest` | **29/29** (incl. two SVC_REQUIRE_GATES arms: a ship build in which the rig-asset arm or a member's rig cannot be read is a FAILURE, not a downgrade) |
 | `py tools/patches/champion_mesh.py --negtest` | **15/15** (new: the family regresses to the plain FX-free rig) |
 | `py tools/gate_dye_skins.py` | **PASS** (the archive's other tenant is untouched) |
 | STATIC dry-run over the shipped build100 arz, both modules in registry order | **GREEN** - 8/8 household members MESH (4 on `ShadowStalker.msh`, 4 on the new rig), exactly **6 records touched**, all attributed |

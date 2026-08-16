@@ -491,7 +491,7 @@ REGISTRY = [
                             # (registered later, R-102's single-writer law) does, and IMPORTS
                             # SHROUD_RIG from here so asset and wearer cannot drift.
                             # Negative test: py tools/patches/enslaver_shroud.py --negtest
-                            # (27 plants, incl. the required "strip" case -> RED and the
+                            # (29 plants, incl. the required "strip" case -> RED and the
                             # "belief-channel-only re-plant" case: a pet back on the FX-free
                             # rig carrying the b99 field route, i.e. exactly what shipped as
                             # build99 -> RED); --selftest re-measures the exemplar, both rigs,
