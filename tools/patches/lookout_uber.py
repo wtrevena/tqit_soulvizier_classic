@@ -198,6 +198,13 @@ SK_BLADEORB   = r'records\skills\monster skills\ondeath\ondeath_bladeorb.dbr'
 SK_SWOOP      = r'records\xpack\skills\bossskills\charon_swoopstomp.dbr'   # Skill_AttackRadius, anim 'SwoopStomp'
 SK_HEMORRAGE  = r'records\skills\monster skills\attack_projectile\hemorrage.dbr'
 SK_LEECHSTRIKE = r'records\skills\sv\gustleech\leechstrike.dbr'
+# NOT in the boss kit: the ESCORT inherits this natively from em_razorbird_24. It is
+# required here only so a missing donor reds loudly instead of leaving the Mourner with
+# a dangling attack. (The escort likewise KEEPS its donor's native `razorquill_nova` -
+# a base-game Champion skill it already ships with today. That skill is on the boss's
+# deliberately-avoided list because Akremon form 2 owns it as a SIGNATURE; leaving a
+# Champion's own stock kit alone is not the same thing as giving a red uber a borrowed
+# signature, and stripping it would make this escort weaker than the vanilla razorbird.)
 SK_BURST      = r'records\skills\monster skills\attack_projectile\razorquill_burst.dbr'
 SK_CONVIMM    = r'records\skills\boss skills\boss_conversionimmunity.dbr'
 SK_BOSSSCALE  = r'records\skills\monster skills\passive_buffs\boss_scaling.dbr'
