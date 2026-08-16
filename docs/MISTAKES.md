@@ -8,6 +8,22 @@
 
 ## 2026-08-15
 
+- **2026-08-15 | R-256 lookout-uber lane: the first negative test was written with a
+  per-plant `copy.deepcopy(db)` and wedged the machine** - `_negtest` deep-copied the
+  whole built database (51,331 records x ~618 fields) once per planted defect, 17 times.
+  The process reached **744 seconds of CPU and >2 GB resident** on the FIRST copy, had to
+  be force-killed, and produced nothing. **Cost: ~13 minutes of wall clock and one
+  abandoned background job**; caught by the lane itself before anything shipped, but it
+  burned time in a session that had real work queued. **Root cause: reaching for
+  isolation-by-copy on an object whose size was already known from the same session's own
+  probes** - this lane had printed "51,331 records" three times before writing that line.
+  **Guard:** the negtest now MUTATES AND RESTORES a single field per plant (`_break()`
+  returns an `undo()` that puts the exact prior values back, or deletes the field if it
+  did not exist), and it re-runs `verify()` after every undo so a leaked mutation fails
+  the test rather than silently poisoning the next plant. Same coverage - 24 planted
+  defects, all red - in about a minute. Anyone writing a future module negtest against a
+  built `.arz` should copy that shape, never `deepcopy`.
+
 - **2026-08-15 | R-250/b93 shipped the Enslaver's shroud into skill slots the engine
   does not read, and called it done** - the lane put `svc_enslaver_shroud` in
   `skillName19` on the wild boss and `skillName18` on all three soul-summon pet tiers.

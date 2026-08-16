@@ -1,5 +1,91 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> # 🦅 R-256 THERE IS SOMETHING AT THE END OF LOOKOUT CAVE NOW (2026-08-15)
+>
+> **⏳ CODE COMPLETE, NOT YET BUILT OR DEPLOYED** (branch `feat/lookout-uber`). Nothing to test
+> until the next build ships; this is what to expect when it does.
+>
+> **Your order, verbatim:** "we should add a uber boss (a new unique one) at the end of lookout
+> cave in the area outside the back of the cave that you get through after you walk through the
+> whole cave, it is a dead end."
+>
+> ## How to walk there
+>
+> 1. **Act 2, Rhakotis.** Find the cave mouth in **Rhakotis03** - the `Lookout Cave` entrance in
+>    the cliff face. (If you have the area already, the top-right banner says **Lookout Cave** the
+>    moment you are in the right place. That banner is not decoration here: Rhakotis05 is the only
+>    level in the entire world bound to that region, which is how we proved this is the spot you
+>    meant and not the other Rhakotis cave.)
+> 2. **Walk the whole cave.** Two rooms, in and through.
+> 3. **Come out the far side.** You step onto a cliff terrace roughly 20 units above the desert.
+>    It is a genuine dead end - there is no path down and no path on. You can only come out of the
+>    cave onto it, and walk back.
+> 4. **He is about 17 units in front of you, slightly right.** You will see the nest before you see
+>    him: animal bones, refuse piles and an urn dragged up out of the cave. That is deliberate. The
+>    shelf is a larder, and the dressing is what he carried up.
+>
+> ## What you are fighting
+>
+> **{^r}Ushkaret, the Sky-Burial** - and the thing worth knowing is what he *is*: **the first
+> Boss-rank BIRD in the game.** We checked every one of the 5,075 monster records; the vulture
+> family has 9 commons, 5 champions and 5 heroes and has never had a boss. The only red uber on
+> any flying body at all was a level-17 bat. The sky over Rhakotis is already full of his children
+> (the vultures you have been killing all act); nothing was ever at the top of it.
+>
+> He wears a skin exactly one other creature in the database wears - the Corpsewake hero - so the
+> corpsewakes read as his brood, and he is about **2.7x** the size of a normal vulture.
+>
+> **The fight has three beats:**
+> - **He does not land.** He opens by raking a fan of quills across the shelf, and closing on him
+>   costs you blood (he retaliates passively). No other uber in the mod opens this way.
+> - **Then he stoops.** He folds and comes down on you as an area slam. **No red uber in this mod
+>   has ever left melee range vertically** - this move exists on exactly three records in the whole
+>   game, all of them the vanilla Charon, and Charon is not even in this mod any more (Akremon
+>   replaced him). On the ground he bleeds you and drains you.
+> - **Then he calls the flock,** and when he dies the last quills scatter.
+>
+> **Counterplay, so it is legible:** he leeches life from everything near him and he bleeds you
+> hard, so **bleed resistance is the stat that matters**, and killing the two Cliffside Mourner
+> champions out at the rim is better than fighting all three in the middle. He cannot be bled
+> himself - he is the larder.
+>
+> **Difficulty:** deliberately inside the band you already know. His health is 14,000 / 19,000 /
+> 26,000 across the three difficulties, which sits between the Coin-Drowned King and Ephialtes.
+> **Hard, but killable, and no wall.** If he feels like a wall, say so - that is a bug, not a
+> design.
+>
+> ## What he drops
+>
+> - **The mystical orb**, like every other red uber (the Egypt-band one, same as Neferkha).
+> - **ONE chest.** One. It stands on the shelf beside him and unlocks when he dies -
+>   **The Larder of Ushkaret**. (That name is mine, not yours - tell me if you want it changed.)
+>   It opens its own dedicated loot table, not a base-game one.
+> - **{^F}Soul of the Sky-Burial** (66% drop, Normal / Epic / Legendary versions with those words
+>   in front of the name, as they should be). The soul is a **manual summon button** - "Give It to
+>   the Sky" - that raises **The Patient Wing**, a permanent bird of your own on his exact body. It
+>   is not a Ground Smash filler and it is not an on-hit proc. The soul's own stats are bleed,
+>   life-leech and pierce, and it carries a real cost: it opens your own hide, so you take more
+>   pierce and bleeding damage while you wear it.
+>
+> ## ⚠️ One thing I have to be straight about
+>
+> The design I wrote said his aura should **eat the bleed** - that anything hemorrhaging on the
+> shelf, including his own flock, would feed him. **The engine will not express that.** I measured
+> the aura shape it would have to use, and there is no conditional-on-target-state channel in it at
+> all. What actually ships is a **wide, strong life-leech aura** (its reach went from 8 to 14 units,
+> so the whole shelf really is his plate) plus his bleed and his leech strike. The fight still reads
+> "he feeds while you bleed" and bleed resist is still the counter - but it is a leech aura, not a
+> bleed-conditional feed, and I would rather tell you that than let you find out.
+>
+> Two smaller ones: he does **not** sit still pretending to be a carcass until you walk in (I wanted
+> that; a spawn proxy always produces a live monster, so there is no dormant state to use), and
+> there is **no test-hub shortcut to him this wave** - you walk the cave.
+>
+> **THE TEST:** walk the cave, come out the back. **PASS =** a red-named giant vulture with two
+> champion escorts is standing on the terrace, the banner reads Lookout Cave, there is **exactly
+> one** chest, and he drops an orb plus (usually) the soul. **FAIL =** empty terrace, two of him
+> side by side, more than one chest, or a fight that feels like a wall.
+
 > # 💀 R-254 DYING COSTS HALF WHAT IT DID (2026-08-15) - READ THIS FIRST
 >
 > **✅ LIVE ON DEV *AND* STEAM AS `build98`** (arz `15dacc68c118f50900a5a7100225e2a8`, 2026-08-15).

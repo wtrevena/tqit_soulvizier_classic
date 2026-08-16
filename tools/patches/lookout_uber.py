@@ -520,10 +520,21 @@ def apply(db, tags):
     A._wire_summon_soul(db, souls, SUMMON)                # manual pet BUTTON: strips any
     for sp in souls:                                      # inherited itemSkillAutoController
         if db.has_record(sp):
-            db.set_field(sp, 'itemText', TAG_SOUL + 'DESC')
+            sf(sp, 'itemText', TAG_SOUL + 'DESC')
             db._modified.add(sp)
-    # R-201 gives the three tiers their normal/Epic/Legendary PREFIX via
-    # itemQualityTag at finalization; nothing to do here but not fight it.
+    # R-201 TIER PREFIXES, authored HERE rather than left to the finalization pass.
+    # The three tiers share ONE itemNameTag and differentiate on `itemQualityTag`,
+    # which the engine renders as a prefix: "Soul of the Sky-Burial" / "Epic ..." /
+    # "Legendary ...". `_apply_soul_tier_naming` would add these at finalization, but
+    # it is ADD-ONLY and idempotent, so writing them now is a no-op for that pass and
+    # makes this module's own content complete and order-independent (the diadochi
+    # self-authored-pcsafe precedent). Both tags are already in the shipped Text.arc,
+    # so this authors no new tag.
+    for sp, tier in zip(souls, ('n', 'e', 'l')):
+        want = A._SOUL_TIER_QUALITY[tier]
+        if want and db.has_record(sp):
+            sf(sp, 'itemQualityTag', want, S)
+            db._modified.add(sp)
 
     # ── 9. Register with the shared gate-input registries (all idempotent). ─────
     for pair in ((DONOR_LARDERB, LARDER_BUFF), (DONOR_LARDER, LARDER), (DONOR_SWARM, SKYBURIAL)):
@@ -835,86 +846,139 @@ def verify(db, tags=None):
 
 
 # ── negative tests: prove each gate arm can actually go RED ──────────────────
+def _break(db, rec, field, value):
+    """Set `rec.field = value` and return an undo() that restores it EXACTLY.
+
+    Mutate-and-restore, deliberately, instead of `copy.deepcopy(db)` per plant:
+    the built arz is ~51k records of ~618 fields, so a deep copy costs minutes and
+    gigabytes and the first version of this test wedged a machine doing it 17
+    times. Each plant therefore runs against the SAME db and is undone; the test
+    re-runs verify() after every undo, so a leaked mutation is itself caught."""
+    ff = db.get_fields(rec) or {}
+    key = next((k for k in ff if k.split('###')[0] == field), None)
+    old = list(ff[key].values) if key is not None else None
+    db.set_field(rec, field, value)
+
+    def undo():
+        ff2 = db.get_fields(rec) or {}
+        for k in [k for k in ff2 if k.split('###')[0] == field]:
+            if old is None:
+                del ff2[k]
+            else:
+                ff2[k].values = list(old)
+        db._modified.add(rec)
+    return undo
+
+
+def _break_tag(tags, key):
+    old = tags.pop(key, None)
+
+    def undo():
+        if old is not None:
+            tags[key] = old
+    return undo
+
+
 def _negtest():
     r"""py tools/patches/lookout_uber.py --negtest <built.arz>
 
     Loads a built arz, applies this module, then plants each defect the gate
     claims to catch and requires verify() to RAISE. A gate nobody has seen fail is
     not a gate (the standing negtest law)."""
-    import copy
     from arz_patcher import ArzDatabase
 
     arz = sys.argv[2] if len(sys.argv) > 2 else None
     if not arz:
         raise SystemExit("usage: py tools/patches/lookout_uber.py --negtest <built.arz>")
-    base = ArzDatabase.from_arz(Path(arz))
+    db = ArzDatabase.from_arz(Path(arz))
     tags = {}
-    apply(base, tags)
+    apply(db, tags)
     try:
-        verify(base, tags)
+        verify(db, tags)
     except SystemExit as e:
         raise SystemExit("NEGTEST ABORTED: the clean build does not pass verify():\n%s" % e)
     print("\n  baseline: apply() + verify() are GREEN on %s" % arz)
 
-    def plant(label, mutate):
-        db = copy.deepcopy(base)
-        t = dict(tags)
-        mutate(db, t)
+    results = []
+
+    def plant(label, break_fn):
+        undo = break_fn()
         try:
-            verify(db, t)
+            verify(db, tags)
+            print("    *** GREEN - THE GATE IS BLIND: %s" % label)
+            good = False
         except SystemExit:
             print("    RED (as required): %s" % label)
-            return True
-        print("    *** GREEN - THE GATE IS BLIND: %s" % label)
-        return False
+            good = True
+        undo()
+        try:                                   # the undo must restore GREEN
+            verify(db, tags)
+        except SystemExit as e:
+            raise SystemExit("NEGTEST LEAKED: undo of %r left the gate red:\n%s" % (label, e))
+        results.append(good)
 
-    ok = True
-    ok &= plant('boss declassed to Hero',
-                lambda db, t: db.set_field(BOSS, 'monsterClassification', 'Hero'))
-    ok &= plant('boss made a 90k wall',
-                lambda db, t: db.set_field(BOSS, 'characterLife', [90000.0, 95000.0, 99000.0]))
-    ok &= plant('orb stripped',
-                lambda db, t: db.set_field(BOSS, 'treasureProxyName', ''))
-    ok &= plant('orb moved to the R-99 reserved apex tier',
-                lambda db, t: db.set_field(
-                    BOSS, 'treasureProxyName',
-                    r'records\item\containers\new\genericbossorb_05.dbr'))
-    ok &= plant('swoop animation answer reverted to Bladestorm',
-                lambda db, t: db.set_field(BOSS, 'unarmedSpecialAnimRef1', 'Bladestorm'))
-    ok &= plant('donor skin swapped (A9 render drift)',
-                lambda db, t: db.set_field(BOSS, 'baseTexture',
-                                           r'DRXtextures\creatures\vulture\vulture_razorbird.tex'))
-    ok &= plant('a kit skill parked above the engine ceiling (R-255)',
-                lambda db, t: db.set_field(BOSS, 'skillName19', SK_LEECHSTRIKE))
-    ok &= plant('the boss proxy given back an accessory chest (R-108)',
-                lambda db, t: db.set_field(
-                    PROXY, 'accessory1',
-                    r'records\drxitem\container\svc_ushkarethoard_pool_01.dbr'))
-    ok &= plant('the hoard chest repointed at a base-game table (the b42 orphaning)',
-                lambda db, t: db.set_field(
-                    r'records\drxitem\container\svc_ushkarethoard_01.dbr', 'tables',
-                    r'records\item\containers\defaultloot\boss_default_29-31.dbr'))
-    ok &= plant('escort life made descending',
-                lambda db, t: db.set_field(MOURNER, 'characterLife', [3000.0, 900.0, 1200.0]))
-    ok &= plant('escort turned into a soul faucet',
-                lambda db, t: db.set_field(MOURNER, 'chanceToEquipFinger2', 66.0))
-    ok &= plant('soul turned into an on-attack proc (the D21 Long Nu bug)',
-                lambda db, t: db.set_field(_soul_paths()[0], 'itemSkillAutoController',
-                                           A._AC_ON_HIT))
-    ok &= plant('Epic soul stripped of its R-201 tier prefix',
-                lambda db, t: db.set_field(_soul_paths()[1], 'itemQualityTag', ''))
-    ok &= plant('the friendly pet handed the HOSTILE flock summon back',
-                lambda db, t: db.set_field(PETS[0], 'specialAttack2SkillName', SKYBURIAL))
-    ok &= plant('the pet given a TTL (a permanent pet that expires)',
-                lambda db, t: db.set_field(PETS[0], 'spawnObjectsTimeToLive', [30.0]))
-    ok &= plant('the pool handed its proxyPoolEquation back (two bosses side by side)',
-                lambda db, t: db.set_field(
-                    POOL, 'proxyPoolEquation',
-                    r'records\proxies orient\proxypoolequation_02.dbr'))
-    ok &= plant('a referenced tag never authored',
-                lambda db, t: t.pop(TAG_SOUL, None))
-    print("\n  NEGTEST %s" % ('PASS - every planted defect reds the gate' if ok
-                              else 'FAILED - at least one gate arm is blind'))
+    HOARD_01 = r'records\drxitem\container\svc_%shoard_01.dbr' % HOARD_PREFIX
+    HOARD_POOL_01 = r'records\drxitem\container\svc_%shoard_pool_01.dbr' % HOARD_PREFIX
+
+    plant('boss declassed to Hero',
+          lambda: _break(db, BOSS, 'monsterClassification', 'Hero'))
+    plant('boss made a 90k wall',
+          lambda: _break(db, BOSS, 'characterLife', [90000.0, 95000.0, 99000.0]))
+    plant('boss band shifted off the Rhakotis cliff',
+          lambda: _break(db, BOSS, 'charLevel', [70, 85, 99]))
+    plant('orb stripped',
+          lambda: _break(db, BOSS, 'treasureProxyName', ''))
+    plant('orb moved to the R-99 reserved Toxeus apex tier',
+          lambda: _break(db, BOSS, 'treasureProxyName',
+                         r'records\item\containers\new\genericbossorb_05.dbr'))
+    plant('orb pinned to the WRONG ladder tier (orb04)',
+          lambda: _break(db, BOSS, 'treasureProxyName',
+                         r'records\item\containers\new\genericbossorb_04.dbr'))
+    plant('swoop animation answer reverted to Bladestorm',
+          lambda: _break(db, BOSS, 'unarmedSpecialAnimRef1', 'Bladestorm'))
+    plant('donor skin swapped (A9 render drift)',
+          lambda: _break(db, BOSS, 'baseTexture',
+                         r'DRXtextures\creatures\vulture\vulture_razorbird.tex'))
+    plant('a foreign anim table added to the table-LESS rig',
+          lambda: _break(db, BOSS, 'charAnimationTableName',
+                         r'records\xpack\creatures\monster\bosses\02_charon\anm\anm_charon02.dbr'))
+    plant('a kit skill parked above the engine ceiling (R-255)',
+          lambda: _break(db, BOSS, 'skillName19', SK_LEECHSTRIKE))
+    plant('a kit slot pointed at a record that does not exist',
+          lambda: _break(db, BOSS, 'skillName8', r'records\skills\nope\not_a_skill.dbr'))
+    plant('the boss proxy given back an accessory chest (R-108)',
+          lambda: _break(db, PROXY, 'accessory1', HOARD_POOL_01))
+    plant('the hoard chest repointed at a base-game table (the b42 orphaning)',
+          lambda: _break(db, HOARD_01, 'tables',
+                         r'records\item\containers\defaultloot\boss_default_29-31.dbr'))
+    plant('escort life made descending',
+          lambda: _break(db, MOURNER, 'characterLife', [3000.0, 900.0, 1200.0]))
+    plant('escort turned into a soul faucet',
+          lambda: _break(db, MOURNER, 'chanceToEquipFinger2', 66.0))
+    plant('escort scaled up to the boss silhouette',
+          lambda: _break(db, MOURNER, 'scale', 2.7))
+    plant('soul turned into an on-attack proc (the D21 Long Nu bug)',
+          lambda: _break(db, _soul_paths()[0], 'itemSkillAutoController', A._AC_ON_HIT))
+    plant('Epic soul stripped of its R-201 tier prefix',
+          lambda: _break(db, _soul_paths()[1], 'itemQualityTag', ''))
+    plant('the boss stopped dropping its own soul',
+          lambda: _break(db, BOSS, 'chanceToEquipFinger2', 0.0))
+    plant('the friendly pet handed the HOSTILE flock summon back',
+          lambda: _break(db, PETS[0], 'specialAttack2SkillName', SKYBURIAL))
+    plant('the pet given a TTL (a permanent pet that expires)',
+          lambda: _break(db, PETS[0], 'spawnObjectsTimeToLive', [30.0]))
+    plant('the pool handed its proxyPoolEquation back (two bosses side by side)',
+          lambda: _break(db, POOL, 'proxyPoolEquation',
+                         r'records\proxies orient\proxypoolequation_02.dbr'))
+    plant('the pool arithmetic broken to 2 guaranteed mains',
+          lambda: _break(db, POOL, 'championMax', 1))
+    plant('a referenced tag never authored',
+          lambda: _break_tag(tags, TAG_SOUL))
+
+    ok = all(results)
+    print("\n  NEGTEST %s (%d/%d planted defects reddened the gate)"
+          % ('PASS - every arm bites' if ok else 'FAILED - at least one gate arm is BLIND',
+             sum(1 for r in results if r), len(results)))
     if not ok:
         raise SystemExit(1)
 
