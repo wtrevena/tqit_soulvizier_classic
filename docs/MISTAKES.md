@@ -8,6 +8,27 @@
 
 ## 2026-08-16
 
+- **2026-08-16 | build101 ship operator, my own: I put a FLAG THAT DOES NOT EXIST in the
+  anti-inert row of the gate battery, and it exited 0 with no output** - the battery ran
+  `py tools/patches/enslaver_shroud.py --verify local/build100_shipped_6b89bb5d.arz` as the
+  ANTI-INERT control, the one row whose whole job is to prove the gate can still FAIL on the
+  bytes that shipped and did not render. That module's `__main__` accepts `--negtest` and
+  `--selftest` and nothing else, so an unknown flag is silently ignored: the script did
+  nothing, printed nothing, and returned **0**. Written up unread, that row would have said
+  "anti-inert control PASS" about a command that never loaded an arz. **Cost: none realised** -
+  the battery prints its full argv beside every exit code (the 2026-08-15 `validate_tags`
+  guard) and a zero-output row under a heading that promised a FAILURE is self-evidently
+  wrong, so it was caught on the first read. **Root cause: I assumed a CLI surface instead of
+  reading the 8-line `__main__` block, and an exit code of 0 was allowed to mean "passed" when
+  it actually meant "did nothing".** This is the *same shape* as the b100 `--hub` and
+  `lookout_uber --negtest` operator errors logged one day earlier, and the b99 entry about
+  banking an exit code as a gate row. **Guard: the control is now a real driver,
+  `tools/debug/b101_anti_inert.py`, which loads the arz, calls `verify()` and asserts the
+  DIRECTION of the result - `--expect-green` or, by default, RED - so "did nothing" can no
+  longer be mistaken for either verdict. Run both ways this ship: RED with 17 problems on the
+  shipped `6b89bb5d`, GREEN on `9712f58f`. A gate row is only evidence if the run that produced
+  it printed something that could have been bad.**
+
 - **2026-08-16 | R-257 ROUND 1 SHIPPED A MODULE WHOSE STATIC GATES WERE ALL GREEN WHILE THE
   COLD BUILD WAS DEAD** - the lane put the Enslaver family on a MOD-AUTHORED mesh that exists
   in exactly one archive, and staged that archive in bootstrap Step 2e, *after* the Step 1

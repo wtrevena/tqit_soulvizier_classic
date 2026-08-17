@@ -1,38 +1,35 @@
-[h2]There is something at the end of Lookout Cave now[/h2]
+[h2]The Enslaver of Souls smokes the way his demons smoke[/h2]
 [list]
-[*]In Act 2 there is a cave mouth in the cliff face of the Rhakotis slums. Walk the whole of it, both rooms, and come out the far side, and you step onto a cliff terrace above the desert with no path down and no path on. The game has always called that terrace [b]Lookout Cave[/b] and it is the only place in the entire world that carries that name. Nothing has ever been up there worth the walk.
-[*]Now [b]Ushkaret, the Sky-Burial[/b] is. He is the seventeenth placed uber boss in this mod, and he is the one you have to walk a dead end to reach.
+[*]Toxeus the Murderer, Enslaver of Souls is a skeleton leader wrapped in a black shadow shroud. The demons he raises have carried that shroud correctly for a long time. He never has, and neither have the pets you summon from his soul.
+[*]This is the [b]fifth[/b] attempt at that one effect and the first that copies something already known to render, rather than adding another field and asserting it.
 [/list]
 
-[h2]What he is, measured rather than asserted[/h2]
+[h2]Why the previous four rounds failed, stated plainly[/h2]
 [list]
-[*][b]The first Boss-rank bird in the game.[/b] Across all 5,075 monster records the vulture family runs 9 commons, 5 champions and 5 heroes, and it has never had a boss. The only red uber on any flying body at all was a level-17 bat. The sky over Rhakotis is already full of his children; nothing was ever at the top of it.
-[*]He wears a skin exactly one other creature in the database wears, so the corpsewake heroes read as his brood, and he stands about 2.7 times the size of a normal vulture next to two Cliffside Mourner champions who keep the ordinary one.
-[*][b]He does not land.[/b] He opens by raking a fan of quills across the terrace and punishes anyone who closes on him. Then he folds and stoops on you as an area slam. That move exists on exactly three records in the whole game, all of them the vanilla Charon, who is not even in this mod any more. No red uber here has ever left melee range vertically before. On the ground he bleeds you and drains you, and then he calls a flock.
-[*][b]Bleed resistance is the stat that matters[/b], and he cannot be bled himself. He is the larder.
+[*]Each of them wrote the shroud into a [b]record field[/b] and then proved the record was correct. That was never the right proof. Two rounds wrote into skill slots the engine does not declare at all. The last round moved to two slots the engine does declare, verified the bytes, verified the gate, and the boss still stood there clean.
+[*]So the standard changed. A fix for something you are supposed to [b]see[/b] must copy a specific creature you can already see doing it, through the same mechanism, and must match it byte for byte. Where no such example exists, that gets said out loud instead of shipped around.
 [/list]
 
-[h2]The flock is capped and it expires, and that is on purpose[/h2]
+[h2]What was measured before anything was written[/h2]
 [list]
-[*]Never more than six at once, each one fading after fifteen seconds, and every one of them a plain common so the screen does not fill. This is a direct answer to a player-reported freeze from an earlier build, where a summon shipped with a cap but no expiry at all and the game locked up.
-[*]The body this summon is built from was changed late for exactly that reason: the first version cloned a skill that carries no expiry, and the build now refuses to compile unless both bounds are present. That check is permanent and it covers future summons too.
+[*]Across 566 engine templates, 74,013 base-game records, 341 base-game pets and 591 creature models: the field routes have [b]no rendering example anywhere[/b]. One of them is declared in zero templates and used by zero records. The other never once reaches a self-buff effect on any pet in the shipping game.
+[*]The model route does. His demons wear it. So does every standing aura in the base game - every Ancestral Warrior, every Spirit Outsider, every Storm Wisp, the Spirit Ward, the Battle Standard. None of them get their glow from a skill; all of them get it from their model file.
+[*]There is no ambient-effect field on the engine's monster or pet template at all. That absence is exactly why the base game compiles auras into models.
 [/list]
 
-[h2]What he drops[/h2]
+[h2]What actually shipped[/h2]
 [list]
-[*]The mystical orb, like every other red uber, at the tier the surrounding act uses.
-[*][b]One chest.[/b] One. It stands beside him and unlocks when he dies, and it opens its own dedicated loot table rather than a base-game one, paying at the same rates as every other uber hoard in the mod.
-[*][b]Soul of the Sky-Burial[/b], in Normal, Epic and Legendary versions. The soul is a manual summon button that raises a permanent bird of your own on his body, and it carries a real cost: it opens your own hide, so you take more pierce and bleeding damage while you wear it.
+[*]The Enslaver gets his own copy of his own skeleton model with the demons' smoke block appended: the same 115 bytes, read straight off the demons' model, at the same attach point, naming the same effect. Same skeleton, same bones, same 31 animation names, same silhouette. The only difference in the file is the smoke.
+[*][b]All four of the previous round's field channels were removed rather than left in place.[/b] They are the shape that reads as working and is not, and on anything that already smokes from its model they would have doubled the effect. The ask was for the same shroud the demons have, not a thicker one.
+[*]The boss, the three tiers his soul summons, and the two preview versions all move onto that model together. Existing Enslaver souls pick it up with no re-drop and no new character.
 [/list]
 
-[h2]Two things worth knowing before you go up there[/h2]
+[h2]Scope[/h2]
 [list]
-[*][b]The terrace is not his alone.[/b] The base game already stands a dune-raider camp with its own golden chest on that shelf, roughly eleven units from where he waits. It is a live encounter, not scenery, and it will join the fight. It was deliberately left in place rather than deleted, so a cleared terrace shows you [b]two[/b] chests. If that reads as clutter rather than as an ambush, say so and it can go.
-[*][b]The hoard is named The Larder of Ushkaret.[/b] That name was chosen here, not requested, and it is a one-line change if it should be something else.
+[*]Six records changed, five retired. No other monster, item, skill, drop rate, chest, area, entrance or quest moved. The world map and the quest archive are byte for byte identical to the previous update and are not republished.
+[*]This update carries a [b]model archive[/b] as well as the database, which is new for this mod. Both halves ship together; the build refuses to produce a database whose models are missing.
 [/list]
 
-[i]Scope: this update adds records and rebuilds the world map. The map change is confined to a [b]single level blob[/b] - the terrace itself - with every navmesh in the world byte for byte identical to the previous update, the quest registry untouched, and no change to any existing monster, item, drop rate, chest, area or entrance. The quest archive is byte for byte identical to the previous update and is republished only because the map and the quest archive must always ship as a pair.[/i]
-
-[i]Not yet confirmed in play: everything above is build and gate evidence. Nobody has walked out of that cave and fought him yet.[/i]
+[i]Not yet confirmed in play. What can be said, and could not be said any of the previous four times: these records now reach the screen by the same mechanism, through the same attach point, carrying a byte-identical block, as creatures already confirmed to smoke in play. Whether that renders is the one thing only playing it can answer.[/i]
 
 [i]Credits: [b]amgoz1[/b] for Soulvizier and the emblem, used with permission - [b]soa[/b] for Soulvizier AERA - [b]Dragonlord[/b] for DRX.[/i]
