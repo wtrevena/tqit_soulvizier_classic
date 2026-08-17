@@ -8,6 +8,32 @@
 
 ## 2026-08-16
 
+- **2026-08-16 | build101 ship operator, my own: TWO MORE battery rows exited non-zero purely
+  because I gave them the wrong ARGV, and one of them is a gate this very lane put at risk** -
+  (a) `validate_render_chain.py <arz>` exited **2**; it requires
+  `<mod.arz> <mod_resources_dir> <game_dir>` and deliberately returns 2 rather than a PASS it
+  cannot justify (its own `B-GATE-HARDEN-1` hardening). Re-run with all three: **exit 0, RESULT
+  PASS, 269 pets / 3,089 art refs, 22 upstream WARNs**, and the mod-authored
+  `svc_enslaver_shroudrig01.msh` resolves without a single row. (b) `validate_summon_pets.py
+  <arz>` exited **1** with 72 "rig pairing NOT proven" lines; run WITHOUT the base and upstream
+  `.arz` arguments it cannot tell an upstream-proven SV pet from a real defect, so it promotes
+  134 known-upstream warnings into STRICT failures. **The authoritative run is the one inside
+  the build, which passes all three paths: `STRICT failures : 0`, 293 soul-summon chains, 268
+  pets, 134 upstream warnings, non-blocking.** **Cost: none realised, but the second one was
+  nearly expensive in a different way** - R-257 explicitly narrowed `B-SUMMON-1`'s witness set
+  for the three Enslaver pet tiers down to a single record, so a red from THIS gate on THIS
+  ship is exactly the shape that would have been ours. **I did not wave it through: a control
+  run of the same wrong invocation against the shipped build100 arz returns the IDENTICAL 72
+  not-proven / 210 BROKEN counts with a set-diff of ZERO in both directions, and ZERO enslaver
+  rows appear under either invocation** - so the red is pre-existing, unchanged, and provably
+  not this lane's, and the "RIG PAIRING UNVOUCHED" arm did not bite. **Root cause: I wrote a
+  battery of 30 rows from memory of what each gate takes instead of reading each one's usage
+  line first, in a repo where several gates take multiple anchors on purpose.** **Guard: the
+  battery script now carries the corrected argv for both; and the standing rule this repo
+  already had is the one that saved it - print full argv beside every exit code, and read every
+  non-zero exit in the log before writing it anywhere. Two of three bad rows in this battery
+  were caught by that rule alone.**
+
 - **2026-08-16 | build101 ship operator, my own: I put a FLAG THAT DOES NOT EXIST in the
   anti-inert row of the gate battery, and it exited 0 with no output** - the battery ran
   `py tools/patches/enslaver_shroud.py --verify local/build100_shipped_6b89bb5d.arz` as the
