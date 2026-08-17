@@ -140,11 +140,26 @@
 
 > # 🖤 R-257 THE ENSLAVER'S SHROUD, ROUND FIVE - THIS TIME IT IS THE DEMONS' OWN MESH (2026-08-16)
 >
-> **🟡 NOT SHIPPED YET.** Built on the branch, gated, not deployed. When it lands you will need a
-> **full quit of TQ and a Steam restart**, and the ship must carry **two** files, not one - the
-> database *and* `Resources\Creatures.arc`. If only the database arrives, the Enslaver and his
-> summoned tiers will be **INVISIBLE** rather than un-smoking. Say so immediately if that happens;
-> it is a one-file fix, not a redesign.
+> ### WHAT WE CLAIM, AND WHAT WE DO NOT - read this before you test
+>
+> **WE ARE NOT CLAIMING IT RENDERS. Nobody has seen this build.** Four rounds claimed more than
+> they could prove and this one will not.
+>
+> **What we claim, and what no previous round could:** the records that had no shroud now reach
+> the screen **by the SAME mechanism, through the SAME attach point, with the SAME entity
+> reference, carrying a BYTE-IDENTICAL block, as four creatures you have personally confirmed
+> smoke in play** - his demons. The residual risk is no longer *"does this channel render?"* -
+> it does, on the marauders, in your own words - but only *"does a mod-shipped copy of a base
+> rig load?"*, against 1,105 mod-served creature meshes in this mod that already do.
+>
+> **✅ LIVE ON DEV *AND* STEAM AS `build101`** (arz `9712f58fcc1a73ec1fba2d5a9e811cbc`,
+> `Creatures.arc d65d92a36adcde0cef6e1bb58afebd28`, 2026-08-16).
+> **Full quit TQ and restart Steam before testing.**
+>
+> This ship carried **two** files, not one - the database *and* `Resources\Creatures.arc` - and
+> both were hash-verified on the deployed bytes after the copy, so the invisible-boss failure
+> mode below should not be reachable. It is still listed, because it is the honest failure mode
+> of a new asset and you should know its name if you see it.
 >
 > **Your report, verbatim, the fifth time you have filed this, with the Hathor Basin screenshot:**
 > "toxeus the murderer enslaver of souls summoned pets (when i summon them from their souls) still
@@ -177,15 +192,18 @@
 > - **FAIL MODE 1** = still no smoke. Then a mod-shipped model does not load on him and the answer
 >   is to put him on the demons' model outright - which works by construction but costs him his
 >   skeleton silhouette, so that is **your call**, not ours.
-> - **FAIL MODE 2** = he is **invisible / missing** entirely. That means the `Creatures.arc` half of
->   the ship did not arrive. One file.
+> - **FAIL MODE 2** = he is **invisible / missing** entirely. That would mean the `Creatures.arc`
+>   half of the ship did not arrive. **This one was checked on the deployed files after the copy:**
+>   the model is in your DEV `Creatures.arc` byte-for-byte, and the validator that walks every
+>   summoned pet's art on the deployed database passed against your deployed folder. So it should
+>   not happen - but if it does, it is still one file, not a redesign.
 > - **FAIL MODE 3** = the smoke looks **too thick** compared to his demons. Tell us; that would mean
 >   something is emitting twice.
 >
-> **WHAT WE ARE NOT CLAIMING.** Nobody has seen this render. What we can say, and could not say any
-> of the previous four times, is that his records now reach the screen through the **same mechanism,
-> the same attach point and a byte-identical block** as four creatures you have personally confirmed
-> smoke in play. Your existing Enslaver souls pick it up with no re-drop and no new character.
+> **Your existing Enslaver souls pick this up with no re-drop and no new character** - the effect
+> rides the pet records, which are read from the database at summon time, not baked into the soul
+> when you picked it up. The confidence statement for this round is at the top of this entry, and
+> it is deliberately narrower than the previous four.
 
 > # 🖤 R-255 THE ENSLAVER'S SUMMONED PETS FINALLY SMOKE (2026-08-15) - SUPERSEDED BY R-257 ABOVE: IT SHIPPED AND IT DID NOT RENDER
 >
