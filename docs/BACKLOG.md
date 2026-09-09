@@ -6629,6 +6629,8 @@ in shipped arcs` that has nothing to do with your lane. Both failures were repro
 
 Setup used here (`work/` is gitignored, so this is local-only and does not travel with the branch):
 
+> ⛔ **RETIRED 2026-09-09 - DO NOT USE.** This junction recipe is what let the 2026-09-09 worktree prune destroy the build inputs (see docs/MISTAKES.md 2026-09-09). Worktree builds must rely on the resolver's main-checkout fallback instead.
+
 ```
 cmd /c mklink /J "<worktree>\work\SoulvizierClassic\Resources" ^
                  "<main repo>\work\SoulvizierClassic\Resources"
