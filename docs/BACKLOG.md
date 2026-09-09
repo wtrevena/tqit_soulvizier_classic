@@ -144,7 +144,88 @@
 
 **BL-W0814-9 DEVOURER OF BLOOD IS WIELDING A BOW - ✅ FIXED BY R-252, LIVE ON DEV *AND* STEAM AS `build96` (arz `0bd0121f36e5ce7bd205c73e588016ae`, 2026-08-15); in-game confirm = `BL-R252-DEBT-2`:** measured root cause = `lootLeftHandItem1` = `bleed_affix_high_{n,e,l}` at chance 100 / weight 100, and LeftHand IS the engine's shield / two-handed-ranged slot (base-game census over the 5,556 records whose templateName basename is Monster.tpl, one tick per record per class, references resolved case-insensitively: Shield 0-to-805, Bow 17-to-514, Staff 17-to-710, Spear 493-to-0 - and the 17 RightHand bow/staff records are one shared set of hand-less monsters using the slot as a drop chute, the same anti-pattern this fix removes). Those tables were curated by AFFIX not class and carry `u_n_tendonripper` / the Nemesis recurve, both `Weapon_Bow`. Fix = the weapon hand goes MELEE-ONLY (a NEW guaranteed `veinrender_guaranteed_{n,e,l}` table @100 + the de-bowed bleed table @19 + the shipped unique-sword row @19, so it is armed 100% of spawns vs 36.97% shipped), the off hand takes the Enslaver's shield array @100 + the 4-piece set table's only drop row @19, and both bleed tables are de-bowed. Original report kept verbatim below. "toxeus the murderer devourer of blood is using a bow which makes no sense." The Devourer (record `um_bloodtoxeus_99`, the blood-cave stash guardian) has a ranged BOW equipped - wrong for a melee/blood boss. Fix = audit his equipment slots (weapon1/weapon2 + any equip-pool loot rolling a bow onto him) and replace with an appropriate melee weapon (or clear the bow). SAME CLASS as BL-W0814-3 (Endless Hunt no equipment/weapon) - both are Toxeus-boss weapon-rig bugs; candidate to batch into one boss-equipment lane.
 
-**BL-W0814-10 DEVOURER OF BLOOD DID NOT DROP HIS SOUL - 🔴 STILL OPEN, AND `build96` DID NOT CLOSE IT. R-252 shipped to DEV + Steam on 2026-08-15 (arz `0bd0121f36e5ce7bd205c73e588016ae`); it removed the one anomaly and closed NOTHING here; the closing proof is Will's next kill (`BL-R252-DEBT-1`). R-252 changes nothing on the `Finger2` channel BY CONSTRUCTION - the build96 record-diff proves it (`chanceToEquipFinger2` and `lootFinger2Item1` are machine-checked ABSENT from the whole diff) - so no part of that lane may be presented as the fix for this item:** the audit this item asked for was run and it CLEARED every listed suspect: `chanceToEquipFinger2` = 100.0 (R-243's pin, byte-unchanged), `lootFinger2Item1` = `blood_toxeus_soul_{n,e,l}` all resolving as `Jewelry_Ring`/`Magical`/`itemLevel 40 (N) / 68 (E) / 100 (L)` (field-for-field the same shape as the Enslaver + Hunt souls, also Ring/Magical/40-68-100, that have never failed), no difficulty or championChance gate, and EXACTLY ONE record in the DB carries `tagMonsterHemorrheus` with every spawn pool (`q_bloodtoxeus_lone`, `egg_blooddragon`, the ambush) naming it - so "base record vs difficulty/uber variant" is REFUTED. The ONE structural anomaly his three siblings do not share was the cross-class hand wiring of BL-W0814-9 (weapon hand rolling a 3/4-ARMOUR table, off-hand rolling weapons) - the same equip system the soul rides; R-252 removes it. HONEST: the engine path from a class-mismatched hand roll to a skipped Finger2 equip is NOT provable from the bytes, so this closes in-game. Escalation if it still fails = move the soul onto the Misc4 channel R-247.6a proved delivers ("Will's kill DID drop it"). Original report kept verbatim below. "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul." The Devourer (`um_bloodtoxeus_99`) killed, but his named SOUL item did not drop despite an intended 100% guaranteed drop. Fix = audit the Devourer's loot table / lootMasterTable chain for the soul entry: confirm the soul item is present in his drop pool AND that its drop CHANCE is 100% (not gated by difficulty, championChance, or a percentage roll). Check whether the drop is on the base record vs a difficulty/uber variant and whether the killed instance is the one carrying the loot ref. RELATED to the R-247 soul/summon wave (tiered souls, Enslaver-summon, EoAT forge formula visibility) and BL-W0814-9 (Devourer bow) - same boss; candidate to batch into the Devourer/boss-equipment+loot lane.
+**BL-W0814-10 DEVOURER OF BLOOD DID NOT DROP HIS SOUL - 🟡 FIXED BY R-258 (branch `fix/devourer-soul-drop`, module `tools/patches/devourer_soul_delivery.py`), AWAITING VET AND WILL'S KILL - the R-258 block directly below carries the measured root cause, the refuted Misc4 escalation and the debts; nothing here is CLOSED until `BL-R258-DEBT-1`. `build96` DID NOT CLOSE IT EITHER. R-252 shipped to DEV + Steam on 2026-08-15 (arz `0bd0121f36e5ce7bd205c73e588016ae`); it removed the one anomaly and closed NOTHING here; the closing proof is Will's next kill (`BL-R252-DEBT-1`). R-252 changes nothing on the `Finger2` channel BY CONSTRUCTION - the build96 record-diff proves it (`chanceToEquipFinger2` and `lootFinger2Item1` are machine-checked ABSENT from the whole diff) - so no part of that lane may be presented as the fix for this item:** the audit this item asked for was run and it CLEARED every listed suspect: `chanceToEquipFinger2` = 100.0 (R-243's pin, byte-unchanged), `lootFinger2Item1` = `blood_toxeus_soul_{n,e,l}` all resolving as `Jewelry_Ring`/`Magical`/`itemLevel 40 (N) / 68 (E) / 100 (L)` (field-for-field the same shape as the Enslaver + Hunt souls, also Ring/Magical/40-68-100, that have never failed), no difficulty or championChance gate, and EXACTLY ONE record in the DB carries `tagMonsterHemorrheus` with every spawn pool (`q_bloodtoxeus_lone`, `egg_blooddragon`, the ambush) naming it - so "base record vs difficulty/uber variant" is REFUTED. The ONE structural anomaly his three siblings do not share was the cross-class hand wiring of BL-W0814-9 (weapon hand rolling a 3/4-ARMOUR table, off-hand rolling weapons) - the same equip system the soul rides; R-252 removes it. HONEST: the engine path from a class-mismatched hand roll to a skipped Finger2 equip is NOT provable from the bytes, so this closes in-game. Escalation if it still fails = move the soul onto the Misc4 channel R-247.6a proved delivers ("Will's kill DID drop it"). [❌ REFUTED 2026-09-09 BY R-258 - Misc4 is not a CharacterLoot.tpl variable and occurs in 0 base-AE / 0 SV records; do NOT act on this sentence, read the R-258 block below.] Original report kept verbatim below. "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul." The Devourer (`um_bloodtoxeus_99`) killed, but his named SOUL item did not drop despite an intended 100% guaranteed drop. Fix = audit the Devourer's loot table / lootMasterTable chain for the soul entry: confirm the soul item is present in his drop pool AND that its drop CHANCE is 100% (not gated by difficulty, championChance, or a percentage roll). Check whether the drop is on the base record vs a difficulty/uber variant and whether the killed instance is the one carrying the loot ref. RELATED to the R-247 soul/summon wave (tiered souls, Enslaver-summon, EoAT forge formula visibility) and BL-W0814-9 (Devourer bow) - same boss; candidate to batch into the Devourer/boss-equipment+loot lane.
+
+> ### 🟡 R-258 (2026-09-09, branch `fix/devourer-soul-drop`) - THE FIX, AWAITING VET; NOBODY HAS KILLED HIM ON IT YET
+>
+> **ROOT CAUSE, measured on the shipped `build101` arz `9712f58fcc1a73ec1fba2d5a9e811cbc`, record
+> by record - and it is NOT a wrong value, which is why three audits cleared it:** the soul's ONLY
+> delivery path on `records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr` is the
+> **`Finger2` EQUIPMENT slot** - `chanceToEquipFinger2` = 100.0, `chanceToEquipFinger2Item1` = 100
+> (the only non-zero row; items 2-6 = 0), `lootFinger2Item1` = `blood_toxeus_soul_{n,e,l}`, all
+> three resolving as `Jewelry_Ring`. No difficulty gate, no `championChance` gate, no rank gate; a
+> full reverse-reference sweep finds four referrers of each soul record - the three
+> `*_04_lesserpotionofexperience_formula` reagent slots (a recipe, not a drop) and that one
+> `lootFinger2Item1`. Both spawn pools (`q_bloodtoxeus_lone` spawn 3 / champ 2,
+> `egg_blooddragon` spawn 4 / champ 3) put `um_bloodtoxeus_99` on `name1..3` with demons/dragons in
+> the champion slots, so he is a MAIN on every difficulty and there is no variant to have killed
+> instead. **The database is correct; the defect is that the guarantee rides ONE engine behaviour
+> on ONE record with no second channel to catch it.**
+>
+> **🔴 THE PRE-DESIGNED ESCALATION IN THIS VERY ITEM IS REFUTED, NOT BUILT.** "move the soul onto
+> the Misc4 channel R-247.6a proved delivers" cannot be done: **`Misc4` is not an engine slot.**
+> `Templates\TemplateBase\CharacterLoot.tpl` (the one template that declares monster equip/loot
+> variables, `include`d by `Monster.tpl`) declares exactly ELEVEN - Head / Torso / Forearm /
+> LowerBody / LeftHand / RightHand / Finger1 / Finger2 / Misc1 / Misc2 / Misc3 - and **no `Misc4`
+> and no `Neck`**; the string `chanceToEquipMisc4` occurs in **0** of the 74,013 base-AE records,
+> **0** of SV 0.98i and **0** of SV 0.9, appearing only on the 32 records this mod itself wrote;
+> and R-247.6a's "Will's kill DID drop it" is an INFERENCE that contradicts Will's own verbatim
+> report in the same ruling that the Misc4 formula did NOT drop on the kill where the `Finger2`
+> soul and the `treasureProxyName` orb both did.
+>
+> **THE FIX (`tools/patches/devourer_soul_delivery.py`, registry entry `devourer_soul_delivery`,
+> after `toxeus_boss_equipment`):** a SECOND, template-declared channel. Three new one-row
+> `LootItemTable_FixedWeight` tables `records\item\loottables\svc\svc_devourersoul_guaranteed_{n,e,l}`
+> (the `svc_rite_guaranteed` / `veinrender_guaranteed_*` shape) hold the matching tier's soul at
+> weight 100, and the Devourer's **free `Misc1` row 3** takes them at weight 100 while the two
+> potion rows are **MUTED to 0** (values kept - RETIREMENT PROTOCOL). `chanceToEquipMisc1` was
+> already 100, so the slot's measured share is **100.0000% of kills on all three difficulties**,
+> re-derived by the gate from the final db. `Misc1` is template-declared (45,797 carriers) and NOT
+> class-typed - R-252's own invariant names it, `jewelry_ring` leaves already ride it 47 times
+> mod-wide, and `u_bloodwing_12` already delivers a SOUL on `lootMisc2Item1`. **`Finger2` is
+> asserted and never written**, so R-243's pin, `verify_soul_drop_rates --gate` and R-252's E5 arm
+> stay green by construction.
+>
+> **DISCLOSED COST (`BL-R258-DEBT-3`):** he stops dropping his one `Misc1` potion. Every
+> alternative was costed on the bytes and is worse (`Head` is class-governed and unworn-ring
+> delivery is unproven; `Misc2` tops out at 18%; `Misc3` is 50% and holds his amulet; a bespoke
+> boss-orb container chain works but reds R-99's apex-orb invariant). **DISCLOSED AND DELIBERATE
+> (`BL-R258-DEBT-1`):** if `Finger2` is healthy the kill now drops TWO souls - that is the
+> diagnostic three database audits could not buy.
+>
+> **GATES:** `py tools/gate_devourer_soul_delivery.py <arz>` **exits 1 on the shipped `9712f58f`**
+> (4 problems - Will's report as an artifact fact), `--dryrun` proves **RED -> GREEN** in memory on
+> those same bytes at a measured 100.0000%, `--selftest` PASS, `--negtest` **27/27** (23 planted
+> defects incl. two arm-specific `E7` proofs that re-wiring the soul onto `Misc4` must red the
+> build, + 4 positive controls).
+>
+> **STILL NOT CLOSED, and lead with it:** nobody has killed this boss on this build.
+> `BL-R258-DEBT-1` is the closing proof.
+
+**DEBTS REGISTERED BY R-258 (no-new-surface-without-a-gate + debt-register law):**
+- `BL-R258-DEBT-1` (**P1, WILL / in-game - the closing proof for `BL-W0814-10`**): kill the
+  Devourer of Blood and report **how many** souls drop. ONE = `Finger2` is dead on this record and
+  the `Misc1` chute saved it; TWO = `Finger2` was never the defect; ZERO = the equipment generator
+  is not running on him at all and the next lane is the bespoke boss-orb container chain
+  (pre-designed in R-258, blocked only by R-99's gate, which would need an amendment).
+- `BL-R258-DEBT-2` (**P1, three rulings - THE BIG ONE**): `Misc4` is not a `CharacterLoot.tpl`
+  variable, so R-13's rant scroll, R-92's EoAT formula on BOTH Hunts and the Devourer's whole
+  `svc_devourer_misc4_master` all ride a field the engine's template does not declare - three
+  champions' "guaranteed" formula drop is probably dead, which is exactly what Will reported on his
+  Legendary Hunt kill. Out of scope here (different report, different roster, a supersession of
+  R-13 / R-92 / R-247.6a). **A `Misc4` audit is owed before the next EoAT claim.**
+- `BL-R258-DEBT-3` (**P2, WILL / balance ratification**): the Devourer stops dropping his one
+  `Misc1` potion (health 80% / energy 20% of kills). Reverse = restore `chanceToEquipMisc1Item1`
+  80 + `chanceToEquipMisc1Item2` 20 and find the soul another home; both tables are still named on
+  the record for exactly that reason.
+- `BL-R258-DEBT-4` (**P2, evidence hygiene, inherited**): R-252's "a rolled item still DROPS even
+  when its class cannot be worn" cites R-247.6a and rests on the same retired inference. The
+  Crimson Verdict off-hand rate E2d publishes is a DATABASE-side number; nobody has seen those
+  pieces reach the ground.
+- `BL-R258-DEBT-5` (**P2, ledger contradiction, recorded not resolved**): `toxeus_endofallthings`
+  documents `svc_devourer_misc4_master` as "rolls each child independently ... so both always
+  drop"; R-252 documents the same record as "a 50/50". Both cannot be true. Not load-bearing here
+  (this lane writes nothing on `Misc4`); whichever lane discharges DEBT-2 must settle it.
 
 **BL-W0814-11 GREAT HALL OF PROPONTIS UBER-BOSS CHEST OVER-NERFED (only 2 items) - ✅ ADDRESSED BY R-251** (branch `fix/chest-generosity-shared-cause`; in-game confirm = `BL-R251-DEBT-3`). RECORD = `svc_dorushoard_01/02/03` (Kroisos the Coin-Drowned / Dorus). It was the WORST case of the shared cause: it had **no bespoke loot family at all**, it opened base-game `boss_default_*` with `loot3Chance=10` (no guaranteed row - hence literally gold + one relic), and before the b42 repoint it SHARED the Obsidian Hoard's tables. R-251 authors it its own `svc_dorushoard_loot_0N` family and wires it. Its item-answer to "was there a mod-wide chest nerf that hit all these uber chests at once?" is YES and it is named in the R-251 lane record. Its chest NAME is still "Obsidian Hoard" - `BL-R251-DEBT-2`, a Will decision. Original report kept verbatim below.
 > the chest in the Great Hall of Propontis that is locked behind that area's uber boss "literally just dropped two items one thing of gold and incarnation of guan-yu's grace." An uber-boss-gated chest dropping gold + ONE relic is absurdly stingy. SAME OVER-NERF CLASS as BL-W0814-2 (obsidian hoard chests), BL-W0814-5 (Aphoryteus Dread Hoard), and the R-247.7a Devourer-stash reverts. Fix = identify the Propontis uber-boss chest record + its loot table, and restore it to proper uber-tier generosity (multiple guaranteed high-tier items, not a 1-item roll). BATCH with the other over-nerfed-chest items into ONE chest-generosity audit lane (also covers BL-W0814-7 Secret Place gift box +3x). Root question for the lane: was there a mod-wide chest nerf that hit all these uber chests at once? If so, find + fix the shared cause, not one chest at a time.

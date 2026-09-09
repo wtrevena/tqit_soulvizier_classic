@@ -6,6 +6,33 @@
 > Newest first. Never delete entries. Honest severity: a mistake caught before damage is still
 > a mistake. This file is part of the mandatory successor read order.
 
+## 2026-09-09
+
+- **2026-09-09 | R-258 implementer (`fix/devourer-soul-drop`), my own: I committed the FIRST
+  `R-258` stamps in `tools/` in a commit that did NOT carry the `## R-258` heading in
+  `docs/WILL_RULINGS.md`** - the exact violation the R-256 lesson wrote the RULINGS LEDGER LAW
+  to prevent (a ruling number claimed in code while the ledger is silent, so a parallel lane can
+  claim the same number and one of them has to be renumbered at integration - R-231 -> R-244,
+  R-250 -> R-251, R-251 -> R-252). Cost: none realised - the branch was never pushed, no other
+  lane claimed R-258 in the window (`gate_ruling_ids --branches` scanned 154 branches and found
+  zero other claimants), and the ledger entry existed within the same working session. Root
+  cause: I committed the module the moment its `--negtest` went green, i.e. I sequenced by "what
+  is finished" instead of by "what the law couples". Repair: the ruling heading, its debts and
+  the docs were written and the commit was AMENDED so the first stamp and the heading are one
+  commit in history. Guard: for the rest of this lane, no commit touching `tools/` may be made
+  before `grep -c "^## R-258 " docs/WILL_RULINGS.md` returns 1; the standing guard already
+  exists (`py tools/gate_ruling_ids.py --vs main --branches`) and I ran it BEFORE claiming the
+  number but not BEFORE the commit, which is the half of the discipline I dropped.
+
+- **2026-09-09 | R-258 implementer, my own, minor and batched (the velocity law's "batch trivial
+  findings")**: three tooling errors of mine cost re-runs but no damage - (a) a first probe
+  imported `tools/debug/arz_lookup.py`, a module that no longer exists in this repo (it was
+  folded into `b48_arz_records.py`), so the probe died on import; (b) a `bash` heredoc carrying
+  the R-258 ruling text failed on an unbalanced quote and wrote nothing, after which the text was
+  written with the file tools instead; (c) two full-arz probes exceeded the 120s foreground
+  timeout and had to be re-run in the background - a 51,352-record decode is a ~2-6 minute
+  operation in this repo and should be backgrounded from the start.
+
 ## 2026-08-16
 
 - **2026-08-16 | build101 ship operator, my own: TWO MORE battery rows exited non-zero purely

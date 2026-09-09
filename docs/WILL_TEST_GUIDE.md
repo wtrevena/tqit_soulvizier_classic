@@ -1,5 +1,56 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> # 🩸 R-258 THE DEVOURER'S SOUL - COUNT THEM (2026-09-09, NOT SHIPPED YET)
+>
+> **NOT ON YOUR DEV SURFACE AND NOT ON STEAM YET** - branch `fix/devourer-soul-drop`, awaiting
+> the vet and a ship. When it lands, **full quit of TQ and a Steam restart first** so the new
+> database loads. This is the FOURTH round on one report of yours:
+>
+> > "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he
+> > should have 100% chance of dropping his soul."
+>
+> ## What changed, in one line
+>
+> The soul used to have exactly ONE way out of him - the ring slot - and three separate audits
+> proved that wiring correct while you still got nothing. It now ALSO drops through a second,
+> completely different slot at a measured **100% of kills on every difficulty**. The old ring
+> slot was left exactly as it was, deliberately (see the count below).
+>
+> ## What to do
+>
+> 1. **Kill Toxeus the Murderer, Devourer of Blood.** Either place is fine: the deep chest room he
+>    guards, or the 33% ambush by the tattered parchment at the blood-cave entrance.
+> 2. **Do it on NORMAL first, then EPIC, then LEGENDARY** when you get the chance. The fix is not
+>    difficulty-gated and each tier has its own soul (`blood_toxeus_soul_n` / `_e` / `_l`), so a
+>    tier that pays nothing is a real finding.
+> 3. **PICK UP EVERYTHING and count the souls.** The soul is a pink/magenta-named ring. **THE
+>    NUMBER IS THE ANSWER I NEED:**
+>    - **ONE soul** - the fix worked and the old ring slot really was dead on this boss.
+>    - **TWO souls** - both channels fired. Not a bug, and it tells me the ring slot was never
+>      the problem, which changes where I look next. I collapse it back to one with a
+>      one-line change.
+>    - **ZERO souls** - the fix did not reach you either, and the next lane is a different
+>      mechanism entirely (his own boss-orb chest). Tell me and I will build that.
+> 4. **One thing you will lose, and it is on purpose:** he no longer drops his single potion
+>    (a health potion most kills, an energy potion sometimes). That was the slot the soul now
+>    uses. It is two constants to put back if you would rather have the potion.
+>
+> ## What is NOT claimed
+>
+> That anyone has seen this build drop it. Everything above is database + gate evidence:
+> `py tools/gate_devourer_soul_delivery.py <arz>` measures the drop share out of the built
+> file and requires exactly 100.0000%, and it **fails on the currently shipped `build101`
+> database** - your report reproduced as an artifact fact. Your kill is the only thing that
+> closes it (`BL-R258-DEBT-1`).
+>
+> **Related, and you should know it:** while measuring this I found that the slot three previous
+> rulings used for "guaranteed" drops (`Misc4`) **is not a slot the engine's own template
+> declares at all**. That means the **Rite of the Undivided / End of All Things forge formula**
+> you reported missing from your Legendary Endless Hunt kill is probably not dropping from ANY of
+> the three champions, for the same reason. That is `BL-R258-DEBT-2` and it needs its own lane -
+> this one does not touch it.
+
+
 > # 🦅 R-256 THERE IS SOMETHING AT THE END OF LOOKOUT CAVE NOW (2026-08-15)
 >
 > **✅ SHIPPED AS `build100` - LIVE ON YOUR DEV SURFACE *AND* ON STEAM (2026-08-16).** arz

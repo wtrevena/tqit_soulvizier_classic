@@ -1495,6 +1495,42 @@ REGISTRY = [
                             # number wins; this ruling and its debts are R-252 /
                             # BL-R252-DEBT-1..7 everywhere. Same treatment as R-231 -> R-244
                             # (build88) and R-250 -> R-251 (build95). No content changed.
+    'devourer_soul_delivery',  # R-258 (Will 2026-08-14, BL-W0814-10, the FOURTH round on one
+                            # report): "i killed toxeus the murderer devourer of blood and he
+                            # did not drop his soul even though he should have 100% chance of
+                            # dropping his soul". MEASURED on the shipped build101 arz
+                            # 9712f58f: the soul's ONLY delivery path is the Finger2 EQUIPMENT
+                            # slot (chance 100, row weight 100, lootFinger2Item1 =
+                            # blood_toxeus_soul_{n,e,l}, no difficulty/rank gate, all three
+                            # records resolving as Jewelry_Ring) - byte-correct, and a SINGLE
+                            # POINT OF FAILURE that three audits could not fault. THE
+                            # PRE-DESIGNED ESCALATION IS REFUTED, NOT BUILT: `Misc4` is not a
+                            # variable of Templates\TemplateBase\CharacterLoot.tpl (which
+                            # declares exactly 11 slots and no Misc4/Neck) and the string
+                            # occurs in 0 of the 74,013 base-AE records, 0 of SV 0.98i and 0 of
+                            # SV 0.9 - it exists only on the 32 records this mod wrote, and its
+                            # "proof" (R-247.6a "Will's kill DID drop it") contradicts Will's
+                            # own verbatim report that the Misc4 formula did NOT drop on the
+                            # kill where the Finger2 soul and the treasureProxy orb both did.
+                            # WHAT THIS DOES: a second, template-declared channel - the soul on
+                            # the Devourer's FREE Misc1 row 3 at weight 100 with the two potion
+                            # rows MUTED to 0 (values kept - RETIREMENT PROTOCOL), so the slot's
+                            # measured share is 100.0000% on all three difficulties. Misc1 is
+                            # not class-typed (R-252's own invariant names it; the mod-wide leaf
+                            # census already reaches jewelry_ring 47x through it, and
+                            # u_bloodwing_12 already delivers a SOUL on lootMisc2Item1).
+                            # DISCLOSED COST: he stops dropping his one Misc1 potion
+                            # (BL-R258-DEBT-3), the cheapest price any slot on his record could
+                            # carry. Writes NOTHING on Finger2 (R-243's pin asserted only, so
+                            # verify_soul_drop_rates + R-252's E5 stay green by construction),
+                            # nothing class-governed (so R-252's E2 arms cannot bite) and no
+                            # Crimson Verdict row (so E2d's two-sided rate is untouched).
+                            # ORDER: after toxeus_boss_equipment, the last writer of this
+                            # record's equip fields; apply() FAILS LOUD on any pre-state it did
+                            # not measure.
+                            # Standalone twin: py tools/gate_devourer_soul_delivery.py [arz]
+                            # Self test:     py tools/patches/devourer_soul_delivery.py --selftest
+                            # Negative test: py tools/patches/devourer_soul_delivery.py --negtest
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 
