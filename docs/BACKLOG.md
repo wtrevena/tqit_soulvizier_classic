@@ -199,6 +199,58 @@
 > defects incl. two arm-specific `E7` proofs that re-wiring the soul onto `Misc4` must red the
 > build, + 4 positive controls).
 >
+>
+> **THE ARTIFACT THIS LANE ACTUALLY PRODUCED, AND WHAT IT IS NOT.** 🛑 **THE COLD BUILD COULD NOT
+> BE RUN.** `upstream/`, `reference_mods/` and `third_party/` are GONE from this checkout
+> (emptied/removed 2026-09-09 ~13:18, not by this lane) and `work\SoulvizierClassic\{Resources,Maps}`
+> were stripped at the same time; `py tools/check_build_inputs.py --all --verify-hashes` FATALs on
+> **every** SV input, `build_svc_database.py` hard-fails in its own preflight on `sv098i_arz` +
+> `sv09_arz` before the prefix cache is consulted, `git worktree list` shows no sibling cache, and a
+> drive-wide search for `soulvizier098i.zip` / `Soulvizier_0.9.rar` / `soulvizier-beta04.1.rar`
+> returns **0 hits**. **`BL-R257-DEBT-3` IS THEREFORE NOT DISCHARGED HERE** - see
+> `BL-R258-DEBT-6`. What ran instead, on real bytes rather than a stub
+> (`tools/debug/r258_apply_over_shipped.py`): the module's own `apply()` over the 51,352 shipped
+> records, written through the build's own `ArzDatabase.write_arz`, the gate re-run on the WRITTEN
+> file, and a full record-diff.
+>
+> | | |
+> |---|---|
+> | built arz | **`e819a9a31b0f4a2616bbc3795c946692`**, 55,632,541 B, **51,355** records (+677 B / +3) |
+> | det-2x | two independent runs **md5-equal AND `cmp` byte-identical** |
+> | idempotency | a THIRD run over the already-fixed arz: **ADDED 0 / REMOVED 0 / CHANGED 0**, same md5 |
+> | record-diff vs `9712f58f` | **ADDED 3 / REMOVED 0 / CHANGED 1, ZERO unattributed** |
+> | `Text.arc` | **UNCHANGED `1be898a0`** - this lane mints no tags, so the arz+Text coupling is satisfied trivially |
+> | `Creatures.arc` | **UNCHANGED `d65d92a3`** - no asset surface touched |
+>
+> ADDED = the three `svc_devourersoul_guaranteed_{n,e,l}` tables. CHANGED = `um_bloodtoxeus_99` and
+> on it exactly four fields: `lootMisc1Item3` (new), `chanceToEquipMisc1Item3` 0 -> 100,
+> `chanceToEquipMisc1Item1` 80 -> 0, `chanceToEquipMisc1Item2` 20 -> 0.
+>
+> **GATE BATTERY, every row run with its exit code (on the built arz unless stated):**
+>
+> | gate | result |
+> |---|---|
+> | `devourer_soul_delivery --selftest` / `--negtest` | **PASS** / **27/27** (23 plants incl. 2 arm-specific `E7` proofs + 4 positive controls) |
+> | `gate_devourer_soul_delivery` on the SHIPPED `9712f58f` | **exit 1, 4 problems** - the ANTI-INERT control, Will's report as an artifact fact |
+> | `gate_devourer_soul_delivery --dryrun` on those same bytes | **RED -> GREEN**, measured 100.0000% |
+> | `gate_devourer_soul_delivery` on the built arz | **exit 0** |
+> | `verify_soul_drop_rates --gate` | **exit 0** - R-243's pin intact, 0 LAST-WRITER mismatches, 0 unintended deltas vs golden |
+> | `gate_toxeus_boss_equipment` | **exit 0** - 4 100%-pinned `Finger2` carriers still deliver a ring, 7 pre-existing waived |
+> | `validate_soul_augments` | **exit 0** - 2,463 souls, 0 dangling, 0 inactive |
+> | `validate_tags` (arz + Text.arc) | **exit 0 PASS** - 242/242 referenced mod tags present, the 2 documented pre-existing WARNs |
+> | `gate_loot_distribution` / `gate_loot_volume` / `gate_chest_loot_breadth` | **exit 0 / 0 / 0** |
+> | `gate_orb_loot_breadth` / `gate_uber_hoard_generosity` / `gate_relic_difficulty_tiers` | **exit 0 / 0 / 0** |
+> | `gate_chest_artifacts` / `gate_orb_legendary` / `gate_supra_recipe_laws` | **exit 0 / 0 / 0** |
+> | `patches.selfcheck()` | **OK - 70 modules** (was 69), order `fef5d518...`, this module at index 68 between `toxeus_boss_equipment` and `visuals` |
+> | `gate_ruling_ids` | **PASS** - 54 rulings, highest **R-258**, every number denotes exactly one ruling |
+>
+> ⚠️ **ONE NON-ZERO EXIT, AND IT IS MY OWN ARGV, STATED NOT BURIED:**
+> `validate_tags <arz> <Text.arc> docs/uber_soul_tags.txt` exits **1** ("150 authoritative tags
+> missing from Text.arc"). `uber_soul_tags.txt` is a build OUTPUT and the `docs/` copy is stale.
+> **CONTROL RUN IN BOTH DIRECTIONS:** the identical invocation against the UNTOUCHED baseline
+> `9712f58f` gives the same 150, the same `RESULT: FAIL`, the same exit 1 - pre-existing and
+> provably not this lane's - while the 2-argument form is **PASS / exit 0 on BOTH**. Logged in
+> `docs/MISTAKES.md`.
 > **STILL NOT CLOSED, and lead with it:** nobody has killed this boss on this build.
 > `BL-R258-DEBT-1` is the closing proof.
 
@@ -229,6 +281,18 @@
 
 **BL-W0814-11 GREAT HALL OF PROPONTIS UBER-BOSS CHEST OVER-NERFED (only 2 items) - ✅ ADDRESSED BY R-251** (branch `fix/chest-generosity-shared-cause`; in-game confirm = `BL-R251-DEBT-3`). RECORD = `svc_dorushoard_01/02/03` (Kroisos the Coin-Drowned / Dorus). It was the WORST case of the shared cause: it had **no bespoke loot family at all**, it opened base-game `boss_default_*` with `loot3Chance=10` (no guaranteed row - hence literally gold + one relic), and before the b42 repoint it SHARED the Obsidian Hoard's tables. R-251 authors it its own `svc_dorushoard_loot_0N` family and wires it. Its item-answer to "was there a mod-wide chest nerf that hit all these uber chests at once?" is YES and it is named in the R-251 lane record. Its chest NAME is still "Obsidian Hoard" - `BL-R251-DEBT-2`, a Will decision. Original report kept verbatim below.
 > the chest in the Great Hall of Propontis that is locked behind that area's uber boss "literally just dropped two items one thing of gold and incarnation of guan-yu's grace." An uber-boss-gated chest dropping gold + ONE relic is absurdly stingy. SAME OVER-NERF CLASS as BL-W0814-2 (obsidian hoard chests), BL-W0814-5 (Aphoryteus Dread Hoard), and the R-247.7a Devourer-stash reverts. Fix = identify the Propontis uber-boss chest record + its loot table, and restore it to proper uber-tier generosity (multiple guaranteed high-tier items, not a 1-item roll). BATCH with the other over-nerfed-chest items into ONE chest-generosity audit lane (also covers BL-W0814-7 Secret Place gift box +3x). Root question for the lane: was there a mod-wide chest nerf that hit all these uber chests at once? If so, find + fix the shared cause, not one chest at a time.
+- `BL-R258-DEBT-6` (**P0, SHIP BLOCKER, PROCESS - the one thing this lane could not do**): the
+  COLD BUILD WAS NEVER RUN. `upstream/`, `reference_mods/` and `third_party/` are gone from this
+  checkout (emptied/removed 2026-09-09 ~13:18, not by this lane) and
+  `work\SoulvizierClassic\{Resources,Maps}` were stripped with them;
+  `check_build_inputs --all --verify-hashes` FATALs on every SV input, `build_svc_database.py`
+  hard-fails in its own preflight before the prefix cache is consulted, there is no sibling
+  worktree cache, and a drive-wide search for the three third_party archives returns 0 hits.
+  **`BL-R257-DEBT-3` IS NOT DISCHARGED BY THIS LANE.** Before any ship: restore the inputs (or set
+  `$SVC_SV098I_ARZ` / `$SVC_SV09_ARZ` / `$SVC_SV041_ARZ` / `$SVC_SVAERA_ARZ`), then run the real
+  entrypoint TWICE (`SVC_NO_CACHE=1 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`) and
+  re-do the record-diff against `9712f58f` on the COLD artifact. The apply-over-shipped arz
+  `e819a9a3` in this lane is evidence, not a build.
 
 **BL-W0814-12 BOSS ARENA - NO BOSS SPAWNED (spawn not 100%?) + needs more work - ✅ FIXED BY R-253, LIVE ON DEV *AND* STEAM AS `build97`** (canonical arz `98741a4eb59957a4ebe3b6101bbcd49b` + `Text.arc 82d5b810` + `Quests.arc 6271ceb2` + `Levels.arc 1bf86461`; DEV runs the TESTHUB twins `d9f8c316` / `666789ab`). In-game confirm still owed = `BL-R253-DEBT-1`. Original report verbatim below (Will 2026-08-14): "when i went to the boss arena this time there was no boss there. does he not spawn 100% of the time? the boss arena needs more work." Player traveled to the Boss Arena (the Helos boat-hub destination; level bossarena/boss_arena) and found it EMPTY - no boss. Two parts:
   - **(a) SPAWN 100%:** the arena boss must spawn on EVERY visit. Audit the boss proxy/spawn: check spawnChance / championChance / difficulty gate / whether the spawn is one-shot-consumed after a prior kill (persisted). Set to guaranteed spawn. (Note: "this time" implies it spawned before - possible one-shot/consumed spawn or a random spawnChance<100.)

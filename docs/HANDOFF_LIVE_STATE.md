@@ -34,7 +34,12 @@
 >   `build_svc_database.py` cannot start (its preflight hard-fails on `sv098i_arz` + `sv09_arz` before the
 >   prefix cache is even consulted), and `git worktree list` shows no sibling cache to fall back to. The
 >   det-2x evidence in this lane is therefore an **apply-over-shipped** artifact
->   (`tools/debug/r258_apply_over_shipped.py`), NOT a cold build - `BL-R257-DEBT-3` is **NOT** discharged here.
+>   (`tools/debug/r258_apply_over_shipped.py`) - arz **`e819a9a3`**, 55,632,541 B, 51,355 records,
+>   det-2x md5-equal AND `cmp` byte-identical, a third re-apply run **ADDED 0 / REMOVED 0 / CHANGED 0**,
+>   record-diff vs `9712f58f` **ADDED 3 / REMOVED 0 / CHANGED 1 with ZERO unattributed**, and 15 gate
+>   rows exit 0 on it (incl. `verify_soul_drop_rates --gate`, `gate_toxeus_boss_equipment`,
+>   `validate_soul_augments`, `validate_tags` and the nine loot gates). It is **NOT a cold build** -
+>   `BL-R257-DEBT-3` is **NOT** discharged here, and `BL-R258-DEBT-6` is the P0 ship blocker.
 >   **RESTORE THE INPUTS AND RE-RUN THE REAL ENTRYPOINT BEFORE ANY SHIP.**
 
 > ## BUILD101 SHIPPED TO DEV **AND** STEAM (2026-08-16) - R-257: THE SHROUD LEAVES THE RECORD LAYER FOR THE **MESH**, because the record layer has no rendering exemplar. **arz + `Creatures.arc` COUPLED - the FIRST ART-ASSET SHIP THIS REPO HAS EVER MADE.** **STEAM = DEV = main** (modulo the two TESTHUB variants DEV always carries).

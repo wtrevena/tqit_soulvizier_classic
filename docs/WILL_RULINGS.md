@@ -9825,3 +9825,16 @@ No one has killed this boss on this build. **Lead with that.**
   R-252 documents the same record as "a 50/50". Both cannot be true. Neither is
   load-bearing here (this lane writes nothing on `Misc4`), but whichever lane discharges
   DEBT-2 must settle it from the bytes.
+
+- `BL-R258-DEBT-6` (**P0, SHIP BLOCKER, PROCESS - the one thing this lane could not do**): the
+  COLD BUILD WAS NEVER RUN. `upstream/`, `reference_mods/` and `third_party/` are gone from this
+  checkout (emptied/removed 2026-09-09 ~13:18, not by this lane) and
+  `work\SoulvizierClassic\{Resources,Maps}` were stripped with them;
+  `check_build_inputs --all --verify-hashes` FATALs on every SV input, `build_svc_database.py`
+  hard-fails in its own preflight before the prefix cache is consulted, there is no sibling
+  worktree cache, and a drive-wide search for the three third_party archives returns 0 hits.
+  **`BL-R257-DEBT-3` IS NOT DISCHARGED BY THIS LANE.** Before any ship: restore the inputs (or set
+  `$SVC_SV098I_ARZ` / `$SVC_SV09_ARZ` / `$SVC_SV041_ARZ` / `$SVC_SVAERA_ARZ`), then run the real
+  entrypoint TWICE (`SVC_NO_CACHE=1 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`) and
+  re-do the record-diff against `9712f58f` on the COLD artifact. The apply-over-shipped arz
+  `e819a9a3` in this lane is evidence, not a build.
