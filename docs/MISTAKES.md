@@ -33,6 +33,22 @@
   timeout and had to be re-run in the background - a 51,352-record decode is a ~2-6 minute
   operation in this repo and should be backgrounded from the start.
 
+- **2026-09-09 | R-258 implementer, my own ARGV, the same class as the build101 ship operator's two
+  entries below: I ran `validate_tags.py <arz> <Text.arc> docs/uber_soul_tags.txt` and it exited 1
+  with "150 authoritative tag(s) missing from Text.arc"** - and for a moment that reads like this
+  lane broke the Text coupling. It did not. `uber_soul_tags.txt` is a **build OUTPUT**, and the
+  copy in `docs/` is stale (178 tags, from a much older soul roster); the shipped `Text.arc`
+  `1be898a0` has never carried `tagSoulSVC9028+`. Cost: one wasted gate row and one re-run.
+  **CONTROL, run rather than assumed:** the identical 3-argument invocation against the UNTOUCHED
+  baseline `local\build101_shipped_9712f58f.arz` produces **the same 150 missing tags, the same
+  RESULT: FAIL, the same exit 1** - so the red is pre-existing and provably not this lane's; and
+  the 2-argument form (the one the coupling actually needs) is **PASS / exit 0 on BOTH**, with the
+  same "all 242 referenced mod tags are present in Text.arc" and the same 2 documented pre-existing
+  monster-name WARNs. Root cause: I reached for the freshest-looking authoritative list on disk
+  instead of the manifest the build emits beside the artifact. Guard: any `validate_tags` row in a
+  lane report must either pass the manifest THAT build wrote, or be run in both directions against
+  the baseline before it is called a result.
+
 ## 2026-08-16
 
 - **2026-08-16 | build101 ship operator, my own: TWO MORE battery rows exited non-zero purely
