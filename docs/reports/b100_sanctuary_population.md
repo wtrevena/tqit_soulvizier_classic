@@ -29,14 +29,14 @@
 
 | | |
 |---|---|
-| **What shipped** | 14 monster proxies placed into `Levels/World/xBloodCave/drxBC3.lvl`, the one level carrying the "Sanctuary of the Bloodborn" region label. Four bands climbing the cult's hierarchy along the player's actual one-way walk. |
+| **What shipped** | 14 monster proxies placed into `Levels/World/xBloodCave/drxBC3.lvl`, the one level carrying the "Sanctuary of the Bloodborn" region label. Four bands, eight GROUPS, climbing the cult's hierarchy along the player's actual one-way walk. **Deliverable: `local/b100_r3/Levels_merged.arc` md5 `3812c6c9e9d934da7225be8208c1474f`, 688,692,861 B. NOT DEPLOYED.** |
 | **Cost** | **Zero new creatures, records, pools or text tags.** Every proxy is drawn from a pool this cave already ships, so the lane is MAP-ONLY and drags in no `arz`+`Text` coupling. |
 | **⚠️ Quests coupling** | `Quests.arc` IS rebuilt (Levels+Quests deploy together) but it is **NOT** byte-identical to the artifact currently deployed. MEASURED: deployed `bd0fb5f99d88fab74b81f27b7cb952b2` / 194,971 B vs this lane's `5e664c7b190965fd69f6ff15d77d85e4` / 194,926 B. **Round 1 claimed identity in four places and it was false.** The integrator must ship this lane's `Quests.arc` with the map. Section 5.3. |
 | **Blast radius** | **1 level blob of 2,282** differs, and inside it **one section (0x05)**. The `0x0b` navmesh is byte-identical. All 281 pre-existing instances are byte-preserved (proven by digest AND by baseline byte-diff). |
 | **Density** | worst exact 60x60 screen box **32.6 -> 51.6 EFFECTIVE entities**, under the gated cap of 57.0. Effective, not raw `spawnMax`: the pool's `proxyPoolEquation` multiplies it, and round 1's raw cross-family comparison mixed a 1.357143x family with a 3.60025x one. Corrected base-game cave/crypt/tomb cohort (n=80): median **90.0**, p90 **158.4**. |
-| **Shape** | nearest-neighbour Chebyshev **min 16.0 / median 30.0 / max 62.2** - bimodal, groups clustered at the spacing floor with wide gaps between them, like amgoz1's own 7.4/41.9/55.2. Round 1's farthest-point mechanism gave 23.2/31.8/48.2, i.e. the evenly-spaced patrol the bar forbids. |
-| **New gate** | `MAP-SANCTUARY-1` - **16 rows**, **16/16 planted negatives correct** (8 declaration + **8 map-side byte plants**), each checked against its target gate AND an allow-set. |
-| **Design corrections** | The design pass's band AXIS, its Y model, its density measurement, one evidence claim, **its ocean-ring area (2.88x too large)** and **its seam width (5x too large)** were each wrong. Sections 3 and 9. |
+| **Shape** | nearest-neighbour Chebyshev **min 16.0 / median 30.0 / max 62.2**, full distribution `[16.0 x6, 30.0, 30.0, 30.2, 30.2, 41.4, 42.6, 60.2, 62.2]`. Bimodal - groups clustered, wide gaps between them - where round 1's farthest-point mechanism gave 23.2/31.8/48.2, the evenly-spaced patrol the bar forbids. ⚠️ **Round 3 WITHDREW the "like amgoz1's own" comparison:** his three tight pairs sit at three DIFFERENT distances (7.4 / 30.2 / 41.9), three of ours sit at exactly `SEP_MIN` = 16.000. The tight mode is a single constant this lane chose, now 3 distinct values after the band-3 regroup, and it is WILL_DECISION-5 (`BL-b100-DEBT-11`). See 9.8. |
+| **New gate** | `MAP-SANCTUARY-1` - **16 rows, 16/16 PASS**, **18/18 planted negatives correct** (8 declaration + 9 map-side byte plants + **1 map-side plant run deliberately WITHOUT a baseline**), each checked against its target gate AND an allow-set. |
+| **Design corrections** | The design pass's band AXIS, its Y model, its density measurement, one evidence claim, **its ocean-ring area (2.88x too large)** and **its seam width (5x too large)** were each wrong. ROUND 3 adds two more, both found by re-measuring vet findings rather than arguing them: **`bw_priest_houndmaster` has no hounds** - the whole justification for 2 of the 14 placements, and band 3's shape was not delivering the design's intent either (R-115) - and **the gate still ABORTED rather than FAILED on a mesh frame that moved** (R-116). Sections 3, 9 and 11. |
 | **Not done** | No in-game check (no agent here may launch TQ). Ocean ring untouched - **14,673 sq u of reachable empty ground, WILL_DECISION-1** (not 42,199; see 9.7). Minimap not fixed (R-111). Section 8. |
 
 ---
@@ -61,15 +61,46 @@ walks up the aisle and the cult's own hierarchy escalates in front of him.
 Every proxy is a pool that **already ships in this cave**, so the Sanctuary reads as the same cult
 at its centre rather than as a new bestiary.
 
-| band | route distance | ADD | why this creature, here |
+A **group** is the unit of clustering: its first member is placed farthest-point, the rest
+nearest-point to that group's own anchor. Round 3 made a group able to span several pools, which is
+what band 3 needed.
+
+| band | route distance | GROUPS added | why this creature, here |
 |---|---|---|---|
-| **1. The Outer Court** | 0-120 u | 2 x `bw_acolyte_lone` | The arrival breath. Two novices kneel alone at the edge of the rite, too rapt to have noticed you. Lone acolytes are the weakest thing in the cult, and this is the one place in the mod where that reads as *devotion* rather than as filler. |
-| **2. The Congregation** | 120-265 u | 2 x `zparty_witchfest_2099`, 2 x `bw_acolyte_clutch` | The rite in full voice. `zparty_witchfest_2099` is *already* the Sanctuary's signature proxy (4 placed here, 28 in `drxBC_Finale`) - the witchfest **is** the ceremony, and "witchfest" is amgoz1's own word for what happens on this walkway. Acolyte clutches turn it into a body of worshippers. |
-| **3. The Clergy** | 265-460 u | 2 x `bw_priest_houndmaster`, 1 x `bw_priest_lone`, 1 x `hound_01_pack` | Between the congregation and the god stand the priests, and priests here come leashed to bloodhounds. `bw_priest_houndmaster` is the only proxy in this cave that pairs a caster with beasts, which gives the middle of the walk its own combat texture (chase + caster) instead of another melee wave. |
-| **4. The Threshold** | 460-691 u | 2 x `abom_dancer_spear_mix`, 1 x `abom_ravager_lone`, 1 x `q_shaman_lone` | The door-wardens, down on the floor of the pit the whole walkway crosses, in front of the west door. The abominations are the cult's flesh-craft - what the Bloodborn **make**, not what they recruit - so they belong at the holy of holies, and they already guard the adjacent connectors. One `q_shaman_lone` gives the band a named face, echoing the shaman standing in `yet_another_fucking_connector`. |
+| **1. The Outer Court** | 0-120 u | *the two novices, kneeling together*: 2 x `bw_acolyte_lone` (16.0 u apart) | The arrival breath. Two novices kneel alone at the edge of the rite, too rapt to have noticed you. Lone acolytes are the weakest thing in the cult, and this is the one place in the mod where that reads as *devotion* rather than as filler. |
+| **2. The Congregation** | 120-265 u | *the witchfest itself*: 2 x `zparty_witchfest_2099` (60.2 u) · *the body of worshippers*: 2 x `bw_acolyte_clutch` (60.2 u) | The rite in full voice. `zparty_witchfest_2099` is *already* the Sanctuary's signature proxy (4 placed here, 28 in `drxBC_Finale`) - the witchfest **is** the ceremony, and "witchfest" is amgoz1's own word for what happens on this walkway. Acolyte clutches turn it into a body of worshippers. These are the two HEAVY groups (16.3 and 12.2 effective each) and the density cap is what refuses to let them knot - the load ceiling overriding the shape rule, visibly, by design. |
+| **3. The Clergy** | 265-460 u | *the houndmasters and the hounds they are named for*: 2 x `bw_priest_houndmaster` + 1 x `hound_01_pack`, ONE knot (16.0 u / 30.2 u from the anchor) · *one priest set apart*: 1 x `bw_priest_lone` (route 390.0 u) | Between the congregation and the god stand the priests, and the design wants the middle of the walk to have its own combat texture - a chase plus a caster line rather than another melee wave. **No single pool in this cave delivers that** (see the correction below), so it is delivered by COMPOSITION: the priest knot and the bloodhound pack are one group and one encounter. |
+| **4. The Threshold** | 460-691 u | *the two door-wardens, flanking the approach*: 2 x `abom_dancer_spear_mix` (16.0 u) · *the ravager*: 1 x `abom_ravager_lone` · *the shaman*: 1 x `q_shaman_lone` | The door-wardens, down on the floor of the pit the whole walkway crosses, in front of the west door. The abominations are the cult's flesh-craft - what the Bloodborn **make**, not what they recruit - so they belong at the holy of holies, and they already guard the adjacent connectors. One `q_shaman_lone` gives the band a named face, echoing the shaman standing in `yet_another_fucking_connector`. |
+
+> ⚠️ **ROUND-3: BAND 3's JUSTIFICATION WAS FALSE, AND FIXING IT MOVED THREE PLACEMENTS (vet finding
+> 2, R-115).** Rounds 1-2 said "`bw_priest_houndmaster` is the only proxy in this cave that pairs a
+> caster with beasts (measured: championChance 100, championMin=championMax=2 bloodhounds inside
+> spawnMax 3)". Re-measured from the built arz, every clause fails:
+> * its pool rosters `c_disciple_39` / `41` / `42` **only**, weight 150 each - **no hound record
+>   under any field**;
+> * `championMin=championMax=2` is **champion-rank promotion of those same disciples**. Proof beyond
+>   the one record: of the **1,846** ProxyPool records in the built arz, **ZERO** carry any
+>   `championName*` / `championWeight*` / `heroName*` / `bossName*` field while **1,845** carry
+>   `championChance`/`championMin`/`championMax`, so the field family that could name a different
+>   champion creature does not exist in this template;
+> * `bw_priest_lone` carries the **identical** roster at `spawnMax` 1 / `championChance` 0 - the
+>   "houndmaster" is the lone priest at a higher count with guaranteed champion promotion;
+> * and the superlative is disproved by this level's own signature proxy: `zparty_witchfest_2099`
+>   pairs 3 casters (`c_disciple_39/41/42`) with 3 beasts (`c_bloodhound_40/42/44`) plus 3
+>   `d_reaver`s in one roster.
+>
+> Reading creature identity off a record NAME is what CLAUDE.md law #3 exists to catch, and by R-110
+> it had become ledger law. **The design's intent survives; its shape did not deliver it either.**
+> Round 2's roster was flat (`band -> dbr`), so the insertion anchor reset per dbr, `hound_01_pack`
+> was a separate group, and it landed **60.2 u** from the priests - the texture existed at BAND scale
+> only. Band 3 is now one group of `2x bw_priest_houndmaster + 1x hound_01_pack`, hounds **30.2 u**
+> from the anchor. `bw_priest_houndmaster` remains amgoz1's own record and is NOT modified
+> (`BL-b100-DEBT-12` warns the next lane not to trust its name).
 
 The **10 existing proxies are kept and reused as the skeleton of bands 1-3**. Nothing is moved,
-re-pointed or deleted (RETIREMENT PROTOCOL: they are amgoz1's design of record).
+re-pointed or deleted (RETIREMENT PROTOCOL: they are amgoz1's design of record), and G1c/G1d prove
+it from the bytes (295 = 281 + 14, head digest `78a536278d5dbdf23332e70750aa04d9`, 0 differ vs
+baseline).
 
 ### 1.3 Where it lives in the pipeline
 
