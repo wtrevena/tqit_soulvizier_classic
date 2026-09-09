@@ -339,13 +339,13 @@ def apply(db, tags):
             % (_gv(db, _DEVOURER, 'chanceToEquipMisc1'),))
     _assert_row(db, _DEVOURER, 'Misc1', 1, _POTION_HEALTH, 'the shipped health-potion row')
     _assert_row(db, _DEVOURER, 'Misc1', 2, _POTION_ENERGY, 'the shipped energy-potion row')
-    if _gl(db, _DEVOURER, 'loot%sItem%d' % (_SLOT, _SOUL_ROW)):
+    _row3 = _gl(db, _DEVOURER, 'loot%sItem%d' % (_SLOT, _SOUL_ROW))
+    if _row3 and not _same(_row3, _SOUL_TAB):
         raise SystemExit(
             "[devourer_soul_delivery] PRE-STATE DRIFT: Devourer loot%sItem%d is "
-            "already occupied (%r) - this module claims that row and will not "
-            "displace someone else's content."
-            % (_SLOT, _SOUL_ROW,
-               _gl(db, _DEVOURER, 'loot%sItem%d' % (_SLOT, _SOUL_ROW))))
+            "already occupied by content that is NOT this lane's (%r) - this module "
+            "claims that row and will not displace someone else's content."
+            % (_SLOT, _SOUL_ROW, _row3))
 
     # ── 2. the three guaranteed soul tables ────────────────────────────────
     for i, tab in enumerate(_SOUL_TAB):
