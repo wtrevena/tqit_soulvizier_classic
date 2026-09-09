@@ -49,6 +49,24 @@
   lane report must either pass the manifest THAT build wrote, or be run in both directions against
   the baseline before it is called a result.
 
+- **2026-09-09 | R-258 implementer, my own, and it is the serious one: I PUBLISHED A NUMBER THAT
+  DID NOT RE-DERIVE.** The ruling, the module docstring and the BACKLOG block all said `Misc1` is
+  *"carried by 45,797 records"*. That figure came from my slot-census regex
+  `^chanceToEquip([A-Za-z0-9]+?)(Item\d+)?$`, which buckets `chanceToEquipMisc1` AND
+  `chanceToEquipMisc1Item1..6` under the same key - so 45,797 is a count of FIELD OCCURRENCES, not
+  of records. **Measured properly on the shipped `9712f58f`: 6,543 records carry
+  `chanceToEquipMisc1` and 3,884 of them wire `lootMisc1Item1`** (of 51,352 records total; 5,076
+  carry a `Monster.tpl` template stem). Cost: caught by my own re-check before the vet, but it had
+  already been committed and pushed in three documents - exactly the R-252 round-3/round-4 class
+  (a census published as design law that turned out to be an artefact of the counting code), and
+  the reason that ruling now insists every published number re-derives. Corrected in all three
+  places in the same commit as this entry. Root cause: I read a bucket total off a probe whose
+  regex I wrote for a different question (which SLOT NAMES exist), then quoted it as a record
+  count without re-deriving it. Guard for the rest of this lane and the next: no number reaches a
+  document unless the probe that produced it answers the exact question the sentence asks - the
+  Misc4 counts in this ruling were re-checked the same way and DO hold (32 records carry
+  `lootMisc4Item1`, one field per record, so that bucket total is a record count).
+
 ## 2026-08-16
 
 - **2026-08-16 | build101 ship operator, my own: TWO MORE battery rows exited non-zero purely

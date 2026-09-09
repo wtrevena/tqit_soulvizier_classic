@@ -9699,7 +9699,7 @@ the off hand inherits that uncertainty and is re-registered as `BL-R258-DEBT-4`.
 
 ### 3. THE FIX: THE `Misc1` PURE-DROP CHUTE AT A MEASURED 100%, ON EVERY DIFFICULTY
 
-`Misc1` is template-declared, carried by **45,797** records, and it is **not
+`Misc1` is template-declared, carried by **6,543** records of the shipped 51,352 (**3,884** of them wiring `lootMisc1Item1`), and it is **not
 class-typed** - R-252's own standing invariant already names it as one of the slots with
 "no single wearable class", and the mod-wide leaf census proves it. The leaf item
 templates reachable today through `lootMisc1Item*` across the whole db:

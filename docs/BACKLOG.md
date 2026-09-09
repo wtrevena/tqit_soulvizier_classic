@@ -180,7 +180,7 @@
 > weight 100, and the Devourer's **free `Misc1` row 3** takes them at weight 100 while the two
 > potion rows are **MUTED to 0** (values kept - RETIREMENT PROTOCOL). `chanceToEquipMisc1` was
 > already 100, so the slot's measured share is **100.0000% of kills on all three difficulties**,
-> re-derived by the gate from the final db. `Misc1` is template-declared (45,797 carriers) and NOT
+> re-derived by the gate from the final db. `Misc1` is template-declared (**6,543** carriers, **3,884** of them wiring `lootMisc1Item1`) and NOT
 > class-typed - R-252's own invariant names it, `jewelry_ring` leaves already ride it 47 times
 > mod-wide, and `u_bloodwing_12` already delivers a SOUL on `lootMisc2Item1`. **`Finger2` is
 > asserted and never written**, so R-243's pin, `verify_soul_drop_rates --gate` and R-252's E5 arm

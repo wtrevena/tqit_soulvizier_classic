@@ -50,7 +50,8 @@ record by record - every number below is read out of that file, not remembered):
    not this one.
 
 3. WHAT THIS MODULE DOES INSTEAD: THE `Misc1` PURE-DROP CHUTE, AT A MEASURED 100%.
-   `Misc1` is template-declared, carried by 45,797 records, and it is NOT
+   `Misc1` is template-declared, carried by 6,543 records of the shipped 51,352
+   (3,884 of them wiring `lootMisc1Item1`), and it is NOT
    class-typed - R-252's own standing invariant names it as one of the slots with
    "no single wearable class", and the census of the shipped arz proves it: the
    leaf item templates already reachable through `lootMisc1Item*` mod-wide are
