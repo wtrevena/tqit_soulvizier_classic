@@ -302,6 +302,26 @@ REGISTRY = [
                             # so it sweeps the FINAL assembled db and no later module can
                             # reintroduce the class. Deletes only whitelisted field slots; apply()
                             # proves roster-wide that nothing else moved.
+    'toxeus_mesh_aura',     # b92 (Will 2026-07-27): THE GREEN GLOW ROOT CAUSE. Will's own lead
+                            # ("inherited from the Toxeus the Murderer uber boss base monster...
+                            # compare to the secret passage toxeus who doesnt have the green glow")
+                            # resolved: RevenantPoison.msh embeds a CreateEntity block that spawns
+                            # Records\Effects\MonsterFX\Buffs\RevenantPoison_FX (RevenantPoison.pfx,
+                            # green channel peaked at 1.0 - decoded from the shipped .pfx bytes) on
+                            # every wearer. The Devourer + Enslaver inherited that mesh from the
+                            # green Greece Toxeus; the clean secret-passage control wears
+                            # RevenantStorm.msh. Invisible to the .arz, which is why b55/b71/b75/b81
+                            # all missed it. Repoints 15 records (2 bosses + 9 soul pets incl. the 3
+                            # EoAT clones + 4 spawn proxies) to GoldenSkeleton01.msh - NO
+                            # CreateEntity, IDENTICAL 25-bone rig to RevenantPoison, canonical mesh
+                            # for their anm_skeleton01 table (307 mod / 299 base records), 285
+                            # Monster + 22 Pet live wearers, same StandardSkinned shader + bump.
+                            # Registered after toxeus_endofallthings so the EoAT pets exist to be
+                            # fixed too, and after toxeus_souls_100 so nothing re-writes mesh
+                            # afterwards. verify() gates it fail-loud in BOTH directions (no target
+                            # on a GREEN or never-byte-audited mesh AND um_toxeus_21's intended
+                            # green + the um_toxeus_99 control kept). Negative test:
+                            # tools/test_toxeus_mesh_aura.py
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

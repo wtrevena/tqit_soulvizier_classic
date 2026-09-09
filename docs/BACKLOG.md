@@ -424,6 +424,46 @@ along automatically when the structural cluster-relocation fix lands.
 >   an exact-basename list of 8 levels instead of a substring tuple that swallowed 14.
 > - **A duplicate debt id was resolved:** the second `BL-b89-DEBT-4` is now `BL-b89-DEBT-5`.
 
+**b92 green-glow root cause (2026-07-28, build53-dev) - NEW**
+- **BL-b92-DEBT-1 (P2, EoAT lane - NARROWED, was P1):** ~~`toxeus_eoat_1..3` still wear
+  `RevenantPoison.msh` and carry the inherited green.~~ **CLOSED in b92 round 2** - the 3 End of All
+  Things pets are now in `toxeus_mesh_aura.TARGETS` (15 records, not 12), so the green is gone from
+  them too. **What REMAINS for the `toxeus_endofallthings` lane:** R-8 rules the EoAT body
+  "ash-pale", but their `baseTexture` is still `newskeleton_crimson.tex` (inherited from the
+  Devourer donor). b92 only owns `mesh`; the ash-pale SKIN is that lane's item.
+- **BL-b92-DEBT-2 (P2, WILL-DECISION):** Devourer soul pets still carry Lyia nature residue -
+  `buffSelf2SkillName=heartofoak`, `healSkillName=regrowth_lyia`,
+  `deathEffect=343_natureswrath_low_fx`. b75 skipped the Devourer on purpose (`protect_green=True`,
+  "Devourer green stays" 2026-07-14); R-7 (2026-07-16) later asked for black poison and b83 replaced
+  the envenom, but these three were never revisited. **Two are functional** (a heal + a health buff),
+  so stripping them is a balance call, not a visual one.
+- **BL-b92-DEBT-3 (P2, carried from b75/R-10):** the other `343_dark_smoke` users (Diadochi generals'
+  `svc_ashsmoke_charfxpak`, Helepolis) still ride the green-rendering pak. Unrelated to the mesh
+  effect, still open pending Will confirming the Enslaver now reads black.
+- **BL-b92-DEBT-4 (P3, tooling):** the in-build **F2 summons-contract** gate self-skips when no
+  `Resources` dir sits beside the build output, and its fallback discovery resolved to an unrelated
+  worktree's path. Cosmetic; the contract was run standalone in b92 and passed.
+- **BL-b92-DEBT-5 (P1, launch-gate):** b92 is **data+gate-proven only**. In-game confirmation from
+  Will is still required (restart Steam; dismiss + re-summon both packs; confirm the Greece Toxeus is
+  still green and the secret-passage control is untouched). Nothing else can close this bug - four
+  prior rounds all looked correct on paper.
+- **BL-b92-DEBT-6 (P2, OPEN QUESTION, honesty item):** the exact ANCHOR of the removed effect is not
+  settled from bytes. The mesh block says `attach = "Waist"`, but the EffectEntity it points at
+  (`records\effects\monsterfx\buffs\revenantpoison_fx.dbr`, which is ABSENT from the mod arz and
+  resolves from the BASE game db) carries `boneList = Bone_R_Weapon;Bone_L_Weapon`. Under the first
+  reading the green is a body-wide waist cloud, under the second it sits on the two weapon bones.
+  **The root cause and the fix are unaffected** (removing the mesh removes the effect either way),
+  but the b75 note that the Enslaver's marauders "also look green" is therefore NOT explained by
+  this mechanism: the marauders wear `Creatures\Monster\ShadowStalker\ShadowStalker.msh`, whose
+  own `CreateEntity` attaches `ShadowStalker_Smoke` (audited: not green) plus the Will-confirmed
+  black `drxshadowcloak` shroud. If Will still sees green on the marauders after this build, that is
+  a SEPARATE surface and the differential must be re-run against them.
+- **BL-b92-DEBT-7 (P2, systemic - the real lesson):** `.msh` files can carry embedded `CreateEntity`
+  attachments and NOTHING in the build audits them. b92 read them by hand. Every mesh in the shipped
+  content should be swept once for `CreateEntity`, and the result folded into a build gate, so the
+  next "the DB is clean but the visual is wrong" bug is caught by a machine. Owner/trigger: whoever
+  picks up the visual-contract lane; `toxeus_mesh_aura.AURA_MESHES` / `NO_EFFECT_MESHES` is the seed.
+
 **b91 Cold Worm buffs lane / R-39 (2026-07-28, branch `fix/debt-mixed`) - NEW**
 - ~~**BL-b91-DEBT-1 (P1, BLOCKED - the one R-39 sub-item NOT delivered):** the exclamation-point map
   marker on placed ubers ... it is map-side ... needs `SVC_SVAERA_ARC`/`SVC_SV_ARC`.~~
