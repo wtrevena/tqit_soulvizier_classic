@@ -159,7 +159,11 @@ RULING 6(e) - THE +ALL-SKILLS LAW.
 RULING 6(a) - THE EOAT FORMULA IS VISIBLE.
   Measured: the drop wiring was ALREADY CORRECT - svc_rite_guaranteed
   (FixedWeight, lootName1 = the formula @100) rides lootMisc4Item1 on BOTH hunt
-  records at chanceToEquipMisc4 100, all three difficulty rows. Will's kill DID
+  records at chanceToEquipMisc4 100, all three difficulty rows. [R-260, 2026-09-10:
+  that wiring was NOT correct - `Misc4` is not a `characterloot.tpl` variable, the
+  formula never dropped from either Hunt, and the "Will's kill DID drop it" line below
+  is the inference R-258 retired; the Rite now rides `Misc1` row 3 at a MEASURED 100%
+  and this module's verify() re-derives that rate.] Will's kill DID
   drop it. The real defect: itemClassification 'Common' + the generic blank-
   recipe mesh/bitmap = a plain white drop buried under a Legendary boss-kill's
   orb/soul/spear explosion, and hidden by any loot filter. Fix:
@@ -766,13 +770,14 @@ def verify(db, tags=None):
     else:
         p.append("R-247.6a: svc_rite_guaranteed missing")
     if db.has_record(_HUNT):
-        m4 = gl(_HUNT, 'lootMisc4Item1')
-        if not m4 or any(_norm(v) != _norm(_RITE_TABLE) for v in m4):
-            p.append("R-247.6a: Hunt lootMisc4Item1=%r - the guaranteed formula "
-                     "row moved" % (m4,))
-        if float(gv(_HUNT, 'chanceToEquipMisc4') or 0) < 100.0:
-            p.append("R-247.6a: Hunt chanceToEquipMisc4=%r != 100"
-                     % gv(_HUNT, 'chanceToEquipMisc4'))
+        # R-260: the guarantee is MEASURED on a REAL slot (slot chance x row weight /
+        # sum of weights), never read off `Misc4`, which no template declares.
+        import svc_loot_slots as _sls
+        _hm = _sls.item_share(db, _HUNT, [_RITE_TABLE] * 3)
+        if not _sls.close(_hm, 100.0):
+            p.append("R-247.6a: Hunt drops the formula at a MEASURED %.4f%% of kills, "
+                     "not 100 (rides %r)"
+                     % (_hm, _sls.item_shares(db, _HUNT, [_RITE_TABLE] * 3)))
     # every link of craft -> summon: formula -> soul -> summon -> pet
     art = gv(_FORMULA, 'artifactName')
     if _norm(art or '') != _norm(_EOAT_SOUL) or not db.has_record(_EOAT_SOUL):
@@ -886,8 +891,9 @@ def _negtest():
                     _RUNBREAKER_N,
                     _RUNBREAKER_N.replace('_n', '_e'),
                     _RUNBREAKER_N.replace('_n', '_l')],
-                'lootMisc4Item1': [_RITE_TABLE] * 3,
-                'chanceToEquipMisc4': [100.0]}
+                'lootMisc1Item3': [_RITE_TABLE] * 3,
+                'chanceToEquipMisc1Item3': [100],
+                'chanceToEquipMisc1': [100.0]}
         # the round-3 inline rebind, mirrored exactly (both-surfaces law)
         for dst, src in _INLINE_REBIND.items():
             hunt[dst] = list(anm[src])
@@ -974,7 +980,7 @@ def _negtest():
          lambda db, t: db.d[_FORMULA].__setitem__('itemClassification',
                                                   ['Common'])),
         ('the guaranteed drop row is unhooked',
-         lambda db, t: db.d[_HUNT].__setitem__('lootMisc4Item1', [])),
+         lambda db, t: db.d[_HUNT].__setitem__('lootMisc1Item3', [])),
     ]
     db, tags = _base()
     try:

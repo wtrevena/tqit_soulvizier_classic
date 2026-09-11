@@ -148,9 +148,15 @@ def neg(label, mutate, restore):
 neg('pool repointed to old boss',
     lambda: (db.set_field(CR._POOL, 'name1', r'records\old.dbr'), None)[1],
     lambda _p: db.set_field(CR._POOL, 'name1', CR._ORM))
-neg('Golden Bough chance -> 50',
-    lambda: (db.set_field(CR._BLOOM, 'chanceToEquipMisc4', 50.0), None)[1],
-    lambda _p: db.set_field(CR._BLOOM, 'chanceToEquipMisc4', 100.0))
+neg('Golden Bough chance -> 50 (R-260: on its real slot Misc3)',
+    lambda: (db.set_field(CR._BLOOM, 'chanceToEquipMisc3', 50.0), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'chanceToEquipMisc3', 100.0))
+neg('Golden Bough diluted by an un-muted inherited act-4 row (R-260)',
+    lambda: (db.set_field(CR._BLOOM, 'chanceToEquipMisc3Item1', 25), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'chanceToEquipMisc3Item1', 0))
+neg('the Bough re-wired onto the undeclared Misc4 (R-260)',
+    lambda: (db.set_field(CR._BLOOM, 'chanceToEquipMisc4', 100.0), None)[1],
+    lambda _p: db.remove_field(CR._BLOOM, 'chanceToEquipMisc4'))
 neg('escort life made descending',
     lambda: (db.set_field(CR._BRIAR, 'characterLife', [878.0, 300.0, 400.0]), None)[1],
     lambda _p: db.set_field(CR._BRIAR, 'characterLife', list(CR._BRIAR_LIFE)))
@@ -382,11 +388,9 @@ neg('P1 terminal guarantees a potion again',
                           CR.DATA_TYPE_FLOAT), None)[1],
     lambda _p: db.set_field(CR._BLOOM, 'chanceToEquipMisc2', 0.0,
                             CR.DATA_TYPE_FLOAT))
-neg('P1 the mute eats the Golden Bough too',
-    lambda: (db.set_field(CR._BLOOM, 'chanceToEquipMisc4', 0.0,
-                          CR.DATA_TYPE_FLOAT), None)[1],
-    lambda _p: db.set_field(CR._BLOOM, 'chanceToEquipMisc4', 100.0,
-                            CR.DATA_TYPE_FLOAT))
+neg('P1 the mute eats the Golden Bough too (R-260: Misc3 to 0)',
+    lambda: (db.set_field(CR._BLOOM, 'chanceToEquipMisc3', 0.0), None)[1],
+    lambda _p: db.set_field(CR._BLOOM, 'chanceToEquipMisc3', 100.0))
 # ---- P3: the retinue disclosure goes stale under us --------------------------
 neg('P3 retinue faucet moves off its disclosed 3.0',
     lambda: (db.get_field_value(CR._RETINUE_PETS[0], 'chanceToEquipMisc1'),

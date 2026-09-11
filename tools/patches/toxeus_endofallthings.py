@@ -208,7 +208,7 @@ _SUPRA_SPECIAL = r'records\xpack\item\loottables\arcaneformulae\supra_special.db
 #   always yields the Rite), NOT disturbing the soul drop (Finger2) or other loot.
 _ENSLAVER_MON = r'records\creature\monster\shadowstalker\um_toxeus_enslaver_99.dbr'
 _DEVOURER_MON = r'records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr'
-_RANT_TABLE = r'records\item\loottables\svc\toxeus_rant_perplayer.dbr'  # Devourer Misc4 (kept)
+_RANT_TABLE = r'records\item\loottables\svc\toxeus_rant_perplayer.dbr'  # the rant (kept; channel withheld, R-260)
 # new guaranteed loot tables (collision-checked ABSENT vs build45)
 _RITE_GUARANTEED = r'records\item\loottables\svc\svc_rite_guaranteed.dbr'          # FixedWeight, 100% Rite
 _DEV_MISC4_MASTER = r'records\item\loottables\svc\svc_devourer_misc4_master.dbr'   # rant + Rite (both 100%)
@@ -614,15 +614,21 @@ def _wire_rite_pool(db):
 
 
 def _wire_rite_boss_kills(db):
-    """R-13: GUARANTEED (100%) on-kill Rite drop on BOTH Toxeus bosses, via the boss
-    loot-table convention, without disturbing the soul drop (Finger2) or other loot.
+    """R-13: GUARANTEED (100%) on-kill Rite drop on the Toxeus bosses, via the boss
+    loot-table convention, without disturbing the soul drop (Finger2).
       - svc_rite_guaranteed  = FixedWeight table, 100% the Rite.
-      - Enslaver: free Misc4 slot -> svc_rite_guaranteed (proven Misc-slot drop; Misc4
-        is used by 29 monsters).
-      - Devourer: Misc4 is taken by the rant. Wrap the rant in a LootMasterTable
-        (svc_devourer_misc4_master) that yields BOTH the rant (w100) AND the Rite
-        (w100) - a LootMasterTable rolls each child independently at weight-as-percent,
-        so both always drop. The rant is preserved verbatim."""
+      - Enslaver: `Misc1` row 3 at a MEASURED 100% (R-260; the potion rows muted by
+        weight). The pre-R-260 text here said "free Misc4 slot -> svc_rite_guaranteed
+        (proven Misc-slot drop; Misc4 is used by 29 monsters)": those 29 were this mod's
+        own writes - `Misc4` is not a `characterloot.tpl` variable and the Rite never
+        dropped from him.
+      - Devourer: WITHHELD (R-260, BL-R260-DEBT-1). The rant+rite LootMasterTable
+        (svc_devourer_misc4_master, rant w100 + Rite w100) is still authored and
+        referenced by no slot. The pre-R-260 claim that "a LootMasterTable rolls each
+        child independently at weight-as-percent, so both always drop" is REFUTED from
+        the bytes (BL-R258-DEBT-5, settled in R-260): the 1,970 LootMasterTables in the
+        build102 arz sum their weights to 200 / 1004 / 300 / 400 / 100 / ... / 15003, so
+        weights are RELATIVE (one pick) and the master is R-252's 50/50."""
     # svc_rite_guaranteed: clone a FixedWeight, keep only lootName1 = the Rite @ 100.
     if not _has(db, _FIXEDWEIGHT_DONOR):
         raise SystemExit("[toxeus_endofallthings] fixedweight donor missing: %s" % _FIXEDWEIGHT_DONOR)
@@ -655,36 +661,51 @@ def _wire_rite_boss_kills(db):
             break
     db._modified.add(_DEV_MISC4_MASTER)
 
-    # Enslaver: free Misc4 slot -> guaranteed Rite (3 per-difficulty entries).
+    # Enslaver: the guaranteed Rite on a REAL slot (R-260). Until R-260 this wrote the
+    # table onto his "free Misc4 slot" - a variable no template declares - so the Rite
+    # never dropped from him (b83, 2026-07-16 .. build102). He has no empty or dormant
+    # Misc slot (Misc1 100% potions, Misc2 18% relics/formulae, Misc3 50% amulets), so
+    # the helper takes over `Misc1`, his live 100%-chance potion slot, exactly as R-258
+    # did on the Devourer: the Rite on the free row 3 at weight 100, the health/energy
+    # potion rows MUTED by weight (values kept). Displaced: one potion per kill
+    # (BL-R260-DEBT-2). The Hunt mirrors this in `toxeus_hunt_encounter` (R-92).
+    from apply_svc_patches import _svc_guarantee_unique
     if not _has(db, _ENSLAVER_MON):
         raise SystemExit("[toxeus_endofallthings] Enslaver boss missing: %s" % _ENSLAVER_MON)
-    if db.get_field_value(_ENSLAVER_MON, 'lootMisc4Item1') not in (None, '', 0):
-        raise SystemExit("[toxeus_endofallthings] Enslaver Misc4 unexpectedly occupied "
-                         "(would disturb existing loot) - abort")
-    db.set_field(_ENSLAVER_MON, 'chanceToEquipMisc4', 100.0)
-    db.set_field(_ENSLAVER_MON, 'chanceToEquipMisc4Item1', 100)
-    db.set_field(_ENSLAVER_MON, 'lootMisc4Item1', [_RITE_GUARANTEED, _RITE_GUARANTEED, _RITE_GUARANTEED])
-    db._modified.add(_ENSLAVER_MON)
+    _svc_guarantee_unique(
+        db, _ENSLAVER_MON, [_RITE_GUARANTEED, _RITE_GUARANTEED, _RITE_GUARANTEED],
+        slot='Misc1', label='Rite of the Undivided',
+        why="Misc1 is the Enslaver's 100%-chance potion slot; health/energy potion rows "
+            "muted by weight, the R-258 pattern (BL-R260-DEBT-2)")
 
-    # Devourer: repoint the EXISTING guaranteed Misc4 (chance already 100) at the
-    # rant+rite master; the rant is preserved inside it. Do NOT touch its chance.
+    # Devourer: WITHHELD (R-260, BL-R260-DEBT-1). His phantom `Misc4` carried the rant+rite
+    # master since b83 and never paid: `Misc4` is not a template variable. It cannot be
+    # re-homed by this lane: `Misc1` (the R-258 soul chute) + `Finger2` are frozen
+    # byte-identical to build102 while Will counts souls (BL-R258-DEBT-1); `Misc2` (18%
+    # relics/formulae) and `Misc3` (50% amulets) can only carry a 100% by displacing live
+    # hand-designed rolls - and even then the master is a pick-one 50/50 (BL-R258-DEBT-5,
+    # settled from the bytes in R-260), not R-13's "you also get the formula". The master
+    # record is still authored above (retirement protocol: it stays, unreferenced); the
+    # dead Misc4 fields are STRIPPED here so the record carries no undeclared variable;
+    # the slot decision with its costed options is Will's (docs/WILL_RULINGS.md R-260).
+    import svc_loot_slots as _sls
     if not _has(db, _DEVOURER_MON):
         raise SystemExit("[toxeus_endofallthings] Devourer boss missing: %s" % _DEVOURER_MON)
-    cur = db.get_field_value(_DEVOURER_MON, 'lootMisc4Item1')
-    cur0 = (cur[0] if isinstance(cur, list) else cur) or ''
-    if str(cur0).replace('/', '\\').lower() != _RANT_TABLE.lower():
-        raise SystemExit("[toxeus_endofallthings] Devourer Misc4 is not the rant table "
-                         "(got %r) - refuse to clobber unexpected loot" % cur0)
-    db.set_field(_DEVOURER_MON, 'lootMisc4Item1',
-                 [_DEV_MISC4_MASTER, _DEV_MISC4_MASTER, _DEV_MISC4_MASTER])
-    db._modified.add(_DEVOURER_MON)
+    _dev = _sls.resolve(db, _DEVOURER_MON)
+    _stripped = _sls.strip_phantom(db, _dev)
+    if _stripped:
+        db._modified.add(_dev)
+    print("  [eoat] Devourer rant+rite channel WITHHELD (R-260 / BL-R260-DEBT-1): stripped "
+          "dead %s; master %s still authored, referenced by no slot."
+          % (_stripped or 'nothing', _DEV_MISC4_MASTER.rsplit('\\', 1)[-1]))
 
 
 def _wire_rite_drops(db):
     _wire_rite_pool(db)
     _wire_rite_boss_kills(db)
     print("  [eoat] Rite drops wired: supra.dbr + supra_special.dbr (R-9, w100) + "
-          "GUARANTEED on-kill on both Toxeus bosses (R-13, Misc4 100%; Devourer rant preserved).")
+          "GUARANTEED on-kill on the Enslaver (R-13, Misc1 row 3 @ a measured 100%%, R-260); "
+          "the Devourer's channel is WITHHELD (BL-R260-DEBT-1).")
 
 
 # =============================================================================
@@ -912,23 +933,35 @@ def verify(db, tags=None):
     # R-13: svc_rite_guaranteed -> the Rite @ 100
     if (_gv1(db, _RITE_GUARANTEED, 'lootName1') or '').replace('/', '\\').lower() != _EOAT_FORMULA.lower():
         P.append('R-13: svc_rite_guaranteed does not yield the Rite')
-    # Enslaver Misc4 -> svc_rite_guaranteed @ 100%
-    em = db.get_field_value(_ENSLAVER_MON, 'lootMisc4Item1')
-    em = [str(x).replace('/', '\\').lower() for x in (em if isinstance(em, list) else [em] if em else [])]
-    if not em or any(x != _RITE_GUARANTEED.lower() for x in em):
-        P.append('R-13: Enslaver Misc4 not the guaranteed Rite table: %r' % em)
-    if float(_gv1(db, _ENSLAVER_MON, 'chanceToEquipMisc4') or 0) < 100:
-        P.append('R-13: Enslaver Misc4 chance != 100 (not guaranteed)')
+    # Enslaver -> svc_rite_guaranteed at a MEASURED 100% on a REAL slot (R-260): slot
+    # chance x row weight / sum of weights, re-derived from the final bytes.
+    import svc_loot_slots as _sls
+    _rite3 = [_RITE_GUARANTEED] * 3
+    _em = _sls.item_share(db, _ENSLAVER_MON, _rite3)
+    if not _sls.close(_em, 100.0):
+        P.append('R-13: Enslaver drops the Rite at a MEASURED %.4f%% of kills, not 100 '
+                 '(rides %r)' % (_em, _sls.item_shares(db, _ENSLAVER_MON, _rite3)))
+    _ph = _sls.phantom_fields(db, _ENSLAVER_MON)
+    if _ph:
+        P.append('R-260: Enslaver carries undeclared slot fields %s' % _ph)
     # Enslaver soul drop UNDISTURBED (Finger2 still the enslaver soul)
     ef2 = db.get_field_value(_ENSLAVER_MON, 'lootFinger2Item1')
     ef2 = [str(x).lower() for x in (ef2 if isinstance(ef2, list) else [ef2] if ef2 else [])]
     if not any('enslaver_soul' in x for x in ef2):
         P.append('R-13: Enslaver soul drop (Finger2) was disturbed: %r' % ef2)
-    # Devourer Misc4 -> the rant+rite master; master yields BOTH rant + Rite
-    dm = db.get_field_value(_DEVOURER_MON, 'lootMisc4Item1')
-    dm = [str(x).replace('/', '\\').lower() for x in (dm if isinstance(dm, list) else [dm] if dm else [])]
-    if not dm or any(x != _DEV_MISC4_MASTER.lower() for x in dm):
-        P.append('R-13: Devourer Misc4 not the rant+rite master: %r' % dm)
+    # Devourer: the channel is WITHHELD (R-260, BL-R260-DEBT-1) - the record must carry
+    # NO undeclared slot field and must NOT reference the master on any slot (a silent
+    # re-wire needs its own ruling + roster entry); the master itself stays authored and
+    # still names rant + Rite (retirement protocol).
+    _dph = _sls.phantom_fields(db, _DEVOURER_MON)
+    if _dph:
+        P.append('R-260: Devourer carries undeclared slot fields %s' % _dph)
+    _dm = _sls.item_shares(db, _DEVOURER_MON, [_DEV_MISC4_MASTER] * 3)
+    if _dm:
+        P.append('R-260: Devourer references the rant+rite master on %r - WITHHELD under '
+                 'BL-R260-DEBT-1, a re-homing needs a ruling and a roster entry' % _dm)
+    if not _has(db, _DEV_MISC4_MASTER):
+        P.append('R-260: the rant+rite master was DELETED - retirement protocol says it stays')
     mk = {(_gv1(db, _DEV_MISC4_MASTER, 'lootName%d' % i) or '').replace('/', '\\').lower() for i in (1, 2)}
     if _RANT_TABLE.lower() not in mk:
         P.append('R-13: Devourer master dropped the rant (would disturb existing loot)')

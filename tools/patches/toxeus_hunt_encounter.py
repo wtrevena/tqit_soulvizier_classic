@@ -80,9 +80,12 @@ WHAT THIS MODULE SHIPS
    endless-pursuit variant pool by `toxeus_hunt_endless` (registered later).
 
 2. THE RITE OF THE UNDIVIDED DROPS OFF HIM (R-92), mirroring the Enslaver EXACTLY:
-   chanceToEquipMisc4=100 / chanceToEquipMisc4Item1=100 /
-   lootMisc4Item1 = svc_rite_guaranteed on all three tiers. The Hunt had NO Misc4
-   slot at all. R-13 reads the champion Rite drop as guaranteed-on-kill; the
+   `Misc1` row 3 = svc_rite_guaranteed at weight 100 on all three tiers, the potion
+   rows muted, MEASURED 100% by `verify()` from the final bytes (R-260). [The
+   original text here - "chanceToEquipMisc4=100 / lootMisc4Item1 = svc_rite_guaranteed;
+   the Hunt had NO Misc4 slot at all" - described a field `characterloot.tpl` does not
+   declare; the Rite never dropped from him between b98 and build102. R-260.]
+   R-13 reads the champion Rite drop as guaranteed-on-kill; the
    Enslaver's simple FixedWeight form is used (not the Devourer's master table -
    the Hunt has no rant scroll to co-schedule). The RECIPE still demands the three
    LEGENDARY souls (asserted in verify()), so the formula dropping on Normal/Epic
@@ -552,15 +555,25 @@ def _wire_rite(db):
     if _norm(lootname) != _norm(_EOAT_FORMULA):
         raise SystemExit(
             "[toxeus_hunt_encounter] %s no longer names the Rite formula "
-            "(lootName1=%r); refusing to wire a Misc4 slot at 100 percent onto "
+            "(lootName1=%r); refusing to wire a guaranteed slot at 100 percent onto "
             "something else." % (_RITE_TABLE, lootname))
-    F, I, S = DATA_TYPE_FLOAT, DATA_TYPE_INT, DATA_TYPE_STRING
-    _set(db, _HUNT, 'chanceToEquipMisc4', 100.0, F)
-    _set(db, _HUNT, 'chanceToEquipMisc4Item1', 100, I)
-    _set(db, _HUNT, 'lootMisc4Item1', [_RITE_TABLE] * 3, S)
-    db._modified.add(_HUNT)
-    print("  R-92: Rite of the Undivided wired to Misc4 at 100 percent on all 3 "
-          "tiers (mirrors the Enslaver exactly; he had NO Misc4 slot before).")
+    # R-260: on a REAL slot. Until R-260 this wrote `chanceToEquipMisc4` / `lootMisc4Item1`
+    # ("he had NO Misc4 slot before" - nobody has: it is not a `characterloot.tpl`
+    # variable), so the Rite never dropped from the Hunt (b98, 2026-07-28 .. build102).
+    # Pinned to `Misc1`, mirroring the Enslaver's R-260 shape exactly: the Rite on row 3
+    # at weight 100, the health/energy potion rows muted by weight. At this registry
+    # slot his Misc1 chance is still the donor's 0 (toxeus_boss_equipment switches it to
+    # the family 100 later, R-252), so the helper sees a DORMANT slot and sets the 100
+    # itself; the final state is the Enslaver's. Displaced: one potion per kill once
+    # R-252 switches the slot on (BL-R260-DEBT-2). `um_toxeus_hunt_l_99` is cloned from
+    # this record by `toxeus_hunt_endless` and inherits the row.
+    from apply_svc_patches import _svc_guarantee_unique
+    _svc_guarantee_unique(
+        db, _HUNT, [_RITE_TABLE] * 3, slot='Misc1', label='Rite of the Undivided',
+        why="Misc1 is the family's 100%-chance potion slot (R-252 switches it on); "
+            "health/energy potion rows muted by weight, the R-258 pattern (BL-R260-DEBT-2)")
+    print("  R-92: Rite of the Undivided on Misc1 row 3 at a MEASURED 100 percent on all 3 "
+          "tiers (mirrors the Enslaver exactly; R-260 - the pre-R-260 Misc4 write never paid).")
 
 
 # =============================================================================
@@ -1159,14 +1172,17 @@ def verify(db, tags=None):
                 problems.append("pool has an extra member name%d (single-member pool)" % i)
 
     # --- (B) R-92: the Rite drops, and the RECIPE still gates on LEGENDARY --
-    if abs(float(_gv1(db, _HUNT, 'chanceToEquipMisc4') or 0.0) - 100.0) > 0.001:
-        problems.append("R-92: %s chanceToEquipMisc4=%r (must be 100)"
-                        % (_HUNT, _gv1(db, _HUNT, 'chanceToEquipMisc4')))
-    m4 = db.get_field_value(_HUNT, 'lootMisc4Item1') or []
-    m4 = m4 if isinstance(m4, list) else [m4]
-    if len(m4) != 3 or any(_norm(x) != _norm(_RITE_TABLE) for x in m4):
-        problems.append("R-92: %s lootMisc4Item1=%r (must be the Rite table on all "
-                        "3 tiers)" % (_HUNT, m4))
+    # R-260: the drop is MEASURED off the final bytes on a REAL slot (slot chance x row
+    # weight / sum of weights), never read off a field name.
+    import svc_loot_slots as _sls
+    _rite3 = [_RITE_TABLE] * 3
+    _hm = _sls.item_share(db, _HUNT, _rite3)
+    if not _sls.close(_hm, 100.0):
+        problems.append("R-92: %s drops the Rite at a MEASURED %.4f%% of kills, not 100 "
+                        "(rides %r)" % (_HUNT, _hm, _sls.item_shares(db, _HUNT, _rite3)))
+    _hph = _sls.phantom_fields(db, _HUNT)
+    if _hph:
+        problems.append("R-260: %s carries undeclared slot fields %s" % (_HUNT, _hph))
     if db.has_record(_EOAT_FORMULA):
         for i in (1, 2, 3):
             r = _gv1(db, _EOAT_FORMULA, 'reagent%dBaseName' % i)
@@ -1351,7 +1367,7 @@ def verify(db, tags=None):
         raise SystemExit("toxeus_hunt_encounter.verify FAILED: %d problem(s)"
                          % len(problems))
     print("  [toxeus_hunt_encounter].verify OK: fixed encounter resolves on N/E/L; "
-          "Rite at 100 percent Misc4 with the recipe still gated on LEGENDARY "
+          "Rite at a MEASURED 100 percent on a real slot with the recipe still gated on LEGENDARY "
           "souls; Runbreaker x3 + a playable spear animation block (every inline "
           "clip rig-compat-proven on his resolved table, R-247.5a); pursuit kit "
           "wired, named and no longer an Enslaver clone; EVERY populated cast "
@@ -1426,8 +1442,9 @@ def _negtest():
             'reagent2BaseName': [r'records\item\equipmentring\soul\svc_uber\enslaver_soul_l.dbr'],
             'reagent3BaseName': [r'records\item\equipmentring\soul\svc_uber\blood_toxeus_soul_l.dbr']}
         db.d[_RITE_TABLE] = {'lootName1': [_EOAT_FORMULA]}
-        hunt = {'chanceToEquipMisc4': [100.0],
-                'lootMisc4Item1': [_RITE_TABLE, _RITE_TABLE, _RITE_TABLE],
+        hunt = {'chanceToEquipMisc1': [100.0],
+                'chanceToEquipMisc1Item3': [100],
+                'lootMisc1Item3': [_RITE_TABLE, _RITE_TABLE, _RITE_TABLE],
                 'lootRightHandItem1': [_SPEAR_GUAR[t] for t in 'nel'],
                 'longRangeMax': [_RANGE_BANDS['longRangeMax']]}
         for i, a in enumerate(_SPEAR_ATT_ANIMS, start=1):

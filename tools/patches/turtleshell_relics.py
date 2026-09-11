@@ -40,9 +40,14 @@ it is treated as one distinct identity in our systems: `satyrarcher_soul_*`
 `satyrveteranarcher_soul_*` (tagMonsterName051/052 "Satyr ~ Veteran
 Skirmisher", ar_archer_04-06) - a hit-and-run RANGED "skirmisher" identity,
 which is exactly the trickster-archer fantasy (evasive, precise, never toe-to-
-toe). `lootMisc4` is verified genuinely free on every body in the family (no
-Misc4 field at all; Misc1/2/3 are the stock base-game potion/relic/amulet
-slots and are left untouched).
+toe). [R-260 CORRECTION, 2026-09-10: the original text here said "`lootMisc4` is
+verified genuinely free on every body in the family (no Misc4 field at all)". It was
+free because `Misc4` is not a `characterloot.tpl` variable - it is free on EVERY
+record in existence and the engine never reads it, so the charm never dropped from
+any archer between 2026-07-15 and R-260. The drop now rides a REAL Misc slot through
+`apply_svc_patches._svc_guarantee_unique` at a MEASURED 7% (ar_archer_01..04: the
+dormant Misc3; ar_archer_05/06: a rate-preserving share of the live Misc3), and
+`verify()` re-derives the rate from the final bytes.]
 
 Stats (5-shard ladder, matching the turtle-shell/Emberscale/Ereban shape):
 attack speed (the skirmisher's hit-and-run precision) + % pierce damage bonus
@@ -139,7 +144,7 @@ def _create_revelers_ruse(db, tags):
     """(a) build the Reveler's Ruse charm chain: 3 tier charms (clone the
     turtle-shell ITEM donor - same visual silhouette as Emberscale/Ereban's
     precedent, zero new art), 3 completion-bonus tables, 3 FixedWeight loot
-    tables, and the 7% lootMisc4 wiring on all 6 Satyr Archer bodies."""
+    tables, and the 7% wiring on all 6 Satyr Archer bodies (a REAL Misc slot, R-260)."""
     S, F = DATA_TYPE_STRING, DATA_TYPE_FLOAT
 
     for t in ('01', '02', '03'):
@@ -200,17 +205,19 @@ def _create_revelers_ruse(db, tags):
         db.set_field(lt, 'lootName1', charm)
         db._modified.add(lt)
 
-    # ── wire all 6 Satyr Archer bodies: 7% on the free lootMisc4 slot ──
+    # ── wire all 6 Satyr Archer bodies at 7% on a REAL Misc slot (R-260) ──
+    # Until R-260 this wrote `lootMisc4Item1` - a variable `characterloot.tpl` does not
+    # declare (it has exactly Misc1..Misc3) - so the charm never dropped from any
+    # archer. `_svc_guarantee_unique` now lands it by the R-260 policy: ar_archer_01..04
+    # carry a DORMANT Misc3 (chance 0 over amulet rows that never rolled) -> Misc3 at 7%
+    # with those rows muted by weight; ar_archer_05/06 have Misc3 live at 0.5% -> the
+    # rate-preserving SHARE (chance 7.5, charm weight 70056 against the amulet rows'
+    # 5004, so the amulets keep their exact 0.5% and the charm measures exactly 7%).
+    from apply_svc_patches import _svc_guarantee_unique
     loot_arr = [_RR_LOOT['01'], _RR_LOOT['02'], _RR_LOOT['03']]
     for mon in _RR_ARCHERS:
-        cur = db.get_field_value(mon, 'lootMisc4Item1')
-        if cur not in (None, '', 0):
-            raise SystemExit("turtleshell_relics: %s lootMisc4 is NOT free (has %r); "
-                              "slot assumption broken" % (mon, cur))
-        db.set_field(mon, 'lootMisc4Item1', list(loot_arr), S)      # NEW field -> STRING
-        db.set_field(mon, 'chanceToEquipMisc4', _RR_DROP_PCT, F)    # NEW field -> FLOAT
-        db.set_field(mon, 'chanceToEquipMisc4Item1', 100, DATA_TYPE_INT)
-        db._modified.add(mon)
+        _svc_guarantee_unique(db, mon, loot_arr, pct=_RR_DROP_PCT, share=True,
+                              label="Reveler's Ruse")
 
     tags['tagSVCRevelersRuse'] = "The Reveler's Ruse"
     tags['tagSVCRevelersRuseDESC'] = (
@@ -220,7 +227,8 @@ def _create_revelers_ruse(db, tags):
     print("  turtleshell_relics (a): The Reveler's Ruse - 3 charms (turtle-shell "
           "item clone, bow-only, attack speed + pierce dmg 5-shard ladder) + "
           "3 bonus tables (w1500) + 3 loot tables; wired all 6 Satyr Archer "
-          "bodies (ar_archer_01..06) lootMisc4 @ %.0f%%." % _RR_DROP_PCT)
+          "bodies (ar_archer_01..06) on a REAL Misc slot @ a measured %.0f%% (R-260)."
+          % _RR_DROP_PCT)
 
 
 def apply(db, tags):
@@ -264,7 +272,7 @@ def _norm(p):
 def verify(db, tags):
     """POST-FINALIZATION invariant (fail-loud):
       (a) 3 Reveler's Ruse charms exist, bow-only, non-zero 5-shard ladders,
-          bonus tables resolve, all 6 archer bodies wired at lootMisc4;
+          bonus tables resolve, all 6 archer bodies MEASURED at the intended rate (R-260);
       (b) the pre-existing Dune Fiend Fiend Carapace wiring is still intact
           (regression guard for the 'already has one' finding)."""
     for t in ('01', '02', '03'):
@@ -302,21 +310,22 @@ def verify(db, tags):
                 "turtleshell_relics.verify FAIL: %s lootName1=%r != %s"
                 % (_RR_LOOT[t], lname, charm))
 
+    # R-260: the drop is MEASURED off the final bytes (slot chance x row weight / sum of
+    # weights over every real slot) and must equal the intended rate; a phantom-slot
+    # field on the record is a failure in itself.
+    import svc_loot_slots as _sls
+    expected = [_RR_LOOT[t] for t in ('01', '02', '03')]
     for mon in _RR_ARCHERS:
-        chance = db.get_field_value(mon, 'chanceToEquipMisc4')
-        chance = chance[0] if isinstance(chance, list) and chance else chance
-        if not (chance and float(chance) > 0):
+        ph = _sls.phantom_fields(db, mon)
+        if ph:
+            raise SystemExit("turtleshell_relics.verify FAIL: %s carries undeclared slot "
+                             "fields %s (R-260)" % (mon, ph))
+        got = _sls.item_share(db, mon, expected)
+        if not _sls.close(got, _RR_DROP_PCT):
             raise SystemExit(
-                "turtleshell_relics.verify FAIL: %s chanceToEquipMisc4=%r "
-                "(expected > 0)" % (mon, chance))
-        refs = db.get_field_value(mon, 'lootMisc4Item1')
-        refs = refs if isinstance(refs, list) else ([refs] if refs else [])
-        expected = [_RR_LOOT[t] for t in ('01', '02', '03')]
-        for e in expected:
-            if not any(_norm(r) == _norm(e) for r in refs):
-                raise SystemExit(
-                    "turtleshell_relics.verify FAIL: %s lootMisc4 missing %s"
-                    % (mon, e))
+                "turtleshell_relics.verify FAIL: %s drops the Reveler's Ruse at a MEASURED "
+                "%.4f%% of kills, intended %.4f%% (rides %r)"
+                % (mon, got, _RR_DROP_PCT, _sls.item_shares(db, mon, expected)))
         if tags.get('tagSVCRevelersRuse') != "The Reveler's Ruse":
             raise SystemExit("turtleshell_relics.verify FAIL: tagSVCRevelersRuse missing/wrong")
 

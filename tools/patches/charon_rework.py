@@ -970,7 +970,7 @@ _ORM_MUTE_MISC = True
 # which are the volume. MEASURED pre/post apply on the live build83 arz:
 #
 #   SHIPPED  um_charon_ferryman_99       chanceToEquipMisc1/2/3 = 0 / 0 / 0
-#   SHIPPED  um_charonform2_ferryman_99  chanceToEquipMisc1/2/3 = 0 / 0 / 0  (+Misc4 100 = the Bough)
+#   SHIPPED  um_charonform2_ferryman_99  chanceToEquipMisc1/2/3 = 0 / 0 / 0  (+"Misc4 100" = the Bough, a dead field - R-260)
 #   ROUND-4  um_charonform2_ferryman_99  chanceToEquipMisc1/2/3 = 1.6 / 100.0 / 75.0
 #
 # i.e. a GUARANTEED potion plus an act-4 misc roll every kill and a 75% relic /
@@ -987,11 +987,23 @@ _ORM_MUTE_MISC = True
 # stays identity rather than numbers; (b) it keeps the written coordination
 # statement to b84 TRUE as issued instead of correcting a promise another
 # in-flight lane is relying on; (c) the encounter's payout is DESIGNED as the
-# guaranteed Golden Bough (Misc4 100%) + the dedicated hoard chest + the soul +
-# the boss orb, and ordinary Misc rolls were never part of it. Misc4 is NOT
-# touched. Flip to False to restore full donor parity in one line.
+# guaranteed Golden Bough + the dedicated hoard chest + the soul + the boss orb, and
+# ordinary Misc rolls were never part of it. Flip to False to restore full donor
+# parity in one line.
+#
+# R-260 (2026-09-10): the Bough used to sit on "Misc4 100%". `Misc4` is not a
+# `characterloot.tpl` variable (the template declares exactly Misc1..Misc3), so the
+# Bough NEVER dropped from the terminal - not in the shipped encounter, not after
+# this rework. It now rides `Misc3`: that slot is DORMANT under this mute (chance 0
+# over the three inherited act-4 rows), so `_svc_guarantee_unique` switches it to 100
+# with the Bough on the free row 4 and the inherited rows MUTED BY WEIGHT (still named
+# and still act-4-banded, so an un-mute lands right). The ordinary-volume claim stays
+# TRUE by measurement: those rows pay 0 (weight 0), exactly as they did at chance 0.
+# `_MUTED_MISC_SLOTS` therefore keeps Misc1 + Misc2 at chance 0; Misc3 is gated by
+# the Bough arm below instead (chance 100, the Bough the only live row).
 _BLOOM_MUTE_MISC = True
-_MUTED_MISC_SLOTS = (1, 2, 3)          # Misc4 = the Golden Bough, never touched
+_MUTED_MISC_SLOTS = (1, 2)             # Misc3 = the Golden Bough's slot since R-260
+_BOUGH_SLOT = 'Misc3'
 # The retinue's inherited faucet, DISCLOSED rather than claimed away (round-5 vet
 # P3). Phase 1 keeps `hero_quillvines` as its R-125 own-family retinue; MEASURED,
 # its six spawns `records\xpack\skills\monsterskills\summoning\pets\quillvine_01
@@ -1673,7 +1685,9 @@ def apply(db, tags):
     # promise that it did not move. Muted to the shipped encounter's exact zero.
     # The act-4 retarget above is deliberately KEPT rather than deleted: it is
     # what a future un-mute lands on, and it keeps `_UNDERBAND_TOKENS` meaningful.
-    # Misc4 - the guaranteed Golden Bough - is NOT in `_MUTED_MISC_SLOTS`.
+    # Misc3 - the guaranteed Golden Bough's slot since R-260 - is NOT in
+    # `_MUTED_MISC_SLOTS`; the helper below sets it to 100 with its inherited rows
+    # muted BY WEIGHT, which is the same zero of ordinary volume.
     if _BLOOM_MUTE_MISC:
         for _slot in _MUTED_MISC_SLOTS:
             _sf(db, _BLOOM, 'chanceToEquipMisc%d' % _slot, 0.0)
@@ -1781,13 +1795,19 @@ def apply(db, tags):
             entry['main_monster'] = _ORM
             entry['name'] = 'q_yard_goldenbough (TESTHUB yard)'
 
-    # ── REWARD 1: THE GOLDEN BOUGH, still guaranteed off the terminal ────────
-    # `_svc_guarantee_unique` IGNORES its loot_name argument and writes
-    # lootMisc{n}Item1 + chanceToEquipMisc{n}=100 straight onto the monster; the
-    # `goldenbough_guaranteed.dbr` loot table the old call named DOES NOT EXIST
-    # in the arz and never did. Pass None. The donor leaves Misc4 free, so this
-    # lands on Misc4 exactly as the shipped encounter did.
-    _svc_guarantee_unique(db, _BLOOM, list(_AMULET), None)
+    # ── REWARD 1: THE GOLDEN BOUGH, guaranteed off the terminal - ON A REAL SLOT ──
+    # `_svc_guarantee_unique` IGNORES its loot_name argument (the
+    # `goldenbough_guaranteed.dbr` table the old call named never existed). Pass None.
+    # R-260: pinned to `Misc3`. The mute above has just set Misc1/2/3 to chance 0, so
+    # Misc3 is DORMANT (its three inherited act-4 rows never roll); the helper puts the
+    # Bough on the free row 4 at 100 with those rows muted by weight - nothing live is
+    # displaced. Before R-260 this landed on `Misc4` "exactly as the shipped encounter
+    # did", and the shipped encounter never paid it either: `Misc4` is not an engine slot.
+    _svc_guarantee_unique(db, _BLOOM, list(_AMULET), None, slot=_BOUGH_SLOT,
+                          label='Golden Bough',
+                          why='Misc3 is dormant under the CORRECTION-20 mute (chance 0); '
+                              'the inherited act-4 relic/formula/misc rows are muted by '
+                              'weight and stay named (R-231-G #3 volume claim holds)')
     _TOUCHED.add(_n(_BLOOM))
 
     # ── REWARD 2: THE HOARD - ONE chest. R-108 cut it 3 -> 1 in answer to Will's
@@ -1995,7 +2015,7 @@ def apply(db, tags):
           "rs %.2f, briar barbs not beetle bile]; Epic total %s vs the Gaoler's "
           "35,000 (gaoler_variance_rca) and beat 2 grants NO absorption and NO "
           "regen - only an authored +%.0f%% physical; every body D19-mobile; proxy "
-          "chain REUSED (no map rebuild); Golden Bough Misc4 100%%, one hoard "
+          "chain REUSED (no map rebuild); Golden Bough Misc3 row 4 @ a measured 100%% (R-260), one hoard "
           "chest, soul re-identified; ordinary Misc loot MUTED on BOTH forms to "
           "the shipped encounter's exact zero (tables still banded act-4 under "
           "the mute, so an un-mute lands right); mana authored %.0f/%.0f and "
@@ -2491,12 +2511,30 @@ def verify(db, tags):
                     "b84's loot-volume TRIM lane and against this wave's own "
                     "written coordination statement to it."
                     % (_rec, _lbl, _slot, ch))
-    # ...and the guaranteed Bough is NOT what the mute is allowed to touch.
-    if float(gv(_BLOOM, 'chanceToEquipMisc4') or 0) != 100.0:
+    # ...and the guaranteed Bough is NOT what the mute is allowed to touch. R-260: it
+    # rides Misc3 (a REAL slot) and is MEASURED - slot chance x row weight / sum of
+    # weights - so a un-muted inherited row or a moved chance both red here.
+    import svc_loot_slots as _sls
+    _bm = _sls.item_share(db, _BLOOM, list(_AMULET))
+    _bs = _sls.item_shares(db, _BLOOM, list(_AMULET))
+    if not _sls.close(_bm, 100.0) or [s for s, _r, _p in _bs] != [_BOUGH_SLOT]:
         problems.append(
-            "REWARD 1 BROKEN BY THE MUTE: %s chanceToEquipMisc4=%r, expected 100.0. "
-            "Misc4 is the guaranteed Golden Bough and is deliberately NOT in "
-            "_MUTED_MISC_SLOTS." % (_BLOOM, gv(_BLOOM, 'chanceToEquipMisc4')))
+            "REWARD 1 BROKEN: %s drops the Golden Bough at a MEASURED %.4f%% of kills on "
+            "%r, expected 100.0 on %s (R-260). The Bough is the terminal's guaranteed "
+            "reward; the mute keeps Misc1/2 at chance 0 and leaves %s to this arm."
+            % (_BLOOM, _bm, _bs, _BOUGH_SLOT, _BOUGH_SLOT))
+    _bst = _sls.slot_state(db, _BLOOM, _BOUGH_SLOT)
+    _bl = [(i, w) for i, (w, _l) in _bst['rows'].items()
+           if w > 0 and not _sls.same_tables(_l, _AMULET)]
+    if _bl:
+        problems.append(
+            "ORDINARY LOOT VOLUME: %s (the terminal) %s carries live inherited rows %r "
+            "beside the Bough - those act-4 rows are muted BY WEIGHT under the same "
+            "CORRECTION-20 decision that keeps Misc1/2 at chance 0 (R-260)."
+            % (_BLOOM, _BOUGH_SLOT, _bl))
+    _bph = _sls.phantom_fields(db, _BLOOM)
+    if _bph:
+        problems.append("R-260: %s carries undeclared slot fields %s" % (_BLOOM, _bph))
     # THE RETINUE'S INHERITED FAUCET - DISCLOSED AND PINNED, NOT CLAIMED AWAY.
     # (round-5 vet P3.) Phase 1 keeps `hero_quillvines` as its R-125 own-family
     # retinue. Its six spawns are SHARED BASE-GAME records - the stock ascacophus
@@ -3280,8 +3318,8 @@ def verify(db, tags):
           "physical modifier on every one of its 20 rows and its donor's Adrenaline "
           "FX repointed onto thorns; ordinary loot banded AND volumed - "
           "0 act-1/2/3 tables reachable on either form, terminal on act-4 under a "
-          "mute, Misc1/2/3 at 0.0 on BOTH forms with the Bough still at Misc4 "
-          "100.0, and the retinue's inherited act-3 faucet pinned to its disclosed "
+          "mute, Misc1/2 at 0.0 on BOTH forms and the terminal's Misc3 paying ONLY the "
+          "Bough at a measured 100.0 (R-260), and the retinue's inherited act-3 faucet pinned to its disclosed "
           "3.0; both forms' rotations funded by authored mana regen; the CC and "
           "elemental profile equals its authored targets with the terminal's "
           "inherited 300% stun wall gone; the escort fires briar barbs with 0 "

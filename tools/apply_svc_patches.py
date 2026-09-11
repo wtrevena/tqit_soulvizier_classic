@@ -14744,9 +14744,11 @@ def _create_sanguine_tithe(db, tags):
     """A3: build the Sanguine Tithe jewelry blood charm (Emberscale/D10 +
     Sepulchral/Group-G pattern): 3 tier charms (clone the Demon's Blood donor ->
     override to the blood ladder), 3 completion-bonus LootRandomizerTables, 3
-    FixedWeight loot tables, and the 7% lootMisc4 wiring on all 9 Sileni combat
-    bodies. dtype discipline: cloned overrides pass NO dtype; NEW records' brand-
-    new fields carry explicit dtypes."""
+    FixedWeight loot tables, and the 7% wiring on all 9 Sileni combat bodies via
+    `_svc_guarantee_unique` (R-260: a REAL Misc slot at a measured 7%; the pre-R-260
+    `lootMisc4` write named a variable no template declares and never dropped).
+    dtype discipline: cloned overrides pass NO dtype; NEW records' brand-new fields
+    carry explicit dtypes."""
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
     if not db.has_record(_ST_DONOR['01']) or not db.has_record(_ST_LOOTDON):
         print("  SANGUINE TITHE: WARNING Demon's Blood donor missing; group skipped")
@@ -14795,19 +14797,19 @@ def _create_sanguine_tithe(db, tags):
         db.clone_record(_ST_LOOTDON, lt)
         db.set_field(lt, 'lootName1', charm)
         db._modified.add(lt)
-    # ── wire all 9 Sileni combat bodies: turtle-matched 7% on the free lootMisc4 ──
+    # ── wire all 9 Sileni combat bodies at the turtle-matched 7% (R-260) ──
+    # Until R-260 this wrote `lootMisc4Item1`, a variable no template declares, so the
+    # charm never dropped from any Sileni. The nine bodies have no empty or dormant Misc
+    # slot (Misc1 3-6% potions, Misc2 0.5-1.8% relics/formulae, Misc3 0.5-1% amulets),
+    # so the helper takes the rate-preserving SHARE of Misc3: chance +7, the charm row
+    # weighted so the amulet rows keep their exact absolute % (gate-proven).
     loot_arr = [_ST_LOOT['01'], _ST_LOOT['02'], _ST_LOOT['03']]
     wired = 0
     for w in _ST_SILENI:
         if not db.has_record(w):                          # exact-path assert
             raise SystemExit(f"A3: Sileni combat body missing (exact): {w}")
-        cur = db.get_field_value(w, 'lootMisc4Item1')
-        if cur not in (None, '', 0, []):
-            raise SystemExit(f"A3: {w} lootMisc4 is NOT free (has {cur!r}); pick another slot")
-        db.set_field(w, 'lootMisc4Item1', list(loot_arr), S)   # NEW field -> STRING dtype
-        db.set_field(w, 'chanceToEquipMisc4', _ST_DROP_PCT)    # existing 0.0 FLOAT -> no dtype
-        db.set_field(w, 'chanceToEquipMisc4Item1', 100)        # existing 0 INT -> no dtype
-        db._modified.add(w)
+        _svc_guarantee_unique(db, w, loot_arr, pct=_ST_DROP_PCT, share=True,
+                              label='Sanguine Tithe')
         wired += 1
     tags['tagSVCSanguineTithe'] = 'Sanguine Tithe'
     tags['tagSVCSanguineTitheDESC'] = (
@@ -14820,7 +14822,8 @@ def _create_sanguine_tithe(db, tags):
     # duplicate-tag gate (the engine keeps the FIRST definition).
     print(f"  A3 Sanguine Tithe: 3 jewelry charms (life leech + vitality + %-current-"
           f"life bleed, guaranteed 5/5 leech) + 3 bonus tables (w1500) + 3 loot "
-          f"tables; wired {wired}/9 Sileni lootMisc4 @ {_ST_DROP_PCT}%; Sileni -> green")
+          f"tables; wired {wired}/9 Sileni on a REAL Misc slot @ a measured {_ST_DROP_PCT}% "
+          f"(R-260); Sileni -> green")
 
 
 # ── GROUP G (build32): N7 Wyrm Hordes + the Sepulchral Scale charm ──────────
@@ -14988,23 +14991,20 @@ def _create_wyrm_hordes(db, tags):
         sf(lt, 'lootName1', charm)
         db._modified.add(lt)
 
-    # ── 6. Wire the charm onto the 4 champion worms at 7% (a free lootMisc slot) ──
+    # ── 6. Wire the charm onto the 4 champion worms at 7% (R-260) ──
+    # The pre-R-260 loop `for cand in (3, 4, 2, 1)` tested `lootMisc<n>Item1` for
+    # emptiness: Misc3 carries the base obsidian row (at chance 0, i.e. DORMANT), so it
+    # fell through to `Misc4` - a variable no template declares - and the scale never
+    # dropped. The helper now lands on the dormant Misc3 at 7% with the obsidian row
+    # muted by weight (it never rolled: chance was 0). The 4 svc_frostwyrm twins are
+    # cloned from these worms later and inherit the row.
     loot_arr = [_WH_LOOT['01'], _WH_LOOT['02'], _WH_LOOT['03']]
     slot = None
-    for cand in (3, 4, 2, 1):
-        if all((db.get_field_value(w, f'lootMisc{cand}Item1') in (None, '', 0))
-               for w in _WH_CHAMP_WORMS if db.has_record(w)):
-            slot = cand
-            break
-    if slot is None:
-        raise SystemExit("WYRM HORDES: no free lootMisc slot on the champion worms")
     for w in _WH_CHAMP_WORMS:
         if not db.has_record(w):
             raise SystemExit(f"WYRM HORDES: champion worm missing: {w}")
-        sf(w, f'lootMisc{slot}Item1', list(loot_arr), S)
-        sf(w, f'chanceToEquipMisc{slot}', 7.0)
-        sf(w, f'chanceToEquipMisc{slot}Item1', 100)
-        db._modified.add(w)
+        _d = _svc_guarantee_unique(db, w, loot_arr, pct=7.0, label='Sepulchral Scale')
+        slot = _d['slot']
 
     tags['tagSVCSepulchralScale'] = 'Sepulchral Scale'
     tags['tagSVCSepulchralScaleDESC'] = (
@@ -15012,7 +15012,7 @@ def _create_wyrm_hordes(db, tags):
         'Cold clings to it, and the dead things it touched learned fear.')
     print(f"  Wyrm Hordes: common wyrm + 3 pools (4/8, 6/12, 8/16; tier03 champ "
           f"100/4/6) + no-cap limit; 6 wyrmsprite proxies repointed; Sepulchral "
-          f"Scale charm x3 (lvlReq 30/44/56) @ 7% on 4 champion worms (lootMisc{slot})")
+          f"Scale charm x3 (lvlReq 30/44/56) @ a measured 7% on 4 champion worms ({slot}, R-260)")
 
 
 # ── BROODMOTHER NEST (deferred wyrm set-piece; docs/BROODMOTHER_NEST_DESIGN.md) ──
@@ -17613,26 +17613,47 @@ def _svc_set_kit(db, monster, kit, special):
     db._modified.add(monster)
 
 
-def _svc_guarantee_unique(db, monster, tier_paths, loot_name=None):
-    """Guarantee a custom unique (amulet/helm) drops from a boss by wiring the
-    tiered item list DIRECTLY onto the boss's first free lootMisc equip slot at
-    100% - the exact proven _create_soul mechanism (lootFinger2Item1=[n,e,l] +
-    chanceToEquipFinger2=100, the engine equips the tier matching N/E/L). NEW
-    lootMisc fields -> explicit dtype (the FLOAT-chance trap; an INT chance is
-    read as ~0 and never drops). tier_paths = [n, e, l] item .dbr paths."""
-    S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
-    slot = None
-    for n in (4, 5, 6, 3):
-        if not db.get_field_value(monster, 'lootMisc%dItem1' % n):
-            slot = n
-            break
-    if slot is None:
-        slot = 4
-    db.set_field(monster, 'lootMisc%dItem1' % slot, list(tier_paths), S)
-    db.set_field(monster, 'chanceToEquipMisc%d' % slot, 100.0, F)
-    db.set_field(monster, 'chanceToEquipMisc%dItem1' % slot, 100, I)
-    db.set_field(monster, 'dropItems', 1, I)
-    db._modified.add(monster)
+def _svc_guarantee_unique(db, monster, tier_paths, loot_name=None, pct=100.0,
+                          slot=None, why=None, share=False, label=None):
+    """Put a tiered [n, e, l] loot array on a REAL Misc slot of `monster` at a
+    MEASURED `pct` percent of kills (default 100 = a guaranteed drop). R-260.
+
+    HISTORY, because this helper is the root of BL-R258-DEBT-2: from build36
+    (`79de1d7`, 2026-07-11) until R-260 it chose its slot with `for n in (4, 5, 6, 3)`,
+    i.e. it looked for a FREE `lootMisc4Item1` first - and `Misc4` is free on every
+    record in existence because `characterloot.tpl` declares exactly ELEVEN slot
+    groups (Head Torso Forearm LowerBody LeftHand RightHand Finger1 Finger2 Misc1
+    Misc2 Misc3) and no Misc4/5/6/Neck. So every "guaranteed" drop it wired (the
+    Golden Bough, Lethe's Draught, the Mask of the Waking Dread) plus the four direct
+    Misc4 writers that copied its idiom (the rant scroll, the R-13/R-92 rite on the
+    Enslaver + both Hunts) and the four animal-relic groups (25 sources at 7-10%)
+    rode a field the engine never reads: 32 records, 0 drops, ever.
+
+    NOW: delegates to `svc_loot_slots.wire_misc_drop` - the one implementation the
+    R-260 gates re-derive their numbers from. Policy (docstring there): an EMPTY Misc
+    slot (Misc3 > Misc2 > Misc1), else a DORMANT one (chance 0, inherited rows muted by
+    weight, nothing observable displaced), else - at 100% only, on a slot the caller
+    PINS with a written `why` - the R-258 takeover of a live 100% slot, else - below
+    100% only, when the caller passes share=True - a rate-preserving share that keeps
+    every existing row's absolute % byte-identical; anything else FAILS LOUD naming
+    the record. Idempotent. Strips any phantom Misc4/5/6/Neck field it finds on the
+    record (dead data). Never passes a dtype to set_field (BL-R256-DEBT-7: the old
+    `dropItems, 1, INT` write flipped a BOOL field; `dropItems` is now only written
+    when it is off, dtype-free).
+
+    `loot_name` is accepted for call-site compatibility and IGNORED, as it always was
+    (the Golden Bough lane found the constant it named did not exist in the arz).
+    """
+    import svc_loot_slots as _sls
+    d = _sls.wire_misc_drop(db, monster, list(tier_paths), pct, slot=slot, why=why,
+                            share=share, label=label)
+    rec = d['record']
+    if not _sls.inum(_sls.gv1(db, rec, 'dropItems', 0)):
+        db.set_field(rec, 'dropItems', 1)
+        d['drop_items_switched_on'] = True
+    db._modified.add(rec)
+    print(_sls.format_disposition(d))
+    return d
 
 
 def _svc_make_unique(db, donor, path, classification, name_tag, desc_tag,
@@ -18036,8 +18057,12 @@ def _create_goldenbough_boss(db, tags):
         _svc_make_unique(db, _GB_AMULET_DONOR, _GB_AMULET[t], cls,
                          'tagSVCitmGoldenBough', 'tagSVCitmGoldenBoughDESC', il,
                          _gb_amulet_block(mult))
-    _svc_guarantee_unique(db, _GB_FORM2, [_GB_AMULET['n'], _GB_AMULET['e'], _GB_AMULET['l']],
-                          None)
+    # R-260: the Bough is NOT wired here any more. `charon_rework` (registry) RE-CLONES
+    # this record in place from its own donor - which wiped whatever this call wrote -
+    # and is the writer of record for the Bough's slot (Misc3, dormant under its
+    # CORRECTION-20 mute). Wiring it here would be dead by construction, and under the
+    # R-260 fail-loud slot policy could red the build on a base-Charon slot state nobody
+    # measures. The three amulet records above are still authored here.
 
     # ── S2 THE ONE SUMMON (EXTREME-promoted default): {^F}Soul of the Unferried
     #    raises a permanent drowned oarsman - Charon's own signature (calling the
@@ -18282,7 +18307,16 @@ def _create_mnemophage_superboss(db, tags):
         'defensiveSleep': (F, 40.0), 'defensiveLife': (F, 30.0),
         'skillCooldownReduction': (F, 0.20),
     })
-    _svc_guarantee_unique(db, _MN_SHELL, [_MN_AMULET, _MN_AMULET, _MN_AMULET], _MN_AMULET_LOOT)
+    # R-260: on Misc2, the shell's live 100%-chance potion slot (health w20 / mana w80 /
+    # act-4 misc w10, inherited from the Epiales donor), rows MUTED by weight - the
+    # R-258 takeover pattern, the smallest price on a record with no empty or dormant
+    # Misc slot (Misc1 is a 1.6% unique roll, Misc3 a 75% relic/formula roll). Displaced:
+    # one potion per kill (BL-R260-DEBT-2). Before R-260 this landed on `Misc4` and the
+    # amulet never dropped.
+    _svc_guarantee_unique(db, _MN_SHELL, [_MN_AMULET, _MN_AMULET, _MN_AMULET], _MN_AMULET_LOOT,
+                          slot='Misc2', label="Lethe's Draught",
+                          why="Misc2 is the shell's 100%-chance potion slot; the potion + "
+                              "act-4 misc rows are muted by weight (BL-R260-DEBT-2)")
 
     # ── S2 THE ONE SUMMON: a spectral nightmare on the Epiales rig ──
     _build_boss_summon(
@@ -18501,7 +18535,14 @@ def _create_dreadhalls_uberboss(db, tags):
                              ('l', 97, 'Legendary', 1.0)):
         _svc_make_unique(db, _EP_MASK_DONOR, _EP_MASK[t], cls,
                          'tagSVCMaskOfDread', 'tagSVCMaskOfDreadDESC', il, _mask_block(mult))
-    _svc_guarantee_unique(db, _EP_BOSS, [_EP_MASK['n'], _EP_MASK['e'], _EP_MASK['l']], _EP_MASK_LOOT)
+    # R-260: on Misc2, his live 100%-chance potion slot (health w100 / mana w20 / act-4
+    # misc w10), rows MUTED by weight - the R-258 takeover pattern; see the Mnemophage
+    # note above (same donor family, same slot shape). Displaced: one potion per kill
+    # (BL-R260-DEBT-2). Before R-260 this landed on `Misc4` and the mask never dropped.
+    _svc_guarantee_unique(db, _EP_BOSS, [_EP_MASK['n'], _EP_MASK['e'], _EP_MASK['l']], _EP_MASK_LOOT,
+                          slot='Misc2', label='Mask of the Waking Dread',
+                          why="Misc2 is his 100%-chance potion slot; the potion + act-4 "
+                              "misc rows are muted by weight (BL-R260-DEBT-2)")
 
     # ── S1 dread-sower stat soul: {^F}Soul of the Waking Dread (the fear NOVA) ──
     def _ep_stats(t, il):
@@ -18614,8 +18655,8 @@ _EH_BONUS_ENTRIES = {   # per-tier (name-suffix, weight); prefix records\item\lo
 def _create_ereban_heartstone(db, tags):
     """C5: the Ereban Heartstone - a physical/earth WEAPON+SHIELD relic off the
     Ereban Brutes, petrify-on-hit unlocked at 5/5 (REV-01 + EXTREME). The headline
-    trap: explicit FLOAT on the petrify keys (absent on donor) + lootMisc4 chance
-    (absent on the bodies), and zero the 6 leaking donor stat ladders."""
+    trap: explicit FLOAT on the petrify keys (absent on donor), and zero the 6 leaking
+    donor stat ladders. The drop rides `_svc_guarantee_unique` (R-260)."""
     S, F, I = DATA_TYPE_STRING, DATA_TYPE_FLOAT, DATA_TYPE_INT
     for t in ('01', '02', '03'):
         if not db.has_record(_EH_DONOR[t]):
@@ -18668,13 +18709,14 @@ def _create_ereban_heartstone(db, tags):
         db.clone_record(_EH_LOOTDON, _EH_LOOT[t])
         db.set_field(_EH_LOOT[t], 'lootName1', _EH_CHARM[t])
         db._modified.add(_EH_LOOT[t])
-    # drop wiring on both brute bodies (lootMisc4 @ 10%, NEW fields -> explicit dtype)
+    # drop wiring on both brute bodies @ 10% (R-260: a REAL Misc slot; the pre-R-260
+    # `lootMisc4` write named a variable no template declares and never dropped). The
+    # brutes have no empty/dormant Misc slot (Misc1 8% potions, Misc2 2% relics, Misc3
+    # 2% amulets) -> the rate-preserving SHARE of Misc3, amulet rows' absolute % kept.
     loot_arr = [_EH_LOOT['01'], _EH_LOOT['02'], _EH_LOOT['03']]
     for w in _EH_BRUTES:
-        db.set_field(w, 'lootMisc4Item1', list(loot_arr), S)
-        db.set_field(w, 'chanceToEquipMisc4', _EH_DROP_PCT, F)   # never the int 10
-        db.set_field(w, 'chanceToEquipMisc4Item1', 100, I)
-        db._modified.add(w)
+        _svc_guarantee_unique(db, w, loot_arr, pct=_EH_DROP_PCT, share=True,
+                              label='Ereban Heartstone')
     tags['tagSVCErebanRelic'] = 'Ereban Heartstone'
     tags['tagSVCErebanRelicDESC'] = (
         'A knot of black Erebus stone that beat like a heart inside the brute. '
@@ -18683,7 +18725,7 @@ def _create_ereban_heartstone(db, tags):
     print("  C5 Ereban Heartstone: 3 charms (erebancrystal-clone, 6 donor ladders "
           "zeroed, weapon+shield, physical+strength+armor + petrify(chance/min/MAX + "
           "defensivePetrify capstone, FLOAT)@5/5) + 3 bonus tables (w1500) + 3 loot "
-          "tables; wired em_brute_43/45 lootMisc4 @ 10%%.")
+          "tables; wired em_brute_43/45 on a REAL Misc slot @ a measured 10%% (R-260).")
 
 
 def _svc_clone_blank_anim(db, donor, clone):
