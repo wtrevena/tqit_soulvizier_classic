@@ -64,7 +64,11 @@ Important note about compilation:
 Create and maintain these directories.
 
 * `third_party/`
-  * Place upstream zips here, including Soulvizier 0.98i original archive.
+  * Place upstream archives here, including the Soulvizier 0.98i original archive. `.zip`, `.7z`
+    and `.rar` are all accepted (`.7z`/`.rar` need 7-Zip); ModDB's pristine `Soulvizier_v0.98i.7z`
+    (nested top folder) works as-is. `py tools/check_build_inputs.py --all --extract --verify-hashes`
+    unpacks only the needed members into `upstream/` and md5-checks them (CLAUDE.md "Build inputs").
+    Off-repo copies of the archives: `Z:\Computer Backup\tqit_soulvizier_classic\third_party_archives\`.
   * This folder is gitignored.
 * `reference_mods/`
   * Copied from Steam Workshop for reference, including SVAERA_customquest.

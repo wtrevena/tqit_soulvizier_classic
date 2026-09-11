@@ -39,8 +39,12 @@ WHAT IT ASSERTS (per chest, per tier, solo `numberOfPlayers = 1`)
   P5 FORM      both equations keep `numberOfPlayers` (the build28/29/30 "opens and drops NOTHING"
                P0) - re-asserted here because a bare literal can evaluate to a big number and pass
                P2 while the engine evaluates it to 0.
-  P6 PIN       the upstream table read for the floor carries the pinned SV equations, so a
-               modified or wrong upstream arz cannot silently lower the floor.
+  P6 PIN       the upstream arz is HASH-VERIFIED before a record is read (`load_sv()` md5s the
+               resolved path, explicit `--sv`/argv or ladder, against
+               `check_build_inputs.EXPECTED_MD5['sv098i_arz']`; a mismatch is REFUSED), and the
+               table read for the floor carries the pinned SV equations AND the pinned SV chance
+               vector `14/33/0/21.2/31/14`, so a modified or wrong upstream arz cannot silently
+               lower the floor (BL-R261-DEBT-6 discharged).
   SURFACED, NOT ASSERTED: Leinth's chest (`bosschest_leinth_0N`, an SV-original DRX chest) sits
                under the R-242 apex-orb freeze at ~1/9 of its SV volume. Two Will statements one day
                apart point opposite ways for that one record (R-242 08-12 "keep their current" vs
@@ -49,14 +53,17 @@ WHAT IT ASSERTS (per chest, per tier, solo `numberOfPlayers = 1`)
 
     py tools/gate_chest_generosity_sv_parity.py [arz] [--sv <sv098i arz>]   # exit 1 on a finding
     py tools/gate_chest_generosity_sv_parity.py [arz] --table                # the parity table
-    py tools/gate_chest_generosity_sv_parity.py [arz] --negtest              # planted re-nerfs
+    py tools/gate_chest_generosity_sv_parity.py [arz] --negtest [--scratch <dir>]   # planted re-nerfs
     py tools/gate_chest_generosity_sv_parity.py [arz] --control <arz>        # a pre-fix arz must RED
 
 ANTI-INERT: `--negtest` plants every re-nerf this repo has actually shipped - the b42 repoint of a
 hoard chest to `boss_default_*`, the R-240 trim values on the stash / a hoard / the gift box, a
 group chance under SV, a unique row zeroed, a guaranteed row demoted, a bare-literal equation -
 INTO THE REAL build103 ARZ IN MEMORY and demands the gate RED on each and return GREEN after each
-restoration. The post-write battery in `tools/build_svc_database.py` calls `validate()` below on
+restoration. It then attacks the FLOOR itself: a COPY of the upstream arz with one byte flipped
+(written under `--scratch`, default a temp dir; never the repo's `upstream/`) must be REFUSED by
+`load_sv()` on hash, and the upstream's own stash equations / chance vector edited in memory must
+RED on P6. The post-write battery in `tools/build_svc_database.py` calls `validate()` below on
 the written artifact under `SVC_REQUIRE_GATES=1`.
 """
 import sys
@@ -96,14 +103,21 @@ SV_ORIGINALS = (
      'factor': 3.0, 'exact': True},
 )
 
-# P6 PINS: the SV 0.98i equations the floor was derived on (measured on the upstream arz md5
-# `check_build_inputs` verifies). A floor read from an arz that does not carry these is a floor
-# read from the wrong file, and the gate says so instead of asserting against it.
+# P6 PINS: the SV 0.98i equations AND loot-group chance vector the floor was derived on
+# (measured on the upstream arz `11773cdc`, the md5 `load_sv()` verifies on every load). A floor
+# read from an arz that does not carry these is a floor read from the wrong file, and the gate
+# says so instead of asserting against it. `chances` = SV's loot1..6Chance on the table, solo
+# (the 21.2 is a float32 on the wire, compared within CHANCE_EPS).
+SV_PIN_KEY = 'sv098i_arz'            # the check_build_inputs.EXPECTED_MD5 entry load_sv() enforces
+CHANCE_EPS = 1e-3
+SV_CHANCE_VECTOR = (14.0, 33.0, 0.0, 21.2, 31.0, 14.0)
 SV_PINS = {
-    CONTAINER + r'\loottable_hidden_bloodcave_%s.dbr':
-        ('(3+(1.8*numberOfPlayers))*3.8', '(3+(1.8*numberOfPlayers))*4.1'),
-    CONTAINER + r'\loottable_sp_%s.dbr':
-        ('(1+(1.8*numberOfPlayers))*1.8', '(1+(1.8*numberOfPlayers))*2.1'),
+    CONTAINER + r'\loottable_hidden_bloodcave_%s.dbr': {
+        'equations': ('(3+(1.8*numberOfPlayers))*3.8', '(3+(1.8*numberOfPlayers))*4.1'),
+        'chances': SV_CHANCE_VECTOR},
+    CONTAINER + r'\loottable_sp_%s.dbr': {
+        'equations': ('(1+(1.8*numberOfPlayers))*1.8', '(1+(1.8*numberOfPlayers))*2.1'),
+        'chances': SV_CHANCE_VECTOR},
 }
 
 # SURFACED ONLY (BL-R261-DEBT-1): Leinth's chest, an SV-original DRX chest frozen as an orb.
@@ -217,11 +231,20 @@ def problems_sv_originals(d, sv, report):
                 out.append('P6 %s: the SV 0.98i arz has no %s - the floor cannot be read; wrong '
                            'upstream file?' % (lab, _short(table)))
                 continue
-            if s is not None and pins and (s['min_eq'], s['max_eq']) != tuple(pins):
+            if s is not None and pins and (s['min_eq'], s['max_eq']) != tuple(pins['equations']):
+                eq = pins['equations']
                 out.append('P6 %s: the upstream %s reads %r/%r, not the pinned SV equations %r/%r; '
                            'the floor would be derived from the wrong file'
-                           % (lab, _short(table), s['min_eq'], s['max_eq'], pins[0], pins[1]))
+                           % (lab, _short(table), s['min_eq'], s['max_eq'], eq[0], eq[1]))
                 continue
+            if s is not None and pins and pins.get('chances'):
+                got_c = tuple(s['groups'][g]['chance'] for g in range(1, 7))
+                if any(abs(a - b) > CHANCE_EPS for a, b in zip(got_c, pins['chances'])):
+                    out.append('P6 %s: the upstream %s carries loot1..6Chance %s, not the pinned SV '
+                               'chance vector %s; the floor would be derived from the wrong file'
+                               % (lab, _short(table), '/'.join('%g' % c for c in got_c),
+                                  '/'.join('%g' % c for c in pins['chances'])))
+                    continue
             if s is None:
                 continue
             fac = spec['factor']
@@ -352,21 +375,39 @@ def print_table(report, title):
                  ('; SV opens %s S=%.3f mass=%.3f' % (sgot, s['mean'], s['mass'])) if s else ''))
 
 
-def load_sv(sv_arz=None):
-    """The upstream SV 0.98i arz through the one preflight resolver.
+def resolve_sv(sv_arz=None):
+    """The upstream SV 0.98i arz path through the one preflight resolver, HASH-VERIFIED.
 
-    NOTE (`BL-R261-DEBT-6`): `resolve()` md5-verifies the FALLBACK ladder only. A path
-    supplied explicitly here (`--sv`, or argv into the build) short-circuits the ladder
-    and is used AS-IS, UNHASHED, by that module's documented design - so on an explicit
-    path the floor is guarded by P6's equation pin alone, not by a hash.
+    `check_build_inputs.resolve()` md5-verifies the FALLBACK ladder only; a path supplied
+    explicitly (`--sv`, or the builder's `sv_arz=` argv) short-circuits the ladder unhashed
+    by that module's documented design. So THIS function md5s whatever path comes back,
+    explicit or ladder, against `check_build_inputs.EXPECTED_MD5[SV_PIN_KEY]` and REFUSES
+    a mismatch before a single record is read (BL-R261-DEBT-6). Returns the Path, or None
+    with the reason printed.
     """
     import check_build_inputs as CBI
     try:
-        p = CBI.resolve('sv098i_arz', sv_arz, verbose=False)
+        p = Path(CBI.resolve(SV_PIN_KEY, sv_arz, verbose=False))
     except CBI.MissingInput as e:
         print('gate_chest_generosity_sv_parity: cannot resolve the SV 0.98i arz:\n%s' % e)
         return None
-    return ArzDatabase.from_arz(Path(p))
+    want = CBI.EXPECTED_MD5[SV_PIN_KEY]
+    got = CBI.md5(p)
+    if got != want:
+        print('gate_chest_generosity_sv_parity: REFUSING the SV 0.98i arz %s: md5 %s != the pinned '
+              '%s (check_build_inputs.EXPECTED_MD5[%r]); the floor is read only from the '
+              'byte-for-byte pinned upstream, never from a modified or substituted copy'
+              % (p, got, want, SV_PIN_KEY))
+        return None
+    return p
+
+
+def load_sv(sv_arz=None):
+    """The upstream SV 0.98i arz, loaded only after `resolve_sv()` hash-verified it."""
+    p = resolve_sv(sv_arz)
+    if p is None:
+        return None
+    return ArzDatabase.from_arz(p)
 
 
 def validate(arz_path, sv_arz=None, sv_db=None):
@@ -411,8 +452,78 @@ def control(arz_path, sv_db):
     return 1
 
 
-def negtest(arz_path, sv_db):
-    """Planted re-nerfs on the REAL arz in memory: each must RED, each restoration must GREEN."""
+def _negtest_floor(db, sv_db, sv_path, scratch):
+    """The FLOOR's own guards (BL-R261-DEBT-6): a byte-flipped COPY of the upstream arz is
+    refused on hash before a record is read; the upstream's stash equations / chance vector
+    edited IN MEMORY must RED on P6 through the real `problems_for()` path against the real
+    build arz `db`. Returns the number of failures."""
+    import shutil
+    import check_build_inputs as CBI
+    bad = 0
+    scratch = Path(scratch)
+    scratch.mkdir(parents=True, exist_ok=True)
+    # PIN-1: the hash wall. One byte flipped in the middle of a copy (written under `scratch`,
+    # never the repo's upstream/) -> resolve_sv() must return None; the pristine path passes.
+    copy = scratch / 'sv098i_one_byte_flipped.arz'
+    shutil.copyfile(sv_path, copy)
+    with copy.open('r+b') as fh:
+        fh.seek(copy.stat().st_size // 2)
+        b = fh.read(1)
+        fh.seek(-1, 1)
+        fh.write(bytes([b[0] ^ 0xFF]))
+    flipped_md5 = CBI.md5(copy)
+    if resolve_sv(str(copy)) is None:
+        print('  negtest OK  (caught PIN): %-64s -> refused on md5 %s'
+              % ('a copied upstream arz with ONE byte flipped', flipped_md5))
+    else:
+        print('  negtest FAIL (MISSED): the byte-flipped upstream copy %s was ACCEPTED' % copy)
+        bad += 1
+    if resolve_sv(str(sv_path)) == Path(sv_path):
+        print('  negtest OK  (control):   the pristine upstream arz still resolves (md5 %s)'
+              % CBI.EXPECTED_MD5[SV_PIN_KEY][:8])
+    else:
+        print('  negtest FAIL: the pristine upstream arz %s no longer resolves' % sv_path)
+        bad += 1
+    # PIN-2 / PIN-3: the equation pin and the chance-vector pin, planted on the SV db in memory.
+    lk = SLB.Lookup(sv_db)
+    stash = lk.real(CONTAINER + r'\loottable_hidden_bloodcave_01.dbr')
+    gift = lk.real(CONTAINER + r'\loottable_sp_03.dbr')
+    plants = (
+        ("the upstream stash min equation lowered (*3.8 -> *0.5)", stash, 'numSpawnMinEquation',
+         '(3+(1.8*numberOfPlayers))*0.5'),
+        ("the upstream stash loot1Chance raised off the SV vector (14 -> 40)", stash,
+         'loot1Chance', 40.0),
+        ("the upstream gift box loot4Chance off the SV vector (21.2 -> 0)", gift,
+         'loot4Chance', 0.0),
+    )
+    for label, rec, field, value in plants:
+        if rec is None:
+            print('  negtest FAIL: upstream fixture record for %r is missing' % label)
+            bad += 1
+            continue
+        before = sv_db.get_field_value(rec, field)
+        sv_db.set_field(rec, field, value)
+        got = problems_for(db, sv_db)
+        hit = [p for p in got if p.startswith('P6 ')]
+        if hit:
+            print('  negtest OK  (caught P6): %-64s -> %s' % (label, hit[0][:90]))
+        elif got:
+            print('  negtest FAIL (wrong arm, wanted P6): %s -> %s' % (label, got[0][:90]))
+            bad += 1
+        else:
+            print('  negtest FAIL (MISSED P6): %s' % label)
+            bad += 1
+        sv_db.set_field(rec, field, before)
+        if problems_for(db, sv_db):
+            print("  negtest FAIL: restoration after '%s' left the gate RED" % label)
+            bad += 1
+    return bad
+
+
+def negtest(arz_path, sv_db, sv_path=None, scratch=None):
+    """Planted re-nerfs on the REAL arz in memory: each must RED, each restoration must GREEN.
+    Then the floor's own guards (`_negtest_floor`): the flipped-byte copy + the P6 pins."""
+    import tempfile
     db = ArzDatabase.from_arz(Path(arz_path))
     if problems_for(db, sv_db):
         print('  negtest: the input arz is already RED; point it at a post-R-251 arz')
@@ -469,22 +580,35 @@ def negtest(arz_path, sv_db):
         if problems_for(db, sv_db):
             print("  negtest FAIL: restoration after '%s' left the arz RED" % label)
             bad += 1
-    print('negtest: %s - %d planted re-nerf(s) on %s'
+    floor_n = 0
+    if sv_path is not None:
+        if scratch is not None:
+            bad += _negtest_floor(db, sv_db, sv_path, scratch)
+        else:
+            with tempfile.TemporaryDirectory() as td:
+                bad += _negtest_floor(db, sv_db, sv_path, td)
+        floor_n = 4          # the flipped-byte copy + 3 upstream pin plants
+    else:
+        print('  negtest: no upstream path given - the floor guards (flipped-byte copy, P6 '
+              'pins) were NOT exercised')
+    print('negtest: %s - %d planted re-nerf(s) on %s + %d floor guard(s)'
           % ('PASS (ANTI-INERT CONTROL OK: every plant RED, every restoration GREEN)' if not bad
-             else 'FAIL (%d)' % bad, len(plants), Path(arz_path).name))
+             else 'FAIL (%d)' % bad, len(plants), Path(arz_path).name, floor_n))
     return 1 if bad else 0
 
 
 def main(argv):
     args = [a for i, a in enumerate(argv[1:], 1)
-            if not a.startswith('--') and argv[i - 1] not in ('--sv', '--control')]
+            if not a.startswith('--') and argv[i - 1] not in ('--sv', '--control', '--scratch')]
     arz = args[0] if args else DEFAULT_ARZ
     sv_arz = argv[argv.index('--sv') + 1] if '--sv' in argv else None
-    sv_db = load_sv(sv_arz)
-    if sv_db is None:
+    scratch = argv[argv.index('--scratch') + 1] if '--scratch' in argv else None
+    sv_path = resolve_sv(sv_arz)
+    if sv_path is None:
         return 2
+    sv_db = ArzDatabase.from_arz(sv_path)
     if '--negtest' in argv:
-        return negtest(arz, sv_db)
+        return negtest(arz, sv_db, sv_path=sv_path, scratch=scratch)
     if '--table' in argv:
         db = ArzDatabase.from_arz(Path(arz))
         rep = {}
