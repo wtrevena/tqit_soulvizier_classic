@@ -23,6 +23,11 @@
     Layout under the root:
       <root>\deployed\<mod>\<yyyyMMdd_HHmmss>\   one per deploy, newest BACKUP_KEEP kept
       <root>\characters\<yyyyMMdd_HHmmss>\      one per deploy, newest 10 kept
+
+    Hardened after the independent vet of 8ba96e2 (R-259 findings F1-F5): the root must be FULLY
+    qualified and free of reparse points on its whole path, the guard's ancestor walk runs to the
+    drive root, the deploy target's junction refusal runs before the snapshot copy, and a snapshot
+    is verified by file count AND total bytes.
 #>
 
 Set-StrictMode -Version Latest
@@ -44,6 +49,32 @@ function Test-BackupReparsePoint {
     <# $true when the item carries the ReparsePoint attribute (junction, symlink, mount point). #>
     param([Parameter(Mandatory = $true)][System.IO.FileSystemInfo]$Item)
     return (($Item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0)
+}
+
+function Get-BackupPathReparseAncestor {
+    <#
+    .SYNOPSIS
+        The FIRST reparse point on $Path itself or on any ancestor up to the drive root, else $null.
+    .DESCRIPTION
+        Walks $Path, then its parent, then its parent, all the way to the drive root (NOT stopping
+        at the backup root: the root can itself sit under a junction, and then every "contained"
+        path below it is a foreign tree by string prefix alone). Components that do not exist are
+        skipped, so this can be called on a root that is about to be created. A component that
+        cannot be read throws, which callers treat as "cannot prove safe".
+    #>
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $cursor = Get-BackupFullPath -Path $Path
+    $driveRoot = Get-BackupFullPath -Path ([System.IO.Path]::GetPathRoot($cursor))
+    while ($cursor -and ($cursor.Length -ge $driveRoot.Length)) {
+        if (Test-Path -LiteralPath $cursor) {
+            $item = Get-Item -LiteralPath $cursor -Force -ErrorAction Stop
+            if (Test-BackupReparsePoint -Item $item) { return $item }
+        }
+        $parent = Split-Path -Parent $cursor
+        if ((-not $parent) -or ($parent -eq $cursor)) { break }
+        $cursor = $parent
+    }
+    return $null
 }
 
 function Get-BackupReparsePoints {
@@ -94,11 +125,17 @@ function Resolve-BackupRoot {
     .SYNOPSIS
         Validate WIN_BACKUP_ROOT and return its absolute path, or THROW (fail loud).
     .DESCRIPTION
-        Throws when the value is empty or relative, when it lies inside the repo (the exact tree
-        R-259 retired), when neither it nor its parent exists (the network drive is not mounted),
-        or when a probe file cannot be written there. Creates the root itself when only its parent
-        exists (the first deploy onto the drive). There is deliberately NO fallback to a local
-        path: a missing NAS must stop the deploy, not quietly refill C:.
+        Throws when the value is empty or not FULLY QUALIFIED, when it lies inside the repo (the
+        exact tree R-259 retired), when it or any ancestor up to the drive root is a reparse point,
+        when neither it nor its parent exists (the network drive is not mounted), or when a probe
+        file cannot be written there. Creates the root itself when only its parent exists (the
+        first deploy onto the drive). There is deliberately NO fallback to a local path: a missing
+        NAS must stop the deploy, not quietly refill C:.
+
+        "Fully qualified" is stricter than [IO.Path]::IsPathRooted, which accepts the two shapes
+        that resolve against the CURRENT DIRECTORY: drive-relative 'C:foo' and root-relative
+        '\foo'. Either would silently build a backup tree wherever the shell happened to be (the
+        vet of 8ba96e2 watched 'C:relative' create one), so both are refused.
     #>
     param(
         [Parameter(Mandatory = $true)][AllowEmptyString()][string]$Root,
@@ -106,14 +143,21 @@ function Resolve-BackupRoot {
     )
     $trimmed = $Root.Trim()
     if (-not $trimmed) { throw 'WIN_BACKUP_ROOT is empty.' }
-    if (-not [System.IO.Path]::IsPathRooted($trimmed)) {
-        throw "WIN_BACKUP_ROOT must be an absolute path (got '$trimmed')."
+    if ($trimmed -notmatch '^([A-Za-z]:\\|\\\\)') {
+        throw "WIN_BACKUP_ROOT must be a FULLY QUALIFIED path - a drive path 'Z:\Computer Backup\...' or a UNC path '\\server\share\...' (got '$trimmed'). A drive-relative 'C:foo' or root-relative '\foo' resolves against the current directory and would create a backup tree wherever the shell happened to be."
     }
     $full = Get-BackupFullPath -Path $trimmed
     $repoFull = Get-BackupFullPath -Path $RepoRoot
     $cmp = [System.StringComparison]::OrdinalIgnoreCase
     if ($full.Equals($repoFull, $cmp) -or $full.StartsWith("$repoFull\", $cmp)) {
         throw "WIN_BACKUP_ROOT '$full' is inside the repo '$repoFull'. R-259: deploy backups live on the network drive, never under the repo (that tree reached ~300 GB on C:)."
+    }
+    # Checked BEFORE the root is created: a root that is a reparse point, or that sits under one,
+    # makes every snapshot "under the root" a foreign tree by string prefix alone, and the rotation
+    # delete would reach whatever the link points at (docs/MISTAKES.md 2026-09-09, guard 1).
+    $linkAncestor = Get-BackupPathReparseAncestor -Path $full
+    if ($linkAncestor) {
+        throw "WIN_BACKUP_ROOT '$full' is refused: '$($linkAncestor.FullName)' on its path is a reparse point (junction, symlink or mount point). Rotation deletes under a linked root would reach a foreign tree. Point WIN_BACKUP_ROOT at a real directory (R-259, docs/MISTAKES.md 2026-09-09)."
     }
     if (-not (Test-Path -LiteralPath $full -PathType Container)) {
         $parent = Split-Path -Parent $full
@@ -155,8 +199,9 @@ function Test-BackupSnapshotRemovable {
     .DESCRIPTION
         (i)   containment: the absolute path starts with <root>\<kind>\ and is deeper than it;
         (i-b) the leaf is a yyyyMMdd_HHmmss snapshot name (never the <kind> or <mod> dir itself);
-        (ii)  no directory between the root and the snapshot is a reparse point (a junctioned
-              <mod> directory would make a foreign tree look contained by string prefix alone);
+        (ii)  no directory from the snapshot's parent up to the DRIVE ROOT is a reparse point (a
+              junctioned <mod> directory, or a junction ABOVE the backup root itself, would make a
+              foreign tree look contained by string prefix alone);
         (iii) the snapshot is not a reparse point and contains none
               (Get-ChildItem -Recurse -Force -Attributes ReparsePoint returns nothing).
         Any exception while checking counts as "cannot prove safe" and refuses.
@@ -185,14 +230,13 @@ function Test-BackupSnapshotRemovable {
             Write-Warning "ROTATION SKIP (missing): '$pathFull' is not a directory. NOT deleted."
             return $false
         }
-        $cursor = Split-Path -Parent $pathFull
-        while ($cursor -and ($cursor.Length -gt $rootFull.Length)) {
-            $cursorItem = Get-Item -LiteralPath $cursor -Force -ErrorAction Stop
-            if (Test-BackupReparsePoint -Item $cursorItem) {
-                Write-Warning "ROTATION SKIP (junction on the path): '$cursor' is a reparse point, so '$pathFull' may be a foreign tree. NOT deleted."
-                return $false
-            }
-            $cursor = Split-Path -Parent $cursor
+        # The walk goes all the way to the DRIVE ROOT, not only down to $rootFull: if the backup
+        # root itself sits under a junction, every path "inside" it is a foreign tree and stopping
+        # at the root would never see the link.
+        $linkAncestor = Get-BackupPathReparseAncestor -Path (Split-Path -Parent $pathFull)
+        if ($linkAncestor) {
+            Write-Warning "ROTATION SKIP (junction on the path): '$($linkAncestor.FullName)' is a reparse point, so '$pathFull' may be a foreign tree. NOT deleted."
+            return $false
         }
         $links = @(Get-BackupReparsePoints -Path $pathFull)
         if ($links.Count -gt 0) {
@@ -260,4 +304,74 @@ function Invoke-BackupRotation {
         }
     }
     return $result
+}
+
+function Test-BackupCopyVerified {
+    <#
+    .SYNOPSIS
+        Compare a copy against its source by FILE COUNT and TOTAL BYTES. Returns a result object.
+    .DESCRIPTION
+        docs/MISTAKES.md 2026-09-09, guard 4: verify a copy by content measures, never by exit
+        status. A count match alone passes a copy that truncated a file mid-transfer (a real SMB
+        failure mode), so the byte total is compared beside it. Returns
+        @{ Ok; Reason; SourceFiles; DestFiles; SourceBytes; DestBytes } and never throws for a
+        mismatch; the caller decides how loudly to fail.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+    $srcFiles = @(Get-ChildItem -LiteralPath $Source -Recurse -File -Force -ErrorAction Stop)
+    $dstFiles = @(Get-ChildItem -LiteralPath $Destination -Recurse -File -Force -ErrorAction Stop)
+    $srcBytes = [int64](($srcFiles | Measure-Object -Property Length -Sum).Sum)
+    $dstBytes = [int64](($dstFiles | Measure-Object -Property Length -Sum).Sum)
+    $reason = ''
+    if ($dstFiles.Count -ne $srcFiles.Count) {
+        $reason = "backup verification failed: file count mismatch (src $($srcFiles.Count), dst $($dstFiles.Count))"
+    } elseif ($dstBytes -ne $srcBytes) {
+        $reason = "backup verification failed: total bytes mismatch (src $srcBytes, dst $dstBytes)"
+    }
+    return [pscustomobject]@{
+        Ok          = [bool](-not $reason)
+        Reason      = $reason
+        SourceFiles = $srcFiles.Count
+        DestFiles   = $dstFiles.Count
+        SourceBytes = $srcBytes
+        DestBytes   = $dstBytes
+    }
+}
+
+function Save-BackupDeploySnapshot {
+    <#
+    .SYNOPSIS
+        Snapshot $Source into $Destination, junction-refused FIRST and verified by count + bytes.
+    .DESCRIPTION
+        The order is the whole point (vet of 8ba96e2, finding F3): the junction refusal runs BEFORE
+        anything is created or copied, so a junctioned deploy target is never dragged across SMB
+        and no empty snapshot directory is left behind. Then the copy runs, then
+        Test-BackupCopyVerified must pass. Throws on a refusal or a verification failure, so the
+        caller still holds an untouched $Source; returns @{ Path; Files; Bytes } on success.
+    #>
+    param(
+        [Parameter(Mandatory = $true)][string]$Source,
+        [Parameter(Mandatory = $true)][string]$Destination
+    )
+    $srcFull = Get-BackupFullPath -Path $Source
+    if (-not (Test-Path -LiteralPath $srcFull -PathType Container)) {
+        throw "Save-BackupDeploySnapshot: source '$srcFull' is not a directory."
+    }
+    $links = @(Get-BackupLinkDirectories -Path $srcFull)
+    if ($links.Count -gt 0) {
+        throw "'$srcFull' is or contains $($links.Count) directory junction/symlink(s) (first: $($links[0].FullName)). Refusing to snapshot or delete it; remove the link(s) by hand and re-run (docs/MISTAKES.md 2026-09-09)."
+    }
+    $dstFull = Get-BackupFullPath -Path $Destination
+    if (-not (Test-Path -LiteralPath $dstFull -PathType Container)) {
+        [void][System.IO.Directory]::CreateDirectory($dstFull)
+    }
+    Copy-Item -Path (Join-Path $srcFull '*') -Destination $dstFull -Recurse -Force -ErrorAction Stop
+    $verify = Test-BackupCopyVerified -Source $srcFull -Destination $dstFull
+    if (-not $verify.Ok) {
+        throw "$($verify.Reason) copying '$srcFull' to '$dstFull'. Nothing was removed."
+    }
+    return [pscustomobject]@{ Path = $dstFull; Files = $verify.DestFiles; Bytes = $verify.DestBytes }
 }

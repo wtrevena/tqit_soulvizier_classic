@@ -15,7 +15,9 @@
     touched; an unmounted drive aborts the deploy loudly and there is NO local fallback. The old
     in-repo backups\deployed\ tree (one full ~1.3 GB copy per deploy, never rotated) had reached
     ~300 GB on C:. Every rotation delete goes through the junction-refusing guard in
-    scripts/_backup.ps1 (docs/MISTAKES.md 2026-09-09).
+    scripts/_backup.ps1 (docs/MISTAKES.md 2026-09-09), the deploy target's junction refusal runs
+    BEFORE the snapshot copy, and the snapshot is verified by file count AND total bytes before the
+    old target is removed.
 #>
 [CmdletBinding()]
 param(
@@ -51,8 +53,10 @@ if (-not $Config['WIN_BACKUP_ROOT']) {
 $backupRoot = $null
 $backupKeep = 5
 try {
-    $backupRoot = Resolve-BackupRoot -Root (Require-Config 'WIN_BACKUP_ROOT') -RepoRoot $RepoRoot
+    # BACKUP_KEEP is validated FIRST: it is a pure config check, and Resolve-BackupRoot CREATES the
+    # root directory, so validating it second would leave a new folder on the NAS behind an abort.
     $backupKeep = Get-BackupKeep -Config $Config
+    $backupRoot = Resolve-BackupRoot -Root (Require-Config 'WIN_BACKUP_ROOT') -RepoRoot $RepoRoot
 } catch {
     Write-Host "ERROR: backup root check failed: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host '       Nothing was deployed. Mount the network drive or fix WIN_BACKUP_ROOT / BACKUP_KEEP in local\config.env (see README).' -ForegroundColor Red
@@ -156,19 +160,21 @@ if (Test-Path $deployTarget) {
     $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
     $backupPath = Join-Path $backupDir "$modName\$timestamp"
     Write-Host "Backing up existing deployment to: $backupPath\"
-    if (-not (Test-Path $backupPath)) { New-Item -ItemType Directory -Path $backupPath -Force | Out-Null }
-    Copy-Item -Path "$deployTarget\*" -Destination $backupPath -Recurse -Force
-
-    # Verify the copy by COUNT, never by exit status (docs/MISTAKES.md 2026-09-09 guard 4),
-    # BEFORE the deploy target is removed. A short copy leaves the target untouched.
-    $srcFiles = @(Get-ChildItem -LiteralPath $deployTarget -Recurse -File -Force)
-    $dstFiles = @(Get-ChildItem -LiteralPath $backupPath -Recurse -File -Force)
-    if ($dstFiles.Count -ne $srcFiles.Count) {
-        Write-Host "ERROR: backup incomplete: $($dstFiles.Count) of $($srcFiles.Count) files reached $backupPath. Deploy target left untouched." -ForegroundColor Red
+    # Save-BackupDeploySnapshot (scripts/_backup.ps1) refuses a deploy target that is or contains a
+    # directory junction / symlink BEFORE it creates or copies anything, so a linked target is never
+    # dragged across SMB and no empty snapshot folder is left behind; it then verifies the copy by
+    # file COUNT and TOTAL BYTES, never by exit status (docs/MISTAKES.md 2026-09-09, guard 4). Any
+    # failure throws here, with the deploy target still untouched.
+    $snapshot = $null
+    try {
+        $snapshot = Save-BackupDeploySnapshot -Source $deployTarget -Destination $backupPath
+    } catch {
+        Write-Host "ERROR: $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host '       Deploy target left untouched; nothing was deployed.' -ForegroundColor Red
         exit 1
     }
-    $srcMB = [math]::Round(($srcFiles | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
-    Write-Host "Backup complete: $($dstFiles.Count) files ($srcMB MB)." -ForegroundColor Green
+    $srcMB = [math]::Round($snapshot.Bytes / 1MB, 1)
+    Write-Host "Backup complete: $($snapshot.Files) files ($srcMB MB), count and bytes verified." -ForegroundColor Green
 
     # Rotate: keep the newest $backupKeep snapshots of this mod. Every delete is guarded
     # (scripts/_backup.ps1); a refused snapshot is reported and left in place.
@@ -176,8 +182,9 @@ if (Test-Path $deployTarget) {
     foreach ($n in $deployRot.Removed) { Write-Host "  Pruned old deploy snapshot: $n" -ForegroundColor DarkGray }
     foreach ($n in $deployRot.Skipped) { Write-Host "  NOT pruned (guard refused, see the warning above): $n" -ForegroundColor Yellow }
 
-    # The deploy target is removed recursively. Refuse if it is or contains a directory
-    # junction / symlink: that delete would reach a foreign tree (docs/MISTAKES.md 2026-09-09).
+    # The deploy target is removed recursively. The same refusal already ran inside
+    # Save-BackupDeploySnapshot before the copy; it is repeated immediately before the DELETE so a
+    # link that appeared in between still stops it (the enumeration is local metadata, not SMB).
     $targetLinks = @(Get-BackupLinkDirectories -Path $deployTarget)
     if ($targetLinks.Count -gt 0) {
         Write-Host "ERROR: $deployTarget is or contains $($targetLinks.Count) directory junction/symlink(s) (first: $($targetLinks[0].FullName)). Refusing the recursive delete; remove the link(s) by hand and re-run." -ForegroundColor Red
