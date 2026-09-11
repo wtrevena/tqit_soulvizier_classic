@@ -4905,6 +4905,21 @@ def main():
             "measure at its intended rate on a declared slot (see "
             "tools/gate_guaranteed_drops_measured.py)")
 
+    # ── R-261 CHEST GENEROSITY SV-PARITY gate (fail-loud, ARTIFACT proof): every chest Will
+    # named on 2026-08-13/14 (the Devourer's stash, the Secret Present box, and the whole
+    # R-251 uber/boss hoard family by name shape) pays AT LEAST its SV 0.98i original - spawn
+    # iterations, expected items per open, every group chance, the unique share per group and
+    # every SV member row - with the floor READ from the upstream sv098i arz on every build,
+    # never authored here. The four chest gates before it were green through both nerfs
+    # (the b42 repoint and the R-240 sweep) because each compared the chest to a mod-authored
+    # band that the nerf could re-author; this one compares it to Will's yardstick.
+    from gate_chest_generosity_sv_parity import validate as _validate_chest_parity
+    if _validate_chest_parity(str(output_path), sv_arz=str(sv098_path)) != 0:
+        raise SystemExit(
+            "R-261 chest SV-parity gate FAILED on the written .arz; a restored chest pays "
+            "under its SV 0.98i original, or its wire moved (see "
+            "tools/gate_chest_generosity_sv_parity.py)")
+
     # ── F2 contract gate (build30, post-vet): the summons contract lane
     # (SUMMON-PET-NAKED et al) must PASS on the written .arz, so a green build
     # is contract-clean by construction (the vet proved the validators above
