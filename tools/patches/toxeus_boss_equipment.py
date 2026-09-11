@@ -168,7 +168,9 @@ OFF hand, where a mis-class roll costs a shield instead of the sword Will went l
       Misc2 is an 18%-chance slot (relics@88 + arcane formulae@12), so its per-member
         ceiling is 0.18/4 = 4.5% even at infinite weight. It CANNOT reach 21% at all.
       Misc4 is 100% chance but its single row is `svc_devourer_misc4_master`, a 50/50
-        between the Toxeus rant scroll and the End-of-All-Things formula. Restoring 21.01%
+        between the Toxeus rant scroll and the End-of-All-Things formula [R-260: `Misc4`
+        is not an engine slot; that channel never paid and is now withheld under
+        BL-R260-DEBT-1, so this option no longer exists]. Restoring 21.01%
         per member there needs weight 526 against 100, which cuts BOTH of those from 50%
         to 7.99% - trading this lane's undisclosed nerf for a fresh undisclosed nerf on
         R-247.6a content.
@@ -187,7 +189,9 @@ THE HUNT (`um_toxeus_hunt_99` + `um_toxeus_hunt_l_99`), 2 records, 0 new tables:
     the family values, on loot tables ALREADY present and dead on his record.
   * Head and LeftHand stay OFF by design: both brothers ship Head 0 (the family's bare
     skull, and R-102/R-247.5a tuned that skull deliberately) and his spear is two-handed.
-  * His spear, his soul pin and his Misc4 rite formula are ASSERTED, never written.
+  * His spear, his soul pin and his rite formula (R-260: `Misc1` row 3, measured 100%;
+    the pre-R-260 `Misc4` rite was a field no template declares) are ASSERTED, never
+    written.
 
 NOT WRITTEN BY THIS MODULE, deliberately: `controller` on any Toxeus record (the
 `enslaver_shroud` R-250 lane owns that field on the 4 roster surfaces - zero field
@@ -233,7 +237,8 @@ case-insensitively) or behind a lowercase template stem:
      the helm's natural home in the Devourer's stash chest, owned by the chest-generosity
      lane) does not trip it;
   E3 both Hunt records wear Torso + LowerBody + Forearm at 100 on class-correct tables,
-     and still carry the Runbreaker spear at RightHand 100 and the Misc4 rite at 100;
+     and still carry the Runbreaker spear at RightHand 100 and the rite at a MEASURED 100
+     on a real slot (R-260), with no undeclared slot field on the record;
   E4 all four R-48 champions keep `chanceToEquipFinger2` = 100 with a soul table that
      resolves to a real Jewelry_Ring (the -10 defect class);
   E5 MOD-WIDE: EVERY creature pinned at `chanceToEquipFinger2` = 100 must have a Finger2
@@ -350,7 +355,7 @@ _BANNED_CLASSES = {'weapon_bow', 'weapon_staff'}
 # THE ALLOWLIST. Exactly one row in this lane is deliberately mixed-class: the 4-piece
 # Crimson Verdict set's only drop channel, parked in the OFF hand so a mis-class roll can
 # never cost the Devourer his weapon. Slots with no entry in _SLOT_CLASSES (Misc1 potions,
-# Misc2 relics/formulae, Misc4 the EoAT rite) have no single wearable class and are NOT
+# Misc2 relics/formulae, Misc1 row 3 the EoAT rite since R-260) have no single wearable class and are NOT
 # class-governed at all - they are covered by the E1 banned-class arm only, so listing them
 # here would be dead weight that reads like coverage. `_validate_allowlist` enforces that.
 _MIXED_DROP_ROWS = {
@@ -358,8 +363,11 @@ _MIXED_DROP_ROWS = {
                                 'row; it is the set table\'s ONLY referrer in the db, so '
                                 'the row cannot be dropped without orphaning the set',
 }
+# R-260: the ELEVEN slot groups `characterloot.tpl` declares. `Misc4` used to be listed
+# here; it is not an engine variable (0 of 566 templates), and the E1 sweep over it
+# gated bytes the engine never reads.
 _SLOTS = ('Head', 'Torso', 'LowerBody', 'Forearm', 'LeftHand', 'RightHand',
-          'Finger1', 'Finger2', 'Misc1', 'Misc2', 'Misc3', 'Misc4')
+          'Finger1', 'Finger2', 'Misc1', 'Misc2', 'Misc3')
 
 # The measured floors the Devourer's hands must clear, minimum over all three difficulties.
 # Computed by the gate from the final db, never asserted by hand. Shipped values with the
@@ -438,7 +446,7 @@ _validate_class_sets()
 def _validate_allowlist(rows):
     """Every allowlisted row must name a slot the gate actually class-governs.
 
-    Without this, an entry for an ungoverned slot (Misc1/Misc2/Misc4) sits in the dict
+    Without this, an entry for an ungoverned slot (Misc1/Misc2/Misc3) sits in the dict
     looking like a sanctioned exception while the checker never reaches it - an allowlist
     that overstates what it governs is worse than no allowlist.
     """
@@ -858,7 +866,7 @@ def apply(db, tags):
         db._modified.add(rec)
     print("  [-3] Endless Hunt (both records): Torso/LowerBody/Forearm wired at 100%% on "
           "his own tier-02 loot family (common@%d + unique@%d) + Finger1 100 / Misc1 100 / "
-          "Misc2 18 / Misc3 50 - the family shape. Spear, soul pin and Misc4 rite asserted "
+          "Misc2 18 / Misc3 50 - the family shape. Spear, soul pin and Misc1 rite asserted "
           "and untouched; Head + LeftHand stay off by design (bare skull, two-handed spear)."
           % (_W_COMMON, _W_UNIQUE))
     # ── 5. the Hunt's SOUL PETS inherit the same armour ─────────────────────
@@ -1170,12 +1178,17 @@ def _check(db):
         if not _close(_gv(db, rec, 'chanceToEquipRightHand'), 100.0):
             out.append("E3 %s chanceToEquipRightHand = %r, must stay 100.0 (R-247.6b)"
                        % (short, _gv(db, rec, 'chanceToEquipRightHand')))
-        if not _same(_gl(db, rec, 'lootMisc4Item1'), _RITE):
-            out.append("E3 %s lootMisc4Item1 = %r, must stay the EoAT rite table (R-247.6a)"
-                       % (short, _gl(db, rec, 'lootMisc4Item1')))
-        if not _close(_gv(db, rec, 'chanceToEquipMisc4'), 100.0):
-            out.append("E3 %s chanceToEquipMisc4 = %r, must stay 100.0 (R-247.6a)"
-                       % (short, _gv(db, rec, 'chanceToEquipMisc4')))
+        # R-260: the rite guarantee is MEASURED on a real slot (Misc1 row 3, the R-258
+        # shape), never read off `Misc4`, which no template declares.
+        import svc_loot_slots as _sls
+        _rm = _sls.item_share(db, rec, _RITE)
+        if not _sls.close(_rm, 100.0):
+            out.append("E3 %s drops the EoAT rite at a MEASURED %.4f%% of kills, must be 100 "
+                       "(R-247.6a / R-260; rides %r)"
+                       % (short, _rm, _sls.item_shares(db, rec, _RITE)))
+        _rph = _sls.phantom_fields(db, rec)
+        if _rph:
+            out.append("E3 %s carries undeclared slot fields %s (R-260)" % (short, _rph))
         for slot, chance in sorted(_HUNT_MISC_CHANCES.items()):
             if not _close(_gv(db, rec, 'chanceToEquip%s' % slot), chance):
                 out.append("E3 %s chanceToEquip%s = %r, must be the family value %s"
@@ -1396,8 +1409,7 @@ def _negtest():
             h = champ(rec)
             h.update({'chanceToEquipRightHand': 100.0,
                       'lootRightHandItem1': list(_RUNBREAKER), 'chanceToEquipRightHandItem1': 100,
-                      'chanceToEquipMisc4': 100.0, 'lootMisc4Item1': list(_RITE),
-                      'chanceToEquipMisc4Item1': 100,
+                      'lootMisc1Item3': list(_RITE), 'chanceToEquipMisc1Item3': 100,
                       'chanceToEquipMisc1': 100.0, 'chanceToEquipMisc2': 18.0})
             for slot, (common, unique) in _HUNT_ARMOUR.items():
                 h['chanceToEquip%s' % slot] = 100.0
@@ -1532,8 +1544,12 @@ def _negtest():
          lambda d: d.d[_HUNT].__setitem__('lootRightHandItem1', list(_VEINRENDER_TAB))),
         ("Hunt spear chance dropped",
          lambda d: d.d[_HUNT_L].__setitem__('chanceToEquipRightHand', 35.0)),
-        ("Hunt EoAT rite unwired",
-         lambda d: d.d[_HUNT].__setitem__('chanceToEquipMisc4', 0.0)),
+        ("Hunt EoAT rite unwired (its Misc1 row weight zeroed)",
+         lambda d: d.d[_HUNT].__setitem__('chanceToEquipMisc1Item3', 0)),
+        ("Hunt EoAT rite diluted (a potion row un-muted beside it)",
+         lambda d: d.d[_HUNT].__setitem__('chanceToEquipMisc1Item1', 80)),
+        ("Hunt grows an undeclared Misc4 field again (R-260)",
+         lambda d: d.d[_HUNT].__setitem__('chanceToEquipMisc4', 100.0)),
         ("Hunt family misc chance drift",
          lambda d: d.d[_HUNT].__setitem__('chanceToEquipMisc2', 0.0)),
         ("R-243 soul pin moved off 100",

@@ -67,6 +67,13 @@ WHAT THIS SHIPS
 
 2. `records\creature\monster\shadowstalker\um_toxeus_hunt_l_99.dbr` - the Endless
    Hunt with EXACTLY ONE field changed: `controller`.
+   R-260 (2026-09-10): the clone INHERITS the Rite of the Undivided on `Misc1` row 3
+   (toxeus_hunt_encounter wires it through `apply_svc_patches._svc_guarantee_unique`;
+   the pre-R-260 `Misc4` write was a field no template declares and never paid). The
+   clone is run through the same helper right after it is made: disposition must be
+   'kept' (nothing written, the one-field invariant intact), which proves the
+   inheritance and enters the variant in the R-260 helper ledger that
+   `phantom_loot_slots.verify()` cross-checks against its roster.
 
 3. `records\drxmap\proxy\pools\q_toxeus_hunt_lone_endless.dbr` - a single-member
    pool, and `q_toxeus_hunt_lone.poolLegendary1` repointed at it. pool1 and
@@ -191,6 +198,23 @@ def _build_variant(db):
     print("  variant authored: %s = the FINAL base record with ONE field changed "
           "(controller); every other field identical by construction."
           % _VAR_MON.rsplit('\\', 1)[-1])
+    # R-260: the variant INHERITS the Rite of the Undivided on Misc1 row 3 from the
+    # base (toxeus_hunt_encounter wired it through the helper). Run the same helper
+    # over the clone: it is idempotent (disposition 'kept', nothing written, the
+    # one-field invariant above still holds) and it puts the variant in the R-260
+    # helper ledger that phantom_loot_slots.verify() cross-checks - so a clone that
+    # silently stopped inheriting the row would red HERE, not in a kill report.
+    from apply_svc_patches import _svc_guarantee_unique
+    import svc_loot_slots as _sls
+    _d = _svc_guarantee_unique(
+        db, _VAR_MON, [_sls.RITE_TABLE] * 3, slot='Misc1',
+        label='Rite of the Undivided (endless)',
+        why='inherited from the base Hunt by clone; the helper re-measures it')
+    if _d['tier'] != 'kept' or _one_field_diff(db) != {_ALLOWED_DIFF}:
+        raise SystemExit(
+            "[toxeus_hunt_endless] the endless variant did not INHERIT the Rite row "
+            "(disposition %r, diff %r) - the base Hunt's R-260 wiring moved."
+            % (_d['tier'], sorted(_one_field_diff(db))))
 
 
 def _one_field_diff(db):

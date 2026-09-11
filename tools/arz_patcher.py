@@ -268,6 +268,31 @@ class ArzDatabase:
             for _cb in self._mutation_listeners:
                 _cb(record_name)
 
+    def remove_field(self, record_name: str, field_name: str) -> bool:
+        """Delete a field from a record (R-260). Returns True if anything was removed.
+
+        The ONE sanctioned way to drop dead data off a record - e.g. the phantom
+        `chanceToEquipMisc4*` / `lootMisc4*` / `chanceToEquipNeck*` variables that no
+        template declares (tools/svc_loot_slots.py). Matches the `###`-suffixed key form
+        exactly like set_field/get_field_value do, marks the record modified and fires
+        the mutation listeners so the shared record index stays coherent. Deleting a
+        key from the OrderedDict returned by get_fields() by hand skips both of those.
+        """
+        fields = self.get_fields(record_name)
+        if fields is None:
+            return False
+        keys = [k for k in fields
+                if k == field_name or k.split('###')[0] == field_name]
+        for k in keys:
+            del fields[k]
+        if not keys:
+            return False
+        self._modified.add(record_name)
+        if self._mutation_listeners:
+            for _cb in self._mutation_listeners:
+                _cb(record_name)
+        return True
+
     def record_names(self):
         return list(self._raw_records.keys())
 

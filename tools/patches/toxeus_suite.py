@@ -25,8 +25,11 @@ WILL_DECISIONS_2026-07-11.md; laws: docs/PLAYBOOK.md, amgoz1_design_voice.md):
     q_bloodtoxeus_lone_50) stays removed so he cannot spawn twice.
 
   PART B - The rant scroll.  A readable Parchment (finalletter chassis) carrying Toxeus's
-    blood-cult screed, wired one-per-player onto Blood Toxeus's FREE Misc4 slot @100%
-    (Will: "guaranteed one-per-player Misc4 @100%, duplicates on repeat kills accepted").
+    blood-cult screed, originally wired one-per-player onto Blood Toxeus's "FREE Misc4 slot
+    @100%" (Will: "guaranteed one-per-player Misc4 @100%, duplicates on repeat kills
+    accepted"). [R-260, 2026-09-10: `Misc4` is not a `characterloot.tpl` variable, the
+    scroll never dropped; the monster wire is WITHHELD pending Will's slot call
+    (BL-R260-DEBT-1) - item, tables and tags are still authored.]
     Per-player count via a FixedItemLoot.tpl table's numSpawn*Equation='numberOfPlayers*1'
     -> a LootItemTable_FixedWeight inner table -> the item (ADV-FIX §2.2: numSpawn lives
     ONLY on FixedItemLoot.tpl). LORE LAW (Will 2026-07-11): the screed treats the original
@@ -82,7 +85,7 @@ from arz_patcher import DATA_TYPE_STRING as S, DATA_TYPE_FLOAT as F, DATA_TYPE_I
 MODULE_NAME = 'toxeus_suite'
 
 # ── Reused monolith records/constants (all DB-verified present in the build36 arz) ──
-_BT_MONSTER = asp._BT_MONSTER          # um_bloodtoxeus_99 (Boss; Misc4 FREE, DB-verified)
+_BT_MONSTER = asp._BT_MONSTER          # um_bloodtoxeus_99 (Boss; the rant wire is WITHHELD, R-260)
 _BT_PROXY = asp._BT_PROXY              # q_bloodtoxeus_lone (chest proxy, chanceToRun=100)
 _BT_POOL = asp._BT_POOL                # 1 Toxeus + 2 blood-demon adds (spawn=3/champMin=Max=2)
 _RIG_DONOR = asp._EN_RIG_DONOR         # am_deathstalker_55_ambush: ShadowStalker.msh, Demon, TABLE-LESS
@@ -396,7 +399,7 @@ def _create_ambush_proxy(db):
 
 
 # =============================================================================
-# PART B - the rant scroll (per-player Misc4 @100%)
+# PART B - the rant scroll (per-player; the monster wire is WITHHELD under R-260)
 # =============================================================================
 # The rant body (spec §2.3): led by the ^r blood-red colour code and broken into 4 beats with ^n^n
 # paragraph breaks - matching the finalletter donor (which itself leads ^r and breaks with ^n^n,
@@ -424,7 +427,8 @@ _RANT_TEXT = (
 
 
 def _create_rant_scroll(db, tags):
-    """Item + 2 loot tables + the Misc4 wire (+ 3 tags). Per-player count via FixedItemLoot's
+    """Item + 2 loot tables (+ 3 tags); the monster wire is WITHHELD under R-260 /
+    BL-R260-DEBT-1 (the pre-R-260 `Misc4` write never paid). Per-player count via FixedItemLoot's
     numSpawn*Equation='numberOfPlayers*1' -> a direct-item FixedWeight inner table -> the item."""
     if not db.has_record(_FINALLETTER):
         raise SystemExit(f"[toxeus_suite] PART B: finalletter donor missing ({_FINALLETTER})")
@@ -482,21 +486,25 @@ def _create_rant_scroll(db, tags):
         db.set_field(T, 'goldGeneratorLevel', 0)
     db._modified.add(T)
 
-    # ── 4. Wire to Blood Toxeus's FREE Misc4 slot @100% (Will: guaranteed one-per-player). All
-    #    three difficulty columns point at the same table (the rant is difficulty-agnostic).
-    #    ** LAUNCH-GATED edge (§2.2): whether a MONSTER equip slot honours the sub-table's numSpawn
-    #       is UNPROVEN (proven only for containers). If the 2-player test yields 1 copy, flip to the
-    #       per-player-container fallback: a corpse/chest whose loottable=toxeus_rant_perplayer (this
-    #       SAME table - already container-ready), spawned on Blood-Toxeus death. That is a one-record
-    #       + one-death-skill follow-up; the reusable per-player table is authored here. ── ##
-    if db.has_record(_BT_MONSTER):
-        db.set_field(_BT_MONSTER, 'chanceToEquipMisc4', 100.0)
-        db.set_field(_BT_MONSTER, 'chanceToEquipMisc4Item1', 100)
-        db.set_field(_BT_MONSTER, 'lootMisc4Item1', [T, T, T], S)
-        db.set_field(_BT_MONSTER, 'dropItems', 1)
-        db._modified.add(_BT_MONSTER)
-    else:
+    # ── 4. THE MONSTER WIRE IS WITHHELD (R-260, BL-R260-DEBT-1). Until R-260 this wrote the
+    #    table onto Blood Toxeus's "FREE Misc4 slot @100%". `Misc4` is not a `characterloot.tpl`
+    #    variable (the template declares exactly Misc1..Misc3), so the scroll has NEVER dropped
+    #    since build37 (2026-07-12). It cannot simply move: the Devourer has no empty or dormant
+    #    Misc slot, `Misc1` + `Finger2` are frozen byte-identical to build102 while Will counts
+    #    souls (BL-R258-DEBT-1), and the only takeovers left (Misc2 at 18% relics/formulae, Misc3
+    #    at 50% amulets) displace live hand-designed rolls - a balance call that is Will's. The
+    #    scroll, both tables and the three tags are still authored (retirement protocol: records
+    #    stay), the dead fields are stripped by `toxeus_endofallthings`, and the re-homing is
+    #    BL-R260-DEBT-1 with the options costed in docs/WILL_RULINGS.md R-260.
+    #    ** The §2.2 launch-gated edge (whether a MONSTER equip slot honours the sub-table's
+    #       numSpawn; proven only for containers) is still open and now moot until the channel is
+    #       re-homed; the per-player-CONTAINER fallback (a corpse/chest whose loottable =
+    #       toxeus_rant_perplayer, spawned on death) is one of the costed options. ── ##
+    if not db.has_record(_BT_MONSTER):
         raise SystemExit(f"[toxeus_suite] PART B: um_bloodtoxeus_99 missing ({_BT_MONSTER})")
+    print("  [B] rant scroll: the Blood-Toxeus wire is WITHHELD (R-260 / BL-R260-DEBT-1): no "
+          "declared slot can carry it without displacing live loot while BL-R258-DEBT-1 freezes "
+          "Misc1 + Finger2; tables + tags authored, nothing written on the monster.")
 
     # ── 5. Tags. {^r} boss-red inventory name; distinct on-ground label (so it does not read as
     #    the widow's "Tattered Parchment"). ──
@@ -504,8 +512,9 @@ def _create_rant_scroll(db, tags):
     tags['tagSVCToxeusRantGROUND'] = 'A Parchment Slick with Blood'
     tags['tagSVCToxeusRantTEXT'] = _RANT_TEXT
     print("  [B] rant scroll: svc_toxeus_rant (Parchment/Magical) + FixedItemLoot per-player table "
-          "(numSpawn='numberOfPlayers*1') -> FixedWeight item table; wired Blood-Toxeus Misc4 @100%; "
-          "3 tags. (monster-equip-slot numSpawn = launch-gated; container fallback documented)")
+          "(numSpawn='numberOfPlayers*1') -> FixedWeight item table; Blood-Toxeus wire WITHHELD "
+          "(R-260, BL-R260-DEBT-1); 3 tags. (monster-equip-slot numSpawn = launch-gated; "
+          "container fallback documented)")
 
 
 # =============================================================================

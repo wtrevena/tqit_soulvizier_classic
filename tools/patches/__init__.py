@@ -99,7 +99,8 @@ REGISTRY = [
                             # Blood Frenzy; Enslaver of Souls (um_toxeus_enslaver_99) gets Soul-Rip +
                             # Chains of Servitude + Unholy Dominion. Edits the two monster records +
                             # 4 NEW skill records; NO pets/souls/pools/map. MUST run after toxeus_suite
-                            # (expected S4b collision on um_bloodtoxeus_99 - Misc4 vs skill slots,
+                            # (expected S4b collision on um_bloodtoxeus_99 - historically Misc4 vs
+                            # skill slots; since R-260 toxeus_suite writes nothing on him -
                             # later-wins, benign) and BEFORE boss_skill_fix (whose roster scan then
                             # sees these champions' final specials - all level>=1 by construction).
     'diadochi',             # build37: the Helepolis, Taker of Cities (Fields of the Diadochi uber)
@@ -353,7 +354,8 @@ REGISTRY = [
                             # never difficulty-gated at all (the RECORDS q_toxeus_hunt_lone
                             # proxy/pool keep their shipped names, and are not deleted).
                             # Ungates the fixed Hades Palace encounter to N/E/L, adds the Rite of
-                            # the Undivided to Misc4 @100 (Enslaver mirror), gives him the
+                            # the Undivided at a measured 100 on Misc1 row 3 (Enslaver mirror;
+                            # "Misc4" until R-260, a slot no template declares), gives him the
                             # Runbreaker signature spear + a playable spear animation block, and
                             # replaces the 3 cast slots he shared with the Enslaver with his own
                             # pursuit kit.
@@ -912,7 +914,8 @@ REGISTRY = [
                             # and its verify() re-derives on the final db.
                             # Its verify() is the fail-loud gate: the proxy chain resolves to
                             # the new boss on BOTH the forecourt and the TESTHUB yard, all three
-                            # guaranteed rewards stay wired (Golden Bough at Misc4 100%, the one
+                            # guaranteed rewards stay wired (Golden Bough MEASURED 100% on Misc3
+                            # since R-260 - "Misc4" before it, a slot no template declares - the one
                             # hoard chest, the soul), A9 render chain (own-rig clones only, no
                             # invented actorHeight, no single-carrier skin), the crash laws, the
                             # NEW strictly-ascending-life invariant over every svc_* Champion
@@ -1531,6 +1534,40 @@ REGISTRY = [
                             # Standalone twin: py tools/gate_devourer_soul_delivery.py [arz]
                             # Self test:     py tools/patches/devourer_soul_delivery.py --selftest
                             # Negative test: py tools/patches/devourer_soul_delivery.py --negtest
+    'phantom_loot_slots',   # R-260 (2026-09-10, BL-R258-DEBT-2, the `Misc4` audit): `Misc4` /
+                            # `Misc5` / `Misc6` / `Neck` are declared by NO template
+                            # (characterloot.tpl has exactly Head Torso Forearm LowerBody
+                            # LeftHand RightHand Finger1 Finger2 Misc1 Misc2 Misc3), yet
+                            # `apply_svc_patches._svc_guarantee_unique` picked its slot with
+                            # `for n in (4, 5, 6, 3)` (build36 79de1d7) and four writers
+                            # copied the idiom, so build102 carried Misc4 fields on 32 records
+                            # - 7 "guaranteed @100" (Bough, Lethe's Draught, Mask of Dread,
+                            # the R-13/R-92 rite on the Enslaver + both Hunts, the Devourer's
+                            # rant+rite master) and 25 animal-relic sources at 7-10% - none of
+                            # which ever dropped. THE HELPER IS FIXED (tools/svc_loot_slots.py,
+                            # one implementation for helper + this module + both gates):
+                            # empty Misc slot > dormant slot (chance 0, inherited rows muted)
+                            # > at 100% only, a PINNED live 100% slot taken over R-258-style
+                            # > below 100% only, a rate-preserving SHARE that keeps every
+                            # existing row's absolute % > FAIL LOUD. Every caller re-wired at
+                            # its intended % with the measured rate re-derived from the bytes
+                            # (31 records); the Devourer's channel is WITHHELD (no slot can
+                            # carry it without displacing live loot while BL-R258-DEBT-1
+                            # freezes Misc1 + Finger2) - BL-R260-DEBT-1, Will's call.
+                            # THIS MODULE: apply() = a mod-wide sweep stripping every
+                            # remaining phantom field (the 3 EoAT disciples' dead
+                            # chanceToEquipNeck); verify() = arm A (0 phantom fields, 0
+                            # tolerance) + arm B (every roster record MEASURED at its
+                            # intended % on the pinned real slot; the Devourer withheld) +
+                            # the R-258 freeze + a ledger cross-check that every roster
+                            # record was wired through the helper THIS build.
+                            # ORDER: after devourer_soul_delivery (the last writer of the
+                            # Devourer's Misc1) and before the no-op 'visuals', so the sweep
+                            # and both arms read the FINAL assembled db.
+                            # Standalone twins: py tools/gate_no_phantom_loot_slots.py [arz]
+                            #                   py tools/gate_guaranteed_drops_measured.py [arz]
+                            # Self test:     py tools/patches/phantom_loot_slots.py --selftest
+                            # Negative test: py tools/patches/phantom_loot_slots.py --negtest
     'visuals',              # build37: DB precondition invariant (writes nothing) - keep LAST
 ]
 

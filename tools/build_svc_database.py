@@ -4884,6 +4884,27 @@ def main():
             "Atlantis sea-voyage cap gate FAILED on the written .arz; an Atlantis "
             "transit route is still resolvable (see tools/gate_atlantis_voyage_cap.py)")
 
+    # ── R-260 PHANTOM LOOT-SLOT gates (fail-loud, ARTIFACT proof): (a) no record in the
+    # written .arz carries a chanceToEquipMisc4..9* / lootMisc4..9* / chanceToEquipNeck*
+    # / lootNeck* field - variables no template declares, where 32 of this mod's drops
+    # sat unread from build36 to build102; (b) every re-homed drop in
+    # tools/svc_loot_slots.ROSTER MEASURES at its intended % (slot chance x row weight /
+    # sum of weights, re-derived from the bytes) on the pinned declared slot, and the
+    # Devourer's withheld channel stays withheld. The in-memory twins run inside
+    # run_registry_verifies (tools/patches/phantom_loot_slots.verify); these read the
+    # artifact, because an in-memory-only proof is exactly how a guarantee ships inert.
+    from gate_no_phantom_loot_slots import validate as _validate_no_phantom
+    if _validate_no_phantom(str(output_path)) != 0:
+        raise SystemExit(
+            "R-260 phantom-slot gate FAILED on the written .arz; a record carries an "
+            "undeclared loot-slot variable (see tools/gate_no_phantom_loot_slots.py)")
+    from gate_guaranteed_drops_measured import validate as _validate_drops_measured
+    if _validate_drops_measured(str(output_path)) != 0:
+        raise SystemExit(
+            "R-260 measured-drops gate FAILED on the written .arz; a re-homed drop does not "
+            "measure at its intended rate on a declared slot (see "
+            "tools/gate_guaranteed_drops_measured.py)")
+
     # ── F2 contract gate (build30, post-vet): the summons contract lane
     # (SUMMON-PET-NAKED et al) must PASS on the written .arz, so a green build
     # is contract-clean by construction (the vet proved the validators above
