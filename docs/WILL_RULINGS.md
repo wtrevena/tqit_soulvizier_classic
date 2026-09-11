@@ -9629,6 +9629,218 @@ table had written `NOT RUN (ship lane owns these): cold det-2x build`.
   them. Reported by this gate every build, unwound by nobody - it needs Will's call because
   his 1..17 are full.
 
+---
+
+## R-258 [2026-09-09] IMPLEMENTED (branch `fix/devourer-soul-drop`, module `tools/patches/devourer_soul_delivery.py`) - THE DEVOURER'S SOUL LEAVES THE `Finger2` SINGLE POINT OF FAILURE FOR THE `Misc1` PURE-DROP CHUTE; AND THE `Misc4` ESCALATION EVERY PRIOR ROUND PRE-DESIGNED IS **REFUTED FROM THE BYTES**, NOT BUILT
+
+**WILL, 2026-08-14, VERBATIM (`BL-W0814-10`, the report this ruling exists to close - the FOURTH round on it):**
+
+> "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul."
+
+### 1. ROOT CAUSE, MEASURED ON THE SHIPPED `build101` ARZ `9712f58fcc1a73ec1fba2d5a9e811cbc`
+
+`records\xpack\creatures\monster\skeleton\um_bloodtoxeus_99.dbr`, decoded field by field:
+
+| field | value | reading |
+|---|---|---|
+| `chanceToEquipFinger2` | `100.0` | R-243's pin, byte-unchanged since b90 |
+| `chanceToEquipFinger2Item1` | `100` | the ONLY non-zero row of the slot (items 2-6 = 0) |
+| `lootFinger2Item1` | `blood_toxeus_soul_{n,e,l}` | all three resolve, all three `Jewelry_Ring` |
+| every other slot's `loot*Item*` | a LOOT TABLE | `Finger2` alone points at a RAW item record |
+
+There is **no difficulty gate, no `championChance` gate, no rank gate**, and a full
+reverse-reference sweep of the shipped arz finds exactly FOUR referrers of each soul
+record: the three `*_04_lesserpotionofexperience_formula` reagent slots (a recipe, not
+a drop) and this one `lootFinger2Item1`. The two pools that spawn him
+(`q_bloodtoxeus_lone` spawn 3 / champ 2, `egg_blooddragon` spawn 4 / champ 3) name
+`um_bloodtoxeus_99` on `name1..3` with the champion slots holding blood demons and
+blood dragons, so he spawns as a MAIN on every difficulty and there is no variant
+record to have killed instead (exactly ONE record in the db carries
+`tagMonsterHemorrheus`).
+
+**SO THE DATABASE IS CORRECT AND THAT IS THE FINDING.** The defect is not a value: it
+is that the whole guarantee rides **one engine behaviour on one record with no second
+channel to catch it**. Three consecutive audits (b96 / R-252 rounds 1-3) cleared every
+field the report named and the boss still paid nothing. A guarantee with a single point
+of failure that cannot be falsified from the bytes is not a guarantee; this ruling gives
+it a second, independent, template-declared channel instead of auditing the first one a
+fourth time.
+
+### 2. THE PRE-DESIGNED ESCALATION IS REFUTED. `Misc4` IS NOT AN ENGINE SLOT.
+
+`docs/BACKLOG.md` (BL-W0814-10) and `BL-R252-DEBT-1` both prescribe: *"move the soul
+onto the Misc4 channel R-247.6a proved delivers"*. **That premise is false, three
+independent ways:**
+
+1. **THE TEMPLATE.** `<game>\Toolset\Templates.arc` -> `templates\templatebase\characterloot.tpl`
+   is the one template that declares monster equip/loot variables, and `monster.tpl`
+   `include`s it (with `Character.tpl` and `MonsterSkillManager.tpl`). It declares
+   exactly **ELEVEN** slots - `Head` `Torso` `Forearm` `LowerBody` `LeftHand`
+   `RightHand` `Finger1` `Finger2` `Misc1` `Misc2` `Misc3` - each with
+   `chanceToEquip<S>`, `chanceToEquip<S>Item1..6` and `loot<S>Item1..6`. **There is no
+   `Misc4` variable of any kind, and no `Neck`.**
+2. **THE CENSUS.** The string `chanceToEquipMisc4` occurs in **0** records of the base
+   AE database (74,013 records), **0** of SV 0.98i and **0** of SV 0.9. It occurs only
+   in this mod's own arz, on the **32** records our own build wrote (R-13 b83, R-92 b98,
+   `toxeus_endofallthings`). `chanceToEquipNeck` is the same shape of junk: 3 records,
+   0 `lootNeckItem*` anywhere.
+3. **WILL'S OWN REPORT.** R-247.6a's sole evidence is the sentence *"Will's kill DID
+   drop it"* - an INFERENCE, written in the same ruling that quotes Will saying the
+   opposite: *"it didnt drop the forge formula that should allow you make craft the uber
+   toxeus the murderer soul ... the formula to craft his soul should have dropped when i
+   killed the endless hunt"*. On that kill the `Finger2` soul dropped and the
+   `treasureProxyName` orb dropped. The one item that did not was **the one on `Misc4`.**
+
+**RULED: no content of this mod may be given a guarantee on `Misc4`, and no lane may
+cite R-247.6a as proof that it delivers.** The sentence "R-247.6a proved a rolled item
+drops even when its class cannot be worn" rests on the same inference and is **NOT
+established** either; R-252's disclosure that the Crimson Verdict pieces still drop from
+the off hand inherits that uncertainty and is re-registered as `BL-R258-DEBT-4`.
+
+### 3. THE FIX: THE `Misc1` PURE-DROP CHUTE AT A MEASURED 100%, ON EVERY DIFFICULTY
+
+`Misc1` is template-declared, carried by **6,543** records of the shipped 51,352 (**3,884** of them wiring `lootMisc1Item1`), and it is **not
+class-typed** - R-252's own standing invariant already names it as one of the slots with
+"no single wearable class", and the mod-wide leaf census proves it. The leaf item
+templates reachable today through `lootMisc1Item*` across the whole db:
+
+| leaf template | leaves | leaf template | leaves |
+|---|---|---|---|
+| `oneshot_potionmana` | 15,804 | `oneshot_potionhealth` | 6,012 |
+| `itemrelic` | 10,453 | `itemcharm` | 3,303 |
+| `itemartifactformula` | 9,821 | `parchment` | 54 |
+| `oneshot_scroll` | 9,794 | **`jewelry_ring`** | **47** |
+| `itemartifact` | 7,775 | `weapon_staff` | 1 |
+
+Rings already ride this slot 47 times, and **a SOUL already rides a Misc slot in this
+very database**: `records\creature\monster\carrionbird\u_bloodwing_12.dbr`
+`lootMisc2Item1` -> `records\item\equipmentring\soul\carrionbird\bloodwing_soul.dbr`.
+
+The Devourer's `Misc1` ships at `chanceToEquipMisc1` = 100.0 with two rows: item1
+health potions @80, item2 energy potions @20, items 3-6 free. **RULED:** the soul goes
+on the free row **item3** at weight 100 through three new one-row
+`LootItemTable_FixedWeight` tables `svc_devourersoul_guaranteed_{n,e,l}` (byte-shape
+identical to `svc_rite_guaranteed` / `veinrender_guaranteed_*`, the mod's proven
+guaranteed-drop shape, one per difficulty tier), and the two potion weights are **MUTED
+to 0**. The slot's only selectable row is then the soul: **100.0000% of kills on Normal,
+Epic and Legendary**, re-derived by the gate from the final db as
+`chance x weight/total`, never asserted by hand.
+
+**`Finger2` IS NOT TOUCHED - ASSERTED, NEVER WRITTEN.** R-243's pin stays byte-unchanged,
+`tools/verify_soul_drop_rates.py --gate` and R-252's E5 arm stay green **by
+construction**, and the soul now has two independent channels instead of one.
+
+> WARNING - **THE ONE PLAYER-VISIBLE COST, DISCLOSED RATHER THAN DISCOVERED (`BL-R258-DEBT-3`).**
+> The Devourer stops dropping his one `Misc1` **POTION** (a health potion on 80% of
+> kills, an energy potion on 20%). That is the smallest price any slot on his record
+> could carry, and every alternative was costed on the bytes and is worse:
+> **`Head`** is his only chance-0 slot but it is CLASS-GOVERNED by R-252, a ring there
+> can never be worn, and it would rest on the same unproven "a mis-class roll still
+> drops" premise section 2 just retired; **`Misc2`** is an 18%-chance slot and cannot
+> reach 100% at any weight; **`Misc3`** is 50% and holds his amulet; **a bespoke
+> boss-orb chain** (`treasureProxyName` -> a clone of `genericbossorb_05` + its three
+> `ProxyAccessoryPool`s + its three `FixedItemContainer`s, with the soul added as a
+> second entry in the container's `tables` ARRAY - which is real: 401 records in this db
+> carry 2-10 tables and the base-game boss chests use exactly that) **works, but R-99's
+> gate asserts that EVERY Toxeus variant carries `genericbossorb_05` and that nothing
+> else does**, so it would red another ruling's invariant to fix this one. The potion
+> rows are MUTED, never deleted, so both tables keep their reference on the record
+> (RETIREMENT PROTOCOL) and a revert is **two constants**.
+
+> WARNING - **DELIBERATE, AND IT IS ALSO THE DIAGNOSTIC (`BL-R258-DEBT-1`).** If the
+> `Finger2` channel is in fact healthy on this boss, the next kill drops **TWO** copies
+> of the soul. That is accepted on purpose: after three rounds of "the database is
+> correct", the only instrument left is Will's kill, and this one answers the question
+> the audits could not. **ONE soul** = `Finger2` is dead on this record and the `Misc1`
+> chute saved it. **TWO souls** = `Finger2` was never the defect and the real cause is
+> elsewhere in the encounter. **ZERO** = the equipment generator is not running on this
+> boss at all and the next lane is the container channel above. Whichever it is,
+> collapsing to one channel afterwards is one constant.
+
+### 4. THE STANDING INVARIANT
+
+**A DROP THIS MOD CALLS GUARANTEED MUST BE MEASURED, NOT DECLARED, AND MUST NOT RIDE A
+FIELD THE ENGINE'S OWN TEMPLATE DOES NOT DECLARE.** Enforced in-build by
+`devourer_soul_delivery.verify()` and standalone by `tools/gate_devourer_soul_delivery.py`:
+**E1** the three tier tables exist, are one-row `LootItemTable_FixedWeight`, and each
+names ITS OWN tier's soul at weight 100 (a tier-N-only sweep is exactly the blind spot
+that produced the bow bug); **E2** every soul record resolves and is a `Jewelry_Ring`;
+**E3** the guarantee itself - the soul row's share of a kill is re-derived from the db
+and must be 100.0000%, and NO other row of the slot may carry weight; **E4** the two
+potion tables are still NAMED on the record (muted, not orphaned); **E5** `Finger2` is
+byte-unchanged (chance 100 / weight 100 / the three souls); **E6** the three new tables
+have exactly ONE consumer in the whole db and it is the Devourer's `lootMisc1Item3`;
+**E7** no soul table may ever land on `lootMisc4Item*`. Every arm resolves record
+references CASE-INSENSITIVELY (2,436 references in the shipped arz resolve only that
+way - the R-252 round-3 lesson).
+
+**GATE + ANTI-INERT PROOF:** the gate **EXITS 1 on the shipped `9712f58f`** naming the
+three missing tables and the empty `lootMisc1Item3` - Will's report as an artifact fact,
+so it is not a gate that can only ever be green - and `--dryrun` proves RED -> GREEN by
+running the module's own `apply()` in memory over those same bytes. Planted negatives:
+**27/27** (`py tools/patches/devourer_soul_delivery.py --negtest`) - 23 planted defects
+including two arm-specific `E7` proofs (the refuted `Misc4` escalation, done for real,
+must red the build) and 4 positive controls that must NOT red it (mixed-case table
+references, a mixed-case template stem, and the muted-but-named potion rows).
+
+**WHAT THIS RULING DOES NOT TOUCH (asserted, never written):** `chanceToEquipFinger2`
+and `lootFinger2Item1` anywhere (R-243); every class-governed slot (R-252's E2 arms
+cannot bite - `Misc1` is ungoverned by that ruling's own text); any Crimson Verdict row
+(R-252's two-sided E2d rate is arithmetically untouched); `treasureProxyName` on any
+record (R-99's apex-orb invariant); the `Misc4` wiring of the Devourer, the Enslaver and
+both Hunts (left exactly as shipped and registered as debt, because retiring it is a
+three-ruling question, not this lane's).
+
+**WHAT THIS RULING CLOSES AND WHAT IT DOES NOT - the DONE-means-DONE line:**
+**CLOSED with byte proof + a gate:** the soul now has a guaranteed, measured,
+template-declared delivery path on all three difficulties, and the `Misc4` premise that
+three documents repeated is retired with evidence. **NOT CLOSED:** `BL-W0814-10` itself.
+No one has killed this boss on this build. **Lead with that.**
+
+**DEBT:**
+- `BL-R258-DEBT-1` (**P1, WILL / in-game - the closing proof for `BL-W0814-10`**): kill
+  the Devourer of Blood and report **how many** souls drop. ONE = `Finger2` is dead on
+  this record; TWO = it was never the defect; ZERO = the equipment generator is not
+  running on him at all and the next lane is the bespoke boss-orb container chain
+  (pre-designed above, blocked only by R-99's gate, which would need an amendment).
+- `BL-R258-DEBT-2` (**P1, three rulings, NEW AND IT IS THE BIG ONE**): `Misc4` is not a
+  `characterloot.tpl` variable, so **R-13's rant scroll, R-92's EoAT formula on both
+  Hunts and the Devourer's whole `svc_devourer_misc4_master` are all riding a field the
+  engine's template does not declare** - i.e. three champions' "guaranteed" formula drop
+  is probably dead, which is exactly what Will reported on his Legendary Hunt kill. Not
+  fixed here (it is a different report, a different roster and a supersession of R-13 /
+  R-92 / R-247.6a). The fix is the same shape as this one: move each to a declared slot,
+  or to the container chain. **A `Misc4` audit is owed before the next EoAT claim.**
+- `BL-R258-DEBT-3` (**P2, WILL / balance ratification**): the Devourer stops dropping his
+  one `Misc1` potion. Reverse = restore `chanceToEquipMisc1Item1` 80 and
+  `chanceToEquipMisc1Item2` 20 and find the soul another home; both tables are still
+  named on the record for exactly that reason.
+- `BL-R258-DEBT-4` (**P2, evidence hygiene, inherited**): R-252's disclosure that a
+  mis-class roll "still DROPS" cites R-247.6a and therefore rests on the same inference
+  this ruling retires. The Crimson Verdict off-hand rate published by E2d is a
+  DATABASE-side number; whether those pieces reach the ground has never been observed.
+- `BL-R258-DEBT-5` (**P2, contradiction in the ledger, recorded not resolved**):
+  `toxeus_endofallthings` documents `svc_devourer_misc4_master` as "a LootMasterTable
+  rolls each child independently at weight-as-percent, so both always drop", while
+  R-252 documents the same record as "a 50/50". Both cannot be true. Neither is
+  load-bearing here (this lane writes nothing on `Misc4`), but whichever lane discharges
+  DEBT-2 must settle it from the bytes.
+
+- `BL-R258-DEBT-6` (**P0, SHIP BLOCKER, PROCESS - the one thing this lane could not do**): the
+  COLD BUILD WAS NEVER RUN. `upstream/`, `reference_mods/` and `third_party/` are gone from this
+  checkout (emptied/removed 2026-09-09 ~13:18, not by this lane) and
+  `work\SoulvizierClassic\{Resources,Maps}` were stripped with them;
+  `check_build_inputs --all --verify-hashes` FATALs on every SV input, `build_svc_database.py`
+  hard-fails in its own preflight before the prefix cache is consulted, there is no sibling
+  worktree cache, and a drive-wide search for the three third_party archives returns 0 hits.
+  **`BL-R257-DEBT-3` IS NOT DISCHARGED BY THIS LANE.** Before any ship: restore the inputs (or set
+  `$SVC_SV098I_ARZ` / `$SVC_SV09_ARZ` / `$SVC_SV041_ARZ` / `$SVC_SVAERA_ARZ`), then run the real
+  entrypoint TWICE (`SVC_NO_CACHE=1 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`) and
+  re-do the record-diff against `9712f58f` on the COLD artifact. The apply-over-shipped arz
+  `e819a9a3` in this lane is evidence, not a build.
+
+---
+
 ## R-259 [2026-09-10] IMPLEMENTED (numbered R-259 because the unmerged lane `fix/devourer-soul-drop` already claims R-258 in its ledger + `tools/` stamps; branch `fix/backups-to-nas`, `scripts/deploy_to_custommaps.ps1` + new `scripts/_backup.ps1`, config keys `WIN_BACKUP_ROOT` / `BACKUP_KEEP`; the implementing lane did NOT merge) - DEPLOY BACKUPS LEAVE C: FOR THE NETWORK DRIVE, AND THEY ROTATE
 
 **Will (2026-09-10, verbatim):** "why do we have a 300gb backups tree? no wonder i have no disk space"

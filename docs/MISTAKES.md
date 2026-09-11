@@ -14,6 +14,65 @@
 
 - **2026-09-09 | repo housekeeping operator, my own: a three-pass worktree prune DESTROYED the gitignored build inputs (`upstream\` = SV 0.98i/0.9/0.4.1 databases + SV 0.98i Text_EN.arc/Levels.arc/Creatures.arc; `reference_mods\SVAERA_customquest`; `work\SoulvizierClassic\Resources` = the 55 shipped arcs) at 13:18:48-51** - the zero-data-loss gates I wrote covered git-TRACKED content (is-ancestor-of-main proofs; backup tags peel-verified on origin) and worktree cleanliness (`status --porcelain` empty), and every one of them held: no commit was lost and 18 `backup/prune-2026-09-09/*` tags preserve every pruned branch. What they never checked was REPARSE POINTS. A worktree root carried Windows junctions into the main checkout's shared caches - the exact shape docs/BACKLOG.md:6633 prescribes for worktree builds, beside its own :6637 "HAZARD, because a junction writes through" warning - and the recursive delete under `git worktree remove` descended them and emptied their TARGETS, leaving the target directories as shells. The signature is unambiguous: `Database` (never junctioned) intact beside an emptied `Resources`; six surviving `local\b96-b101_run2\...\Resources` junctions enumerating 0 entries; the three victims stamped in alphabetical walk order three minutes after the prune tag. Cost: the DB + Text builds cannot run until the three Soulvizier upstream archives are re-downloaded - no copy exists on any local drive, and `third_party\` had already been emptied on 2026-08-12, which removed the offline fallback. `work\...\Resources` and `reference_mods` were restored the same day from dist / Workshop 3759792705 and Workshop 2076433374. DEV play surface, dist, backups, local, Steam: intact, hash-verified. Root cause: I gated deletion on git state and never enumerated `ReparsePoint` attributes before a recursive removal on Windows. Guards: (1) before ANY recursive delete or `git worktree remove` on Windows, run `Get-ChildItem -Recurse -Force -Attributes ReparsePoint` over the tree and REFUSE if any link targets outside it; (2) never create junctions inside worktrees - the build-input resolver already falls back to the main checkout's cache (CLAUDE.md "Build inputs"), so the BACKLOG:6633 recipe is RETIRED; (3) keep an off-repo copy of the three upstream archives, because the loss was unrecoverable ONLY because `third_party\` was already gone. Addendum, same day: my restore brief prescribed `Copy-Item -LiteralPath <src>\* ...`, which is a silent NO-OP (`-LiteralPath` never expands wildcards) that reports success while copying nothing; the recovery agent caught it only because it re-counted the destination after the copy. Guard (4): every restore/copy step verifies the destination by count + hash, never by the command's exit status; and never pair `-LiteralPath` with a wildcard.
 
+- **2026-09-09 | R-258 implementer (`fix/devourer-soul-drop`), my own: I committed the FIRST
+  `R-258` stamps in `tools/` in a commit that did NOT carry the `## R-258` heading in
+  `docs/WILL_RULINGS.md`** - the exact violation the R-256 lesson wrote the RULINGS LEDGER LAW
+  to prevent (a ruling number claimed in code while the ledger is silent, so a parallel lane can
+  claim the same number and one of them has to be renumbered at integration - R-231 -> R-244,
+  R-250 -> R-251, R-251 -> R-252). Cost: none realised - the branch was never pushed, no other
+  lane claimed R-258 in the window (`gate_ruling_ids --branches` scanned 154 branches and found
+  zero other claimants), and the ledger entry existed within the same working session. Root
+  cause: I committed the module the moment its `--negtest` went green, i.e. I sequenced by "what
+  is finished" instead of by "what the law couples". Repair: the ruling heading, its debts and
+  the docs were written and the commit was AMENDED so the first stamp and the heading are one
+  commit in history. Guard: for the rest of this lane, no commit touching `tools/` may be made
+  before `grep -c "^## R-258 " docs/WILL_RULINGS.md` returns 1; the standing guard already
+  exists (`py tools/gate_ruling_ids.py --vs main --branches`) and I ran it BEFORE claiming the
+  number but not BEFORE the commit, which is the half of the discipline I dropped.
+
+- **2026-09-09 | R-258 implementer, my own, minor and batched (the velocity law's "batch trivial
+  findings")**: three tooling errors of mine cost re-runs but no damage - (a) a first probe
+  imported `tools/debug/arz_lookup.py`, a module that no longer exists in this repo (it was
+  folded into `b48_arz_records.py`), so the probe died on import; (b) a `bash` heredoc carrying
+  the R-258 ruling text failed on an unbalanced quote and wrote nothing, after which the text was
+  written with the file tools instead; (c) two full-arz probes exceeded the 120s foreground
+  timeout and had to be re-run in the background - a 51,352-record decode is a ~2-6 minute
+  operation in this repo and should be backgrounded from the start.
+
+- **2026-09-09 | R-258 implementer, my own ARGV, the same class as the build101 ship operator's two
+  entries below: I ran `validate_tags.py <arz> <Text.arc> docs/uber_soul_tags.txt` and it exited 1
+  with "150 authoritative tag(s) missing from Text.arc"** - and for a moment that reads like this
+  lane broke the Text coupling. It did not. `uber_soul_tags.txt` is a **build OUTPUT**, and the
+  copy in `docs/` is stale (178 tags, from a much older soul roster); the shipped `Text.arc`
+  `1be898a0` has never carried `tagSoulSVC9028+`. Cost: one wasted gate row and one re-run.
+  **CONTROL, run rather than assumed:** the identical 3-argument invocation against the UNTOUCHED
+  baseline `local\build101_shipped_9712f58f.arz` produces **the same 150 missing tags, the same
+  RESULT: FAIL, the same exit 1** - so the red is pre-existing and provably not this lane's; and
+  the 2-argument form (the one the coupling actually needs) is **PASS / exit 0 on BOTH**, with the
+  same "all 242 referenced mod tags are present in Text.arc" and the same 2 documented pre-existing
+  monster-name WARNs. Root cause: I reached for the freshest-looking authoritative list on disk
+  instead of the manifest the build emits beside the artifact. Guard: any `validate_tags` row in a
+  lane report must either pass the manifest THAT build wrote, or be run in both directions against
+  the baseline before it is called a result.
+
+- **2026-09-09 | R-258 implementer, my own, and it is the serious one: I PUBLISHED A NUMBER THAT
+  DID NOT RE-DERIVE.** The ruling, the module docstring and the BACKLOG block all said `Misc1` is
+  *"carried by 45,797 records"*. That figure came from my slot-census regex
+  `^chanceToEquip([A-Za-z0-9]+?)(Item\d+)?$`, which buckets `chanceToEquipMisc1` AND
+  `chanceToEquipMisc1Item1..6` under the same key - so 45,797 is a count of FIELD OCCURRENCES, not
+  of records. **Measured properly on the shipped `9712f58f`: 6,543 records carry
+  `chanceToEquipMisc1` and 3,884 of them wire `lootMisc1Item1`** (of 51,352 records total; 5,076
+  carry a `Monster.tpl` template stem). Cost: caught by my own re-check before the vet, but it had
+  already been committed and pushed in three documents - exactly the R-252 round-3/round-4 class
+  (a census published as design law that turned out to be an artefact of the counting code), and
+  the reason that ruling now insists every published number re-derives. Corrected in all three
+  places in the same commit as this entry. Root cause: I read a bucket total off a probe whose
+  regex I wrote for a different question (which SLOT NAMES exist), then quoted it as a record
+  count without re-deriving it. Guard for the rest of this lane and the next: no number reaches a
+  document unless the probe that produced it answers the exact question the sentence asks - the
+  Misc4 counts in this ruling were re-checked the same way and DO hold (32 records carry
+  `lootMisc4Item1`, one field per record, so that bucket total is a record count).
+
 ## 2026-08-16
 
 - **2026-08-16 | build101 ship operator, my own: TWO MORE battery rows exited non-zero purely
