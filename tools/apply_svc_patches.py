@@ -18951,6 +18951,16 @@ def _apply_content_uplift_picks(db, tags):
             if db.has_record(_SK_ONDEATH_FROSTNOVA):
                 _svc_add_skill(db, fw, _SK_ONDEATH_FROSTNOVA, [1, 2, 3])
             _svc_clear_soul_loot(db, fw)
+            # R-260: the twin INHERITS the Sepulchral Scale (Misc3 row 2 @ 7%) from
+            # its champion. Run the helper over the clone too: idempotent ('kept',
+            # nothing written) and it enters the clone in the helper ledger that
+            # phantom_loot_slots.verify() cross-checks, so a clone that stopped
+            # inheriting the row reds here instead of in a kill report.
+            _fd = _svc_guarantee_unique(db, fw, [_WH_LOOT[t] for t in ('01', '02', '03')],
+                                        pct=7.0, label='Sepulchral Scale (frost twin)')
+            if _fd['tier'] != 'kept':
+                raise SystemExit("C7 frost twin %s did not INHERIT the Sepulchral Scale "
+                                 "row from %s (disposition %r)" % (fw, _WYRM_CHAMPS[n], _fd['tier']))
             db._modified.add(fw)
             sf(_WYRM_POOL, 'nameChampion%d' % ((n - 28) // 3), fw)   # 31->1,34->2,37->3,40->4
             made += 1

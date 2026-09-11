@@ -51,7 +51,11 @@ returned as a disposition, and the roster below pins the shipped one per record)
               slot map. A slot is never shared with its weights skewed, silently or not.
 
 Idempotent: a table already riding a real Misc row at the intended measured % is left
-alone (disposition 'kept'); any other pre-existing state is a fail-loud drift.
+alone (disposition 'kept'); any other pre-existing state is a fail-loud drift. Records
+that INHERIT a wired row by `clone_record` (the four `svc_frostwyrm_*` twins of the
+champion wyrms, the endless Hunt `um_toxeus_hunt_l_99`) are run through the helper
+right after the clone so the 'kept' disposition proves the inheritance and enters them
+in LEDGER, which `patches/phantom_loot_slots.verify()` cross-checks against ROSTER.
 
 dtype discipline: this module never passes a dtype to set_field. A brand-new field takes
 its dtype from the Python value (float chance -> FLOAT, int weight -> INT, str list ->
@@ -417,7 +421,7 @@ def wire_misc_drop(db, rec, tables, pct, slot=None, why=None, share=False, label
 
 def format_disposition(d):
     tag = {'A': 'EMPTY slot', 'B': 'DORMANT slot, inherited rows muted',
-           'C': 'TAKEOVER of a live 100%% slot, live rows muted', 'D': 'SHARE, rate-preserving',
+           'C': 'TAKEOVER of a live 100% slot, live rows muted', 'D': 'SHARE, rate-preserving',
            'kept': 'already wired'}.get(d['tier'], d['tier'])
     s = ("  [R-260] %-28s -> %s row %d @ MEASURED %.4f%% (intended %g%%; tier %s: %s)"
          % (short(d['record']), d['slot'], d['row'], d['measured'], d['pct'], d['tier'], tag))
@@ -602,11 +606,17 @@ def check_roster(db):
 
 def check_devourer_freeze(db):
     """The BL-R258-DEBT-1 freeze, restated so this lane's gate says it too: the
-    Devourer's Finger2 pin and Misc1 chute are exactly R-258's."""
+    Devourer's Finger2 pin and Misc1 chute are exactly R-258's, and `dropItems` is
+    still on (toxeus_suite used to switch it on beside the rant wire R-260 withheld;
+    with that wire gone the flag must be proven, not assumed)."""
     P = []
     rec = resolve(db, DEVOURER)
     if rec is None:
         return ["MISSING record: %s" % DEVOURER]
+    if not inum(gv1(db, rec, 'dropItems', 0)):
+        P.append("Devourer dropItems is off - nothing he equips (the Finger2 soul, the "
+                 "Misc1 chute) ever hits the ground; toxeus_suite used to switch it on "
+                 "beside the rant wire that R-260 withheld")
     if not close(gv1(db, rec, 'chanceToEquipFinger2', 0.0), 100.0):
         P.append("Devourer chanceToEquipFinger2 = %r, R-243's pin is 100" % gv1(db, rec, 'chanceToEquipFinger2'))
     if not close(item_share(db, rec, DEVOURER_SOUL_TABLES), 100.0):

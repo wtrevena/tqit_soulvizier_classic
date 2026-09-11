@@ -85,7 +85,7 @@ from arz_patcher import DATA_TYPE_STRING as S, DATA_TYPE_FLOAT as F, DATA_TYPE_I
 MODULE_NAME = 'toxeus_suite'
 
 # ── Reused monolith records/constants (all DB-verified present in the build36 arz) ──
-_BT_MONSTER = asp._BT_MONSTER          # um_bloodtoxeus_99 (Boss; Misc4 FREE, DB-verified)
+_BT_MONSTER = asp._BT_MONSTER          # um_bloodtoxeus_99 (Boss; the rant wire is WITHHELD, R-260)
 _BT_PROXY = asp._BT_PROXY              # q_bloodtoxeus_lone (chest proxy, chanceToRun=100)
 _BT_POOL = asp._BT_POOL                # 1 Toxeus + 2 blood-demon adds (spawn=3/champMin=Max=2)
 _RIG_DONOR = asp._EN_RIG_DONOR         # am_deathstalker_55_ambush: ShadowStalker.msh, Demon, TABLE-LESS
@@ -427,7 +427,8 @@ _RANT_TEXT = (
 
 
 def _create_rant_scroll(db, tags):
-    """Item + 2 loot tables + the Misc4 wire (+ 3 tags). Per-player count via FixedItemLoot's
+    """Item + 2 loot tables (+ 3 tags); the monster wire is WITHHELD under R-260 /
+    BL-R260-DEBT-1 (the pre-R-260 `Misc4` write never paid). Per-player count via FixedItemLoot's
     numSpawn*Equation='numberOfPlayers*1' -> a direct-item FixedWeight inner table -> the item."""
     if not db.has_record(_FINALLETTER):
         raise SystemExit(f"[toxeus_suite] PART B: finalletter donor missing ({_FINALLETTER})")

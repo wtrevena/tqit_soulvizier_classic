@@ -999,11 +999,15 @@ _ORM_MUTE_MISC = True
 # with the Bough on the free row 4 and the inherited rows MUTED BY WEIGHT (still named
 # and still act-4-banded, so an un-mute lands right). The ordinary-volume claim stays
 # TRUE by measurement: those rows pay 0 (weight 0), exactly as they did at chance 0.
-# `_MUTED_MISC_SLOTS` therefore keeps Misc1 + Misc2 at chance 0; Misc3 is gated by
-# the Bough arm below instead (chance 100, the Bough the only live row).
+# apply() therefore still mutes all of Misc1/2/3 to chance 0 (the re-clone inherits
+# 1.6 / 100 / 75 from the emberoak donor, and a LIVE Misc3 at 75 is a state the R-260
+# helper refuses to take over); the helper then finds Misc3 DORMANT and re-arms it at
+# 100 for the Bough alone. verify() reads Misc1/2 at 0 on the terminal, all three at 0
+# on the shell, and the terminal's Misc3 through the Bough arm (measured 100, no live
+# rival row) - the same zero of ordinary volume, proven by weight instead of chance.
 _BLOOM_MUTE_MISC = True
-_MUTED_MISC_SLOTS = (1, 2)             # Misc3 = the Golden Bough's slot since R-260
-_BOUGH_SLOT = 'Misc3'
+_MUTED_MISC_SLOTS = (1, 2, 3)          # apply() mutes all three; see the R-260 note above
+_BOUGH_SLOT = 'Misc3'                  # then re-armed at 100 for the Bough alone (R-260)
 # The retinue's inherited faucet, DISCLOSED rather than claimed away (round-5 vet
 # P3). Phase 1 keeps `hero_quillvines` as its R-125 own-family retinue; MEASURED,
 # its six spawns `records\xpack\skills\monsterskills\summoning\pets\quillvine_01
@@ -1685,9 +1689,10 @@ def apply(db, tags):
     # promise that it did not move. Muted to the shipped encounter's exact zero.
     # The act-4 retarget above is deliberately KEPT rather than deleted: it is
     # what a future un-mute lands on, and it keeps `_UNDERBAND_TOKENS` meaningful.
-    # Misc3 - the guaranteed Golden Bough's slot since R-260 - is NOT in
-    # `_MUTED_MISC_SLOTS`; the helper below sets it to 100 with its inherited rows
-    # muted BY WEIGHT, which is the same zero of ordinary volume.
+    # Misc3 is muted here as well, so it is DORMANT (chance 0 over three inherited
+    # act-4 rows) when the Bough helper below runs; tier B of the R-260 policy then
+    # switches it to 100 with the Bough on the free row 4 and those rows muted BY
+    # WEIGHT, which is the same zero of ordinary volume.
     if _BLOOM_MUTE_MISC:
         for _slot in _MUTED_MISC_SLOTS:
             _sf(db, _BLOOM, 'chanceToEquipMisc%d' % _slot, 0.0)
@@ -2107,21 +2112,21 @@ def verify(db, tags):
                         % (_BLOOM, gv(_BLOOM, 'actorToSpawnOnDeath')))
 
     # ---- 2. THE THREE GUARANTEED REWARDS ARE WIRED -------------------------
-    slot = None
-    for nsl in (3, 4, 5, 6):
-        v = db.get_field_value(_BLOOM, 'lootMisc%dItem1' % nsl)
-        v = v if isinstance(v, list) else ([v] if v else [])
-        if [_n(x) for x in v] == [_n(a) for a in _AMULET]:
-            slot = nsl
-            break
-    if slot is None:
-        problems.append("THE GOLDEN BOUGH is NOT wired on %s: no lootMisc*Item1 "
-                        "carries the 3 amulet tiers %s" % (_BLOOM, _AMULET))
+    # R-260: the pre-R-260 check walked `lootMisc3..6Item1` (row 1 only, and three of
+    # those four slots do not exist) and read `chanceToEquipMisc<n>` back as the proof;
+    # it passed for eleven builds on a field the engine never reads. The Bough is now
+    # MEASURED over every declared slot and row: chance x weight / sum(weights) == 100.
+    import svc_loot_slots as _sls2
+    _bough_rides = _sls2.item_shares(db, _BLOOM, list(_AMULET))
+    _bough_pct = sum(p for _s, _r, p in _bough_rides)
+    if not _bough_rides:
+        problems.append("THE GOLDEN BOUGH is NOT wired on %s: no declared loot slot/row "
+                        "carries the 3 amulet tiers %s (R-260)" % (_BLOOM, _AMULET))
     else:
-        ch = float(gv(_BLOOM, 'chanceToEquipMisc%d' % slot) or 0)
-        if abs(ch - 100.0) > 1e-4:
-            problems.append("THE GOLDEN BOUGH is on Misc%d but chanceToEquipMisc%d"
-                            "=%r, expected 100.0 (guaranteed)" % (slot, slot, ch))
+        if not _sls2.close(_bough_pct, 100.0):
+            problems.append("THE GOLDEN BOUGH rides %r on %s but MEASURES %.4f%% of "
+                            "kills, expected 100.0 (guaranteed; R-260)"
+                            % (_bough_rides, _BLOOM, _bough_pct))
         if int(gv(_BLOOM, 'dropItems') or 0) != 1:
             problems.append("%s dropItems != 1 - the guaranteed amulet cannot drop"
                             % _BLOOM)
@@ -2499,6 +2504,8 @@ def verify(db, tags):
         if not _on:
             continue
         for _slot in _MUTED_MISC_SLOTS:
+            if _rec == _BLOOM and ('Misc%d' % _slot) == _BOUGH_SLOT:
+                continue        # R-260: the terminal's Bough slot is gated by the arm below
             ch = float(gv(_rec, 'chanceToEquipMisc%d' % _slot) or 0)
             if ch > 0:
                 problems.append(
