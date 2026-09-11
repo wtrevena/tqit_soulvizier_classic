@@ -443,8 +443,8 @@ touching anything. Resolution order per input, **first hit wins**:
 4. the installed location: Steam TQAE, or Steam Workshop item `2076433374` (SVAERA)
 5. a sibling worktree that already has the cache (e.g. `build36-map` for SV 0.98i `Levels.arc`)
 6. a `third_party/` archive - reported as EXTRACTABLE, never silently unpacked; `--extract` unpacks
-   it: `.zip` through `zipfile`, `.7z` / `.rar` through **7-Zip** (`C:\Program Files\7-Zip\7z.exe`,
-   else `7z` on PATH, else `$SVC_7Z`; `$SVC_7Z` set = authoritative). No 7-Zip + a non-zip archive
+   it: `.zip` through `zipfile`, `.7z` / `.rar` through **7-Zip** (`$SVC_7Z` when set = authoritative,
+   else `C:\Program Files\7-Zip\7z.exe`, else `7z` on PATH). No 7-Zip + a non-zip archive
    needed = a LOUD failure naming the archive and `winget install 7zip.7zip`, never a silent skip.
 
 Every **fallback** is md5-pinned, so auto-resolution can never quietly feed the build a different
