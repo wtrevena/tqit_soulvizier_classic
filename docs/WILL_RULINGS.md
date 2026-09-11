@@ -9628,3 +9628,27 @@ table had written `NOT RUN (ship lane owns these): cold det-2x build`.
   above the `skillName17` ceiling, `um_toxeus_enslaver_99`'s `unholy_rally` (slot 18) among
   them. Reported by this gate every build, unwound by nobody - it needs Will's call because
   his 1..17 are full.
+
+## R-259 [2026-09-10] IMPLEMENTED (numbered R-259 because the unmerged lane `fix/devourer-soul-drop` already claims R-258 in its ledger + `tools/` stamps; branch `fix/backups-to-nas`, `scripts/deploy_to_custommaps.ps1` + new `scripts/_backup.ps1`, config keys `WIN_BACKUP_ROOT` / `BACKUP_KEEP`; the implementing lane did NOT merge) - DEPLOY BACKUPS LEAVE C: FOR THE NETWORK DRIVE, AND THEY ROTATE
+
+**Will (2026-09-10, verbatim):** "why do we have a 300gb backups tree? no wonder i have no disk space"
+
+**Will (2026-09-10, verbatim):** "if you need to save backups like this move them to the network drive."
+
+**THE CAUSE, MEASURED.** `scripts/deploy_to_custommaps.ps1` copied the ENTIRE deployed mod (~1.3 GB) into the repo's `backups\deployed\SoulvizierClassic\<timestamp>\` on EVERY deploy with NO rotation; only the character snapshots beside it (`backups\characters\`) had a keep-10. On 2026-09-10 `backups\deployed\` held ~250 timestamped snapshot directories (2026-02-21 onward) = the ~300 GB on C:. C: had 165 GB free; Z: (the NAS, `\\192.168.0.171\wtrevena`) had 13.4 TB free.
+
+**THE RULING AS IMPLEMENTED.**
+1. The backup root is the new config key `WIN_BACKUP_ROOT` in `local/config.env`, read through `Require-Config`. Chosen value: `Z:\Computer Backup\tqit_soulvizier_classic`. The Z: root already follows a `<thing> Backup` convention (`Computer Backup`, `Phone files backup`, `Morall's Laptop Backup`, `Network Camera Roll Backup`, ...), so the repo's snapshots go under the EXISTING `Computer Backup` folder in a repo-named subfolder instead of adding a new top-level folder to Will's share. Layout: `<root>\deployed\<mod>\<yyyyMMdd_HHmmss>\` and `<root>\characters\<yyyyMMdd_HHmmss>\`.
+2. Rotation: the newest `BACKUP_KEEP` (optional key, default 5) deploy snapshots per mod are kept; character snapshots keep the newest 10 as before. Both kinds go through ONE guarded delete path.
+3. Fail loud, no fallback: a missing key, a root inside the repo, an unreachable root (drive not mounted) or an unwritable root aborts the deploy BEFORE any character save or the deploy target is touched. The script never writes under the repo again and never substitutes a C: path.
+4. The delete guard (`Test-BackupSnapshotRemovable` in `scripts/_backup.ps1`): a snapshot is removed only if its absolute path is under `<root>\deployed\` or `<root>\characters\`, its leaf is a `yyyyMMdd_HHmmss` name, no directory between the root and it is a reparse point, and it is neither a reparse point nor contains one (`Get-ChildItem -Recurse -Force -Attributes ReparsePoint` returns nothing). Any failed assertion SKIPS that snapshot with a loud warning; nothing is ever deleted through a junction (docs/MISTAKES.md 2026-09-09, guard 1).
+5. The deploy backup is verified by file count before the old deploy target is removed (MISTAKES 2026-09-09, guard 4), and the deploy target's own recursive delete now refuses if the target is or contains a directory junction / symlink.
+6. `doctor.ps1` / `doctor.sh` cannot detect a NAS path; they now PRESERVE `WIN_BACKUP_ROOT` / `BACKUP_KEEP` from an existing `config.env` when they rewrite it, so a doctor re-run never silently drops the root.
+
+**PROVEN IN A SANDBOX** (no real deploy was run; the functions were dot-sourced against fake trees under the session scratchpad): 8 planted snapshots + keep 5 -> exactly the 3 oldest removed, the newest 5 intact with every file; a snapshot that IS a junction onto a victim tree -> skipped, victim file count unchanged; a snapshot CONTAINING a junction -> skipped, victim unchanged; a `<mod>` directory that is itself a junction -> every snapshot under it skipped; a snapshot path outside the root -> refused; a root inside the repo / an unreachable root / `BACKUP_KEEP=0` -> refused before anything runs.
+
+**HARDENED per the independent vet of `8ba96e2`, findings F1-F5** (same branch, `scripts/_backup.ps1` + `scripts/deploy_to_custommaps.ps1`): the root must be FULLY qualified and free of reparse points on its whole path, the guard's ancestor walk runs to the drive root, the deploy target's junction refusal runs before the snapshot copy, the snapshot is verified by count AND total bytes, and `BACKUP_KEEP` is validated before the root is created; the sandbox harness went 45 -> 69 assertions, all passing. Detail: `docs/BACKLOG.md` 2026-09-10 R-259.
+
+### DEBTS
+- `BL-R259-DEBT-1` (**P1, WILL**): the existing ~300 GB at `<repo>\backups\deployed\` is NOT moved or deleted by this lane (other agents were reading `backups\` at the time, and a recursive delete on that tree is exactly the operation the 2026-09-09 entry restricts). The script no longer writes there. Will's call: delete it, or move the newest few snapshots to the NAS root first. Either way, enumerate reparse points over it before any recursive delete.
+- `BL-R259-DEBT-2` (**P2, first real run**): the first deploy onto the NAS has not happened (this lane ran no deploy, by rule). The first run creates `Z:\Computer Backup\tqit_soulvizier_classic\` and should be watched for copy time over SMB (~1.3 GB per deploy).
