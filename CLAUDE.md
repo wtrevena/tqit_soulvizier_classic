@@ -442,12 +442,37 @@ touching anything. Resolution order per input, **first hit wins**:
    worktree build work at all)
 4. the installed location: Steam TQAE, or Steam Workshop item `2076433374` (SVAERA)
 5. a sibling worktree that already has the cache (e.g. `build36-map` for SV 0.98i `Levels.arc`)
-6. a `third_party/` archive - reported as EXTRACTABLE, never silently unpacked
+6. a `third_party/` archive - reported as EXTRACTABLE, never silently unpacked; `--extract` unpacks
+   it: `.zip` through `zipfile`, `.7z` / `.rar` through **7-Zip** (`C:\Program Files\7-Zip\7z.exe`,
+   else `7z` on PATH, else `$SVC_7Z`; `$SVC_7Z` set = authoritative). No 7-Zip + a non-zip archive
+   needed = a LOUD failure naming the archive and `winget install 7zip.7zip`, never a silent skip.
 
 Every **fallback** is md5-pinned, so auto-resolution can never quietly feed the build a different
 upstream; a path you pass on the command line is used **as-is** when it exists. A miss fails LOUD,
 once, naming the exact env var and every place searched (no more bare `FileNotFoundError` from deep
 inside `ArzDatabase`/`ArcArchive`).
+
+**Archives (2026-09-11, BL-b102-DEBT-1 discharged):** the expected inner path
+(`Database/database.arz`) is matched as a normalized **suffix** of the member list, so ModDB's
+pristine `Soulvizier_v0.98i.7z` (everything nested under `Soulvizier v0.98i\`) restores without a
+repack; two members ending in the same suffix is an ambiguity and is **refused**, listing both. Only
+the needed members are extracted (`7z x <archive> <member>`, grouped per archive), landed at the
+cache path the ladder expects, then md5-verified against the pins; a mismatch **deletes nothing** and
+fails loud (the ladder then rejects the file). The ModDB original filenames are accepted as
+alternates in the archive map (`Soulvizier_v0.98i.7z` beside the flat repack `soulvizier098i.zip`;
+`Soulvizier_0.9.rar` and `soulvizier-beta04.1.rar` already match); the first archive present wins and
+the report names which. **Off-repo copies of all four archives + a README with the outer and inner
+md5s:** `Z:\Computer Backup\tqit_soulvizier_classic\third_party_archives\`. Inner pins: 0.98i
+`database.arz` `11773cdc` / `Text_EN.arc` `29505ac2` / `Levels.arc` `0b575c9d` / `Creatures.arc`
+`5ef9d00a`; 0.9 `database.arz` `b31951df`; 0.4.1 `database.arz` `056d6f4e`.
+
+**One-command restore on a fresh machine:** copy `Soulvizier_v0.98i.7z` (or the zip),
+`Soulvizier_0.9.rar` and `soulvizier-beta04.1.rar` from the NAS into `<repo>\third_party\`, then
+`py tools/check_build_inputs.py --all --extract --verify-hashes` (exit 0 = every input landed and
+hashed; proven 2026-09-11 against the pristine .7z + both .rar into a scratch cache, 6/6 pins).
+Two overrides keep a scratch restore or a test off the repo's caches: `--third-party <dir>` /
+`$SVC_THIRD_PARTY_DIR` (the ONE archive dir to search) and `--cache-root <dir>` / `$SVC_CACHE_ROOT`
+(the rung-2 cache root the ladder reads and `--extract` writes; default: this repo).
 
 | input | env var | needed by |
 | --- | --- | --- |
@@ -462,8 +487,9 @@ inside `ArzDatabase`/`ArcArchive`).
 
 ```
 py tools/check_build_inputs.py --all --verify-hashes   # inventory + integrity
-py tools/check_build_inputs.py --all --extract         # populate upstream/ from third_party/ zips
-py tools/check_build_inputs.py --selftest              # planted negative tests for the resolver
+py tools/check_build_inputs.py --all --extract         # populate upstream/ from third_party/ (.zip/.7z/.rar)
+py tools/check_build_inputs.py --all --extract --third-party <dir> --cache-root <dir>   # scratch restore
+py tools/check_build_inputs.py --selftest [--selftest-root <scratch dir>]   # planted negative tests
 ```
 
 - **Build database (`.arz`):**
