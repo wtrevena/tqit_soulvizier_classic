@@ -353,7 +353,13 @@ def print_table(report, title):
 
 
 def load_sv(sv_arz=None):
-    """The upstream SV 0.98i arz through the one preflight resolver (hash-verified ladder)."""
+    """The upstream SV 0.98i arz through the one preflight resolver.
+
+    NOTE (`BL-R261-DEBT-6`): `resolve()` md5-verifies the FALLBACK ladder only. A path
+    supplied explicitly here (`--sv`, or argv into the build) short-circuits the ladder
+    and is used AS-IS, UNHASHED, by that module's documented design - so on an explicit
+    path the floor is guarded by P6's equation pin alone, not by a hash.
+    """
     import check_build_inputs as CBI
     try:
         p = CBI.resolve('sv098i_arz', sv_arz, verbose=False)
