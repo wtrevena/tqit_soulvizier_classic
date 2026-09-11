@@ -2,11 +2,18 @@ r"""R-258: apply the module over a BUILT arz and write the result, then RECORD-D
 
 WHAT THIS IS, AND WHAT IT IS NOT. This is **not** the cold build and must never be
 reported as one (the `BL-R257-DEBT-3` law: a module's `--negtest` being green is not
-proof; the build's own entrypoint is). It exists because the cold build's MANDATORY
-inputs are not on this machine - `upstream/`, `reference_mods/` and `third_party/`
-were emptied/removed on 2026-09-09 (see the lane report), so
-`tools/build_svc_database.py` cannot start: its `check_build_inputs.preflight`
-hard-fails on `sv098i_arz` + `sv09_arz` before anything else runs.
+proof; the build's own entrypoint is). It was written on 2026-09-09 because the cold
+build's MANDATORY inputs were not on this machine THAT DAY - `upstream/`,
+`reference_mods/` and `third_party/` had been emptied/removed that morning, so
+`tools/build_svc_database.py` could not start (its `check_build_inputs.preflight`
+hard-fails on `sv098i_arz` + `sv09_arz` before anything else runs). THAT IS HISTORY:
+the inputs were recovered on 2026-09-10 (five of six from the NAS archives, SV 0.4.1
+re-downloaded; off-repo copy at Z:\Computer Backup\tqit_soulvizier_classic\
+third_party_archives\) and the cold build RAN - arz 7dad9a8ad377ff9a65d17c144a57dde3,
+55,631,843 B, 51,355 records, det-2x plus a byte-identical third run by the vet, with
+the same record-diff this tool predicted (ADDED 3 / CHANGED 1 / REMOVED 0). The cold
+artifact is the artifact of record; this tool's output (e819a9a3) is EVIDENCE ONLY, and
+the tool stays useful as an attributed record-diff over any baseline.
 
 What it DOES give, on real bytes rather than a stub: the module's own `apply()` run
 over the 51,352 shipped records, the result WRITTEN to a real `.arz` through the same

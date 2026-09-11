@@ -1,10 +1,10 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
-> # 🩸 R-258 THE DEVOURER'S SOUL - COUNT THEM (2026-09-09, NOT SHIPPED YET)
+> # 🩸 R-258 THE DEVOURER'S SOUL - COUNT THE SOULS (vetted + merged 2026-09-10; ships as build102)
 >
-> **NOT ON YOUR DEV SURFACE AND NOT ON STEAM YET** - branch `fix/devourer-soul-drop`, awaiting
-> the vet and a ship. When it lands, **full quit of TQ and a Steam restart first** so the new
-> database loads. This is the FOURTH round on one report of yours:
+> **LANDS ON YOUR DEV SURFACE AND ON STEAM WITH build102** (cold database `7dad9a8a`; branch
+> `fix/devourer-soul-drop`, independent vet GO, now on main). When it lands, **full quit of TQ and
+> a Steam restart first** so the new database loads. This is the FOURTH round on one report of yours:
 >
 > > "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he
 > > should have 100% chance of dropping his soul."
@@ -24,16 +24,18 @@
 >    difficulty-gated and each tier has its own soul (`blood_toxeus_soul_n` / `_e` / `_l`), so a
 >    tier that pays nothing is a real finding.
 > 3. **PICK UP EVERYTHING and count the souls.** The soul is a pink/magenta-named ring. **THE
->    NUMBER IS THE ANSWER I NEED:**
->    - **ONE soul** - the fix worked and the old ring slot really was dead on this boss.
->    - **TWO souls** - both channels fired. Not a bug, and it tells me the ring slot was never
->      the problem, which changes where I look next. I collapse it back to one with a
->      one-line change.
->    - **ZERO souls** - the fix did not reach you either, and the next lane is a different
->      mechanism entirely (his own boss-orb chest). Tell me and I will build that.
-> 4. **One thing you will lose, and it is on purpose:** he no longer drops his single potion
->    (a health potion most kills, an energy potion sometimes). That was the slot the soul now
->    uses. It is two constants to put back if you would rather have the potion.
+>    NUMBER IS THE ANSWER I NEED, and here is exactly what each number does (the collapse rule):**
+>    - **TWO souls** - both channels fired: the old ring slot was never the problem. Expected on
+>      this build, not a bug, and it is the diagnostic. I then collapse it to one: either revert
+>      this update's two new weights so the soul goes back to the ring slot alone, or (if you
+>      prefer the new slot) retire the ring-slot pin on this one boss. Your call which.
+>    - **ONE soul** - the fix carried it and the old ring slot really was dead on this boss. I
+>      keep the new slot and rule the ring slot dead on this record.
+>    - **ZERO souls** - neither channel reached you; the next lane is a different mechanism
+>      entirely (his own boss-orb chest, the container chain). Tell me and I will build that.
+> 4. **One thing you will lose, and it is on purpose (`BL-R258-DEBT-3`):** he no longer drops
+>    his single potion (a health potion most kills, an energy potion sometimes). That was the
+>    slot the soul now uses. It is two constants to put back if you would rather have the potion.
 >
 > ## What is NOT claimed
 >
@@ -46,9 +48,15 @@
 > **Related, and you should know it:** while measuring this I found that the slot three previous
 > rulings used for "guaranteed" drops (`Misc4`) **is not a slot the engine's own template
 > declares at all**. That means the **Rite of the Undivided / End of All Things forge formula**
-> you reported missing from your Legendary Endless Hunt kill is probably not dropping from ANY of
-> the three champions, for the same reason. That is `BL-R258-DEBT-2` and it needs its own lane -
-> this one does not touch it.
+> you reported missing from your Legendary Endless Hunt kill is not dropping from ANY of the
+> three champions, for the same reason - and it is wider than that: **32 records** in this mod
+> deliver through that slot and none of them can pay. The guaranteed ones: the Devourer's own
+> Misc4 hoard, the EoAT rite on the Enslaver and both Hunts, the Ferryman's **Golden Bough**,
+> Mnemophage's **Lethe's Draught** and Ephialtes' **Mask of Dread**; plus 25 animal-relic sources
+> at 7-10% (`svc_sepulchralscale` on 8 wyrms, `svc_erebanheartstone` on 2 brutes,
+> `svc_revelersruse` on 6 archers, `svc_sanguinetithe` on 9 Sileni). One shared helper caused all
+> of it. That is `BL-R258-DEBT-2`, registered as the next lane after this ship - this update does
+> not touch it, and the change note says so.
 
 
 > # 🦅 R-256 THERE IS SOMETHING AT THE END OF LOOKOUT CAVE NOW (2026-08-15)

@@ -144,9 +144,9 @@
 
 **BL-W0814-9 DEVOURER OF BLOOD IS WIELDING A BOW - ✅ FIXED BY R-252, LIVE ON DEV *AND* STEAM AS `build96` (arz `0bd0121f36e5ce7bd205c73e588016ae`, 2026-08-15); in-game confirm = `BL-R252-DEBT-2`:** measured root cause = `lootLeftHandItem1` = `bleed_affix_high_{n,e,l}` at chance 100 / weight 100, and LeftHand IS the engine's shield / two-handed-ranged slot (base-game census over the 5,556 records whose templateName basename is Monster.tpl, one tick per record per class, references resolved case-insensitively: Shield 0-to-805, Bow 17-to-514, Staff 17-to-710, Spear 493-to-0 - and the 17 RightHand bow/staff records are one shared set of hand-less monsters using the slot as a drop chute, the same anti-pattern this fix removes). Those tables were curated by AFFIX not class and carry `u_n_tendonripper` / the Nemesis recurve, both `Weapon_Bow`. Fix = the weapon hand goes MELEE-ONLY (a NEW guaranteed `veinrender_guaranteed_{n,e,l}` table @100 + the de-bowed bleed table @19 + the shipped unique-sword row @19, so it is armed 100% of spawns vs 36.97% shipped), the off hand takes the Enslaver's shield array @100 + the 4-piece set table's only drop row @19, and both bleed tables are de-bowed. Original report kept verbatim below. "toxeus the murderer devourer of blood is using a bow which makes no sense." The Devourer (record `um_bloodtoxeus_99`, the blood-cave stash guardian) has a ranged BOW equipped - wrong for a melee/blood boss. Fix = audit his equipment slots (weapon1/weapon2 + any equip-pool loot rolling a bow onto him) and replace with an appropriate melee weapon (or clear the bow). SAME CLASS as BL-W0814-3 (Endless Hunt no equipment/weapon) - both are Toxeus-boss weapon-rig bugs; candidate to batch into one boss-equipment lane.
 
-**BL-W0814-10 DEVOURER OF BLOOD DID NOT DROP HIS SOUL - 🟡 FIXED BY R-258 (branch `fix/devourer-soul-drop`, module `tools/patches/devourer_soul_delivery.py`), AWAITING VET AND WILL'S KILL - the R-258 block directly below carries the measured root cause, the refuted Misc4 escalation and the debts; nothing here is CLOSED until `BL-R258-DEBT-1`. `build96` DID NOT CLOSE IT EITHER. R-252 shipped to DEV + Steam on 2026-08-15 (arz `0bd0121f36e5ce7bd205c73e588016ae`); it removed the one anomaly and closed NOTHING here; the closing proof is Will's next kill (`BL-R252-DEBT-1`). R-252 changes nothing on the `Finger2` channel BY CONSTRUCTION - the build96 record-diff proves it (`chanceToEquipFinger2` and `lootFinger2Item1` are machine-checked ABSENT from the whole diff) - so no part of that lane may be presented as the fix for this item:** the audit this item asked for was run and it CLEARED every listed suspect: `chanceToEquipFinger2` = 100.0 (R-243's pin, byte-unchanged), `lootFinger2Item1` = `blood_toxeus_soul_{n,e,l}` all resolving as `Jewelry_Ring`/`Magical`/`itemLevel 40 (N) / 68 (E) / 100 (L)` (field-for-field the same shape as the Enslaver + Hunt souls, also Ring/Magical/40-68-100, that have never failed), no difficulty or championChance gate, and EXACTLY ONE record in the DB carries `tagMonsterHemorrheus` with every spawn pool (`q_bloodtoxeus_lone`, `egg_blooddragon`, the ambush) naming it - so "base record vs difficulty/uber variant" is REFUTED. The ONE structural anomaly his three siblings do not share was the cross-class hand wiring of BL-W0814-9 (weapon hand rolling a 3/4-ARMOUR table, off-hand rolling weapons) - the same equip system the soul rides; R-252 removes it. HONEST: the engine path from a class-mismatched hand roll to a skipped Finger2 equip is NOT provable from the bytes, so this closes in-game. Escalation if it still fails = move the soul onto the Misc4 channel R-247.6a proved delivers ("Will's kill DID drop it"). [❌ REFUTED 2026-09-09 BY R-258 - Misc4 is not a CharacterLoot.tpl variable and occurs in 0 base-AE / 0 SV records; do NOT act on this sentence, read the R-258 block below.] Original report kept verbatim below. "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul." The Devourer (`um_bloodtoxeus_99`) killed, but his named SOUL item did not drop despite an intended 100% guaranteed drop. Fix = audit the Devourer's loot table / lootMasterTable chain for the soul entry: confirm the soul item is present in his drop pool AND that its drop CHANCE is 100% (not gated by difficulty, championChance, or a percentage roll). Check whether the drop is on the base record vs a difficulty/uber variant and whether the killed instance is the one carrying the loot ref. RELATED to the R-247 soul/summon wave (tiered souls, Enslaver-summon, EoAT forge formula visibility) and BL-W0814-9 (Devourer bow) - same boss; candidate to batch into the Devourer/boss-equipment+loot lane.
+**BL-W0814-10 DEVOURER OF BLOOD DID NOT DROP HIS SOUL - 🟡 FIXED BY R-258 (branch `fix/devourer-soul-drop`, module `tools/patches/devourer_soul_delivery.py`; INDEPENDENT VET GO, MERGED TO MAIN `0f6d450` 2026-09-10 as the build102 candidate, COLD arz `7dad9a8a` built det-2x + a byte-identical third run), AWAITING THE build102 SHIP AND WILL'S KILL - the R-258 block directly below carries the measured root cause, the refuted Misc4 escalation and the debts; nothing here is CLOSED until `BL-R258-DEBT-1`. `build96` DID NOT CLOSE IT EITHER. R-252 shipped to DEV + Steam on 2026-08-15 (arz `0bd0121f36e5ce7bd205c73e588016ae`); it removed the one anomaly and closed NOTHING here; the closing proof is Will's next kill (`BL-R252-DEBT-1`). R-252 changes nothing on the `Finger2` channel BY CONSTRUCTION - the build96 record-diff proves it (`chanceToEquipFinger2` and `lootFinger2Item1` are machine-checked ABSENT from the whole diff) - so no part of that lane may be presented as the fix for this item:** the audit this item asked for was run and it CLEARED every listed suspect: `chanceToEquipFinger2` = 100.0 (R-243's pin, byte-unchanged), `lootFinger2Item1` = `blood_toxeus_soul_{n,e,l}` all resolving as `Jewelry_Ring`/`Magical`/`itemLevel 40 (N) / 68 (E) / 100 (L)` (field-for-field the same shape as the Enslaver + Hunt souls, also Ring/Magical/40-68-100, that have never failed), no difficulty or championChance gate, and EXACTLY ONE record in the DB carries `tagMonsterHemorrheus` with every spawn pool (`q_bloodtoxeus_lone`, `egg_blooddragon`, the ambush) naming it - so "base record vs difficulty/uber variant" is REFUTED. The ONE structural anomaly his three siblings do not share was the cross-class hand wiring of BL-W0814-9 (weapon hand rolling a 3/4-ARMOUR table, off-hand rolling weapons) - the same equip system the soul rides; R-252 removes it. HONEST: the engine path from a class-mismatched hand roll to a skipped Finger2 equip is NOT provable from the bytes, so this closes in-game. Escalation if it still fails = move the soul onto the Misc4 channel R-247.6a proved delivers ("Will's kill DID drop it"). [❌ REFUTED 2026-09-09 BY R-258 - Misc4 is not a CharacterLoot.tpl variable and occurs in 0 base-AE / 0 SV records; do NOT act on this sentence, read the R-258 block below.] Original report kept verbatim below. "i killed toxeus the murderer devourer of blood and he did not drop his soul even though he should have 100% chance of dropping his soul." The Devourer (`um_bloodtoxeus_99`) killed, but his named SOUL item did not drop despite an intended 100% guaranteed drop. Fix = audit the Devourer's loot table / lootMasterTable chain for the soul entry: confirm the soul item is present in his drop pool AND that its drop CHANCE is 100% (not gated by difficulty, championChance, or a percentage roll). Check whether the drop is on the base record vs a difficulty/uber variant and whether the killed instance is the one carrying the loot ref. RELATED to the R-247 soul/summon wave (tiered souls, Enslaver-summon, EoAT forge formula visibility) and BL-W0814-9 (Devourer bow) - same boss; candidate to batch into the Devourer/boss-equipment+loot lane.
 
-> ### 🟡 R-258 (2026-09-09, branch `fix/devourer-soul-drop`) - THE FIX, AWAITING VET; NOBODY HAS KILLED HIM ON IT YET
+> ### 🟡 R-258 (2026-09-09, branch `fix/devourer-soul-drop`) - THE FIX, VET GO AND MERGED TO MAIN 2026-09-10 (build102 candidate); NOBODY HAS KILLED HIM ON IT YET
 >
 > **ROOT CAUSE, measured on the shipped `build101` arz `9712f58fcc1a73ec1fba2d5a9e811cbc`, record
 > by record - and it is NOT a wrong value, which is why three audits cleared it:** the soul's ONLY
@@ -154,9 +154,10 @@
 > **`Finger2` EQUIPMENT slot** - `chanceToEquipFinger2` = 100.0, `chanceToEquipFinger2Item1` = 100
 > (the only non-zero row; items 2-6 = 0), `lootFinger2Item1` = `blood_toxeus_soul_{n,e,l}`, all
 > three resolving as `Jewelry_Ring`. No difficulty gate, no `championChance` gate, no rank gate; a
-> full reverse-reference sweep finds four referrers of each soul record - the three
-> `*_04_lesserpotionofexperience_formula` reagent slots (a recipe, not a drop) and that one
-> `lootFinger2Item1`. Both spawn pools (`q_bloodtoxeus_lone` spawn 3 / champ 2,
+> full reverse-reference sweep finds four referrers of each soul record, five for the Legendary
+> one - the three `*_04_lesserpotionofexperience_formula` reagent slots, `svc_toxeus_eoat_formula.dbr`'s
+> `reagent3BaseName` (which names `blood_toxeus_soul_l` only; all four are recipes, not drops) and
+> that one `lootFinger2Item1`. Both spawn pools (`q_bloodtoxeus_lone` spawn 3 / champ 2,
 > `egg_blooddragon` spawn 4 / champ 3) put `um_bloodtoxeus_99` on `name1..3` with demons/dragons in
 > the champion slots, so he is a MAIN on every difficulty and there is no variant to have killed
 > instead. **The database is correct; the defect is that the guarantee rides ONE engine behaviour
@@ -200,27 +201,33 @@
 > build, + 4 positive controls).
 >
 >
-> **THE ARTIFACT THIS LANE ACTUALLY PRODUCED, AND WHAT IT IS NOT.** 🛑 **THE COLD BUILD COULD NOT
-> BE RUN.** `upstream/`, `reference_mods/` and `third_party/` are GONE from this checkout
-> (emptied/removed 2026-09-09 ~13:18, not by this lane) and `work\SoulvizierClassic\{Resources,Maps}`
-> were stripped at the same time; `py tools/check_build_inputs.py --all --verify-hashes` FATALs on
-> **every** SV input, `build_svc_database.py` hard-fails in its own preflight on `sv098i_arz` +
-> `sv09_arz` before the prefix cache is consulted, `git worktree list` shows no sibling cache, and a
-> drive-wide search for `soulvizier098i.zip` / `Soulvizier_0.9.rar` / `soulvizier-beta04.1.rar`
-> returns **0 hits**. **`BL-R257-DEBT-3` IS THEREFORE NOT DISCHARGED HERE** - see
-> `BL-R258-DEBT-6`. What ran instead, on real bytes rather than a stub
-> (`tools/debug/r258_apply_over_shipped.py`): the module's own `apply()` over the 51,352 shipped
-> records, written through the build's own `ArzDatabase.write_arz`, the gate re-run on the WRITTEN
-> file, and a full record-diff.
+> **THE ARTIFACT OF RECORD (2026-09-10, integration): THE COLD BUILD RAN.** The paragraph the lane
+> wrote on 2026-09-09 said the cold build could not be run: `upstream/`, `reference_mods/` and
+> `third_party/` had been pruned that morning (not by this lane), `check_build_inputs --all
+> --verify-hashes` FATALed on every SV input, and a drive-wide search for `soulvizier098i.zip` /
+> `Soulvizier_0.9.rar` / `soulvizier-beta04.1.rar` returned 0 hits. That search was filename-only
+> and could not see inside containers; a content-based hunt found five of the six inputs inside the
+> NAS's `Z:\Computer Backup\Files\static\Games\TQ.7z` + `Games.7z`, SV 0.4.1 was re-downloaded, and
+> an off-repo copy of all four archives now lives at
+> `Z:\Computer Backup\tqit_soulvizier_classic\third_party_archives\` (README there;
+> `docs/MISTAKES.md` 2026-09-10). With the inputs restored the REAL entrypoint ran cold
+> (`SVC_NO_CACHE=1 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`): **arz
+> `7dad9a8ad377ff9a65d17c144a57dde3`, 55,631,843 B, 51,355 records**, det-2x by the builder and a
+> THIRD byte-identical run by the vet; `Text.arc` **`1be898a0`** unchanged, `Creatures.arc`
+> **`d65d92a3`** unchanged; record-diff vs the shipped `9712f58f` **ADDED 3 / CHANGED 1 (the same 4
+> fields) / REMOVED 0, ZERO unattributed** - the diff the apply-over-shipped run predicted.
+> **`BL-R258-DEBT-6` and `BL-R257-DEBT-3` are DISCHARGED for this lane.** The apply-over-shipped
+> artifact below (`tools/debug/r258_apply_over_shipped.py`: the module's own `apply()` over the
+> 51,352 shipped records, written through the build's own `ArzDatabase.write_arz`, the gate re-run
+> on the WRITTEN file, and a full record-diff) stays in the record as EVIDENCE ONLY; it is not the
+> build, and `7dad9a8a` is what ships.
 >
-> | | |
-> |---|---|
-> | built arz | **`e819a9a31b0f4a2616bbc3795c946692`**, 55,632,541 B, **51,355** records (+677 B / +3) |
-> | det-2x | two independent runs **md5-equal AND `cmp` byte-identical** |
-> | idempotency | a THIRD run over the already-fixed arz: **ADDED 0 / REMOVED 0 / CHANGED 0**, same md5 |
-> | record-diff vs `9712f58f` | **ADDED 3 / REMOVED 0 / CHANGED 1, ZERO unattributed** |
-> | `Text.arc` | **UNCHANGED `1be898a0`** - this lane mints no tags, so the arz+Text coupling is satisfied trivially |
-> | `Creatures.arc` | **UNCHANGED `d65d92a3`** - no asset surface touched |
+> | artifact | status | bytes |
+> |---|---|---|
+> | **COLD build (2026-09-10) - THE ARTIFACT OF RECORD** | **ships as build102** | **`7dad9a8ad377ff9a65d17c144a57dde3`**, 55,631,843 B, **51,355** records; det-2x by the builder + a byte-identical THIRD run by the vet; record-diff vs `9712f58f` **ADDED 3 / REMOVED 0 / CHANGED 1 (4 fields), ZERO unattributed** |
+> | apply-over-shipped (2026-09-09) | EVIDENCE ONLY, does not ship | `e819a9a31b0f4a2616bbc3795c946692`, 55,632,541 B, 51,355 records (+677 B / +3 over the shipped file: a re-serialisation of `9712f58f` through `write_arz`, not a pipeline output); det-2x md5-equal AND `cmp` byte-identical; a THIRD run over the already-fixed arz **ADDED 0 / REMOVED 0 / CHANGED 0**; record-diff vs `9712f58f` **ADDED 3 / REMOVED 0 / CHANGED 1, ZERO unattributed** - identical at the record level to the cold artifact's |
+> | `Text.arc` | **UNCHANGED `1be898a0`** on both | this lane mints no tags, so the arz+Text coupling is satisfied trivially |
+> | `Creatures.arc` | **UNCHANGED `d65d92a3`** on both | no asset surface touched |
 >
 > ADDED = the three `svc_devourersoul_guaranteed_{n,e,l}` tables. CHANGED = `um_bloodtoxeus_99` and
 > on it exactly four fields: `lootMisc1Item3` (new), `chanceToEquipMisc1Item3` 0 -> 100,
@@ -256,16 +263,37 @@
 
 **DEBTS REGISTERED BY R-258 (no-new-surface-without-a-gate + debt-register law):**
 - `BL-R258-DEBT-1` (**P1, WILL / in-game - the closing proof for `BL-W0814-10`**): kill the
-  Devourer of Blood and report **how many** souls drop. ONE = `Finger2` is dead on this record and
-  the `Misc1` chute saved it; TWO = `Finger2` was never the defect; ZERO = the equipment generator
-  is not running on him at all and the next lane is the bespoke boss-orb container chain
-  (pre-designed in R-258, blocked only by R-99's gate, which would need an amendment).
-- `BL-R258-DEBT-2` (**P1, three rulings - THE BIG ONE**): `Misc4` is not a `CharacterLoot.tpl`
-  variable, so R-13's rant scroll, R-92's EoAT formula on BOTH Hunts and the Devourer's whole
-  `svc_devourer_misc4_master` all ride a field the engine's template does not declare - three
-  champions' "guaranteed" formula drop is probably dead, which is exactly what Will reported on his
-  Legendary Hunt kill. Out of scope here (different report, different roster, a supersession of
-  R-13 / R-92 / R-247.6a). **A `Misc4` audit is owed before the next EoAT claim.**
+  Devourer of Blood and report **how many** souls drop. **THE COLLAPSE RULE (vet-required at
+  integration, 2026-09-10) and the double-drop disclosure: on this build a healthy `Finger2` plus
+  the new `Misc1` chute drop the soul TWICE, deliberately - that is the diagnostic three database
+  audits could not buy.** TWO = `Finger2` was never the defect -> revert this lane's `Misc1` weights
+  (`chanceToEquipMisc1Item3` 100 -> 0 and the potion rows back to 80 / 20, so the record returns to
+  its build101 shape with the soul on `Finger2` alone; the soul tables stay named) OR, if the `Misc1`
+  chute is preferred, amend R-243's `Finger2` pin on this one record - Will's call which. ONE =
+  `Finger2` is dead on this record and the `Misc1` chute saved it -> keep `Misc1`, rule `Finger2`
+  dead on this record. ZERO = the equipment generator is not running on him at all -> the next lane
+  is the `treasureProxyName` container chain (the bespoke boss-orb chain pre-designed in R-258,
+  blocked only by R-99's gate, which would need an amendment). Either way he no longer drops his
+  one `Misc1` potion (`BL-R258-DEBT-3`). Will's script: the top section of `docs/WILL_TEST_GUIDE.md`.
+- `BL-R258-DEBT-2` (**P1, WIDENED AT INTEGRATION 2026-09-10 from three champions to ALL 32 `Misc4`
+  CARRIERS - REGISTERED AS THE NEXT P1 LANE, the `Misc4` audit**): `Misc4` is not a
+  `CharacterLoot.tpl` variable, so every record that delivers through `lootMisc4Item1` rides a
+  field the engine's template does not declare, and none of them can pay. The 32, measured on the
+  shipped arz: **7 "guaranteed" @100** - `um_bloodtoxeus_99` -> `svc_devourer_misc4_master` (3
+  tiers: R-13's rant scroll + the formula), `um_toxeus_enslaver_99` / `um_toxeus_hunt_99` /
+  `um_toxeus_hunt_l_99` -> `svc_rite_guaranteed` (R-92's EoAT rite formula, the one Will reported
+  missing on his Legendary Hunt kill), `um_charonform2_ferryman_99` -> `svc_goldenbough_{n,e,l}`
+  (R-231's Golden Bough), Mnemophage -> the `lethesdraught` amulet, Ephialtes ->
+  `svc_maskofdread_{n,e,l}`; **+ 25 animal-relic sources at 7-10%** - `svc_sepulchralscale` on 8
+  wyrms, `svc_erebanheartstone` on `em_brute_43/45`, `svc_revelersruse` on `ar_archer_01..06`,
+  `svc_sanguinetithe` on the 9 Sileni. **ROOT for the guaranteed seven:**
+  `tools/apply_svc_patches.py` `_svc_guarantee_unique` (line 17616) picks its slot with
+  `for n in (4, 5, 6, 3)` (line 17625) - it writes the non-existent `Misc4` / `Misc5` / `Misc6`
+  before it ever reaches the real `Misc3`. **The audit lane must cover all 32**, move each onto a
+  declared slot (or the container chain, as R-258 did), settle `BL-R258-DEBT-5` from the bytes and
+  gate the result. Out of scope for R-258 (different report, different roster, a supersession of
+  R-13 / R-92 / R-231 / R-247.6a); disclosed to players in the build102 change note as found and
+  logged, fixed in the next update, not this one.
 - `BL-R258-DEBT-3` (**P2, WILL / balance ratification**): the Devourer stops dropping his one
   `Misc1` potion (health 80% / energy 20% of kills). Reverse = restore `chanceToEquipMisc1Item1`
   80 + `chanceToEquipMisc1Item2` 20 and find the soul another home; both tables are still named on
@@ -278,21 +306,21 @@
   documents `svc_devourer_misc4_master` as "rolls each child independently ... so both always
   drop"; R-252 documents the same record as "a 50/50". Both cannot be true. Not load-bearing here
   (this lane writes nothing on `Misc4`); whichever lane discharges DEBT-2 must settle it.
+- `BL-R258-DEBT-6` (**was P0 SHIP BLOCKER - DISCHARGED 2026-09-10 at integration, and
+  `BL-R257-DEBT-3` with it**): on 2026-09-09 the lane could not run the cold build (inputs pruned
+  that morning, not by this lane; a filename-only search found no archive on any drive - the
+  negative retracted in `docs/MISTAKES.md` 2026-09-10). The inputs were recovered (five of six from
+  the NAS's `TQ.7z` + `Games.7z`, SV 0.4.1 re-downloaded; off-repo copy of all four archives at
+  `Z:\Computer Backup\tqit_soulvizier_classic\third_party_archives\`) and the REAL entrypoint ran
+  cold TWICE by the builder (`SVC_NO_CACHE=1 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1
+  SVC_REQUIRE_GATES=1`) plus a THIRD byte-identical run by the vet: arz
+  **`7dad9a8ad377ff9a65d17c144a57dde3`, 55,631,843 B, 51,355 records**, Text `1be898a0`, Creatures
+  `d65d92a3`, record-diff vs `9712f58f` ADDED 3 / CHANGED 1 (4 fields) / REMOVED 0, ZERO
+  unattributed. The apply-over-shipped `e819a9a3` is evidence only; `7dad9a8a` is the artifact of
+  record and the build102 candidate, staged at `work\SoulvizierClassic\Database\`.
 
 **BL-W0814-11 GREAT HALL OF PROPONTIS UBER-BOSS CHEST OVER-NERFED (only 2 items) - ✅ ADDRESSED BY R-251** (branch `fix/chest-generosity-shared-cause`; in-game confirm = `BL-R251-DEBT-3`). RECORD = `svc_dorushoard_01/02/03` (Kroisos the Coin-Drowned / Dorus). It was the WORST case of the shared cause: it had **no bespoke loot family at all**, it opened base-game `boss_default_*` with `loot3Chance=10` (no guaranteed row - hence literally gold + one relic), and before the b42 repoint it SHARED the Obsidian Hoard's tables. R-251 authors it its own `svc_dorushoard_loot_0N` family and wires it. Its item-answer to "was there a mod-wide chest nerf that hit all these uber chests at once?" is YES and it is named in the R-251 lane record. Its chest NAME is still "Obsidian Hoard" - `BL-R251-DEBT-2`, a Will decision. Original report kept verbatim below.
 > the chest in the Great Hall of Propontis that is locked behind that area's uber boss "literally just dropped two items one thing of gold and incarnation of guan-yu's grace." An uber-boss-gated chest dropping gold + ONE relic is absurdly stingy. SAME OVER-NERF CLASS as BL-W0814-2 (obsidian hoard chests), BL-W0814-5 (Aphoryteus Dread Hoard), and the R-247.7a Devourer-stash reverts. Fix = identify the Propontis uber-boss chest record + its loot table, and restore it to proper uber-tier generosity (multiple guaranteed high-tier items, not a 1-item roll). BATCH with the other over-nerfed-chest items into ONE chest-generosity audit lane (also covers BL-W0814-7 Secret Place gift box +3x). Root question for the lane: was there a mod-wide chest nerf that hit all these uber chests at once? If so, find + fix the shared cause, not one chest at a time.
-- `BL-R258-DEBT-6` (**P0, SHIP BLOCKER, PROCESS - the one thing this lane could not do**): the
-  COLD BUILD WAS NEVER RUN. `upstream/`, `reference_mods/` and `third_party/` are gone from this
-  checkout (emptied/removed 2026-09-09 ~13:18, not by this lane) and
-  `work\SoulvizierClassic\{Resources,Maps}` were stripped with them;
-  `check_build_inputs --all --verify-hashes` FATALs on every SV input, `build_svc_database.py`
-  hard-fails in its own preflight before the prefix cache is consulted, there is no sibling
-  worktree cache, and a drive-wide search for the three third_party archives returns 0 hits.
-  **`BL-R257-DEBT-3` IS NOT DISCHARGED BY THIS LANE.** Before any ship: restore the inputs (or set
-  `$SVC_SV098I_ARZ` / `$SVC_SV09_ARZ` / `$SVC_SV041_ARZ` / `$SVC_SVAERA_ARZ`), then run the real
-  entrypoint TWICE (`SVC_NO_CACHE=1 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`) and
-  re-do the record-diff against `9712f58f` on the COLD artifact. The apply-over-shipped arz
-  `e819a9a3` in this lane is evidence, not a build.
 
 **BL-W0814-12 BOSS ARENA - NO BOSS SPAWNED (spawn not 100%?) + needs more work - ✅ FIXED BY R-253, LIVE ON DEV *AND* STEAM AS `build97`** (canonical arz `98741a4eb59957a4ebe3b6101bbcd49b` + `Text.arc 82d5b810` + `Quests.arc 6271ceb2` + `Levels.arc 1bf86461`; DEV runs the TESTHUB twins `d9f8c316` / `666789ab`). In-game confirm still owed = `BL-R253-DEBT-1`. Original report verbatim below (Will 2026-08-14): "when i went to the boss arena this time there was no boss there. does he not spawn 100% of the time? the boss arena needs more work." Player traveled to the Boss Arena (the Helos boat-hub destination; level bossarena/boss_arena) and found it EMPTY - no boss. Two parts:
   - **(a) SPAWN 100%:** the arena boss must spawn on EVERY visit. Audit the boss proxy/spawn: check spawnChance / championChance / difficulty gate / whether the spawn is one-shot-consumed after a prior kill (persisted). Set to guaranteed spawn. (Note: "this time" implies it spawned before - possible one-shot/consumed spawn or a random spawnChance<100.)
@@ -17119,4 +17147,13 @@ Will (2026-09-10, verbatim): *"why do we have a 300gb backups tree? no wonder i 
   - **F3:** the deploy target's junction/symlink refusal moved BEFORE the snapshot copy (new `Save-BackupDeploySnapshot`), so a junctioned target is never dragged across SMB and no empty snapshot directory is left behind; the count error is reworded `backup verification failed: file count mismatch (src N, dst M)`.
   - **F4:** `Get-BackupKeep` is validated BEFORE `Resolve-BackupRoot`, which creates the root dir, so a bad `BACKUP_KEEP` no longer leaves a new folder on the NAS behind an abort.
   - **F5:** the snapshot is verified by TOTAL BYTES beside the file count (`Test-BackupCopyVerified`); a truncated file that the count check cannot see now fails loud before the deploy target is removed (docs/MISTAKES.md 2026-09-09, guard 4).
-- **DEBTS:** `BL-R259-DEBT-1` (P1, Will): the existing ~300 GB `backups\deployed\` tree is untouched by this lane - delete or migrate it by hand after a reparse-point sweep. `BL-R259-DEBT-2` (P2): the first real NAS deploy has not run yet (creates the root folder on Z:; watch SMB copy time).
+- **DEBTS:** `BL-R259-DEBT-1` (P1, Will): the existing ~300 GB `backups\deployed\` tree is untouched by this lane - delete or migrate it by hand after a reparse-point sweep. `BL-R259-DEBT-2` (P2): the first real NAS deploy has not run yet (creates the root folder on Z:; watch SMB copy time) - **to be discharged by THIS build's (build102) DEV deploy; the ship commit records the result** (root created, snapshot count + bytes verified, SMB copy time, keep-5 rotation outcome). Merged to main `f8a48f2` (`--no-ff`, clean) 2026-09-10.
+
+## 2026-09-10 - BUILD102 INTEGRATION: R-259 + R-258 ON MAIN, THE INPUTS BACK, THE COLD BUILD RUN
+
+- **MERGES (main tree, `--no-ff`):** `f8a48f2` = R-259 `fix/backups-to-nas` @ `a31d8d6` (clean - the branch was cut from main's tip `ca09242`); `0f6d450` = R-258 `fix/devourer-soul-drop` @ `b1ab068` (base `8e5daa6`; `docs/MISTAKES.md` and `docs/WILL_RULINGS.md` conflicted against main's 09-09 commits + the R-259 additions and were UNION-resolved with both sides kept in full: the duplicated `## 2026-09-09` heading collapsed to one, R-258 seated before R-259 behind the ledger's `---` separator; `BACKLOG.md`, `HANDOFF_LIVE_STATE.md`, `WILL_TEST_GUIDE.md` and `tools/patches/__init__.py` auto-merged, the registry carrying only the Devourer lane's entry because R-259 touches no `tools/` file). Post-merge: `py tools/gate_ruling_ids.py --vs origin/main` **PASS - 55 rulings, highest R-259**, R-258 and R-259 each defined exactly once; `patches.selfcheck()` **OK - 70 modules, order `fef5d518`**.
+- **`BL-R258-DEBT-6` DISCHARGED, `BL-R257-DEBT-3` WITH IT, ON THE COLD BYTES:** arz **`7dad9a8ad377ff9a65d17c144a57dde3`, 55,631,843 B, 51,355 records** (det-2x by the builder under `SVC_NO_CACHE=1 PYTHONHASHSEED=0 SVC_RELEASE_DROPS=1 SVC_REQUIRE_GATES=1`, plus a THIRD byte-identical run by the vet); `Text.arc` **`1be898a0`** and `Creatures.arc` **`d65d92a3`** unchanged; record-diff vs the shipped `9712f58f` (55,631,864 B, 51,352 records) **ADDED 3 / CHANGED 1 (4 fields on `um_bloodtoxeus_99`) / REMOVED 0, ZERO unattributed**. The lane's apply-over-shipped `e819a9a3` (55,632,541 B) is retained as evidence only; **`7dad9a8a` is the artifact of record**, staged at `work\SoulvizierClassic\Database\SoulvizierClassic.arz` as the build102 candidate (build101 `9712f58f` preserved in `dist\`). Not yet deployed, not yet packaged; the build102 change note is written and committed BEFORE packaging (`BL-b97-DEBT-1`).
+- **THE INPUTS ARE BACK, AND "NO COPY EXISTS ON ANY DRIVE" WAS WRONG** (`docs/MISTAKES.md` 2026-09-10, the orchestrator's own): the 2026-09-09 negative rested on filename-only searches that cannot see inside `.7z`/`.rar` containers; a content-based hunt found five of the six inputs inside `Z:\Computer Backup\Files\static\Games\TQ.7z` + `Games.7z` (Will's 2020 laptop backup); only SV 0.4.1 needed a re-download. **Off-repo copy of all four archives now at `Z:\Computer Backup\tqit_soulvizier_classic\third_party_archives\`** (`soulvizier098i.zip`, `Soulvizier_v0.98i.7z`, `Soulvizier_0.9.rar`, `soulvizier-beta04.1.rar`, README there) - the 2026-09-09 guard (3) satisfied.
+- 🆕 **NEXT P1 LANE, REGISTERED: THE `Misc4` AUDIT (`BL-R258-DEBT-2`, WIDENED from three champions to ALL 32 CARRIERS).** `Misc4` is not a `CharacterLoot.tpl` variable; 32 shipped records deliver through `lootMisc4Item1` and none of them can pay. **7 guaranteed @100:** `um_bloodtoxeus_99` -> `svc_devourer_misc4_master` (3 tiers), `um_toxeus_enslaver_99` / `um_toxeus_hunt_99` / `um_toxeus_hunt_l_99` -> `svc_rite_guaranteed` (the EoAT rite), `um_charonform2_ferryman_99` -> `svc_goldenbough_{n,e,l}` (R-231's Golden Bough), Mnemophage -> the `lethesdraught` amulet, Ephialtes -> `svc_maskofdread_{n,e,l}`. **25 animal-relic sources at 7-10%:** `svc_sepulchralscale` on 8 wyrms, `svc_erebanheartstone` on `em_brute_43/45`, `svc_revelersruse` on `ar_archer_01..06`, `svc_sanguinetithe` on the 9 Sileni. **ROOT for the guaranteed seven:** `tools/apply_svc_patches.py` `_svc_guarantee_unique` (line 17616) chooses its slot with `for n in (4, 5, 6, 3)` (line 17625), so it writes the non-existent `Misc4`/`Misc5`/`Misc6` before it ever reaches the real `Misc3`. The lane must cover all 32, move each onto a declared slot (or the container chain, as R-258 did), settle `BL-R258-DEBT-5` from the bytes, and gate the result. Disclosed to players in the build102 change note as found and logged, fixed in the next update, not this one.
+- 🆕 `BL-b102-DEBT-1` (**P2, tooling - a fresh machine cannot bootstrap the inputs unattended**): teach `tools/check_build_inputs.py --extract` to shell out to 7-Zip for `.7z` and `.rar` (today it opens `.zip` only through `zipfile` and tells the operator to extract `.rar` by hand: lines 245-246 and 305-344) and to tolerate ONE nested top-level folder inside the archive (ModDB's `Soulvizier_v0.98i.7z` is a nested `.7z`; today it needs a manual repack). Until then the off-repo copy above is the manual path.
+- `BL-R259-DEBT-2` (**P2, first real NAS run**): discharged by THIS build's DEV deploy - the ship commit records the result. `BL-R259-DEBT-1` (the legacy ~300 GB tree) stays Will's call; a background copy of `backups\` to `Z:\Computer Backup\tqit_soulvizier_classic\archive_pre_R259\` was in progress at integration time - neither tree is to be touched until it completes.

@@ -1,35 +1,14 @@
-[h2]The Enslaver of Souls smokes the way his demons smoke[/h2]
+[h2]Toxeus the Murderer, Devourer of Blood drops his soul[/h2]
 [list]
-[*]Toxeus the Murderer, Enslaver of Souls is a skeleton leader wrapped in a black shadow shroud. The demons he raises have carried that shroud correctly for a long time. He never has, and neither have the pets you summon from his soul.
-[*]This is the [b]fifth[/b] attempt at that one effect and the first that copies something already known to render, rather than adding another field and asserting it.
+[*]The Devourer's soul was set to a 100% drop and still did not drop. His database was correct; the guarantee rode a single engine channel on a single record with no backup. He now carries a second guaranteed channel on a slot the engine is proven to read, measured at 100% on all three difficulties.
+[*]While that fix is confirmed in play, he may drop his soul twice on a kill. One soul means the original channel was dead and the fix carried it; two means it was never the problem. Either way it will be tightened in the next update. He no longer drops his potion, which made room for the soul.
 [/list]
-
-[h2]Why the previous four rounds failed, stated plainly[/h2]
+[h2]A wider bug, found and logged[/h2]
 [list]
-[*]Each of them wrote the shroud into a [b]record field[/b] and then proved the record was correct. That was never the right proof. Two rounds wrote into skill slots the engine does not declare at all. The last round moved to two slots the engine does declare, verified the bytes, verified the gate, and the boss still stood there clean.
-[*]So the standard changed. A fix for something you are supposed to [b]see[/b] must copy a specific creature you can already see doing it, through the same mechanism, and must match it byte for byte. Where no such example exists, that gets said out loud instead of shipped around.
+[*]Several guaranteed boss drops in this mod were wired to an equipment slot the engine does not have, so they could never drop: among them the Golden Bough, Lethe's Draught, the Mask of Dread and the Toxeus rite formula. The cause is one shared helper and it is fixed in the next update, not this one.
 [/list]
-
-[h2]What was measured before anything was written[/h2]
+[h2]Housekeeping[/h2]
 [list]
-[*]Across 566 engine templates, 74,013 base-game records, 341 base-game pets and 591 creature models: the field routes have [b]no rendering example anywhere[/b]. One of them is declared in zero templates and used by zero records. The other never once reaches a self-buff effect on any pet in the shipping game.
-[*]The model route does. His demons wear it. So does every standing aura in the base game - every Ancestral Warrior, every Spirit Outsider, every Storm Wisp, the Spirit Ward, the Battle Standard. None of them get their glow from a skill; all of them get it from their model file.
-[*]There is no ambient-effect field on the engine's monster or pet template at all. That absence is exactly why the base game compiles auras into models.
+[*]Deploy-time backups moved off the working drive with rotation. No player-facing change.
 [/list]
-
-[h2]What actually shipped[/h2]
-[list]
-[*]The Enslaver gets his own copy of his own skeleton model with the demons' smoke block appended: the same 115 bytes, read straight off the demons' model, at the same attach point, naming the same effect. Same skeleton, same bones, same 31 animation names, same silhouette. The only difference in the file is the smoke.
-[*][b]All four of the previous round's field channels were removed rather than left in place.[/b] They are the shape that reads as working and is not, and on anything that already smokes from its model they would have doubled the effect. The ask was for the same shroud the demons have, not a thicker one.
-[*]The boss, the three tiers his soul summons, and the two preview versions all move onto that model together. Existing Enslaver souls pick it up with no re-drop and no new character.
-[/list]
-
-[h2]Scope[/h2]
-[list]
-[*]Six records changed, five retired. No other monster, item, skill, drop rate, chest, area, entrance or quest moved. The world map and the quest archive are byte for byte identical to the previous update and are not republished.
-[*]This update carries a [b]model archive[/b] as well as the database, which is new for this mod. Both halves ship together; the build refuses to produce a database whose models are missing.
-[/list]
-
-[i]Not yet confirmed in play. What can be said, and could not be said any of the previous four times: these records now reach the screen by the same mechanism, through the same attach point, carrying a byte-identical block, as creatures already confirmed to smoke in play. Whether that renders is the one thing only playing it can answer.[/i]
-
 [i]Credits: [b]amgoz1[/b] for Soulvizier and the emblem, used with permission - [b]soa[/b] for Soulvizier AERA - [b]Dragonlord[/b] for DRX.[/i]

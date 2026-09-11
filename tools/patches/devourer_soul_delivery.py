@@ -14,9 +14,10 @@ record by record - every number below is read out of that file, not remembered):
    `blood_toxeus_soul_{n,e,l}`. All three soul records exist, all three are
    `Jewelry_Ring` / `Magical` / itemLevel 40/68/100. No difficulty gate, no
    championChance gate, no rank gate. A full reverse-reference sweep of the shipped
-   arz finds exactly FOUR referrers of each soul record: the three
-   `*_04_lesserpotionofexperience_formula` reagent slots (a recipe, not a drop) and
-   this one `lootFinger2Item1`. **So the drop is byte-correct and it is a SINGLE
+   arz finds exactly FOUR referrers of each soul record, FIVE for the Legendary one:
+   the three `*_04_lesserpotionofexperience_formula` reagent slots,
+   `svc_toxeus_eoat_formula.dbr`'s `reagent3BaseName` (names `blood_toxeus_soul_l`
+   only; all four are recipes, not drops) and this one `lootFinger2Item1`. **So the drop is byte-correct and it is a SINGLE
    POINT OF FAILURE.** Three audits (b96/R-252 round 1-3) cleared every field named
    in the report and the boss still paid nothing, so the defect is not a value in
    the database - it is that the whole guarantee rides one engine behaviour on one
