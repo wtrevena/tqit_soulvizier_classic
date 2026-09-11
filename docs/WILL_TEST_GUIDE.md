@@ -1,5 +1,18 @@
 # WILL'S TEST GUIDE - build40-dev bosses + SV areas (Helos traveler hub; deployed to DEV + DEV2 2026-07-14)
 
+> # 🧰 R-261 THE FIVE CHESTS - COUNT THE ITEMS (branch `fix/chest-generosity`, 2026-09-11; NOT yet merged or shipped; nothing in the database changes - build103 already carries the chests)
+>
+> Your five chest reports of 08-14 ("wtf did you do to all the chests", the Obsidian Hoards, "aphoryteus dread hoard", Propontis "two items", Tantalus, and the gift box "3x") were re-checked byte by byte against the ORIGINAL Soulvizier 0.98i database. **All six are already at or above the original in what you have on DEV and Steam right now (build103), and have been since build95 (08-15).** What this lane adds is a gate that reads the original SV numbers on every build and refuses to ship if any of these chests ever pays less again.
+>
+> **What to open (full quit of TQ + Steam restart first), and what you should see, solo:**
+> - **the Devourer's stash** (blood cave): ~19 drop rolls, about 34 items by the table arithmetic - the richest chest in the mod, the same roll count as the original SV, with MORE unique weight than SV.
+> - **an Obsidian Hoard / Ephialtes's Dread-Hoard / the Propontis chest / the Tantalus hoard**: ~12-13 drop rolls each, ALWAYS one unique weapon + one relic on top (that guaranteed row is what the old Cyclops-grade table did not have - it is why Propontis paid "gold + one relic").
+> - **a Secret Present** (Dark Forest entrance, Secret Forest, Pillaged Village): ~16 drop rolls, exactly three times the original.
+>
+> **FAIL criterion:** a Propontis / Tantalus / Dread-Hoard / Obsidian chest that opens to fewer than ~8 items or without a unique weapon; a stash under ~15 items; a present under ~12. If that happens, say WHICH chest and the item COUNT - the engine's arithmetic on the roll equations has never been observed against a real count and that number is what settles it (`BL-R261-DEBT-2`).
+>
+> **One question for you (`BL-R261-DEBT-1`):** **Leinth's chest** ("Leinth's Essense", the DRX chest behind Leinth) is an ORIGINAL SV chest that today pays like the Toxeus apex ORB you froze on 08-12 ("Leinth and the toxeus variants keep their current") - about one ninth of what SV's chest paid, without SV's guaranteed accessory row. Your 08-13 "all the chests ... revert to original sv" covers it if you think of it as a chest. Chest (restore SV: ~10.6 rolls + a guaranteed amulet/relic/ring/formula) or orb (keep the freeze)? Nothing was changed pending your word. Also still yours: the Propontis chest is still LABELLED "Obsidian Hoard" (`BL-R261-DEBT-4`) - what should Kroisos's hoard be called?
+
 > # 🩸 R-258 THE DEVOURER'S SOUL - COUNT THE SOULS (vetted + merged 2026-09-10; ships as build102)
 >
 > **LANDS ON YOUR DEV SURFACE AND ON STEAM WITH build102** (cold database `7dad9a8a`; branch
