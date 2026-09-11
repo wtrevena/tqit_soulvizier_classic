@@ -85,7 +85,7 @@ Create and maintain these directories.
   * Workshop staging artifacts and release zips.
   * This folder is gitignored.
 * `backups/`
-  * Timestamped backups of deployed CustomMaps folder before overwriting.
+  * LEGACY since R-259 (2026-09-10). Deploy and character snapshots now go to the network drive under `WIN_BACKUP_ROOT` (see `scripts/deploy_to_custommaps.ps1`); nothing writes here any more. Only `backups/game_dll/` (Engine/Game.dll originals) is still referenced.
   * This folder is gitignored.
 * `scripts/`
   * All automation scripts, tracked.
@@ -148,6 +148,11 @@ Write `local/config.env` with keys like:
 * `STEAM_WORKSHOP_475150=...`
 * `STEAMCMD_EXE=...`
 * `REPO_ROOT=...`
+
+Operator-set keys (R-259, 2026-09-10). Doctor cannot detect these; it PRESERVES them from an existing `local/config.env` when it rewrites the file, so add them once by hand:
+
+* `WIN_BACKUP_ROOT=...` REQUIRED by `deploy_to_custommaps.ps1`: the network-drive root for deploy + character snapshots, e.g. `Z:\Computer Backup\tqit_soulvizier_classic`. The deploy refuses to run if the key is missing, the path is inside the repo, the drive is unreachable, or the root is not writable. No local fallback.
+* `BACKUP_KEEP=5` optional (default 5): how many of the newest deploy snapshots to keep per mod under `<WIN_BACKUP_ROOT>\deployed\<mod>\`. Character snapshots under `<WIN_BACKUP_ROOT>\characters\` always keep the newest 10.
 
 Exit nonzero if the game install path cannot be found.
 
@@ -224,7 +229,9 @@ Deploy the built mod into the user CustomMaps folder so they can test.
 Responsibilities:
 * Before copying, back up any existing deployed folder:
   * `C:\Users\<USER>\Documents\My Games\Titan Quest - Immortal Throne\CustomMaps\SoulvizierClassic`
-  * Copy it to `backups/deployed/SoulvizierClassic/<timestamp>/`
+  * Copy it to `<WIN_BACKUP_ROOT>\deployed\SoulvizierClassic\<timestamp>\` on the network drive (R-259), verify the copy by file count, then keep only the newest `BACKUP_KEEP` (default 5) snapshots. Character saves go to `<WIN_BACKUP_ROOT>\characters\<timestamp>\` (newest 10 kept).
+  * `WIN_BACKUP_ROOT` is required: a missing key or an unmounted drive aborts the deploy before anything is touched; there is no local fallback (the old in-repo `backups/` tree had grown to ~300 GB on C:).
+  * Rotation deletes are guarded (`scripts/_backup.ps1`): a snapshot outside the root, or one that is or contains a junction/symlink, is skipped with a warning and never deleted (docs/MISTAKES.md 2026-09-09).
 * Deploy the mod folder into CustomMaps:
   * Copy `work/SoulvizierClassic/` or `build/SoulvizierClassic/` depending on build method.
 * Confirm that `database/SoulvizierClassic.arz` exists in deployed folder.
